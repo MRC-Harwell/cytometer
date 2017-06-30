@@ -68,6 +68,20 @@ code to the beginning of every python script
            keras.backend.set_image_dim_ordering('tf')
 1. Configure TensorFlow to use the GPU (TODO)
 
+# Install `cytometer`
+
+# Installation
+
+Currently, we have not tested having `cytometer` installed as a python package, 
+as we are at a very early stage.
+
+For the time being, we are working by simply cloning the repository to the local
+drive.
+
 1. Clone the `cytometer` repository by running the command
 
+        cd ~/Software
         git clone git@phobos.mrch.har.mrc.ac.uk:r.casero/cytometer.git
+1. Change directory to the project
+
+        cd cytometer
