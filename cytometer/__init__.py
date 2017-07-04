@@ -10,6 +10,7 @@ from __future__ import absolute_import
 
 # import cytometer modules so that they can be imported as e.g. 
 # import cytometer.deepcell_models
+from . import deepcell
 from . import deepcell_models
 
 # cytometer package version (note: duplicated in /setup.py)
