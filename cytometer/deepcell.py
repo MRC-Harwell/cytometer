@@ -13,6 +13,10 @@ Valen.
 Downloaded as comitted on 28 Jun 2017
 
 https://github.com/CovertLab/DeepCell/blob/1f34f8b833bd6e22928627fdc0f77cb3691393f8/keras_version/cnn_functions.py
+
+Minor modifications by Ramon Casero <rcasero@gmail.com>
+* change "print", "raise ValueError", "xrange" syntax to python 3
+
 """
 
 """
@@ -219,7 +223,7 @@ def combinations_same(array):
 	combs = []
 	y = []
 	for elt in array:
-		for j in xrange((len(array)-1)/2):
+		for j in range((len(array)-1)/2):
 			combs += [(elt,elt)]
 			y += [1]
 	return combs, y
@@ -270,27 +274,27 @@ def tensorprod_softmax(x):
 def sparse_pool(input_image, stride = 2, pool_size = (2,2), mode = 'max'):
 	pooled_array = []
 	counter = 0
-	for offset_x in xrange(stride):
-		for offset_y in xrange(stride):
+	for offset_x in range(stride):
+		for offset_y in range(stride):
 			pooled_array +=[pool_2d(input_image[:, :, offset_x::stride, offset_y::stride], pool_size, st = (1,1), mode = mode, padding = (0,0), ignore_border = True)]
 			counter += 1
 
 	# Concatenate pooled image to create one big image
 	running_concat = []
-	for it in xrange(stride):
+	for it in range(stride):
 		running_concat += [T.concatenate(pooled_array[stride*it:stride*(it+1)], axis = 3)]
 	concatenated_image = T.concatenate(running_concat,axis = 2)
 
 	pooled_output_array = []
 
-	for it in xrange(counter+1):
+	for it in range(counter+1):
 		pooled_output_array += [T.tensor4()]
 
 	pooled_output_array[0] = concatenated_image
 
 	counter = 0
-	for offset_x in xrange(stride):
-		for offset_y in xrange(stride):
+	for offset_x in range(stride):
+		for offset_y in range(stride):
 			pooled_output_array[counter+1] = T.set_subtensor(pooled_output_array[counter][:, :, offset_x::stride, offset_y::stride], pooled_array[counter])
 			counter += 1
 	return pooled_output_array[counter]
@@ -448,7 +452,7 @@ def get_data_siamese(file_name):
 	input_1_test = np.zeros((num_test,) + image_list.shape[1:], dtype = 'float32')
 	input_2_test = np.zeros((num_test,) + image_list.shape[1:], dtype = 'float32')
 
-	for j in xrange(num_test):
+	for j in range(num_test):
 		input_1_test[j] = image_list[id_test[j][0]]
 		input_2_test[j] = image_list[id_test[j][1]]
 
@@ -1427,9 +1431,9 @@ def get_images_from_directory(data_location, channel_names):
 	n_channels = len(channel_names)
 	all_images = []
 
-	for stack_iteration in xrange(len(img_list_channels[0])):
+	for stack_iteration in range(len(img_list_channels[0])):
 		all_channels = np.zeros((1, n_channels, img_temp.shape[0],img_temp.shape[1]), dtype = 'float32')
-		for j in xrange(n_channels):
+		for j in range(n_channels):
 			channel_img = get_image(os.path.join(data_location, img_list_channels[j][stack_iteration]))
 			all_channels[0,j,:,:] = channel_img
 		all_images += [all_channels]
@@ -1438,7 +1442,7 @@ def get_images_from_directory(data_location, channel_names):
 
 def run_model(image, model, win_x = 30, win_y = 30, std = False, split = True, process = True):
 	if process:
-		for j in xrange(image.shape[1]):
+		for j in range(image.shape[1]):
 			image[0,j,:,:] = process_image(image[0,j,:,:], win_x, win_y, std)
 
 	if split:
@@ -1483,13 +1487,13 @@ def run_model_on_directory(data_location, channel_names, output_location, model,
 	processed_image_list = []
 
 	for image in image_list:
-		print "Processing image " + str(counter + 1) + " of " + str(len(image_list))
+		print("Processing image " + str(counter + 1) + " of " + str(len(image_list)))
 		processed_image = run_model(image, model, win_x = win_x, win_y = win_y, std = std, split = split, process = process)
 		processed_image_list += [processed_image]
 
 		# Save images
 		if save:
-			for feat in xrange(n_features):
+			for feat in range(n_features):
 				feature = processed_image[feat,:,:]
 				cnnout_name = os.path.join(output_location, 'feature_' + str(feat) +"_frame_"+ str(counter) + r'.tif')
 				tiff.imsave(cnnout_name,feature)
@@ -1515,8 +1519,8 @@ def run_models_on_directory(data_location, channel_names, output_location, model
 		
 	# Save images
 	if save:
-		for img in xrange(model_output.shape[0]):
-			for feat in xrange(n_features):
+		for img in range(model_output.shape[0]):
+			for feat in range(n_features):
 				feature = model_output[img,feat,:,:]
 				cnnout_name = os.path.join(output_location, 'feature_' + str(feat) + "_frame_" + str(img) + r'.tif')
 				tiff.imsave(cnnout_name,feature)
@@ -1543,15 +1547,15 @@ def run_model_on_lsm(lsm_file, output_location, model, win_x = 15, win_y = 15, s
 	channels = np.zeros((image_size_z, num_channels, image_size_x, image_size_y), dtype = 'float32')
 	processed_image_list = []
 
-	for zpos in xrange(image_size_z):
-		for channel in xrange(num_channels):
+	for zpos in range(image_size_z):
+		for channel in range(num_channels):
 			channel_img = raw_image_file.get_image(stack = zpos, channel = channel)
 			channel_img = np.float32(channel_img)
 			channel_img = process_image(channel_img, win_x, win_y, remove_zeros = True)
 			channels[zpos, channel, :, :] = channel_img
 
-	for zpos in xrange(image_size_z):
-		print "Processing image " + str(counter + 1) + " of " + str(image_size_z)
+	for zpos in range(image_size_z):
+		print("Processing image " + str(counter + 1) + " of " + str(image_size_z))
 		image = np.zeros((1, num_channels, image_size_x, image_size_y))
 		image[0,:,:,:] = channels[zpos,:,:,:]
 		processed_image = run_model(image, model, win_x = win_x, win_y = win_y, std = std, split = split, process = False)
@@ -1559,7 +1563,7 @@ def run_model_on_lsm(lsm_file, output_location, model, win_x = 15, win_y = 15, s
 
 		# Save images
 		if save:
-			for feat in xrange(n_features):
+			for feat in range(n_features):
 				feature = processed_image[feat,:,:]
 				cnnout_name = os.path.join(output_location, 'feature_' + str(feat) +"_frame_"+ str(counter) + r'.tif')
 				tiff.imsave(cnnout_name,feature)
@@ -1594,8 +1598,8 @@ def run_models_on_lsm(lsm_file, output_location, model_fn, list_of_weights, n_fe
 
 	# Save images
 	if save:
-		for img in xrange(model_output.shape[0]):
-			for feat in xrange(n_features):
+		for img in range(model_output.shape[0]):
+			for feat in range(n_features):
 				feature = model_output[img,feat,:,:]
 				cnnout_name = os.path.join(output_location, 'feature_' + str(feat) + "_frame_" + str(img) + r'.tif')
 				tiff.imsave(cnnout_name,feature)
@@ -1648,7 +1652,7 @@ class fcycle(object):
 
 # SI and IS operators for 2D and 3D.
 _P2 = [np.eye(3), np.array([[0,1,0]]*3), np.flipud(np.eye(3)), np.rot90([[0,1,0]]*3)]
-_P3 = [np.zeros((3,3,3)) for i in xrange(9)]
+_P3 = [np.zeros((3,3,3)) for i in range(9)]
 
 _P3[0][:,:,1] = 1
 _P3[1][:,1,:] = 1
@@ -1669,12 +1673,12 @@ def SI(u):
 	elif np.ndim(u) == 3:
 		P = _P3
 	else:
-		raise ValueError, "u has an invalid number of dimensions (should be 2 or 3)"
+		raise ValueError("u has an invalid number of dimensions (should be 2 or 3)")
 	
 	if u.shape != _aux.shape[1:]:
 		_aux = np.zeros((len(P),) + u.shape)
 	
-	for i in xrange(len(P)):
+	for i in range(len(P)):
 		_aux[i] = binary_erosion(u, P[i])
 	
 	return _aux.max(0)
@@ -1687,12 +1691,12 @@ def IS(u):
 	elif np.ndim(u) == 3:
 		P = _P3
 	else:
-		raise ValueError, "u has an invalid number of dimensions (should be 2 or 3)"
+		raise ValueError("u has an invalid number of dimensions (should be 2 or 3)")
 	
 	if u.shape != _aux.shape[1:]:
 		_aux = np.zeros((len(P),) + u.shape)
 	
-	for i in xrange(len(P)):
+	for i in range(len(P)):
 		_aux[i] = binary_dilation(u, P[i])
 	
 	return _aux.min(0)
@@ -1746,7 +1750,7 @@ class MorphACWE(object):
 		u = self._u
 		
 		if u is None:
-			raise ValueError, "the levelset function is not set (use set_levelset)"
+			raise ValueError("the levelset function is not set (use set_levelset)")
 		
 		data = self.data
 		
@@ -1773,7 +1777,7 @@ class MorphACWE(object):
 		res[aux > 0] = 0
 		
 		# Smoothing.
-		for i in xrange(self.smoothing):
+		for i in range(self.smoothing):
 			res = curvop(res)
 		
 		# Apply mask
@@ -1783,14 +1787,14 @@ class MorphACWE(object):
 	
 	def run(self, iterations):
 		"""Run several iterations of the morphological Chan-Vese method."""
-		for i in xrange(iterations):
+		for i in range(iterations):
 			self.step()
 	
 def segment_image_w_morphsnakes(img, nuc_label, num_iters, smoothing = 2):
 	morph_snake = MorphACWE(img, smoothing = smoothing, lambda1 = 1, lambda2 = 1)
 	morph_snake.levelset = np.float16(nuc_label > 0)
 
-	for j in xrange(num_iters):
+	for j in range(num_iters):
 		morph_snake.step()
 
 	seg_input = morph_snake.levelset
@@ -1819,7 +1823,7 @@ def segment_nuclei(img = None, save = True, adaptive = False, color_image = Fals
 			img[counter,:,:] = get_image(os.path.join(load_from_direc,name))
 			counter += 1
 
-	for frame in xrange(img.shape[0]):
+	for frame in range(img.shape[0]):
 		interior = img[frame,:,:]
 		if adaptive:
 			block_size = 61
@@ -1828,7 +1832,7 @@ def segment_nuclei(img = None, save = True, adaptive = False, color_image = Fals
 			nuclear_mask = np.float32(interior > threshold)
 		nuc_label = label(nuclear_mask)
 		max_cell_id = np.amax(nuc_label)
-		for cell_id in xrange(1,max_cell_id + 1):
+		for cell_id in range(1,max_cell_id + 1):
 			img_new = nuc_label == cell_id
 			img_fill = binary_fill_holes(img_new)
 			nuc_label[img_fill == 1] = cell_id
@@ -1881,7 +1885,7 @@ def segment_cytoplasm(img =None, save = True, load_from_direc = None, feature_to
 			img[counter,:,:] = get_image(os.path.join(load_from_direc,name))
 			counter += 1
 
-	for frame in xrange(img.shape[0]):
+	for frame in range(img.shape[0]):
 		interior = img[frame,:,:]
 
 		nuclei = nuclear_masks[frame,:,:]
@@ -1893,7 +1897,7 @@ def segment_cytoplasm(img =None, save = True, load_from_direc = None, feature_to
 
 		cytoplasm_mask = np.zeros(seg.shape,dtype = np.float32)
 		max_cell_id = np.amax(seg)
-		for cell_id in xrange(1,max_cell_id + 1):
+		for cell_id in range(1,max_cell_id + 1):
 			img_new = seg == cell_id
 			img_fill = binary_fill_holes(img_new)
 			cytoplasm_mask[img_fill == 1] = 1
@@ -1935,7 +1939,7 @@ def dice_jaccard_indices(mask, val, nuc_mask):
 	mask_label = label(mask, background = 0) 
 	val_label = label(val, background = 0) 
 
-	for j in xrange(1,np.amax(val_label)+1):
+	for j in range(1,np.amax(val_label)+1):
 		if np.sum((val_label == j) * nuc_mask) == 0:
 			val_label[val_label == j] = 0
 
@@ -1977,9 +1981,10 @@ def dice_jaccard_indices(mask, val, nuc_mask):
 
 	JI = np.mean(jac_list)
 	DI = np.mean(dice_list)
-	print jac_list, dice_list
-	print "Jaccard index is " + str(JI) + " +/- " + str(np.std(jac_list))
-	print "Dice index is " + str(DI)  + " +/- " + str(np.std(dice_list))
+	print(jac_list)
+	print(dice_list)
+	print("Jaccard index is " + str(JI) + " +/- " + str(np.std(jac_list)))
+	print("Dice index is " + str(DI)  + " +/- " + str(np.std(dice_list)))
 
 	return JI, DI
 
@@ -2001,7 +2006,7 @@ def create_masks(direc_name, direc_save_mask, direc_save_region, win = 15, area_
 	mask_sum = np.zeros(mask_interior.shape)
 	mask_save = np.zeros((num_of_files,mask_interior.shape[0],mask_interior.shape[1]))
 
-	for iterations in xrange(num_of_files):
+	for iterations in range(num_of_files):
 
 		cnn_int_name = os.path.join(direc_name, imglist_int[iterations])
 		cnn_back_name = os.path.join(direc_name, imglist_back[iterations])
@@ -2031,8 +2036,8 @@ def create_masks(direc_name, direc_save_mask, direc_save_region, win = 15, area_
 
 
 		# Save thresholded masks
-		print '... Saving mask number ' + str(iterations+1) + ' of ' + str(len(imglist_int)) + '\r',
-		file_name_save = 'masks_' + str(iterations) + '.tif'
+		print('... Saving mask number ' + str(iterations+1) + ' of ' + str(len(imglist_int)) + '\r')
+		print(file_name_save = 'masks_' + str(iterations) + '.tif')
 		tiff.imsave(direc_save_mask + file_name_save, mask_interior_thresh)
 
 		mask_sum += mask_interior_thresh
@@ -2059,11 +2064,11 @@ def create_masks(direc_name, direc_save_mask, direc_save_region, win = 15, area_
 
 	regions_save = []
 
-	for chunk in xrange(num_of_chunks):
+	for chunk in range(num_of_chunks):
 		regions = []
 		chunk_mask = markers == chunk
 
-		for iterations in xrange(num_of_files):
+		for iterations in range(num_of_files):
 			mask_interior_thresh = mask_save[iterations,:,:] * chunk_mask
 			mask_interior_label = label(mask_interior_thresh, background = 0)
 			if chunk == 5:
@@ -2082,11 +2087,11 @@ def create_masks(direc_name, direc_save_mask, direc_save_region, win = 15, area_
 
 def crop_images(direc_name, channel_names, direc_save, window_size_x = 15, window_size_y = 15):
 	imglist = []
-	for j in xrange(len(channel_names)):
+	for j in range(len(channel_names)):
 		imglist.append(nikon_getfiles(direc_name,channel_names[j]))
 	
-	for i in xrange(len(imglist)):
-		for j in xrange(len(imglist[0])):
+	for i in range(len(imglist)):
+		for j in range(len(imglist[0])):
 			im = get_image(direc_name + imglist[i][j])
 			im_crop = im[window_size_x:-window_size_x,window_size_y:-window_size_y]
 
@@ -2095,10 +2100,10 @@ def crop_images(direc_name, channel_names, direc_save, window_size_x = 15, windo
 def align_images(direc_name, channel_names, direc_save,crop_window = 950):
 	# Make sure the first member of channel name is the phase image
 	imglist = []
-	for j in xrange(len(channel_names)):
+	for j in range(len(channel_names)):
 		imglist.append(nikon_getfiles(direc_name,channel_names[j]))
 
-	for j in xrange(len(imglist[0])-1):
+	for j in range(len(imglist[0])-1):
 		im0_name = os.path.join(direc_name, imglist[0][j])
 		im1_name = os.path.join(direc_name, imglist[0][j+1])
 
@@ -2131,7 +2136,7 @@ def align_images(direc_name, channel_names, direc_save,crop_window = 950):
 			im_name = os.path.join(direc_save, channel_names[0] +'_aligned_' + str(j) + '.tif')
 			tiff.imsave(im_name , im0_save)
 			# Load, shift, and save fluorescence channels
-			for i in xrange(1,len(channel_names)):
+			for i in range(1,len(channel_names)):
 				im = get_image(direc_name + imglist[i][j])
 				im_crop = im[x_index : x_index + crop_window, y_index : y_index + crop_window]
 				im_save = im_crop[25:-25,25:-25]
@@ -2142,7 +2147,7 @@ def align_images(direc_name, channel_names, direc_save,crop_window = 950):
 		tiff.imsave(direc_save + channel_names[0] + '_aligned_' + str(j+1) + '.tif', im1_save)
 		
 		# Load, shift, and save fluorescence channels
-		for i in xrange(1,len(channel_names)):
+		for i in range(1,len(channel_names)):
 			im = get_image(direc_name + imglist[i][j+1])
 			im_crop = im[x_index : x_index + crop_window, y_index : y_index + crop_window]
 			im_save = im_crop[25 - t0:-25 - t0, 25 - t1:-25 - t1]
@@ -2157,16 +2162,16 @@ def make_cost_matrix(region_1, region_2, frame_numbers, direc_save, birth_cost =
 	N_1 = len(region_1)
 	N_2 = len(region_2)
 	cost_matrix = np.zeros((2*N_1+N_2,2*N_1+N_2), dtype = np.double)
-	for i in xrange(N_1):
-		print '... Processing ' + str(np.floor(np.float32(i)/np.float32(N_1)*100)) + r'% complete with image' + '\r',
-		for j in xrange(N_2):
+	for i in range(N_1):
+		print('... Processing ' + str(np.floor(np.float32(i)/np.float32(N_1)*100)) + r'% complete with image' + '\r')
+		for j in range(N_2):
 			cost_matrix[i,j] = cost_function_overlap_daughter(region_1[i],region_2[j])
 
 	cost_matrix[N_1:2*N_1,0:N_2] = cost_matrix[0:N_1,0:N_2]
 
-	for i in xrange(N_1):
-		print '... Processing ' + str(np.floor(np.float32(i)/np.float32(N_1)*100)) + r'% complete with image' + '\r',
-		for j in xrange(N_2):
+	for i in range(N_1):
+		print('... Processing ' + str(np.floor(np.float32(i)/np.float32(N_1)*100)) + r'% complete with image' + '\r')
+		for j in range(N_2):
 			cost_matrix[i,j] = cost_function_overlap(region_1[i],region_2[j])
 
 	births = np.eye(N_2,N_2) * birth_cost
@@ -2363,7 +2368,7 @@ def cell_linker(region_1, region_2, tracks, frame_numbers, direc_save):
 	assigned_1, assigned_2 = run_LAP(cost_matrix, N_1, N_2)
 
 	# Add assigned cells to tracks
-	for j in xrange(len(assigned_2)):
+	for j in range(len(assigned_2)):
 		if assigned_1[j] < N_1 + 1:
 			image_2_cells[assigned_2[j]-1]['trackId'] = track_location[str(assigned_1[j])]
 			image_2_cells[assigned_2[j]-1]['tracked'] = 0
@@ -2404,9 +2409,9 @@ def make_tracks(regions, direc_save, start_frame = 0, end_frame = None, direc_co
 		end_frame = len(regions)
 	tracks = cell_linker_init(regions[start_frame],start_frame)
 
-	for j in xrange(start_frame,end_frame-1):
+	for j in range(start_frame,end_frame-1):
 		tracks = cell_linker(regions[j],regions[j+1],tracks, frame_numbers = [j, j+1], direc_save = direc_cost_save)
-		print '... Tracked image ' + str(j) + '...' + str(len(tracks)) + ' tracks identified'
+		print('... Tracked image ' + str(j) + '...' + str(len(tracks)) + ' tracks identified')
 
 	file_name_save = 'tracks'
 	np.savez(direc_save + file_name_save, tracks = tracks)
@@ -2445,7 +2450,8 @@ def plot_lineage(list_of_cells, tracks, image_size):
 			max_frame_number = cell['frame']
 
 	num_of_frames = max_frame_number - min_frame_number + 1
-	print max_frame_number, min_frame_number
+	print(max_frame_number)
+	print(min_frame_number)
 
 	# Create array with masks of each for each frame
 	mask_array = np.zeros((num_of_frames,image_size[0],image_size[1]))
@@ -2476,7 +2482,7 @@ def plot_lineage(list_of_cells, tracks, image_size):
 
 	fig,ax = plt.subplots(2,num_of_frames, squeeze = False)
 
-	for frame_number in xrange(num_of_frames):
+	for frame_number in range(num_of_frames):
 		mask = mask_array_trim[frame_number,:,:]
 		all_cell_image = all_cell_trim[frame_number,:,:]
 		label_image = label(mask)
@@ -2517,7 +2523,8 @@ def plot_lineage_numbers(list_of_cells, tracks, image_size):
 			max_frame_number = cell['frame']
 
 	num_of_frames = max_frame_number - min_frame_number + 1
-	print max_frame_number, min_frame_number
+	print(max_frame_number)
+	print(min_frame_number)
 
 	if num_of_frames > 10:
 
@@ -2552,7 +2559,7 @@ def plot_lineage_numbers(list_of_cells, tracks, image_size):
 		form_coord_funcs = []
 		form_coord_list = [0]*num_of_frames
 
-		for frame_number in xrange(num_of_frames):
+		for frame_number in range(num_of_frames):
 			mask = mask_array_trim[frame_number,:,:]
 			all_cell_image = all_cell_trim[frame_number,:,:]
 
@@ -2590,7 +2597,8 @@ def plot_lineage_total(list_of_cells, tracks, image_size):
 			max_frame_number = cell['frame']
 
 	num_of_frames = max_frame_number - min_frame_number + 1
-	print max_frame_number, min_frame_number
+	print(max_frame_number)
+	print(min_frame_number)
 
 	# Create array with masks of each for each frame
 	mask_array = np.zeros((total_no_of_frames,image_size[0],image_size[1]))
