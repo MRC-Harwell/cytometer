@@ -55,7 +55,13 @@ Instructions to set up project `cytometer`.
 
 1. Install python dependencies
 
-        conda install keras=2.0.2 tensorflow=1.1.0 matplotlib=2.0.2 cudnn=5.1 pillow=4.1.1 tifffile=0.12.1 spyder
+        # Basic python dependencies
+        conda install matplotlib=2.0.2 pillow=4.1.1 spyder
+        # Basic CNN environment dependencies
+        conda install keras=2.0.2 tensorflow=1.1.0 cudnn=5.1 
+        # DeepCell dependencies
+        conda install tifffile=0.12.1 scikit-image=0.13.0 scikit-learn=0.18.2
+        conda install -c conda-forge mahotas=1.4.3
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we are going to add this
 code to the beginning of every python script
