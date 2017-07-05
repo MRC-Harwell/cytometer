@@ -69,9 +69,9 @@ code to the beginning of every python script
        
            import os
            import keras
-           os.environ['KERAS_BACKEND'] = 'tensorflow'
+           os.environ['KERAS_BACKEND'] = 'theano'
            reload(keras.backend)
-           keras.backend.set_image_dim_ordering('tf')
+           keras.backend.set_image_dim_ordering('th')
 1. Configure TensorFlow to use the GPU (TODO)
 
 # Install `cytometer`
