@@ -91,3 +91,7 @@ drive.
 1. Change directory to the project
 
         cd cytometer
+1. Add the project to the Spyder3 path. Select Tools -> PYTHONPATH manager, click "+", select `/home/rcasero/Software/cytometer`
+ * *Note:* Once the package is installed, `/home/rcasero/Software/cytometer/cytometer` will be copied to `~/.conda/envs/cytometer/lib/python3.6/site-packages/`.
+PYTHONPATH points to `~/.conda/envs/cytometer/lib/python3.6/site-packages/`, which is why in development PYTHONPATH has to point at `/home/rcasero/Software/cytometer`
+instead of `/home/rcasero/Software/cytometer/cytometer`
