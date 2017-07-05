@@ -13,7 +13,7 @@ Simple script to train deepcell_models.bn_feature_net_31x31.
 import os
 import keras
 from importlib import reload
-os.environ['KERAS_BACKEND'] = 'tensorflow'
+os.environ['KERAS_BACKEND'] = 'theano'
 reload(keras.backend)
 keras.backend.set_image_dim_ordering('th')
 
