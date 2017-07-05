@@ -19,6 +19,12 @@ from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 import keras.backend as K
 
+# DeepCell is too hard-coded into theano data dimension ordering to fully rewrite it
+if (parse_version(keras_version) < parse_version('2.0.0')) and (K.image_dim_ordering() != 'th'):
+    raise ValueError('DeepCell requires keras.backend.image_dim_ordering()==\'th\'')
+if (parse_version(keras_version) >= parse_version('2.0.0')) and (K.image_data_format() != 'channels_first'):
+    raise ValueError('DeepCell requires keras.backend.image_data_format()==\'channel_first\'')
+
 # DeepCell's feature net 31x31 with batch normalization
 def bn_feature_net_31x31(n_channels = 1, n_features = 3, reg = 1e-5, init = 'he_normal'):
 

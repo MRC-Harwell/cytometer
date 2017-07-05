@@ -23,6 +23,8 @@ Minor modifications by Ramon Casero <rcasero@gmail.com>
 Import python packages
 """
 
+from pkg_resources import parse_version
+
 import numpy as np
 from numpy import array
 import matplotlib.pyplot as plt
@@ -65,6 +67,7 @@ from theano.tensor.signal.pool import pool_2d
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 from theano.ifelse import ifelse
 
+from keras import __version__ as keras_version
 from keras import backend as K
 from keras.layers.normalization import BatchNormalization
 from keras.layers import Input, Activation, merge, Dense, Flatten
@@ -83,6 +86,11 @@ except ImportError:
 from keras import regularizers as regularizers
 from keras import constraints as constraints
 
+# DeepCell is too hard-coded into theano data dimension ordering to fully rewrite it
+if (parse_version(keras_version) < parse_version('2.0.0')) and (K.image_dim_ordering() != 'th'):
+    raise ValueError('DeepCell requires keras.backend.image_dim_ordering()==\'th\'')
+if (parse_version(keras_version) >= parse_version('2.0.0')) and (K.image_data_format() != 'channels_first'):
+    raise ValueError('DeepCell requires keras.backend.image_data_format()==\'channel_first\'')
 
 """
 Helper functions

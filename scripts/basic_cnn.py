@@ -13,11 +13,7 @@ Simple script to train deepcell_models.bn_feature_net_31x31.
 import os
 import keras
 from importlib import reload
-#os.environ['KERAS_BACKEND'] = 'tensorflow'
-#reload(keras.backend)
-#keras.backend.set_image_dim_ordering('tf')
-
-os.environ['KERAS_BACKEND'] = 'theano'
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 reload(keras.backend)
 keras.backend.set_image_dim_ordering('th')
 
@@ -41,10 +37,6 @@ expt = "bn_feature_net_31x31"
 it = 0 # iteration
 batch_size = 256
 n_epoch = 1
-
-# constants
-#data_dir = "/home/rcasero/Software/cytometer/data"
-#im_file = "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_lowres.tif"
 
 training_data_file_name = os.path.join(direc_data, dataset + ".npz")
 todays_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -79,7 +71,7 @@ plt.plot(15, 15, 'ro')
 plt.title('4')
 
 # corresponding training labels
-Y_test[(0, 24166, 48333, 72501), :]
+Y_test[[0, 24166, 48333, 72501]]
     
 # load model
 model = deepcell_models.bn_feature_net_31x31()
