@@ -82,7 +82,7 @@ code to the beginning of every python script
         os.environ['KERAS_BACKEND'] = 'theano'
         reload(keras.backend)
         keras.backend.set_image_dim_ordering('th')
-1. Configure Theano to use the GPU. Create `~/.theanorc`
+1. Configure Theano to use the GPU and cuDNN. Create `~/.theanorc`
 
         [global]
         device = cuda0
@@ -96,18 +96,23 @@ code to the beginning of every python script
         include_path = /home/rcasero/.conda/envs/cytometer/include
         library_path = /home/rcasero/.conda/envs/cytometer/lib
 
-1. Check that everything is working in python
+1. Tensorflow will use the GPU automatically if one is available
+1. In python, choose a backend. E.g. Theano
 
+        from importlib import reload
         import os
         import keras
-        from importlib import reload
-        os.environ['KERAS_BACKEND'] = 'theano'
-        reload(keras.backend)
         keras.backend.set_image_dim_ordering('th')
-        Using TensorFlow backend.
-        Using Theano backend.
         Using cuDNN version 5110 on context None
         Mapped name None to device cuda0: Quadro K4000 (0000:01:00.0)
+   or Tensorflow
+
+        from importlib import reload
+        import os
+        import keras
+        keras.backend.set_image_dim_ordering('th')
+        os.environ['KERAS_BACKEND'] = 'tensorflow'
+        reload(keras.backend)
 
 # Install `cytometer`
 
