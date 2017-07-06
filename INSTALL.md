@@ -62,16 +62,26 @@ Instructions to set up project `cytometer`.
         # DeepCell dependencies
         conda install tifffile=0.12.1 scikit-image=0.13.0 scikit-learn=0.18.2
         conda install -c conda-forge mahotas=1.4.3
+1. Check that `pygpu` is correctly configured
+
+        $ DEVICE=cuda python -c "import pygpu;pygpu.test()"
+        pygpu is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/pygpu
+        NumPy version 1.12.1
+        NumPy relaxed strides checking option: True
+        NumPy is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/numpy
+        Python version 3.6.1 |Continuum Analytics, Inc.| (default, May 11 2017, 13:09:58) [GCC 4.4.7 20120313 (Red Hat 4.4.7-1)]
+        nose version 1.3.7
+        *** Testing for Quadro K4000
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we are going to add this
 code to the beginning of every python script
 
        
-           import os
-           import keras
-           os.environ['KERAS_BACKEND'] = 'theano'
-           reload(keras.backend)
-           keras.backend.set_image_dim_ordering('th')
+        import os
+        import keras
+        os.environ['KERAS_BACKEND'] = 'theano'
+        reload(keras.backend)
+        keras.backend.set_image_dim_ordering('th')
 1. Configure TensorFlow to use the GPU (TODO)
 
 # Install `cytometer`
