@@ -73,8 +73,8 @@ Instructions to set up project `cytometer`.
         nose version 1.3.7
         *** Testing for Quadro K4000
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
-we are not going to use `~/.keras/keras.json`. Instead, we are going to add this
-code to the beginning of every python script
+we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
+to the beginning of every python script
 
        
         import os
@@ -82,35 +82,25 @@ code to the beginning of every python script
         os.environ['KERAS_BACKEND'] = 'theano'
         reload(keras.backend)
         keras.backend.set_image_dim_ordering('th')
-1. Configure Theano to use the GPU and cuDNN. Create `~/.theanorc`
+1. If you want to use Theano as the backend, create a soft link from `~/.theanorc` to the corresponding file, e.g.
+if you are running `cytometer/scripts/basic_cnn`
 
-        [global]
-        device = cuda0
-        floatX = float32
+        ln -s ~/Software/cytometer/scripts/basic_cnn.theanorc ~/.theanorc
 
-        [lib]
-        cnmem=0.5
-
-        [dnn]
-        enabled = True
-        include_path = /home/rcasero/.conda/envs/cytometer/include
-        library_path = /home/rcasero/.conda/envs/cytometer/lib
-
-1. Tensorflow will use the GPU automatically if one is available
-1. In python, choose a backend. E.g. Theano
+1. If you want to use Tensorflow as the backend, it will use the GPU automatically 
+if one is available, you don't need a configuration file
+1. In python, choose a backend. E.g. Tensorflow
 
         from importlib import reload
         import os
         import keras
-        keras.backend.set_image_dim_ordering('th')
-        Using cuDNN version 5110 on context None
-        Mapped name None to device cuda0: Quadro K4000 (0000:01:00.0)
-   or Tensorflow
+        keras.backend.set_image_data_format('channels_first')
+   or Theano
 
         from importlib import reload
         import os
         import keras
-        keras.backend.set_image_dim_ordering('th')
+        keras.backend.set_image_data_format('channels_first')
         os.environ['KERAS_BACKEND'] = 'tensorflow'
         reload(keras.backend)
 
