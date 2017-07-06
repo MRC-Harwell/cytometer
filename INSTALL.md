@@ -83,7 +83,7 @@ to the beginning of every python script
         reload(keras.backend)
         keras.backend.set_image_dim_ordering('th')
 1. If you want to use Theano as the backend, create a soft link from `~/.theanorc` to the corresponding file, e.g.
-if you are running `cytometer/scripts/basic_cnn`
+if you are running `cytometer/scripts/basic_cnn.py`
 
         ln -s ~/Software/cytometer/scripts/basic_cnn.theanorc ~/.theanorc
 
