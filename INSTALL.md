@@ -60,8 +60,8 @@ Instructions to set up project `cytometer`.
         # Basic CNN environment dependencies
         conda install keras=2.0.2 tensorflow=1.1.0 tensorflow-gpu=1.1.0 cudnn=5.1 pygpu=0.6.8
         # DeepCell dependencies
-        conda install tifffile=0.12.1 scikit-image=0.13.0 scikit-learn=0.18.2
-        conda install -c conda-forge mahotas=1.4.3
+        conda install scikit-image=0.13.0 scikit-learn=0.18.2
+        conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
 1. Check that `pygpu` is correctly configured
 
         $ DEVICE=cuda python -c "import pygpu;pygpu.test()"
