@@ -19,9 +19,9 @@ Instructions to set up project `cytometer`.
 
 # Create `conda` virtual environments
 
-1. Create a conda environment for cytometer (python 3.6 at the time of this writing)
+1. Create a conda environment for cytometer
 
-        conda create --name cytometer python=3
+        conda create --name cytometer python=3.6
 1. Activate the conda environment that you intend to run
 
         source activate cytometer
