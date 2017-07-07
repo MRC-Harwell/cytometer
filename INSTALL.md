@@ -19,9 +19,9 @@ Instructions to set up project `cytometer`.
 
 # Create `conda` virtual environments
 
-1. Create a conda environment for cytometer
+1. Create a conda environment for cytometer (we need python 3.5 for Theano 0.8.2)
 
-        conda create --name cytometer python=3.6
+        conda create --name cytometer python=3.5
 1. Activate the conda environment that you intend to run
 
         source activate cytometer
@@ -57,6 +57,8 @@ Instructions to set up project `cytometer`.
 
         # Basic python dependencies
         conda install matplotlib=2.0.2 pillow=4.1.1 spyder
+        # We need to install an older version of Theano, because theano.test() segfaults with Theano 0.9.0 (newest version at the time of this writing)
+        conda install theano=0.8.2
         # Basic CNN environment dependencies
         conda install keras=2.0.2 tensorflow=1.1.0 tensorflow-gpu=1.1.0 cudnn=5.1 pygpu=0.6.8
         # DeepCell dependencies
