@@ -62,6 +62,8 @@ Instructions to set up project `cytometer`.
         # DeepCell dependencies
         conda install scikit-image=0.13.0 scikit-learn=0.18.2
         conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
+        # For testing theano
+        conda install nose-parameterized=0.5.0
 1. Check that `pygpu` is correctly configured
 
         $ DEVICE=cuda python -c "import pygpu;pygpu.test()"
