@@ -44,28 +44,49 @@ Instructions to set up project `cytometer`.
 
 # Create `conda` virtual environments
 
-1. Create a conda environment for cytometer (we need python 3.5 for Theano 0.8.2)
+1. Create a conda environment for cytometer
+ * Python 3.5 for Theano 0.8.2
 
-        conda create --name cytometer python=3.5
+            conda create --name cytometer_py35 python=3.5
+ * Python 3.6 for Theano 0.9.0
+
+            conda create --name cytometer_py36 python=3.6
 1. Activate the conda environment that you intend to run
 
-        source activate cytometer
+        source activate cytometer_py35
+    or
+
+        source activate cytometer_py36
 
 # Preparing virtual python environment to run `cytometer`
 
 1. Install python dependencies
+ * Theano 0.8.2
 
-        # Basic python dependencies
-        conda install matplotlib=2.0.2 pillow=4.1.1 spyder
-        # We need to install an older version of Theano, because theano.test() segfaults with Theano 0.9.0 (newest version at the time of this writing)
-        conda install theano=0.8.2
-        # Basic CNN environment dependencies
-        conda install keras=2.0.2 tensorflow=1.1.0 tensorflow-gpu=1.1.0 cudnn=5.1 pygpu=0.6.8
-        # DeepCell dependencies
-        conda install scikit-image=0.13.0 scikit-learn=0.18.2
-        conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
-        # For testing theano
-        conda install nose-parameterized=0.5.0
+            # Basic python dependencies
+            conda install matplotlib=2.0.2 pillow=4.2.1 spyder
+            # We need to install an older version of Theano, because theano.test() segfaults with Theano 0.9.0 (newest version at the time of this writing)
+            conda install theano=0.8.2
+            # Basic CNN environment dependencies
+            conda install keras=2.0.2 tensorflow=1.1.0 tensorflow-gpu=1.1.0 cudnn=5.1
+            # DeepCell dependencies
+            conda install scikit-image=0.13.0 scikit-learn=0.18.2
+            conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
+            # For testing theano
+            conda install nose-parameterized=0.5.0
+ * or Theano 0.9.0
+
+            # Basic python dependencies
+            conda install matplotlib=2.0.2 pillow=4.2.1 spyder
+            # theano.test() segfaults with Theano 0.9.0 (newest version at the time of this writing)
+            conda install theano=0.9.0
+            # Basic CNN environment dependencies
+            conda install keras=2.0.2 tensorflow=1.1.0 tensorflow-gpu=1.1.0 cudnn=5.1 pygpu=0.6.8
+            # DeepCell dependencies
+            conda install scikit-image=0.13.0 scikit-learn=0.18.2
+            conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
+            # For testing theano
+            conda install nose-parameterized=0.5.0
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
 to the beginning of every python script
