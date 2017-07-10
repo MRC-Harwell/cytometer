@@ -106,18 +106,18 @@ if you are running `cytometer/scripts/basic_cnn.py`
 if one is available, you don't need a configuration file
 1. In python, choose a backend. E.g. Tensorflow
 
-        from importlib import reload
         import os
+        os.environ['KERAS_BACKEND'] = 'tensorflow'
+        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer_py36/lib'
         import keras
-        keras.backend.set_image_data_format('channels_first')
+        keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
    or Theano
 
-        from importlib import reload
         import os
+        os.environ['KERAS_BACKEND'] = 'theano'
+        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer_py36/lib'
         import keras
-        keras.backend.set_image_data_format('channels_first')
-        os.environ['KERAS_BACKEND'] = 'tensorflow'
-        reload(keras.backend)
+        keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
 
 ## Tests
 
