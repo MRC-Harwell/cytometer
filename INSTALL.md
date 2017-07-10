@@ -66,16 +66,6 @@ Instructions to set up project `cytometer`.
         conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
         # For testing theano
         conda install nose-parameterized=0.5.0
-1. Check that `pygpu` is correctly configured
-
-        $ DEVICE=cuda python -c "import pygpu;pygpu.test()"
-        pygpu is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/pygpu
-        NumPy version 1.12.1
-        NumPy relaxed strides checking option: True
-        NumPy is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/numpy
-        Python version 3.6.1 |Continuum Analytics, Inc.| (default, May 11 2017, 13:09:58) [GCC 4.4.7 20120313 (Red Hat 4.4.7-1)]
-        nose version 1.3.7
-        *** Testing for Quadro K4000
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
 to the beginning of every python script
@@ -108,9 +98,19 @@ if one is available, you don't need a configuration file
         os.environ['KERAS_BACKEND'] = 'tensorflow'
         reload(keras.backend)
 
-## Testing theano
+## Tests
 
-1. To test theano, run
+1. To test `pygpu`
+
+        DEVICE=cuda python -c "import pygpu;pygpu.test()"
+        pygpu is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/pygpu
+        NumPy version 1.12.1
+        NumPy relaxed strides checking option: True
+        NumPy is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/numpy
+        Python version 3.6.1 |Continuum Analytics, Inc.| (default, May 11 2017, 13:09:58) [GCC 4.4.7 20120313 (Red Hat 4.4.7-1)]
+        nose version 1.3.7
+        *** Testing for Quadro K4000
+1. To test `theano`
 
         PYTHONPATH=~/Software/cytometer python -c 'import theano; theano.test()'
 
