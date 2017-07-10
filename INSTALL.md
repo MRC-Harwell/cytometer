@@ -101,7 +101,7 @@ to the beginning of every python script
 if you are running `cytometer/scripts/basic_cnn.py`
 
         ln -s ~/Software/cytometer/scripts/basic_cnn.theanorc ~/.theanorc
-
+   * *Note:* `nvcc.flags=-D_FORCE_INLINES` needed to avoid `error: ‘memcpy’ was not declared in this scope`
 1. If you want to use Tensorflow as the backend, it will use the GPU automatically 
 if one is available, you don't need a configuration file
 1. In python, choose a backend. E.g. Tensorflow
