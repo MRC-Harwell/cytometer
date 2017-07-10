@@ -131,9 +131,12 @@ if one is available, you don't need a configuration file
         Python version 3.6.1 |Continuum Analytics, Inc.| (default, May 11 2017, 13:09:58) [GCC 4.4.7 20120313 (Red Hat 4.4.7-1)]
         nose version 1.3.7
         *** Testing for Quadro K4000
-1. To test `theano`
+1. To run `theano` tests
 
         PYTHONPATH=~/Software/cytometer python -c 'import theano; theano.test()'
+1. To check whether you can import keras with theano backend
+
+        PYTHONPATH=~/Software/cytometer python -c 'import os; os.environ["KERAS_BACKEND"] = "theano"; os.environ["LIBRARY_PATH"] = "/home/rcasero/.conda/envs/cytometer_py36/lib"; import keras'
 
 # Install `cytometer`
 
