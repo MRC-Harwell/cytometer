@@ -7,15 +7,26 @@ Created on Mon Jun 26 18:32:40 2017
 
 Simple script to train deepcell_models.bn_feature_net_31x31.
 
+On my hardware (8 Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz, with 
+nVidia Quadro K4000 GPU):
+    
+    * Tensorflow, GPU: 14.5 days
+    * Theano, CPU (4 threads): 5.6 days
+    * Theano, GPU, cuDNN: 5.5 days
+
 """
 
-# configure Keras, to avoid using file ~/.keras/keras.json
 import os
-import keras
-from importlib import reload
 os.environ['KERAS_BACKEND'] = 'theano'
-reload(keras.backend)
-keras.backend.set_image_dim_ordering('th')
+#os.environ['KERAS_BACKEND'] = 'tensorflow'
+
+os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer_py36/lib'
+
+from importlib import reload
+import keras
+
+# configure Keras, to avoid using file ~/.keras/keras.json
+keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
 
 # load module dependencies
 import datetime
@@ -24,8 +35,8 @@ import numpy as np
 
 import cytometer.deepcell as deepcell
 import cytometer.deepcell_models as deepcell_models
-reload(deepcell)
-reload(deepcell_models)
+#reload(deepcell)
+#reload(deepcell_models)
 
 
 direc_data = "/home/rcasero/Software/cytometer/data/deepcell/training_data_npz/slip"
@@ -114,4 +125,5 @@ loss_history = model.fit_generator(datagen.sample_flow(train_dict, batch_size=ba
                                            deepcell.LearningRateScheduler(lr_sched)
                                            ])
 
-np.savez(file_name_save_loss, loss_history = loss_history.history)
+# save trained model
+model.save(file_name_save_loss)
