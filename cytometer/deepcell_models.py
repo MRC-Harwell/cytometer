@@ -72,7 +72,8 @@ def bn_feature_net_31x31(n_channels = 1, n_features = 3, reg = 1e-5, init = 'he_
     # Keras 2
     else:
 
-        model.add(Conv2D(filters=32, kernel_size=(4, 4), kernel_initializer=init, padding='valid', input_shape=input_shape, kernel_regularizer = l2(reg)))
+        model.add(Conv2D(filters=32, kernel_size=(4, 4), kernel_initializer=init, padding='valid', kernel_regularizer = l2(reg), 
+                  input_shape=input_shape))
         model.add(BatchNormalization(axis = 1))
         model.add(Activation('relu'))
         model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -103,7 +104,6 @@ def bn_feature_net_31x31(n_channels = 1, n_features = 3, reg = 1e-5, init = 'he_
         model.add(Dense(n_features, kernel_initializer=init, kernel_regularizer = l2(reg)))
         model.add(Activation('softmax'))
         
-    # exit
     return model
 
 # DeepCell's feature net 61x61 with batch normalization
