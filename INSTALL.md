@@ -17,16 +17,7 @@ Instructions to set up project `cytometer`.
    1. When it asks for the install destination, select `/opt/miniconda2`, rather than the default `/home/rcasero/miniconda2`.
    1. "Do you wish the installer to prepend the Miniconda2 install location to PATH in your /home/rcasero/.bashrc ? [yes|no]". Select yes.
 
-# Create `conda` virtual environments
-
-1. Create a conda environment for cytometer (we need python 3.5 for Theano 0.8.2)
-
-        conda create --name cytometer python=3.5
-1. Activate the conda environment that you intend to run
-
-        source activate cytometer
-
-# Checking your GPU set-up
+## Checking your GPU set-up
 
 1. Check that you have a working GPU
 
@@ -50,6 +41,15 @@ Instructions to set up project `cytometer`.
         |    0      1974    G   compiz                                         154MiB |
         |    0      2283    G   ...el-token=493C1790BE0AE309A3CB57689C7C3E71   146MiB |
         +-----------------------------------------------------------------------------+
+
+# Create `conda` virtual environments
+
+1. Create a conda environment for cytometer (we need python 3.5 for Theano 0.8.2)
+
+        conda create --name cytometer python=3.5
+1. Activate the conda environment that you intend to run
+
+        source activate cytometer
 
 # Preparing virtual python environment to run `cytometer`
 
@@ -107,6 +107,12 @@ if one is available, you don't need a configuration file
         keras.backend.set_image_data_format('channels_first')
         os.environ['KERAS_BACKEND'] = 'tensorflow'
         reload(keras.backend)
+
+## Testing theano
+
+1. To test theano, run
+
+        PYTHONPATH=~/Software/cytometer python -c 'import theano; theano.test()'
 
 # Install `cytometer`
 
