@@ -21,7 +21,7 @@ Instructions to set up project `cytometer`.
 
 1. Check that you have a working GPU
 
-        (cytometer) $ nvidia-smi
+        $ nvidia-smi
         Wed Jun 28 15:20:35 2017
         +-----------------------------------------------------------------------------+
         | NVIDIA-SMI 375.66                 Driver Version: 375.66                    |
@@ -42,51 +42,54 @@ Instructions to set up project `cytometer`.
         |    0      2283    G   ...el-token=493C1790BE0AE309A3CB57689C7C3E71   146MiB |
         +-----------------------------------------------------------------------------+
 
-# Create `conda` virtual environments
+# Create `conda` virtual environment
 
 1. Create a conda environment for cytometer
- * Python 3.5 for Theano 0.8.2
+ * Python 3.6 for Keras/Theano master versions
 
-            conda create --name cytometer_py35 python=3.5
- * Python 3.6 for Theano 0.9.0
-
-            conda create --name cytometer_py36 python=3.6
-1. Activate the conda environment that you intend to run
-
-        source activate cytometer_py35
-    or
-
-        source activate cytometer_py36
+            conda create --name cytometer python=3.6
 
 # Preparing virtual python environment to run `cytometer`
 
-1. Install python dependencies
- * Theano 0.8.2
+Installing official conda packages for Keras/Theano didn't work for me. Installing
+Theano 0.8.2 with Keras 2.0.2 and python 3.5 would fail to `import theano` due to
+compilation errors when the GPU was selected, whereas Theano 0.9.0 would make Keras segfault with `model.add()`
+using the GPU. Instead, we work with the latest `master` versions of Keras and Theano.
 
-            # Basic python dependencies
-            conda install matplotlib=2.0.2 pillow=4.2.1 spyder
-            # We need to install an older version of Theano, because theano.test() segfaults with Theano 0.9.0 (newest version at the time of this writing)
-            conda install theano=0.8.2
-            # Basic CNN environment dependencies
-            conda install keras=2.0.2 tensorflow=1.1.0 tensorflow-gpu=1.1.0 cudnn=5.1 pygpu=0.6.8
-            # DeepCell dependencies
-            conda install scikit-image=0.13.0 scikit-learn=0.18.2
-            conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
-            # For testing theano
-            conda install nose-parameterized=0.5.0
- * or Theano 0.9.0
+1. Install python packages
+ * Current master versions of Keras and Theano
 
-            # Basic python dependencies
-            conda install matplotlib=2.0.2 pillow=4.2.1 spyder
-            # theano.test() segfaults with Theano 0.9.0 (newest version at the time of this writing)
-            conda install theano=0.9.0
-            # Basic CNN environment dependencies
-            conda install keras=2.0.2 tensorflow=1.1.0 tensorflow-gpu=1.1.0 cudnn=5.1 pygpu=0.6.8
-            # DeepCell dependencies
-            conda install scikit-image=0.13.0 scikit-learn=0.18.2
-            conda install -c conda-forge tifffile=0.12.1 mahotas=1.4.3
+            # Select local conda environment
+            source activate cytometer
+            
+            # install keras, theano and tensorflow with their dependencies
+            # As of this writing: keras-2.0.6 numpy-1.13.1 pyyaml-3.12 scipy-0.19.1 six-1.10.0 theano-0.9.0
+            # backports.weakref-1.0rc1 bleach-1.5.0 html5lib-0.9999999 markdown-2.6.8 protobuf-3.3.0 tensorflow-1.2.1 tensorflow-gpu-1.2.1 werkzeug-0.12.2
+            pip install keras theano tensorflow tensorflow-gpu
+            
+            # Upgrade keras and theano to latest versions
+            # As of this writing: Keras-2.0.6, Theano-0.10.0.dev1
+            pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
+            pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
+            
             # For testing theano
-            conda install nose-parameterized=0.5.0
+            # As of this writing: nose-parameterized-0.6.0
+            pip install nose-parameterized
+            
+            # Theano/GPU dependencies
+            # As of this writing: cudnn=5.1, pygpu=0.6.8, libgpuarray=0.6.8
+            conda install pygpu cudnn
+            
+            # Basic python dependencies
+            # As of this writing: matplotlib=2.0.2 pillow=4.2.1 spyder=3.1.4
+            conda install matplotlib pillow spyder
+            
+            # DeepCell dependencies
+            # As of this writing: scikit-image=0.13.0 scikit-learn=0.18.2 h5py=2.7.0
+            # tifffile=0.12.0 mahotas=1.4.3
+            conda install scikit-image scikit-learn h5py
+            conda install -c conda-forge tifffile mahotas
+
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
 to the beginning of every python script
@@ -108,14 +111,14 @@ if one is available, you don't need a configuration file
 
         import os
         os.environ['KERAS_BACKEND'] = 'tensorflow'
-        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer_py36/lib'
+        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer/lib'
         import keras
         keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
    or Theano
 
         import os
         os.environ['KERAS_BACKEND'] = 'theano'
-        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer_py36/lib'
+        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer/lib'
         import keras
         keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
 
@@ -136,9 +139,7 @@ if one is available, you don't need a configuration file
         PYTHONPATH=~/Software/cytometer python -c 'import theano; theano.test()'
 1. To check whether you can import keras with theano backend
 
-        PYTHONPATH=~/Software/cytometer python -c 'import os; os.environ["KERAS_BACKEND"] = "theano"; os.environ["LIBRARY_PATH"] = "/home/rcasero/.conda/envs/cytometer_py36/lib"; import keras'
-
-# Install `cytometer`
+        PYTHONPATH=~/Software/cytometer python -c 'import os; os.environ["KERAS_BACKEND"] = "theano"; os.environ["LIBRARY_PATH"] = "/home/rcasero/.conda/envs/cytometer/lib"; import keras'
 
 # Installation
 
