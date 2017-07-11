@@ -166,3 +166,9 @@ The `setup.py` and associated files to create a package are in place. You can cr
 
     cd ~/Software/cytometer
     ./setup.py sdist
+
+# Running scripts
+
+To run a scrip from the command line
+
+    PYTHONPATH=~/Software/cytometer python scripts/basic_cnn.py
