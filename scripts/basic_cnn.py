@@ -12,15 +12,15 @@ nVidia Quadro K4000 GPU):
     
     * Tensorflow, GPU: 14.5 days
     * Theano, CPU (4 threads): 5.6 days
-    * Theano, GPU, cuDNN: 5.5 days
+    * Theano, GPU, cuDNN: 20 h
 
 """
 
 import os
-os.environ['KERAS_BACKEND'] = 'theano'
-#os.environ['KERAS_BACKEND'] = 'tensorflow'
+#os.environ['KERAS_BACKEND'] = 'theano'
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 
-os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer_py36/lib'
+os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer/lib:' + os.environ['LIBRARY_PATH']
 
 from importlib import reload
 import keras
