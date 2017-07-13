@@ -17,8 +17,8 @@ nVidia Quadro K4000 GPU):
 """
 
 import os
-#os.environ['KERAS_BACKEND'] = 'theano'
-os.environ['KERAS_BACKEND'] = 'tensorflow'
+os.environ['KERAS_BACKEND'] = 'theano'
+#os.environ['KERAS_BACKEND'] = 'tensorflow'
 
 os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer/lib:' + os.environ['LIBRARY_PATH']
 
