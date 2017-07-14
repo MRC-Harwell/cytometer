@@ -20,7 +20,10 @@ import os
 os.environ['KERAS_BACKEND'] = 'theano'
 #os.environ['KERAS_BACKEND'] = 'tensorflow'
 
-os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer/lib:' + os.environ['LIBRARY_PATH']
+if 'LIBRARY_PATH' in os.environ:
+    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib:' + os.environ['LIBRARY_PATH']
+else:
+    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib'
 
 from importlib import reload
 import keras
