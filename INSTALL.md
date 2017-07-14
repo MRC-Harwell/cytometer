@@ -102,6 +102,9 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
             # tifffile=0.12.0 mahotas=1.4.3
             conda install scikit-image scikit-learn h5py
             conda install -c conda-forge tifffile mahotas
+            
+            # go back to the cytometer directory
+            cd ~/Software/cytometer
 
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
