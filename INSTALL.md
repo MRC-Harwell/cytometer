@@ -169,10 +169,6 @@ drive.
 1. Change directory to the project
 
         cd cytometer
-1. Add the project to the Spyder3 path. Select Tools -> PYTHONPATH manager, click "+", select `~/Software/cytometer` (where `~` is your home directory path, e.g. `/home/rcasero`)
- * *Note:* Once the package is installed, `~/Software/cytometer/cytometer` will be copied to `~/.conda/envs/cytometer/lib/python3.6/site-packages/`.
-PYTHONPATH points to `~/.conda/envs/cytometer/lib/python3.6/site-packages/`, which is why in development PYTHONPATH has to point at `~/Software/cytometer`
-instead of `~/Software/cytometer/cytometer`
 
 # Packaging
 
@@ -190,10 +186,9 @@ You need to set
  * Setting `LD_LIBRARY_PATH` in `~/.bashrc` won't work because when `.bashrc` is read (upon opening a shell), you have not activated a conda environment yet
 * `PYTHONPATH` so that python can find the cytometer modules
 
-If you are working in Spyder, set `PYTHONPATH` once in the GUI, as described above, 
-and then every time you launch spyder
+If you are working in Spyder,
 
-    LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH spyder &
+    PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH spyder &
 
 To run the script directly from the shell
 
