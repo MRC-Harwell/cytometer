@@ -81,7 +81,7 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
             conda install cudnn Cython
             
             # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
-            # As of this writing: pygpu=0.6.8 
+            # As of this writing: pygpu=0.6.8 libgpuarray=0.6.8
             cd ~/Software
             git clone https://github.com/Theano/libgpuarray.git
             cd libgpuarray
@@ -183,6 +183,31 @@ The `setup.py` and associated files to create a package are in place. You can cr
 
 # Running scripts
 
-To run a scrip from the command line
+You need to set 
 
-    PYTHONPATH=~/Software/cytometer python scripts/basic_cnn.py
+* `LD_LIBRARY_PATH` from the shell so that e.g. Theano can find libcudnn.so
+ * for some reason, setting `os.environ['LD_LIBRARY_PATH']` from the python script doesn't work).
+ * Setting `LD_LIBRARY_PATH` in `~/.bashrc` won't work because when `.bashrc` is read (upon opening a shell), you have not activated a conda environment yet
+* `PYTHONPATH` so that python can find the cytometer modules
+
+If you are working in Spyder, set `PYTHONPATH` once in the GUI, as described above, 
+and then every time you launch spyder
+
+    LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH spyder &
+
+To run the script directly from the shell
+
+    PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH python scripts/basic_cnn.py
+
+Or simply set and export the environmental variables once
+
+    export PYTHONPATH=~/Software/cytometer
+    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+and then call spyder as
+
+    spyder &
+
+or run the script as
+
+    python scripts/basic_cnn.py
