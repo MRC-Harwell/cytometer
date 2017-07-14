@@ -76,9 +76,9 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
             # As of this writing: nose-parameterized-0.6.0
             pip install nose-parameterized
             
-            # Theano/GPU dependencies
+            # Tensorflow/Theano GPU dependencies (current tensorflow needs cudnn 5.x)
             # As of this writing: cudnn=6.0 Cython=0.25.2
-            conda install cudnn Cython
+            conda install cudnn=5 Cython
             
             # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
             # As of this writing: pygpu=0.6.8 libgpuarray=0.6.8
