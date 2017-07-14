@@ -72,13 +72,25 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
             pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
             pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
             
-            # For testing theano
+            # For theano.test()
             # As of this writing: nose-parameterized-0.6.0
             pip install nose-parameterized
             
             # Theano/GPU dependencies
-            # As of this writing: cudnn=5.1, pygpu=0.6.8, libgpuarray=0.6.8
-            conda install pygpu cudnn
+            # As of this writing: cudnn=5.1 Cython=0.25.2
+            conda install cudnn Cython
+            
+            # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
+            cd ~/Software
+            git clone https://github.com/Theano/libgpuarray.git
+            cd libgpuarray
+            mkdir Build
+            cd Build
+            cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
+            make install
+            cd ..
+            python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
+            python setup.py install --prefix=$CONDA_PREFIX
             
             # Basic python dependencies
             # As of this writing: matplotlib=2.0.2 pillow=4.2.1 spyder=3.1.4
