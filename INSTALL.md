@@ -57,55 +57,61 @@ compilation errors when the GPU was selected, whereas Theano 0.9.0 would make Ke
 using the GPU. Instead, we work with the latest `master` versions of Keras and Theano.
 
 1. Install python packages
- * Current master versions of Keras and Theano
 
-            # Select local conda environment
-            source activate cytometer
-            
-            # install keras, theano and tensorflow (this way we get their dependencies)
-            # As of this writing: keras-2.0.6 numpy-1.13.1 pyyaml-3.12 scipy-0.19.1 six-1.10.0 theano-0.9.0
-            # backports.weakref-1.0rc1 bleach-1.5.0 html5lib-0.9999999 markdown-2.6.8 protobuf-3.3.0 tensorflow-1.2.1 tensorflow-gpu-1.2.1 werkzeug-0.12.2
-            pip install tensorflow-gpu pyyaml
-            
-            # Upgrade keras and theano to latest versions
-            # As of this writing: Keras-2.0.6, Theano-0.10.0.dev1
-            pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
-            pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
-            
-            # For theano.test()
-            # As of this writing: nose-parameterized-0.6.0
-            pip install nose-parameterized
-            
-            # Tensorflow/Theano GPU dependencies (current tensorflow needs cudnn 5.x)
-            # As of this writing: cudnn=6.0 Cython=0.25.2
-            conda install cudnn=5 Cython
-            
-            # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
-            # As of this writing: pygpu=0.6.8 libgpuarray=0.6.8
-            cd ~/Software
-            git clone https://github.com/Theano/libgpuarray.git
-            cd libgpuarray
-            mkdir Build
-            cd Build
-            cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
-            make install
-            cd ..
-            python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
-            python setup.py install --prefix=$CONDA_PREFIX
-            
-            # Basic python dependencies
-            # As of this writing: matplotlib=2.0.2 pillow=4.2.1 spyder=3.1.4
-            conda install matplotlib pillow spyder
-            
-            # DeepCell dependencies
-            # As of this writing: scikit-image=0.13.0 scikit-learn=0.18.2 h5py=2.7.0
-            # tifffile=0.12.0 mahotas=1.4.3
-            conda install scikit-image scikit-learn h5py
-            conda install -c conda-forge tifffile mahotas
-            
-            # go back to the cytometer directory
-            cd ~/Software/cytometer
-
+        # Select local conda environment
+        source activate cytometer
+        
+        # install keras, theano and tensorflow (this way we get their dependencies)
+        # As of this writing: keras-2.0.6 numpy-1.13.1 pyyaml-3.12 scipy-0.19.1 six-1.10.0 theano-0.9.0
+        # backports.weakref-1.0rc1 bleach-1.5.0 html5lib-0.9999999 markdown-2.6.8 protobuf-3.3.0 tensorflow-1.2.1 tensorflow-gpu-1.2.1 werkzeug-0.12.2
+        pip install tensorflow-gpu pyyaml
+        
+        # Upgrade keras and theano to latest versions
+        # As of this writing: Keras-2.0.6, Theano-0.10.0.dev1
+        pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
+        pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
+        
+        # For theano.test()
+        # As of this writing: nose-parameterized-0.6.0
+        pip install nose-parameterized
+        
+        # Tensorflow/Theano GPU dependencies
+        # As of this writing: cudnn=6.0 Cython=0.25.2
+        conda install Cython
+    If you want to use tensorflow, current package needs cudnn 5.x
+    
+        conda install cudnn=5
+        
+    If you want to use theano, current package needs cudnn 6.x
+    
+        conda install cudnn=6
+    Rest of common packages
+    
+        # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
+        # As of this writing: pygpu=0.6.8 libgpuarray=0.6.8
+        cd ~/Software
+        git clone https://github.com/Theano/libgpuarray.git
+        cd libgpuarray
+        mkdir Build
+        cd Build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
+        make install
+        cd ..
+        python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
+        python setup.py install --prefix=$CONDA_PREFIX
+        
+        # Basic python dependencies
+        # As of this writing: matplotlib=2.0.2 pillow=4.2.1 spyder=3.1.4
+        conda install matplotlib pillow spyder
+        
+        # DeepCell dependencies
+        # As of this writing: scikit-image=0.13.0 scikit-learn=0.18.2 h5py=2.7.0
+        # tifffile=0.12.0 mahotas=1.4.3
+        conda install scikit-image scikit-learn h5py
+        conda install -c conda-forge tifffile mahotas
+        
+        # go back to the cytometer directory
+        cd ~/Software/cytometer
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
 to the beginning of every python script
