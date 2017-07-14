@@ -62,10 +62,10 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
             # Select local conda environment
             source activate cytometer
             
-            # install keras, theano and tensorflow with their dependencies
+            # install keras, theano and tensorflow (this way we get their dependencies)
             # As of this writing: keras-2.0.6 numpy-1.13.1 pyyaml-3.12 scipy-0.19.1 six-1.10.0 theano-0.9.0
             # backports.weakref-1.0rc1 bleach-1.5.0 html5lib-0.9999999 markdown-2.6.8 protobuf-3.3.0 tensorflow-1.2.1 tensorflow-gpu-1.2.1 werkzeug-0.12.2
-            pip install keras theano tensorflow tensorflow-gpu
+            pip install tensorflow-gpu
             
             # Upgrade keras and theano to latest versions
             # As of this writing: Keras-2.0.6, Theano-0.10.0.dev1
