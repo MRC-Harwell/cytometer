@@ -81,6 +81,7 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
             conda install cudnn Cython
             
             # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
+            # As of this writing: pygpu=0.6.8 
             cd ~/Software
             git clone https://github.com/Theano/libgpuarray.git
             cd libgpuarray
