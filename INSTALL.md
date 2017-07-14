@@ -77,7 +77,7 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
             pip install nose-parameterized
             
             # Theano/GPU dependencies
-            # As of this writing: cudnn=5.1 Cython=0.25.2
+            # As of this writing: cudnn=6.0 Cython=0.25.2
             conda install cudnn Cython
             
             # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
