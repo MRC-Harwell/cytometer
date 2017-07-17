@@ -216,7 +216,7 @@ or run the script as
 
     python scripts/basic_cnn.py
 
-# Cloud computing
+# Cloud computing on Amazon Web Services
 
 ## Creating a test instance
 
