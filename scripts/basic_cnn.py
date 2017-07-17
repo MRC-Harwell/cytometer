@@ -31,6 +31,10 @@ import keras
 # configure Keras, to avoid using file ~/.keras/keras.json
 keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
 
+# fix "RuntimeError: Invalid DISPLAY variable" in cluster runs
+#import matplotlib
+#matplotlib.use('agg')
+
 # load module dependencies
 import datetime
 import matplotlib.pyplot as plt
