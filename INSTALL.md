@@ -76,7 +76,7 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
         pip install nose-parameterized
         
         # Tensorflow/Theano GPU dependencies
-        # As of this writing: cudnn=6.0 Cython=0.25.2
+        # As of this writing: Cython=0.25.2
         conda install Cython
     If you want to use tensorflow, current package needs cudnn 5.x
     
@@ -102,13 +102,13 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
         
         # Basic python dependencies
         # As of this writing: matplotlib=2.0.2 pillow=4.2.1 spyder=3.1.4
-        conda install matplotlib pillow spyder
+        conda install -y matplotlib pillow spyder
         
         # DeepCell dependencies
         # As of this writing: scikit-image=0.13.0 scikit-learn=0.18.2 h5py=2.7.0
         # tifffile=0.12.0 mahotas=1.4.3
-        conda install scikit-image scikit-learn h5py
-        conda install -c conda-forge tifffile mahotas
+        conda install -y scikit-image scikit-learn h5py
+        conda install -y -c conda-forge tifffile mahotas
         
         # go back to the cytometer directory
         cd ~/Software/cytometer
@@ -218,6 +218,8 @@ or run the script as
 
 # Cloud computing
 
+## Creating a test instance
+
 1. Create [Amazon Web Services](https://aws.amazon.com) account.
 2. Log into your [AWS Management Console](https://console.aws.amazon.com/).
 3. Choose [Launch a virtual machine](https://us-east-2.console.aws.amazon.com/quickstart/vm/home).
@@ -246,3 +248,9 @@ or run the script as
 
             ssh -i "cytometer-basic-cnn.pem" ubuntu@XXX-XX-XX-XX-XX.us-east-2.compute.amazonaws.com
     where `XXX-XX-XX-XX-XX` is a code specific to your instance.
+    
+## Copying files to the remote instance
+
+1. Run from the command line something similar to this (this one copies file `install_dependencies.sh` to the remote instance)
+
+        scp -i private_keys/cytometer-basic-cnn.pem install_dependencies.sh  ubuntu@XXX-XX-XX-XX-XX.us-east-2.compute.amazonaws.com:~/
