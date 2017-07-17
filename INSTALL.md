@@ -215,3 +215,34 @@ and then call spyder as
 or run the script as
 
     python scripts/basic_cnn.py
+
+# Cloud computing
+
+1. Create [Amazon Web Services](https://aws.amazon.com) account.
+2. Log into your [AWS Management Console](https://console.aws.amazon.com/).
+3. Choose [Launch a virtual machine](https://us-east-2.console.aws.amazon.com/quickstart/vm/home).
+4. Click on "EC2 Instance", "Get Started".
+5. Choose a name for the EC2 Instance, e.g. "cytometer-basic-cnn".
+6. Select an Operating system, e.g. Ubuntu (Server 16.04 LTS at the time of this writing).
+7. Select as instance type "t2.micro" (1 Core vCPU (up to 3.3 GHz), 1 GiB Memory RAM, 8 GB Storage).
+8. Create a key pair, by clicking on "Download" and saving the private key `cytometer-basic-cnn.pem` to e.g. `~/Software/cytometer/private_keys`.
+ * If you lose the private key, you won't be able to recover it, or connect to the instance.
+9. Click on "Create this instance". Wait a bit until the instance is created.
+10. Click on "Proceed to EC2 console"
+11. Right click on your instance and select "Connect".
+12. Enable connections from your machine.
+ 1. Go to your instance -> Network & Security -> Security Groups.
+ 2. Go to this intance's group, e.g. "cytometer-basic-cnn" -> Inbound.
+ 3. Make sure there's a rule
+
+            SSH     TCP     22      YOUR_PUBLIC_IP/32
+    where YOUR_PUBLIC_IP is the IP address your machine provides to the external world. The autodected one may be wrong. You can find it by e.g. googling "What's my ip"
+13. Follow the instructions to connect with a command line SSH client or a Java SSH client from the browser (the latter no longer supported by the Google Chrome browser). For example, if you are going to use the command line SSH client,
+ 1. Make the private key not publicly readable
+ 
+            cd ~/Software/cytometer/private_keys
+            chmod 400 cytometer-basic-cnn.pem
+ 2. Connect to the instance
+
+            ssh -i "cytometer-basic-cnn.pem" ubuntu@XXX-XX-XX-XX-XX.us-east-2.compute.amazonaws.com
+    where `XXX-XX-XX-XX-XX` is a code specific to your instance.
