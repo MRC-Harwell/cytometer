@@ -10,9 +10,9 @@ Simple script to train deepcell_models.bn_feature_net_31x31.
 On my hardware (8 Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz, with 
 nVidia Quadro K4000 GPU):
     
-    * Tensorflow, GPU: 14.5 days
-    * Theano, CPU (4 threads): 5.6 days
-    * Theano, GPU, cuDNN: 20 h
+    * Tensorflow, GPU: 12 months (14.5 days / epoch)
+    * Theano, CPU (4 threads): 5.8 months (5.6 days / epoch)
+    * Theano, GPU, cuDNN: 30 days (29 h / epoch)
 
 """
 
