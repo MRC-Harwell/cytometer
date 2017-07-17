@@ -50,7 +50,7 @@ expt = "bn_feature_net_31x31"
 
 it = 0 # iteration
 batch_size = 256
-n_epoch = 1
+n_epoch = 25
 
 training_data_file_name = os.path.join(direc_data, dataset + ".npz")
 todays_date = datetime.datetime.now().strftime("%Y-%m-%d")
