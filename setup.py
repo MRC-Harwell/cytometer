@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# This Python file uses the following encoding: utf-8
 
 from setuptools import setup
 from setuptools import find_packages
@@ -12,5 +13,5 @@ setup(name='cytometer',
       license='GPLv3',
       packages=find_packages(),
       data_files=[('data', ['data/*'])],
-      install_requires=['keras>=2.0.2', 'tensorflow>=1.1.0']
+      install_requires=['keras>=2.0.2', 'theano>=0.10.0', 'tensorflow-gpu>=1.2.1']
      )
