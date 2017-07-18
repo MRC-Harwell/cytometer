@@ -1,6 +1,6 @@
 [global]
-device = cuda0
-#device = cpu
+#device = cuda0
+device = cpu
 floatX = float32
 
 [lib]
@@ -11,8 +11,8 @@ enabled = True
 include_path = /home/rcasero/.conda/envs/cytometer/include
 library_path = /home/rcasero/.conda/envs/cytometer/lib
 
-#[blas]
-#ldflags=-lblas -lgfortran
+[blas]
+ldflags=-lblas -lgfortran
 
 [nvcc]
 fastmath = True
