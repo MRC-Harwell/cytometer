@@ -56,6 +56,9 @@ Theano 0.8.2 with Keras 2.0.2 and python 3.5 would fail to `import theano` due t
 compilation errors when the GPU was selected, whereas Theano 0.9.0 would make Keras segfault with `model.add()`
 using the GPU. Instead, we work with the latest `master` versions of Keras and Theano.
 
+1. Install BLAS library, development version, so that Theano code can be compiled with it
+
+        sudo apt install libblas-dev
 1. Install python packages
 
         # Select local conda environment
