@@ -2045,7 +2045,8 @@ def create_masks(direc_name, direc_save_mask, direc_save_region, win = 15, area_
 
 		# Save thresholded masks
 		print('... Saving mask number ' + str(iterations+1) + ' of ' + str(len(imglist_int)) + '\r')
-		print(file_name_save = 'masks_' + str(iterations) + '.tif')
+		file_name_save = 'masks_' + str(iterations) + '.tif'
+		print(file_name_save)
 		tiff.imsave(direc_save_mask + file_name_save, mask_interior_thresh)
 
 		mask_sum += mask_interior_thresh
