@@ -120,7 +120,7 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
         pip install nose-parameterized
         
         # Tensorflow/Theano GPU dependencies
-        # As of this writing: Cython=0.25.2
+        # As of this writing: Cython=0.26
         conda install Cython
     If you want to use tensorflow, current package needs cudnn 5.x
     
