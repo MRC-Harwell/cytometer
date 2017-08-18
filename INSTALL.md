@@ -1,6 +1,25 @@
 Instructions to set up project `cytometer`.
 ===========================================
 
+# Table of Contents
+
+   * [Instructions to set up project cytometer.](#instructions-to-set-up-project-cytometer)
+   * [Installing the cytometer python code](#installing-the-cytometer-python-code)
+   * [Dependencies and local conda environment](#dependencies-and-local-conda-environment)
+      * [GPU drivers and python package manager](#gpu-drivers-and-python-package-manager)
+         * [Checking your GPU set-up](#checking-your-gpu-set-up)
+      * [Create conda virtual environment](#create-conda-virtual-environment)
+      * [Preparing virtual python environment to run cytometer](#preparing-virtual-python-environment-to-run-cytometer)
+         * [Tests](#tests)
+   * [Packaging the cytometer python code](#packaging-the-cytometer-python-code)
+   * [Running cytometer python scripts](#running-cytometer-python-scripts)
+   * [Cloud computing on Amazon Web Services](#cloud-computing-on-amazon-web-services)
+      * [Creating a test instance](#creating-a-test-instance)
+      * [Copying files to the remote instance](#copying-files-to-the-remote-instance)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
+
+
 # Installing the `cytometer` python code
 
 Currently, we have not tested having `cytometer` installed as a python package, 
