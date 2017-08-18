@@ -177,7 +177,7 @@ drive.
 1. Clone the `cytometer` repository by running the command
 
         cd ~/Software
-        git clone git@phobos.mrch.har.mrc.ac.uk:r.casero/cytometer.git
+        git clone http://r.casero@phobos.mrch.har.mrc.ac.uk/r.casero/cytometer.git
 1. Change directory to the project
 
         cd cytometer
