@@ -1,7 +1,29 @@
 Instructions to set up project `cytometer`.
 ===========================================
 
-# GPU drivers and python package manager
+# Installing the `cytometer` python code
+
+Currently, we have not tested having `cytometer` installed as a python package, 
+as we are at a very early stage.
+
+For the time being, we are working by simply cloning the repository to the local
+drive.
+
+1. Clone the `cytometer` repository by running the command
+
+        cd ~/Software
+        git clone http://r.casero@phobos.mrch.har.mrc.ac.uk/r.casero/cytometer.git
+1. Change directory to the project
+
+        cd cytometer
+
+# Dependencies and local conda environment
+
+You can install the dependencies and set up the local conda environment running
+the shell script `install_dependencies.sh` (some user interaction required), or 
+manually following the steps below
+
+## GPU drivers and python package manager
 
 1. Make sure you are using the nVIDIA drivers, instead of `xserver-xorg-video-nouveau`.
 1. Install NVIDIA CUDA development files
@@ -17,7 +39,7 @@ Instructions to set up project `cytometer`.
    1. When it asks for the install destination, select `/opt/miniconda2`, rather than the default `/home/rcasero/miniconda2`.
    1. "Do you wish the installer to prepend the Miniconda2 install location to PATH in your /home/rcasero/.bashrc ? [yes|no]". Select yes.
 
-## Checking your GPU set-up
+### Checking your GPU set-up
 
 1. Check that you have a working GPU
 
@@ -42,14 +64,14 @@ Instructions to set up project `cytometer`.
         |    0      2283    G   ...el-token=493C1790BE0AE309A3CB57689C7C3E71   146MiB |
         +-----------------------------------------------------------------------------+
 
-# Create `conda` virtual environment
+## Create `conda` virtual environment
 
 1. Create a conda environment for cytometer
  * Python 3.6 for Keras/Theano master versions
 
             conda create --name cytometer python=3.6
 
-# Preparing virtual python environment to run `cytometer`
+## Preparing virtual python environment to run `cytometer`
 
 Installing official conda packages for Keras/Theano didn't work for me. Installing
 Theano 0.8.2 with Keras 2.0.2 and python 3.5 would fail to `import theano` due to
@@ -147,7 +169,7 @@ if one is available, you don't need a configuration file
         import keras
         keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
 
-## Tests
+### Tests
 
 1. To test `pygpu`
 
@@ -166,30 +188,14 @@ if one is available, you don't need a configuration file
 
         PYTHONPATH=~/Software/cytometer python -c 'import os; os.environ["KERAS_BACKEND"] = "theano"; os.environ["LIBRARY_PATH"] = "/home/rcasero/.conda/envs/cytometer/lib"; import keras'
 
-# Installation
-
-Currently, we have not tested having `cytometer` installed as a python package, 
-as we are at a very early stage.
-
-For the time being, we are working by simply cloning the repository to the local
-drive.
-
-1. Clone the `cytometer` repository by running the command
-
-        cd ~/Software
-        git clone http://r.casero@phobos.mrch.har.mrc.ac.uk/r.casero/cytometer.git
-1. Change directory to the project
-
-        cd cytometer
-
-# Packaging
+# Packaging the cytometer python code
 
 The `setup.py` and associated files to create a package are in place. You can create a python package with
 
     cd ~/Software/cytometer
     ./setup.py sdist
 
-# Running scripts
+# Running cytometer python scripts
 
 You need to set 
 
