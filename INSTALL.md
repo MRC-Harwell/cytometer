@@ -12,8 +12,8 @@ Instructions to set up project `cytometer`.
    1. Make the script executable and run it as root
 
             cd ~/Downloads
-            chmod u+x Miniconda2-latest-Linux-x86_64.sh
-            sudo ./Miniconda2-latest-Linux-x86_64.sh
+            chmod u+x Miniconda3-latest-Linux-x86_64.sh
+            sudo ./Miniconda3-latest-Linux-x86_64.sh
    1. When it asks for the install destination, select `/opt/miniconda2`, rather than the default `/home/rcasero/miniconda2`.
    1. "Do you wish the installer to prepend the Miniconda2 install location to PATH in your /home/rcasero/.bashrc ? [yes|no]". Select yes.
 
