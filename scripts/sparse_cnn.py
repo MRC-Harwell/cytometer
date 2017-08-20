@@ -42,6 +42,15 @@ reload(layers)
 model = models.sparse_feature_net_61x61()
 
 
+optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+lr_sched = deepcell.rate_scheduler(lr = 0.01, decay = 0.95)
+class_weight = {0:1, 1:1, 2:1}
+
+model.compile(loss='categorical_crossentropy',
+			  optimizer=optimizer,
+			  metrics=['accuracy'])
+
+
 direc_data = "/home/rcasero/Software/cytometer/data/deepcell/training_data_npz/slip"
 dataset = "slip_31x31"
 direc_save = "/home/rcasero/Software/cytometer/data/deepcell/trained_networks/slip"
