@@ -28,7 +28,7 @@ class _Pooling2D(Layer):
         self.strides = conv_utils.normalize_tuple(strides, 2, 'strides')
         self.padding = conv_utils.normalize_padding(padding)
         self.data_format = conv_utils.normalize_data_format(data_format)
-        self.dilation_rate = conv_utils.normalize_tuple(dilation_rate, rank=2, 'dilation_rate')
+        self.dilation_rate = conv_utils.normalize_tuple(dilation_rate, 2, 'dilation_rate')
         self.input_spec = InputSpec(ndim=4)
 
     def compute_output_shape(self, input_shape):
@@ -95,7 +95,7 @@ class MaxPooling2D(_Pooling2D):
             Keras config file at `~/.keras/keras.json`.
             If you never set it, then it will be "channels_last".
         dilation_rate: An integer or tuple/list of n integers, specifying
-            the dilation rate to use for dilated convolution.
+            the dilation rate to use for dilated pooling.
             Currently, specifying any `dilation_rate` value != 1 is
             incompatible with specifying any `strides` value != 1.
 
@@ -125,8 +125,31 @@ class MaxPooling2D(_Pooling2D):
     # TODO: Replace K.pool2d by pooling with dilation
     def _pooling_function(self, inputs, pool_size, strides,
                           padding, data_format, dilation_rate):
+        if data_format == 'channels_last':
+            nrows = inputs.shape[1]
+            ncols = inputs.shape[2]
+        elif data_format == 'channels_first':
+            nrows = inputs.shape[2]
+            ncols = inputs.shape[3]
+        else:
+            raise ValueError('Expected data format to be channels_first or channels_last')
+            
+        # downsampling factors in each direction
+        row_factor = pool_size[0]
+        col_factor = pool_size[1]
+    
+        for r in range(0, row_factor):
+            for c in range(0, col_factor):
+                if data_format == 'channels_last': # (batch_size, rows, cols, channels)
+                    inputs_sample = inputs[:,r:nrows:row_factor,c:ncols:,:]
+                elif data_format == 'channels_first': # (batch_size, channels, rows, cols)
+                    
+                    
+                else:
+                    raise ValueError('Expected data format to be channels_first or channels_last')
+                
         output = K.pool2d(inputs, pool_size, strides,
-                          padding, data_format, dilation_rate,
+                          padding, data_format,
                           pool_mode='max')
         return output
 
