@@ -214,6 +214,8 @@ The `setup.py` and associated files to create a package are in place. You can cr
     cd ~/Software/cytometer
     ./setup.py sdist
 
+TODO: [Packaging and Distributing Projects](https://packaging.python.org/tutorials/distributing-packages/).
+
 # Running cytometer python scripts
 
 You need to set 
