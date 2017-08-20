@@ -47,7 +47,7 @@ manually following the steps below
 1. Make sure you are using the nVIDIA drivers, instead of `xserver-xorg-video-nouveau`.
 1. Install NVIDIA CUDA development files
 
-        sudo apt-get install nvidia-cuda-dev nvidia-cuda-toolkit
+        sudo apt-get install -y nvidia-cuda-dev nvidia-cuda-toolkit
 1. Install [conda](https://conda.io/docs/intro.html)
    1. Download the [Miniconda bash installer](https://conda.io/miniconda.html) (e.g. for linux 64-bit, `Miniconda2-latest-Linux-x86_64.sh`).
    1. Make the script executable and run it as root
@@ -88,7 +88,7 @@ manually following the steps below
 1. Create a conda environment for cytometer
  * Python 3.6 for Keras/Theano master versions
 
-            conda create --name cytometer python=3.6
+            conda create -y --name cytometer python=3.6
 
 ## Preparing virtual python environment to run `cytometer`
 
@@ -97,9 +97,12 @@ Theano 0.8.2 with Keras 2.0.2 and python 3.5 would fail to `import theano` due t
 compilation errors when the GPU was selected, whereas Theano 0.9.0 would make Keras segfault with `model.add()`
 using the GPU. Instead, we work with the latest `master` versions of Keras and Theano.
 
+1. Install build tool CMake
+        sudo apt install -y cmake
+
 1. Install BLAS library, development version, so that Theano code can be compiled with it
 
-        sudo apt install libblas-dev
+        sudo apt install -y libblas-dev
 1. Install python packages
 
         # Select local conda environment
@@ -121,10 +124,10 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
         
         # Tensorflow/Theano GPU dependencies
         # As of this writing: Cython=0.26
-        conda install Cython
+        conda install -y Cython
     If you want to use tensorflow, current package needs cudnn 5.x
     
-        conda install cudnn=5
+        conda install -y cudnn=5
         
     If you want to use theano, current package needs cudnn 6.x
     
@@ -144,6 +147,7 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
         python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
         python setup.py install --prefix=$CONDA_PREFIX
         
+        
         # Basic python dependencies
         # As of this writing: matplotlib=2.0.2 pillow=4.2.1 spyder=3.1.4
         conda install -y matplotlib pillow spyder
@@ -154,12 +158,14 @@ using the GPU. Instead, we work with the latest `master` versions of Keras and T
         conda install -y scikit-image scikit-learn h5py
         conda install -y -c conda-forge tifffile mahotas
         
+		# To test pygpu
+		conda install -y nose
+		
         # go back to the cytometer directory
         cd ~/Software/cytometer
 1. So that we can have a Keras configuration for DeepCell and another for our project, 
 we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
 to the beginning of every python script
-
        
         import os
         import keras
