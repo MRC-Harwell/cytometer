@@ -1,28 +1,42 @@
 #!/bin/bash
 
-# upgrade Ubuntu
-sudo apt dist-upgrade
+tput setaf 1; echo "** NVIDIA drivers"; tput sgr0
 
 # nVIDIA CUDA drivers and toolkit
-sudo apt install nvidia-cuda-dev nvidia-cuda-toolkit
+sudo apt install -y nvidia-cuda-dev nvidia-cuda-toolkit
+
+tput setaf 1; echo "** Build tools"; tput sgr0
 
 # build tools
-sudo apt install cmake
+sudo apt install -y cmake
+
+# BLAS library, development version, so that Theano code can be compiled with it
+sudo apt install -y libblas-dev
 
 # Conda package manager
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-chmod u+x Miniconda3-latest-Linux-x86_64.sh
-sudo ./Miniconda3-latest-Linux-x86_64.sh
-source ~/.bashrc
+if hash conda 2>/dev/null; then
+    tput setaf 1; echo "** Conda already installed"; tput sgr0
+else
+    tput setaf 1; echo "** Installing conda"; tput sgr0
+    # download installer
+    if [ ! -e Miniconda3-latest-Linux-x86_64.sh ]
+    then
+	wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    fi
+    # install conda
+    chmod u+x Miniconda3-latest-Linux-x86_64.sh
+    sudo ./Miniconda3-latest-Linux-x86_64.sh -b -p /opt/miniconda3
+    source ~/.bashrc
+fi
 
 # python environment
-conda create --name cytometer python=3.6
+conda create -y --name cytometer python=3.6
 source activate cytometer
 pip install tensorflow-gpu pyyaml
 pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
 pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
 pip install nose-parameterized
-conda install -y cudnn=6
+conda install -y Cython cudnn=6
 
 cd ~/Software
 git clone https://github.com/Theano/libgpuarray.git
@@ -39,3 +53,5 @@ conda install -y matplotlib pillow spyder
 
 conda install -y scikit-image scikit-learn h5py
 conda install -y -c conda-forge tifffile mahotas
+
+conda install -y nose
