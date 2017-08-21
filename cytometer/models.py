@@ -9,7 +9,7 @@ Created on Tue Aug 15 17:59:44 2017
 from keras import __version__ as keras_version
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, Conv2D
-from cytometer.layers import MaxPooling2D
+from cytometer.layers import SlidingMaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 import keras.backend as K
@@ -28,7 +28,7 @@ def sparse_feature_net_61x61(input_shape = (3,1080,1280), n_features = 3, reg = 
                      kernel_initializer = init, padding = 'valid', 
                      kernel_regularizer = l2(reg)))
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size = (2, 2), strides = (2, 2), dilation_rate = (2, 2)))
+    model.add(SlidingMaxPooling2D(pool_size = (2, 2), strides = (2, 2), dilation_rate = (2, 2)))
 #        d *= 2
 #        
 #        model.add(sparse_Convolution2D(64, 3, 3, d = d, init=init, border_mode='valid', W_regularizer = l2(reg)))
