@@ -14,7 +14,7 @@ from keras.engine import InputSpec
 from keras.utils import conv_utils
 from keras.legacy import interfaces
 
-class _Pooling2D(Layer):
+class _SlidingPooling2D(Layer):
     """Abstract class for different pooling 2D layers.
     """
 
@@ -71,13 +71,18 @@ class _Pooling2D(Layer):
         base_config = super(_Pooling2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-class MaxPooling2D(_Pooling2D):
-    """Max pooling operation for spatial data.
+class SlidingMaxPooling2D(_SlidingPooling2D):
+    """Sliding max pooling operation for spatial data.
 
     # Arguments
         pool_size: integer or tuple of 2 integers,
-            factors by which to downscale (vertical, horizontal).
-            (2, 2) will halve the input in both spatial dimension.
+            pooling kernel size (vertical, horizontal).
+            In regular pooling, those would be the factors by which to 
+            downscale, e.g. (2, 2) would halve the input in both spatial 
+            dimension. However, in sliding pooling, the output is not 
+            downscaled, because the pooling kernel slides, rather than being 
+            non-overlapping.
+            
             If only one integer is specified, the same window length
             will be used for both dimensions.
         strides: Integer, tuple of 2 integers, or None.
@@ -125,6 +130,96 @@ class MaxPooling2D(_Pooling2D):
     # TODO: Replace K.pool2d by pooling with dilation
     def _pooling_function(self, inputs, pool_size, strides,
                           padding, data_format, dilation_rate):
+        
+        """We illustrate how this method works with an example. Let's have a 
+        dilated kernel with pool_size=(3,2), dilation_rate=(2,4). The * 
+        represent the non-zero elements
+        
+        * 0 0 0 *
+        0 0 0 0 0
+        * 0 0 0 *
+        0 0 0 0 0
+        * 0 0 0 *
+        
+        Let's have a large image with two different pixels (here we represent 
+        only a corner of the image)
+        
+        X X X X X X X
+        X X X X X X X
+        X X X X X X X
+        X X X X X X X
+        X X X X X X X
+        X X X X X X X
+        + + + + + + +
+        + + + + + + +
+        + + + + + + +
+        + + + + + + +
+        + + + + + + +
+        + + + + + + +
+        
+        The pooling kernel will slide over the image, similarly to convolution,
+        computing a pooling result at each step. For example, for the vertical 
+        slide
+        
+            dr = 0          dr = 1          dr = 2          dr = 3
+        
+        * 0 0 0 * X X   X X X X X X X   X X X X X X X   X X X X X X X
+        0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X   X X X X X X X
+        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X
+        0 0 0 0 0 X X   * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X
+        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X   0 0 0 0 0 X X
+        X X X X X X X , * 0 0 0 * X X , 0 0 0 0 0 X X , * 0 0 0 * X X ,
+        + + + + + + +   + + + + + + +   * 0 0 0 * + +   0 0 0 0 0 + +
+        + + + + + + +   + + + + + + +   + + + + + + +   * 0 0 0 * + +
+        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
+        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
+        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
+        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
+        
+        
+            dr = 4          dr = 5          dr = 6
+        
+        X X X X X X X   X X X X X X X   X X X X X X X
+        X X X X X X X   X X X X X X X   X X X X X X X
+        X X X X X X X   X X X X X X X   X X X X X X X
+        X X X X X X X   X X X X X X X   X X X X X X X
+        * 0 0 0 * X X   X X X X X X X   X X X X X X X
+        0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X
+        * 0 0 0 * + +   0 0 0 0 0 + +   * 0 0 0 * + +
+        0 0 0 0 0 + +   * 0 0 0 * + +   0 0 0 0 0 + +
+        * 0 0 0 * + +   0 0 0 0 0 + +   * 0 0 0 * + +
+        + + + + + + +   * 0 0 0 * + +   0 0 0 0 0 + +
+        + + + + + + +   + + + + + + +   * 0 0 0 * + +
+        + + + + + + +   + + + + + + +   + + + + + + +
+        
+        The last step, dr=6, is unnecesary. Instead, if we overlap dr=0 and 
+        dr=6, we see that if we subsample every odd row, and every fourth 
+        column, we can use the regular pool2d() function to compute the pooling
+        
+          dr = 0, 6
+        
+        * 0 0 0 * X X                     * 0 0 0 * X X                     * *
+        0 0 0 0 0 X X
+        * 0 0 0 * X X                     * 0 0 0 * X X                     * *
+        0 0 0 0 0 X X
+        * 0 0 0 * X X                     * 0 0 0 * X X                     * *
+        X X X X X X X  =subsample rows=>                 =subsample cols=>  
+        * 0 0 0 * + +                     * 0 0 0 * + +                     * *
+        0 0 0 0 0 + +
+        * 0 0 0 * + +                     * 0 0 0 * + +                     * *
+        0 0 0 0 0 + +
+        * 0 0 0 * + +                     * 0 0 0 * + +                     * *
+        + + + + + + +
+        
+        Thus, sliding pooling can be computed as a double loop
+        
+        for row in 0, 1, 2, 3, ..., pool_size[0]*dilation_rate[0]:
+            for col in 0, 1, 2, 3, ..., pool_size[1]*dilation_rate[1]:
+                pool2d(inputs[:, :, 0:end:dilation_rate[0], 0:end:dilation_rate[1]])
+        
+        """
+        tile_size = np.multiply(pool_size, dilation_rate)
+        
         if data_format == 'channels_last':
             nrows = inputs.shape[1]
             ncols = inputs.shape[2]
@@ -138,15 +233,15 @@ class MaxPooling2D(_Pooling2D):
         row_factor = pool_size[0]
         col_factor = pool_size[1]
     
-        for r in range(0, row_factor):
-            for c in range(0, col_factor):
-                if data_format == 'channels_last': # (batch_size, rows, cols, channels)
-                    inputs_sample = inputs[:,r:nrows:row_factor,c:ncols:,:]
-                elif data_format == 'channels_first': # (batch_size, channels, rows, cols)
-                    
-                    
-                else:
-                    raise ValueError('Expected data format to be channels_first or channels_last')
+#        for r in range(0, row_factor):
+#            for c in range(0, col_factor):
+#                if data_format == 'channels_last': # (batch_size, rows, cols, channels)
+#                    inputs_sample = inputs[:,r:nrows:row_factor,c:ncols:,:]
+#                elif data_format == 'channels_first': # (batch_size, channels, rows, cols)
+#                    
+#                    
+#                else:
+#                    raise ValueError('Expected data format to be channels_first or channels_last')
                 
         output = K.pool2d(inputs, pool_size, strides,
                           padding, data_format,
@@ -155,4 +250,4 @@ class MaxPooling2D(_Pooling2D):
 
 # Aliases
 
-MaxPool2D = MaxPooling2D
+SlidingMaxPool2D = SlidingMaxPooling2D
