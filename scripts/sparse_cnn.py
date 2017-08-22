@@ -36,8 +36,8 @@ import cytometer.models as models
 import cytometer.layers as layers
 #reload(deepcell)
 #reload(deepcell_models)
-reload(models)
 reload(layers)
+reload(models)
 
 model = models.sparse_feature_net_61x61()
 

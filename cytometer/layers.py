@@ -14,7 +14,9 @@ from keras.engine import InputSpec
 from keras.utils import conv_utils
 from keras.legacy import interfaces
 
-class _SlidingPooling2D(Layer):
+import numpy as np
+
+class _Pooling2D(Layer):
     """Abstract class for different pooling 2D layers.
     """
 
@@ -71,18 +73,13 @@ class _SlidingPooling2D(Layer):
         base_config = super(_Pooling2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-class SlidingMaxPooling2D(_SlidingPooling2D):
-    """Sliding max pooling operation for spatial data.
+class MaxPooling2D(_Pooling2D):
+    """Dilated/Atrous max pooling operation for spatial data.
 
     # Arguments
         pool_size: integer or tuple of 2 integers,
-            pooling kernel size (vertical, horizontal).
-            In regular pooling, those would be the factors by which to 
-            downscale, e.g. (2, 2) would halve the input in both spatial 
-            dimension. However, in sliding pooling, the output is not 
-            downscaled, because the pooling kernel slides, rather than being 
-            non-overlapping.
-            
+            factors by which to downscale (vertical, horizontal).
+            (2, 2) will halve the input in both spatial dimension.
             If only one integer is specified, the same window length
             will be used for both dimensions.
         strides: Integer, tuple of 2 integers, or None.
@@ -126,6 +123,40 @@ class SlidingMaxPooling2D(_SlidingPooling2D):
                  data_format=None, dilation_rate=1, **kwargs):
         super(MaxPooling2D, self).__init__(pool_size, strides, padding,
                                            data_format, **kwargs)
+
+    def subsampling_to_batch(self, inputs, pool_size, data_format, dilation_rate):
+        
+        """Extract rows and columns aligned with pooling kernel into separate
+        images
+        """
+        
+        if data_format == 'channels_last':
+            nrows = inputs.shape[1]
+            ncols = inputs.shape[2]
+        elif data_format == 'channels_first':
+            nrows = inputs.shape[2]
+            ncols = inputs.shape[3]
+        else:
+            raise ValueError('Expected data format to be channels_first or channels_last')
+
+        # padding required for image to be split into equal tiles
+        tile_size = np.multiply(pool_size, dilation_rate)
+        padded_size = np.ceil(np.divide((nrows, ncols), tile_size)) * tile_size
+        padding = ((0, int(padded_size[0]-nrows)), (0, int(padded_size[1]-ncols)))
+        
+        # pad inputs
+        inputs_padded = K.spatial_2d_padding(inputs, padding=padding, data_format=data_format)
+        
+        outputs_size = (inputs.shape[0], )
+        outputs = K.placeholder(shape=padded_size/tile_size)
+
+        for row in range(pool_size[0]*dilation_rate[0]):
+            for col in range(pool_size[1]*dilation_rate[1]):
+                if data_format == 'channels_last':
+                    pool2d(inputs[:, 0::dilation_rate[0], 0::dilation_rate[1], :])
+                elif data_format == 'channels_first':
+                    pool2d(inputs[:, :, 0::dilation_rate[0], 0::dilation_rate[1]])
+
 
     # TODO: Replace K.pool2d by pooling with dilation
     def _pooling_function(self, inputs, pool_size, strides,
@@ -218,30 +249,13 @@ class SlidingMaxPooling2D(_SlidingPooling2D):
                 pool2d(inputs[:, :, 0:end:dilation_rate[0], 0:end:dilation_rate[1]])
         
         """
-        tile_size = np.multiply(pool_size, dilation_rate)
         
-        if data_format == 'channels_last':
-            nrows = inputs.shape[1]
-            ncols = inputs.shape[2]
-        elif data_format == 'channels_first':
-            nrows = inputs.shape[2]
-            ncols = inputs.shape[3]
-        else:
-            raise ValueError('Expected data format to be channels_first or channels_last')
+        
             
         # downsampling factors in each direction
         row_factor = pool_size[0]
         col_factor = pool_size[1]
     
-#        for r in range(0, row_factor):
-#            for c in range(0, col_factor):
-#                if data_format == 'channels_last': # (batch_size, rows, cols, channels)
-#                    inputs_sample = inputs[:,r:nrows:row_factor,c:ncols:,:]
-#                elif data_format == 'channels_first': # (batch_size, channels, rows, cols)
-#                    
-#                    
-#                else:
-#                    raise ValueError('Expected data format to be channels_first or channels_last')
                 
         output = K.pool2d(inputs, pool_size, strides,
                           padding, data_format,
@@ -250,4 +264,4 @@ class SlidingMaxPooling2D(_SlidingPooling2D):
 
 # Aliases
 
-SlidingMaxPool2D = SlidingMaxPooling2D
+MaxPool2D = MaxPooling2D
