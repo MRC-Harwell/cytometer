@@ -130,32 +130,53 @@ class MaxPooling2D(_Pooling2D):
         images
         """
         
-        if data_format == 'channels_last':
-            nrows = inputs.shape[1]
-            ncols = inputs.shape[2]
-        elif data_format == 'channels_first':
-            nrows = inputs.shape[2]
-            ncols = inputs.shape[3]
+        # inputs for tests
+        inputs = K.variable(np.reshape(range(15*18), (1, 1, 15, 18)))########
+        
+        if data_format == 'channels_first': # (batch,chan,row,col)
+            nbatch = K.get_variable_shape(inputs)[0]
+            nchan = K.get_variable_shape(inputs)[1]
+            nrows = K.get_variable_shape(inputs)[2]
+            ncols = K.get_variable_shape(inputs)[3]
+        elif data_format == 'channels_last': # (batch,row,col,chan)
+            nbatch = K.get_variable_shape(inputs)[0]
+            nchan = K.get_variable_shape(inputs)[1]
+            nrows = K.get_variable_shape(inputs)[1]
+            ncols = K.get_variable_shape(inputs)[2]
         else:
             raise ValueError('Expected data format to be channels_first or channels_last')
 
-        # padding required for image to be split into equal tiles
-        tile_size = np.multiply(pool_size, dilation_rate)
-        padded_size = np.ceil(np.divide((nrows, ncols), tile_size)) * tile_size
-        padding = ((0, int(padded_size[0]-nrows)), (0, int(padded_size[1]-ncols)))
+        # number of blocks to split the input into. Each dilation (row or 
+        # column) goes into a separate block
+        nblocks = dilation_rate
         
-        # pad inputs
-        inputs_padded = K.spatial_2d_padding(inputs, padding=padding, data_format=data_format)
-        
-        outputs_size = (inputs.shape[0], )
-        outputs = K.placeholder(shape=padded_size/tile_size)
+        # size of each block we are going to split the input images in
+        block_sz = (int(np.ceil(nrows / dilation_rate[0])), 
+                    int(np.ceil(ncols / dilation_rate[1])))
 
-        for row in range(pool_size[0]*dilation_rate[0]):
-            for col in range(pool_size[1]*dilation_rate[1]):
-                if data_format == 'channels_last':
-                    pool2d(inputs[:, 0::dilation_rate[0], 0::dilation_rate[1], :])
-                elif data_format == 'channels_first':
-                    pool2d(inputs[:, :, 0::dilation_rate[0], 0::dilation_rate[1]])
+        # pad inputs so that they can be split into equal blocks
+        padded_size = np.multiply(block_sz, nblocks)
+        padding = ((0, padded_size[0] - nrows), (0, padded_size[1] - ncols))
+        inputs = K.spatial_2d_padding(inputs, padding=padding, data_format=data_format).eval()
+ 
+        # allocate memory for the subsamples
+        if data_format == 'channels_first': # (batch,chan,row,col)
+            split_inputs = K.zeros(shape=(nbatch*nblocks[0]*nblocks[1], nchan, block_sz[0], block_sz[1]), dtype=inputs.dtype)
+        elif data_format == 'channels_last': # (batch,row,col,chan)
+            split_inputs = K.zeros(shape=(nbatch*nblocks[0]*nblocks[1], block_sz[0], block_sz[1], nchan), dtype=inputs.dtype)
+
+        # split the inputs into blocks
+        for batch in range(nbatch):
+            for row_offset in range(nblocks[0]):
+                for col_offset in range(nblocks[1]):
+                    # linear index of the current block
+                    idx = np.ravel_multi_index(multi_index=(row_offset, col_offset, batch), 
+                                            dims=(nblocks[0], nblocks[1], nbatch))
+                    if data_format == 'channels_first': # (batch,chan,row,col)
+                        split_inputs[idx, :, :, :] = inputs[:, :, 0::dilation_rate[0], 0::dilation_rate[1]]
+                    elif data_format == 'channels_last': # (batch,row,col,chan)
+                        split_inputs[idx, :, :, :] = inputs[:, 0::dilation_rate[0], 0::dilation_rate[1], :]
+                        
 
 
     # TODO: Replace K.pool2d by pooling with dilation
