@@ -41,11 +41,9 @@ class _Pooling2D(Layer):
             rows = input_shape[1]
             cols = input_shape[2]
         rows = conv_utils.conv_output_length(rows, self.pool_size[0],
-                                             self.padding, self.strides[0],
-                                             self.dilation_rate[0])
+                                             self.padding, self.strides[0])
         cols = conv_utils.conv_output_length(cols, self.pool_size[1],
-                                             self.padding, self.strides[1],
-                                             self.dilation_rate[1])
+                                             self.padding, self.strides[1])
         if self.data_format == 'channels_first':
             return (input_shape[0], input_shape[1], rows, cols)
         elif self.data_format == 'channels_last':
@@ -122,7 +120,7 @@ class MaxPooling2D(_Pooling2D):
     def __init__(self, pool_size=(2, 2), strides=None, padding='valid',
                  data_format=None, dilation_rate=1, **kwargs):
         super(MaxPooling2D, self).__init__(pool_size, strides, padding,
-                                           data_format, **kwargs)
+                                           data_format, dilation_rate, **kwargs)
 
     def _pooling_function(self, inputs, pool_size, strides,
                           padding, data_format, dilation_rate):
@@ -157,42 +155,26 @@ class MaxPooling2D(_Pooling2D):
         computing a pooling result at each step. For example, for the vertical 
         slide
         
-            dr = 0          dr = 1          dr = 2          dr = 3
+            dr = 0          dr = 1          dr = 2 
         
-        * 0 0 0 * X X   X X X X X X X   X X X X X X X   X X X X X X X
-        0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X   X X X X X X X
-        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X
-        0 0 0 0 0 X X   * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X
-        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X   0 0 0 0 0 X X
-        X X X X X X X , * 0 0 0 * X X , 0 0 0 0 0 X X , * 0 0 0 * X X ,
-        + + + + + + +   + + + + + + +   * 0 0 0 * + +   0 0 0 0 0 + +
-        + + + + + + +   + + + + + + +   + + + + + + +   * 0 0 0 * + +
-        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
-        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
-        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
-        + + + + + + +   + + + + + + +   + + + + + + +   + + + + + + +
-        
-        
-            dr = 4          dr = 5          dr = 6
-        
-        X X X X X X X   X X X X X X X   X X X X X X X
-        X X X X X X X   X X X X X X X   X X X X X X X
-        X X X X X X X   X X X X X X X   X X X X X X X
-        X X X X X X X   X X X X X X X   X X X X X X X
-        * 0 0 0 * X X   X X X X X X X   X X X X X X X
-        0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X
-        * 0 0 0 * + +   0 0 0 0 0 + +   * 0 0 0 * + +
-        0 0 0 0 0 + +   * 0 0 0 * + +   0 0 0 0 0 + +
-        * 0 0 0 * + +   0 0 0 0 0 + +   * 0 0 0 * + +
-        + + + + + + +   * 0 0 0 * + +   0 0 0 0 0 + +
+        * 0 0 0 * X X   X X X X X X X   X X X X X X X 
+        0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X 
+        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X
+        0 0 0 0 0 X X   * 0 0 0 * X X   0 0 0 0 0 X X
+        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X
+        X X X X X X X , * 0 0 0 * X X , 0 0 0 0 0 X X
         + + + + + + +   + + + + + + +   * 0 0 0 * + +
         + + + + + + +   + + + + + + +   + + + + + + +
+        + + + + + + +   + + + + + + +   + + + + + + +
+        + + + + + + +   + + + + + + +   + + + + + + +
+        + + + + + + +   + + + + + + +   + + + + + + +
+        + + + + + + +   + + + + + + +   + + + + + + +
         
-        The last step, dr=6, is unnecesary. Instead, if we overlap dr=0 and 
-        dr=6, we see that if we subsample every odd row, and every fourth 
+        The last step, dr=2, is unnecesary. Instead, if we overlap dr=0 and 
+        dr=2, we see that if we subsample every odd row, and every fourth 
         column, we can use the regular pool2d() function to compute the pooling
         
-          dr = 0, 6
+          dr = {0, 2}
         
         * 0 0 0 * X X                     * 0 0 0 * X X                     * *
         0 0 0 0 0 X X
@@ -214,10 +196,6 @@ class MaxPooling2D(_Pooling2D):
                 pool2d(inputs[:, :, 0:end:dilation_rate[0], 0:end:dilation_rate[1]])
         
         """
-        
-        # inputs for tests
-        inputs = K.variable(np.reshape(range(1,4*3*5*8+1), (4, 3, 5, 8)))########
-        inputs = K.variable(np.reshape(range(1,1*1*5*8+1), (1, 1, 5, 8)))########
         
         if data_format == 'channels_first': # (batch,chan,row,col)
             nbatch = K.get_variable_shape(inputs)[0]
@@ -260,7 +238,7 @@ class MaxPooling2D(_Pooling2D):
                                 padding='same', data_format=data_format,
                                 pool_mode='max')
 
-        # reassamble blocks
+        # reassemble blocks
         output = np.zeros(shape=list(inputs.shape.eval()), dtype=inputs.dtype)
         for idx in range(nbatch*nblocks[0]*nblocks[1]):
             multi_index = np.unravel_index(idx, dims=(nblocks[0], nblocks[1], nbatch))
@@ -273,7 +251,7 @@ class MaxPooling2D(_Pooling2D):
                 output[batch, row_offset::dilation_rate[0], col_offset::dilation_rate[1], :] = split_inputs[idx, :, :, :].eval()
         output = K.variable(output)
         
-        # remove padding
+        # remove padding (following the same behaviour as K.pool2d)
         if padding == 'valid':
             
             if data_format == 'channels_first': # (batch,chan,row,col)
