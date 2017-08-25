@@ -54,4 +54,4 @@ conda install -y matplotlib pillow spyder
 conda install -y scikit-image scikit-learn h5py
 conda install -y -c conda-forge tifffile mahotas
 
-conda install -y nose
+conda install -y nose pytest
