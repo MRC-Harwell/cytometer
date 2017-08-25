@@ -1,6 +1,8 @@
 *~
+*.pyc
 /dist
 /MANIFEST
 /cytometer.egg-info
 __pycache__
 /private_keys
+/.cache
