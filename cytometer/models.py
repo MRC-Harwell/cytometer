@@ -18,43 +18,52 @@ def sparse_feature_net_61x61(input_shape = (3,1080,1280), n_features = 3, reg = 
 
     model = Sequential()
     
-    model.add(Conv2D(input_shape = input_shape, 
-                     filters = 64, kernel_size = (3, 3), dilation_rate = 1, 
-                     kernel_initializer = init, padding = 'valid', 
-                     kernel_regularizer = l2(reg)))
+    d = 1
+    model.add(Conv2D(input_shape=input_shape, 
+                     filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1,
+                     kernel_initializer=init, padding='valid', kernel_regularizer=l2(reg)))
     model.add(Activation('relu'))
     
-    model.add(Conv2D(filters = 64, kernel_size = (4, 4), dilation_rate = 1, 
-                     kernel_initializer = init, padding = 'valid', 
-                     kernel_regularizer = l2(reg)))
+    model.add(Conv2D(filters=64, kernel_size=(4, 4), dilation_rate=d, strides=1,
+                     kernel_initializer=init, padding='valid', kernel_regularizer=l2(reg)))
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size = (2, 2), strides = (2, 2), dilation_rate = (2, 2)))
-#        d *= 2
-#        
-#        model.add(sparse_Convolution2D(64, 3, 3, d = d, init=init, border_mode='valid', W_regularizer = l2(reg)))
-#        model.add(Activation('relu'))
-#        
-#        model.add(sparse_Convolution2D(64, 3, 3, d = d, init=init, border_mode = 'valid', W_regularizer = l2(reg)))
-#        model.add(Activation('relu'))
-#        model.add(sparse_MaxPooling2D(pool_size=(2, 2), strides = (d,d)))
-#        d *= 2
-#        
-#        model.add(sparse_Convolution2D(64, 3, 3, d = d, init=init, border_mode='valid', W_regularizer = l2(reg)))
-#        model.add(Activation('relu'))
-#        
-#        model.add(sparse_Convolution2D(64, 3, 3, d = d, init=init, border_mode = 'valid', W_regularizer = l2(reg)))
-#        model.add(Activation('relu'))
-#        model.add(sparse_MaxPooling2D(pool_size=(2, 2), strides = (d,d)))
-#        d *= 2
-#        
-#        model.add(sparse_Convolution2D(200, 4, 4, d = d, init=init, border_mode = 'valid', W_regularizer = l2(reg)))
-#        model.add(Activation('relu'))
-#        
-#        model.add(TensorProd2D(200, 200, kernel_initializer=init, W_regularizer = l2(reg)))
-#        model.add(Activation('relu'))
-#        
-#        model.add(TensorProd2D(200, n_features, kernel_initializer=init, W_regularizer = l2(reg)))
-#        model.add(Activation(tensorprod_softmax))
-#        
+    model.add(MaxPooling2D(pool_size=(2, 2), dilation_rate=d, strides=1,
+                           padding='valid'))
+    
+#    d *= 2
+#    model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
+#                     kernel_initializer=init, padding='valid', kernel_regularizer=l2(reg)))
+#    model.add(Activation('relu'))
+#    
+#    model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
+#                     kernel_initializer=init, padding='valid', kernel_regularizer=l2(reg)))
+#    model.add(Activation('relu'))
+#    model.add(MaxPooling2D(pool_size=(2, 2), dilation_rate=d, strides=1,
+#                           padding='valid'))
+#    
+#    d *= 2
+#    model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
+#                     kernel_initializer=init, padding='valid', kernel_regularizer=l2(reg)))
+#    model.add(Activation('relu'))
+#    
+#    model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
+#                     kernel_initializer=init, padding='valid', kernel_regularizer=l2(reg)))
+#    model.add(Activation('relu'))
+#    model.add(MaxPooling2D(pool_size=(2, 2), dilation_rate=d, strides=1,
+#                           padding='valid'))
+#    
+#    d *= 2
+#    model.add(Conv2D(filters=200, kernel_size=(4, 4), dilation_rate=d, strides=1, 
+#                     kernel_initializer=init, padding='valid', kernel_regularizer=l2(reg)))
+#    model.add(Activation('relu'))
+#    
+#    model.add(Dense(units=200, 
+#                    kernel_initializer=init, kernel_regularizer=l2(reg)))
+#    model.add(Activation('relu'))
+#    
+#    model.add(Dense(units=n_features, 
+#                    kernel_initializer=init, kernel_regularizer=l2(reg)))
+#    model.add(Activation(K.softmax))
+    
     # exit
     return model
