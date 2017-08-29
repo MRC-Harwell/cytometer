@@ -43,7 +43,8 @@ class _Pooling2D(Layer):
         rows = conv_utils.conv_output_length(rows, self.pool_size[0],
                                              self.padding, self.strides[0])
         cols = conv_utils.conv_output_length(cols, self.pool_size[1],
-                                             self.padding, self.strides[1])
+                                             self.padding, self.strides[1],
+                                             self.dilation_rate[1])
         if self.data_format == 'channels_first':
             return (input_shape[0], input_shape[1], rows, cols)
         elif self.data_format == 'channels_last':
@@ -196,17 +197,18 @@ class MaxPooling2D(_Pooling2D):
                 pool2d(inputs[:, :, 0:end:dilation_rate[0], 0:end:dilation_rate[1]])
         
         """
-        
+
+        sz = K.shape(inputs)
         if data_format == 'channels_first': # (batch,chan,row,col)
-            nbatch = K.get_variable_shape(inputs)[0]
-            #nchan = K.get_variable_shape(inputs)[1]
-            nrows = K.get_variable_shape(inputs)[2]
-            ncols = K.get_variable_shape(inputs)[3]
+            nbatch = sz[0]
+            #nchan = sz[1]
+            nrows = sz[2]
+            ncols = sz[3]
         elif data_format == 'channels_last': # (batch,row,col,chan)
-            nbatch = K.get_variable_shape(inputs)[0]
-            #nchan = K.get_variable_shape(inputs)[1]
-            nrows = K.get_variable_shape(inputs)[2]
-            ncols = K.get_variable_shape(inputs)[3]
+            nbatch = sz[0]
+            #nchan = sz[1]
+            nrows = sz[2]
+            ncols = sz[3]
         else:
             raise ValueError('Expected data format to be channels_first or channels_last')
 
@@ -215,8 +217,9 @@ class MaxPooling2D(_Pooling2D):
         nblocks = dilation_rate
         
         # size of each block we are going to split the input images in
-        block_sz = (int(np.ceil(nrows / dilation_rate[0])), 
-                    int(np.ceil(ncols / dilation_rate[1])))
+        block_sz = ((np.ceil(nrows / dilation_rate[0])), 
+                    (np.ceil(ncols / dilation_rate[1])))
+        block_sz = block_sz.eval()
 
         # pad inputs so that they can be split into equal blocks
         padded_size = np.multiply(block_sz, nblocks)
