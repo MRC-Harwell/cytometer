@@ -16,13 +16,13 @@ from keras.legacy import interfaces
 
 import numpy as np
 
-class _Pooling2D(Layer):
+class _DilatedPooling2D(Layer):
     """Abstract class for different pooling 2D layers.
     """
 
     def __init__(self, pool_size=(2, 2), strides=None, padding='valid',
                  data_format=None, dilation_rate=1, **kwargs):
-        super(_Pooling2D, self).__init__(**kwargs)
+        super(_DilatedPooling2D, self).__init__(**kwargs)
         data_format = conv_utils.normalize_data_format(data_format)
         if strides is None:
             strides = pool_size
@@ -69,10 +69,10 @@ class _Pooling2D(Layer):
                   'strides': self.strides,
                   'data_format': self.data_format,
                   'dilation_rate': self.dilation_rate}
-        base_config = super(_Pooling2D, self).get_config()
+        base_config = super(_DilatedPooling2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-class MaxPooling2D(_Pooling2D):
+class DilatedMaxPooling2D(_DilatedPooling2D):
     """Dilated/Atrous max pooling operation for spatial data.
 
     # Arguments
@@ -120,7 +120,7 @@ class MaxPooling2D(_Pooling2D):
     @interfaces.legacy_pooling2d_support
     def __init__(self, pool_size=(2, 2), strides=None, padding='valid',
                  data_format=None, dilation_rate=1, **kwargs):
-        super(MaxPooling2D, self).__init__(pool_size, strides, padding,
+        super(DilatedMaxPooling2D, self).__init__(pool_size, strides, padding,
                                            data_format, dilation_rate, **kwargs)
 
     def _pooling_function(self, inputs, pool_size, strides,
@@ -280,4 +280,4 @@ class MaxPooling2D(_Pooling2D):
 
 # Aliases
 
-MaxPool2D = MaxPooling2D
+DilatedMaxPool2D = DilatedMaxPooling2D
