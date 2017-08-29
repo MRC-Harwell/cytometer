@@ -215,7 +215,7 @@ if one is available, you don't need a configuration file
 
 # Packaging the cytometer python code
 
-The `setup.py` and associated files to create a package are in place. You can create a python package with
+The `setup.py` and associated files to create a package are in place. For the moment, you can create a python source package (not exactly what we need to install with `pip`) with
 
     cd ~/Software/cytometer
     ./setup.py sdist
