@@ -237,11 +237,11 @@ If you are working in Spyder,
 
 To run the script directly from the shell
 
-    PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH python scripts/basic_cnn.py
+    PYTHONPATH=~/Software/cytometer:$PYTHONPATH LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH python scripts/basic_cnn.py
 
 Or simply set and export the environmental variables once
 
-    export PYTHONPATH=~/Software/cytometer
+    export PYTHONPATH=~/Software/cytometer:$PYTHONPATH
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 and then call spyder as
