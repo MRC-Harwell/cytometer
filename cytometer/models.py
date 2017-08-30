@@ -17,7 +17,7 @@ import numpy as np
 
 # Reimplementation of DeepCell's sparse_feature_net_61x61 for Keras 2 without
 # dilated max pooling
-def sparse_feature_net_61x61_no_dilated_pooling(input_shape = (3,1080,1280), n_features = 3, reg = 0.001, init = 'he_normal', weights_path = None):
+def sparse_feature_net_61x61_no_dilated_pooling(input_shape=(3,None,None), n_features=3, reg=0.001, init='he_normal', weights_path=None):
 
     model = Sequential()
     
@@ -79,7 +79,7 @@ def sparse_feature_net_61x61_no_dilated_pooling(input_shape = (3,1080,1280), n_f
 # Reimplementation of DeepCell's sparse_feature_net_61x61 for Keras 2
 # Note: currently, dilated max pooling requires ad hoc code that we provide in
 # this project
-def sparse_feature_net_61x61(input_shape = (3,1080,1280), n_features = 3, reg = 0.001, init = 'he_normal', weights_path = None):
+def sparse_feature_net_61x61(input_shape=(3,1080,1280), n_features=3, reg=0.001, init='he_normal', weights_path=None):
 
     model = Sequential()
     
