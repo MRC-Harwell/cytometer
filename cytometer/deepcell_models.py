@@ -26,6 +26,105 @@ if (parse_version(keras_version) < parse_version('2.0.0')) and (K.image_dim_orde
 if (parse_version(keras_version) >= parse_version('2.0.0')) and (K.image_data_format() != 'channels_first'):
     raise ValueError('DeepCell requires keras.backend.image_data_format()==\'channel_first\'')
 
+# DeepCell's CNN with 31x31 input images
+def sparse_bn_feature_net_31x31(batch_input_shape = (1,1,1080,1280), n_features = 3, reg = 1e-5, init = 'he_normal', weights_path = None):
+
+	model = Sequential()
+	d = 1
+
+	model.add(sparse_Convolution2D(32, 4, 4, d = d, init = init, batch_input_shape = batch_input_shape, border_mode='valid', W_regularizer = l2(reg)))	
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	model.add(sparse_MaxPooling2D(pool_size=(2, 2), strides = (d,d)))
+	d *= 2
+
+	model.add(sparse_Convolution2D(64, 3, 3, d = d, init = init, border_mode = 'valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+
+	model.add(sparse_Convolution2D(64, 3, 3, d = d, init = init, border_mode='valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	model.add(sparse_MaxPooling2D(pool_size=(2, 2), strides = (d,d)))
+	d *= 2
+
+	model.add(sparse_Convolution2D(128, 3, 3, d = d, init = init, border_mode = 'valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	
+	model.add(sparse_Convolution2D(200, 3, 3, d = d, init = init, border_mode='valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+
+	model.add(TensorProd2D(200, 200, init = init, W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+
+	model.add(TensorProd2D(200, n_features, init = init, W_regularizer = l2(reg)))
+	model.add(Activation(tensorprod_softmax))
+
+	return model
+
+# DeepCell's CNN with 61x61 input images
+def sparse_bn_feature_net_61x61(batch_input_shape = (1,2,1080,1280), n_features = 3, reg = 1e-5, init = 'he_normal', weights_path = None):
+
+	model = Sequential()
+	d = 1
+	model.add(sparse_Convolution2D(64, 3, 3, d = d, init = init, batch_input_shape = batch_input_shape, border_mode='valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	
+	model.add(sparse_Convolution2D(64, 4, 4, d = d, init = init, border_mode = 'valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	model.add(sparse_MaxPooling2D(pool_size=(2, 2), strides = (d,d)))
+	d *= 2
+
+	model.add(sparse_Convolution2D(64, 3, 3, d = d, init = init, border_mode='valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	
+	model.add(sparse_Convolution2D(64, 3, 3, d = d, init = init, border_mode = 'valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	model.add(sparse_MaxPooling2D(pool_size=(2, 2), strides = (d,d)))
+	d *= 2
+
+	model.add(sparse_Convolution2D(64, 3, 3, d = d, init = init, border_mode='valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	
+	model.add(sparse_Convolution2D(64, 3, 3, d = d, init = init, border_mode = 'valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+	model.add(sparse_MaxPooling2D(pool_size=(2, 2), strides = (d,d)))
+	d *= 2
+
+	model.add(sparse_Convolution2D(200, 4, 4, d = d, init = init, border_mode = 'valid', W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+
+	model.add(TensorProd2D(200, 200, init = init, W_regularizer = l2(reg)))
+	model.add(BatchNormalization(axis = 1))
+	model.add(Activation('relu'))
+
+	model.add(TensorProd2D(200, n_features, init = init, W_regularizer = l2(reg)))
+	model.add(Activation(tensorprod_softmax))
+
+	return model
+
+
+
+
+
+
+
+
+
+
+
+
+
 # DeepCell's feature net 31x31 with batch normalization
 def bn_feature_net_31x31(n_channels = 1, n_features = 3, reg = 1e-5, init = 'he_normal'):
 
