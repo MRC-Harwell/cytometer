@@ -10,9 +10,3 @@ from __future__ import absolute_import
 
 # cytometer package version (note: duplicated in /setup.py)
 __version__ = '0.1.0'
-
-# check python interpreter version
-import sys
-import warnings
-if sys.version_info.major < 3:
-    warnings.warn('Python 3 required', RuntimeWarning)
