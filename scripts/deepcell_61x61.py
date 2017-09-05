@@ -31,6 +31,7 @@ if os.environ['KERAS_BACKEND'] == 'theano':
 else :
     raise Exception('No configuration found when the backend is ' + os.environ['KERAS_BACKEND'])
 
+# import and check Keras version
 import keras.backend as K
 from keras import __version__ as keras_version
 from pkg_resources import parse_version
@@ -49,36 +50,24 @@ K.set_epsilon('1e-07')
 # load module dependencies
 #import datetime
 #import matplotlib.pyplot as plt
-#import numpy as np
+import numpy as np
 
 import cytometer.deepcell as deepcell
 import cytometer.deepcell_models as deepcell_models
-#import cytometer.models as models
-#import cytometer.layers as layers
-#reload(deepcell)
-#reload(deepcell_models)
-#reload(layers)
-#reload(models)
 
-model = deepcell_models.sparse_bn_feature_net_61x61()
+model = deepcell_models.sparse_bn_feature_net_61x61(batch_input_shape = (1,1,500,500))
 
 # load pre-computed weights
 #weights_path='/home/rcasero/Software/cytometer/data/deepcell/trained_networks/slip/2017-07-14_slip_31x31_bn_feature_net_31x31_0.h5'
 weights_path='/home/rcasero/Software/cytometer/data/deepcell/trained_networks/HeLa/2017-06-21_HeLa_all_61x61_bn_feature_net_61x61_0.h5'
-deepcell.set_weights(model, weights_path)
-
-im = plt.imread('/home/rcasero/Software/DeepCell/validation_data/HeLa/RawImages/phase.tif')
-im = im.reshape((1,1,500,500))
-out = model.call(im)
+model = deepcell.set_weights(model, weights_path)
 
 import matplotlib.pyplot as plt
+aux = plt.imread('/home/rcasero/Software/DeepCell/validation_data/HeLa/RawImages/phase.tif')
+im = np.zeros((1,1,500,500), dtype='float32')
+im[:,0,:,:] = aux
+out = model.predict(im).eval()
 
-foo = np.load('/home/rcasero/Software/cytometer/data/deepcell/trained_networks/HeLa/2017-06-21_HeLa_all_61x61_bn_feature_net_61x61_0.npz')
-foo = foo['loss_history'].item()
+plt.imshow(im.reshape(500,500))
+plt.imshow(out.reshape(500,500))
 
-plt.plot(foo['acc'])
-
-#import h5py
-#foo = np.load('/home/rcasero/Software/DeepCell/trained_networks/slip/2017-06-06_slip_61x61_bn_feature_net_61x61_0.npz')
-#weights_path='/home/rcasero/Software/DeepCell/trained_networks/slip/2017-06-06_slip_61x61_bn_feature_net_61x61_0.h5'
-#foo = h5py.File(weights_path ,'r')
