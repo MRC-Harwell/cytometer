@@ -23,6 +23,11 @@ Minor modifications by Ramon Casero <rcasero@gmail.com>
 Import python packages
 """
 
+# check python interpreter version
+import sys
+if sys.version_info.major != 2:
+    raise RuntimeError('DeepCell requires Python 2')
+
 from pkg_resources import parse_version
 
 import numpy as np
@@ -86,7 +91,7 @@ except ImportError:
 from keras import regularizers as regularizers
 from keras import constraints as constraints
 
-# DeepCell is too hard-coded into theano data dimension ordering to fully rewrite it
+# DeepCell is hard-coded into theano data dimension ordering
 if (parse_version(keras_version) < parse_version('2.0.0')) and (K.image_dim_ordering() != 'th'):
     raise ValueError('DeepCell requires keras.backend.image_dim_ordering()==\'th\'')
 if (parse_version(keras_version) >= parse_version('2.0.0')) and (K.image_data_format() != 'channels_first'):
