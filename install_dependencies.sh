@@ -29,15 +29,18 @@ else
     source ~/.bashrc
 fi
 
-# python environment
+# python environment for cytometer
 conda create -y --name cytometer python=3.6
 source activate cytometer
+
+# install Tensorflow, keras latest version from source, with dependencies
 pip install tensorflow-gpu pyyaml
 pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
 pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
 pip install nose-parameterized
 conda install -y Cython cudnn=6
 
+# install Theano from source, with python bindings
 cd ~/Software
 git clone https://github.com/Theano/libgpuarray.git
 cd libgpuarray
@@ -55,3 +58,4 @@ conda install -y scikit-image scikit-learn h5py
 conda install -y -c conda-forge tifffile mahotas
 
 conda install -y nose pytest
+
