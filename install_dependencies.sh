@@ -29,7 +29,9 @@ else
     source ~/.bashrc
 fi
 
-# python environment for cytometer
+########################################################################
+## python environment for cytometer
+tput setaf 1; echo "** Create conda local environment: cytometer"; tput sgr0
 conda create -y --name cytometer python=3.6
 source activate cytometer
 
@@ -52,10 +54,30 @@ cd ..
 python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
 python setup.py install --prefix=$CONDA_PREFIX
 
-conda install -y matplotlib pillow spyder
+# install gcc in conda to avoid CUDA compilation problems
+conda install -y gcc
 
+# install other python packages
+conda install -y matplotlib pillow spyder
 conda install -y scikit-image scikit-learn h5py
 conda install -y -c conda-forge tifffile mahotas
-
 conda install -y nose pytest
 
+########################################################################
+## python environment for DeepCell
+tput setaf 1; echo "** Create conda local environment: DeepCell"; tput sgr0
+conda create -y --name DeepCell python=2.7
+source activate DeepCell
+
+# install Keras 1
+conda install -y keras=1 tensorflow tensorflow-gpu
+conda install -y Cython cudnn=5
+
+# install gcc in conda to avoid CUDA compilation problems
+conda install -y gcc
+
+# install other python packages
+conda install -y matplotlib pillow spyder
+conda install -y scikit-image scikit-learn h5py
+conda install -y -c conda-forge tifffile mahotas
+conda install -y nose pytest
