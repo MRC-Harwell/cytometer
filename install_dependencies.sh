@@ -70,8 +70,8 @@ conda create -y --name DeepCell python=2.7
 source activate DeepCell
 
 # install Keras 1
-conda install -y keras=1 tensorflow tensorflow-gpu
-conda install -y Cython cudnn=5
+conda install -y keras=1.1.1 tensorflow tensorflow-gpu theano=0.9.0
+conda install -y Cython cudnn=5.1 pygpu=0.6.9
 
 # install gcc in conda to avoid CUDA compilation problems
 conda install -y gcc
