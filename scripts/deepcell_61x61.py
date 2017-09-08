@@ -75,8 +75,8 @@ model = deepcell.set_weights(model, weights_path)
 
 # create input for validation
 im = np.zeros((1,2,500,500), dtype='float32')
-im[:,0,:,:] = plt.imread('/home/rcasero/Software/DeepCell/validation_data/HeLa/RawImages/phase.tif')
-im[:,1,:,:] = plt.imread('/home/rcasero/Software/DeepCell/validation_data/HeLa/RawImages/farred.tif')
+im[:,0,:,:] = plt.imread('/home/rcasero/Software/cytometer/data/deepcell/validation_data/HeLa/RawImages/phase.tif')
+im[:,1,:,:] = plt.imread('/home/rcasero/Software/cytometer/data/deepcell/validation_data/HeLa/RawImages/farred.tif')
 
 out = model.predict(im)
 out_plt = np.transpose(out, (2, 3, 1, 0)).reshape(440,440,3)
