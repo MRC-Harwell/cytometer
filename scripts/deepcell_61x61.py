@@ -6,6 +6,7 @@ Created on Thu Aug 31 12:07:23 2017
 @author: rcasero
 """
 
+# Keras backend
 import os
 os.environ['KERAS_BACKEND'] = 'theano'
 #os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -44,7 +45,6 @@ if (parse_version(keras_version) >= parse_version('2.0')):
 K.set_image_dim_ordering('th') # theano's image format (required by DeepCell)
 K.set_floatx('float32')
 K.set_epsilon('1e-07')
-
 
 # load dependencies
 import matplotlib.pyplot as plt
