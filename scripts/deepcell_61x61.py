@@ -29,7 +29,6 @@ if os.environ['KERAS_BACKEND'] == 'theano':
     theano.config.nvcc.fastmath = True
     theano.config.nvcc.flags = '-D_FORCE_INLINES'
     theano.config.cxx = os.environ['CONDA_PREFIX'] + '/bin/g++'
-    theano.config.gcc.cxxflags = '-D_hypot=hypot' # fix "error: narrowing conversion"
 else :
     raise Exception('No configuration found when the backend is ' + os.environ['KERAS_BACKEND'])
 
