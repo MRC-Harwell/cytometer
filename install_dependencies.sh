@@ -42,66 +42,68 @@ fi
 if [ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -w cytometer)" ]; then
     tput setaf 1; echo "** Create conda local environment: cytometer"; tput sgr0
     conda create -y --name cytometer python=3.6
-    source activate cytometer
-
-    # install Tensorflow, Theano and keras latest version from source
-    pip install tensorflow-gpu pyyaml
-    pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
-    pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
-    pip install nose-parameterized
-    conda install -y Cython cudnn=6
-
-    # install libgpuarray from source, with python bindings
-    cd ~/Software
-    if [ -d libgpuarray ]; then # previous version present
-	cd libgpuarray
-	git pull
-    else # no previous version exists
-	git clone https://github.com/Theano/libgpuarray.git
-	cd libgpuarray
-	mkdir Build
-    fi
-    cd Build
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
-    make install
-    cd ..
-    python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
-    python setup.py install --prefix=$CONDA_PREFIX
-
-    # install gcc in conda to avoid CUDA compilation problems
-    conda install -y gcc
-
-    # install other python packages
-    conda install -y matplotlib pillow spyder
-    conda install -y scikit-image scikit-learn h5py
-    conda install -y -c conda-forge tifffile mahotas
-    conda install -y nose pytest
 else
     tput setaf 1; echo "** Conda local environment already exists (...skipping): cytometer"; tput sgr0
 fi
+
+source activate cytometer
+
+# install Tensorflow, Theano and keras latest version from source
+pip install tensorflow-gpu pyyaml
+pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
+pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
+pip install nose-parameterized
+conda install -y Cython cudnn=6
+
+# install libgpuarray from source, with python bindings
+cd ~/Software
+if [ -d libgpuarray ]; then # previous version present
+    cd libgpuarray
+    git pull
+else # no previous version exists
+    git clone https://github.com/Theano/libgpuarray.git
+    cd libgpuarray
+    mkdir Build
+fi
+cd Build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
+make install
+cd ..
+python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
+python setup.py install --prefix=$CONDA_PREFIX
+
+# install gcc in conda to avoid CUDA compilation problems
+conda install -y gcc
+
+# install other python packages
+conda install -y matplotlib pillow spyder
+conda install -y scikit-image scikit-learn h5py
+conda install -y -c conda-forge tifffile mahotas
+conda install -y nose pytest
 
 ########################################################################
 ## python environment for DeepCell
 if [ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -w DeepCell)" ]; then
     tput setaf 1; echo "** Create conda local environment: DeepCell"; tput sgr0
     conda create -y --name DeepCell python=2.7
-    source activate DeepCell
-
-    # install Keras 1
-    conda install -y keras=1.1.1 theano=0.9.0
-    conda install -y Cython cudnn=5.1 pygpu=0.6.9
-
-    # install gcc in conda to avoid CUDA compilation problems
-    conda install -y gcc
-
-    # install other python packages
-    conda install -y matplotlib pillow spyder
-    conda install -y scikit-image scikit-learn h5py
-    conda install -y -c conda-forge tifffile mahotas
-    conda install -y nose pytest
-
-    # clear Theano cache. Previous runs of Keras may cause CUDA compilation/version compatibility problems
-    theano-cache purge
 else
     tput setaf 1; echo "** Conda local environment already exists (...skipping): DeepCell"; tput sgr0
 fi
+
+source activate DeepCell
+
+# install Keras 1
+conda install -y keras=1.1.1 theano=0.9.0
+conda install -y Cython cudnn=5.1 pygpu=0.6.9
+
+# install gcc in conda to avoid CUDA compilation problems
+conda install -y gcc
+
+# install other python packages
+conda install -y matplotlib pillow spyder
+conda install -y scikit-image scikit-learn h5py
+conda install -y -c conda-forge tifffile mahotas
+conda install -y nose pytest
+
+# clear Theano cache. Previous runs of Keras may cause CUDA compilation/version compatibility problems
+theano-cache purge
