@@ -44,18 +44,23 @@ if [ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -w cytometer
     conda create -y --name cytometer python=3.6
     source activate cytometer
 
-    # install Tensorflow, keras latest version from source, with dependencies
+    # install Tensorflow, Theano and keras latest version from source
     pip install tensorflow-gpu pyyaml
     pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
     pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
     pip install nose-parameterized
     conda install -y Cython cudnn=6
 
-    # install Theano from source, with python bindings
+    # install libgpuarray from source, with python bindings
     cd ~/Software
-    git clone https://github.com/Theano/libgpuarray.git
-    cd libgpuarray
-    mkdir Build
+    if [ -d libgpuarray ]; then # previous version present
+	cd libgpuarray
+	git pull
+    else # no previous version exists
+	git clone https://github.com/Theano/libgpuarray.git
+	cd libgpuarray
+	mkdir Build
+    fi
     cd Build
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
     make install
