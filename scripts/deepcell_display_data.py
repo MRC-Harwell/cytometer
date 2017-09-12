@@ -8,7 +8,11 @@ Created on Mon Sep 11 15:23:19 2017
 deepcell_display_data.py:
     
     Script to generate images of the validation data, using CLAHE (Contrast 
-    Limited Adaptive Histogram Equalization) to enhance the images
+    Limited Adaptive Histogram Equalization) to enhance the images.
+    
+    It assumes that the wiki directory is already cloned on the hard drive. If 
+    cytometer is in ~/Software/cytometer, it assumes that the wiki is in
+    ~/Software/cytometer.wiki.
 """
 
 import sys
@@ -29,8 +33,11 @@ else:
     %matplotlib qt5
 
 # data paths
+# * datadir = ~/Software/cytometer/data/deepcell/validation_data
+# * outdir = ~/Software/cytometer.wiki/deepcell/validation_data
 basedatadir = os.path.normpath(os.path.join(cytometer.__path__[0], '../data/deepcell'))
 datadir = os.path.join(basedatadir, 'validation_data')
+outdir = os.path.normpath(os.path.join(cytometer.__path__[0], '../../cytometer.wiki/fig/deepcell/validation_data'))
 
 # list of validation datasets
 im_file = [
@@ -89,6 +96,6 @@ for i in range(nfile):
     
     # save image
     plt.show()
-    fig.savefig(os.path.join(datadir, im_file[i].replace('/', '_')))
-
-
+    out_file = im_file[i].replace('.tif', '.jpg')
+    out_file = out_file.replace('/', '_')
+    fig.savefig(os.path.join(outdir, out_file))
