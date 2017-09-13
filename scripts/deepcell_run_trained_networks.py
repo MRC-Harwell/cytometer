@@ -131,7 +131,7 @@ im_out = model.predict(im.reshape((1, 2, 500, 500)))
 
 im_out = im_out.reshape(3, 440, 440)
 im_out = im_out.astype(dtype='bool')
-plt.imshow(im_out[1,:,:])
+plt.imshow(im_out[2,:,:])
 
 
 
