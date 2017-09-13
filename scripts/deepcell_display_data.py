@@ -27,10 +27,7 @@ import cv2
 #import skimage.exposure
 
 # pop out window for plots
-if (sys.version_info.major < 3):
-    %matplotlib qt
-else:
-    %matplotlib qt5
+%matplotlib qt5
 
 # data paths
 # * datadir = ~/Software/cytometer/data/deepcell/validation_data
