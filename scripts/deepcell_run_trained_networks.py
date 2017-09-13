@@ -63,6 +63,7 @@ K.set_epsilon('1e-07')
 
 import cytometer.deepcell as deepcell
 import cytometer.deepcell_models as deepcell_models
+import sklearn.metrics
 
 # data paths
 # * datadir = ~/Software/cytometer/data/deepcell/validation_data
@@ -118,32 +119,61 @@ model_dir = [
         os.path.join(netdir, 'MCF10A')
         ]
 
+# index of validation dataset
+i = 0
+
 # instantiate model (same for all validation data)
-model = deepcell_models.sparse_bn_feature_net_61x61(batch_input_shape = (1,2,500,500), weights_path = os.path.join(netdir, model_dir[0], '2016-07-12_3T3_all_61x61_bn_feature_net_61x61_0.h5'))
+model = deepcell_models.sparse_bn_feature_net_61x61(batch_input_shape = (1,2,500,500))
 
 # load image
-im = plt.imread(os.path.join(datadir, ch0_file[0]))
+im = plt.imread(os.path.join(datadir, ch0_file[i]))
 im = np.resize(im, (2,) + im.shape)
-im[1,:,:] = plt.imread(os.path.join(datadir, ch1_file[0]))
+im[1,:,:] = plt.imread(os.path.join(datadir, ch1_file[i]))
 
-# apply model
-im_out = model.predict(im.reshape((1, 2, 500, 500)))
+# image preprocessing
+im = im.astype(dtype='float32')
+im[0,:,:] = deepcell.process_image(im[0,:,:], 30, 30)
+im[1,:,:] = deepcell.process_image(im[1,:,:], 30, 30)
+
+# apply models and compute average result
+for j in range(5):
+    model = deepcell.set_weights(model, os.path.join(netdir, model_dir[i], '2016-07-12_3T3_all_61x61_bn_feature_net_61x61_' + str(j) + '.h5'))
+    if j == 0:
+        im_out = model.predict(im.reshape((1, 2, 500, 500)))
+    else:
+        im_out += model.predict(im.reshape((1, 2, 500, 500)))
+im_out /= 5
 
 im_out = im_out.reshape(3, 440, 440)
-im_out = im_out.astype(dtype='bool')
+im_out = np.pad(im_out, pad_width=((0,0), (30,30), (30,30)), 
+                mode = 'constant', constant_values = [(0,0), (0,0), (0,0)])
+
+# plot output
+plt.subplot(1,3,1)
+plt.imshow(im_out[0,:,:])
+plt.subplot(1,3,2)
+plt.imshow(im_out[1,:,:])
+plt.subplot(1,3,3)
 plt.imshow(im_out[2,:,:])
 
+# load hand segmentation
+seg = plt.imread(os.path.join(datadir, seg_file[i]))
+seg = seg > 0
 
+# compute ROC and area under the curve
+fpr, tpr, _ = sklearn.metrics.roc_curve(seg.flatten(), im_out[1,:,:].flatten(), drop_intermediate=True)
+roc_auc = sklearn.metrics.auc(fpr, tpr)
 
-# create input for validation
-im = np.zeros((1,2,500,500), dtype='float32')
-im[:,0,:,:] = plt.imread('/home/rcasero/Software/cytometer/data/deepcell/validation_data/HeLa/RawImages/phase.tif')
-im[:,1,:,:] = plt.imread('/home/rcasero/Software/cytometer/data/deepcell/validation_data/HeLa/RawImages/farred.tif')
-
-out = model.predict(im)
-out_plt = np.transpose(out, (2, 3, 1, 0)).reshape(440,440,3)
-
-plt.imshow(im[:,0,:,:].reshape(500,500))
-plt.imshow(im[:,1,:,:].reshape(500,500))
-plt.imshow(out_plt)
-
+# plot ROC
+plt.figure()
+lw = 2
+plt.plot(fpr, tpr, color='darkorange',
+         lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
+plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.show()
