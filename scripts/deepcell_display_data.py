@@ -24,7 +24,6 @@ import numpy as np
 from pkg_resources import parse_version
 
 import cv2
-#import skimage.exposure
 
 # pop out window for plots
 %matplotlib qt5
