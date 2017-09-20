@@ -141,10 +141,18 @@ im = plt.imread(os.path.join(datadir, ch0_file[i]))
 im = np.resize(im, (2,) + im.shape)
 im[1,:,:] = plt.imread(os.path.join(datadir, ch1_file[i]))
 
+# split into chunks, so that the GPU doesn't crash the system
+
+
+foo = im
+foo = np.array_split(foo, 2, axis=1)
+bar = np.concatenate(foo, axis=1)
+
 # image preprocessing
 im = im.astype(dtype='float32')
 im[0,:,:] = deepcell.process_image(im[0,:,:], 30, 30)
 im[1,:,:] = deepcell.process_image(im[1,:,:], 30, 30)
+
 
 # apply models and compute average result
 for j in range(5):
@@ -163,11 +171,13 @@ im_out = np.pad(im_out, pad_width=((0,0), (30,30), (30,30)),
                 mode = 'constant', constant_values = [(0,0), (0,0), (0,0)])
 
 # plot output
-plt.subplot(1,3,1)
+plt.subplot(2,2,1)
+plt.imshow(im[0,:,:])
+plt.subplot(2,2,2)
 plt.imshow(im_out[0,:,:])
-plt.subplot(1,3,2)
+plt.subplot(2,2,3)
 plt.imshow(im_out[1,:,:])
-plt.subplot(1,3,3)
+plt.subplot(2,2,4)
 plt.imshow(im_out[2,:,:])
 
 # load hand segmentation
