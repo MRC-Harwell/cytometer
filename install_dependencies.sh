@@ -80,6 +80,7 @@ conda install -y matplotlib pillow spyder
 conda install -y scikit-image scikit-learn h5py
 conda install -y -c conda-forge tifffile mahotas
 conda install -y nose pytest
+pip install opencv-python image_slicer
 
 ########################################################################
 ## python environment for DeepCell
@@ -104,7 +105,7 @@ conda install -y matplotlib pillow spyder
 conda install -y scikit-image scikit-learn h5py
 conda install -y -c conda-forge tifffile mahotas
 conda install -y nose pytest
-pip install opencv-python
+pip install opencv-python image_slicer
 
 # clear Theano cache. Previous runs of Keras may cause CUDA compilation/version compatibility problems
 theano-cache purge
