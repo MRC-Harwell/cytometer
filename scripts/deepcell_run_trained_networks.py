@@ -11,6 +11,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import cytometer
+import pysto.imgproc as pymproc
 
 ###############################################################################
 ## Keras configuration
@@ -130,9 +131,6 @@ model_weights_file = [
         '2016-07-11_MCF10A_61x61_bn_feature_net_61x61_'
         ]
 
-# instantiate model (same for all validation data)
-model = deepcell_models.sparse_bn_feature_net_61x61(batch_input_shape = (1,2,500,500))
-
 # index of validation dataset
 i = 1
 
@@ -141,30 +139,38 @@ im = plt.imread(os.path.join(datadir, ch0_file[i]))
 im = np.resize(im, (2,) + im.shape)
 im[1,:,:] = plt.imread(os.path.join(datadir, ch1_file[i]))
 
-# split into chunks, so that the GPU doesn't crash the system
-
-
-foo = im
-foo = np.array_split(foo, 2, axis=1)
-bar = np.concatenate(foo, axis=1)
-
 # image preprocessing
 im = im.astype(dtype='float32')
 im[0,:,:] = deepcell.process_image(im[0,:,:], 30, 30)
 im[1,:,:] = deepcell.process_image(im[1,:,:], 30, 30)
 
+# split into chunks, so that the GPU doesn't crash the system
+block_slices, blocks = pymproc.block_split(im, (1, 2, 2))
 
 # apply models and compute average result
 for j in range(5):
+    # instantiate model (same for all validation data)
+    model = deepcell_models.sparse_bn_feature_net_61x61(batch_input_shape = (1,) + blocks[0].shape)
     model = deepcell.set_weights(model, os.path.join(netdir, model_dir[i], model_weights_file[i] + str(j) + '.h5'))
     if j == 0:
         import timeit
         tic = timeit.default_timer()
-        im_out = model.predict(im.reshape((1, 2, 500, 500)))
+        im_out = model.predict(blocks[0].reshape((1,) + blocks[0].shape))
         toc = timeit.default_timer()
     else:
-        im_out += model.predict(im.reshape((1, 2, 500, 500)))
+        im_out += model.predict(blocks[0].reshape((1,) + blocks[0].shape))
 im_out /= 5
+
+###############
+plt.subplot(2,2,1)
+plt.imshow(blocks[0][0,:,:])
+plt.subplot(2,2,2)
+plt.imshow(im_out.reshape(3, 190, 190)[0,:,:])
+plt.subplot(2,2,3)
+plt.imshow(im_out.reshape(3, 190, 190)[1,:,:])
+plt.subplot(2,2,4)
+plt.imshow(im_out.reshape(3, 190, 190)[2,:,:])
+
 
 im_out = im_out.reshape(3, 440, 440)
 im_out = np.pad(im_out, pad_width=((0,0), (30,30), (30,30)), 
