@@ -13,5 +13,7 @@ setup(name='cytometer',
       license='GPLv3',
       packages=find_packages(),
       data_files=[('data', ['data/*'])],
-      install_requires=['keras>=2.0.2', 'theano>=0.10.0', 'tensorflow-gpu>=1.2.1']
+      install_requires=['python>=3.6', 'gcc>=4.8.5',
+                            'keras>=2.0.8', 'theano>=0.10.0', 'tensorflow-gpu>=1.3.0', 'pysto>=1.1.1',
+                            'pyyaml>=3.12', 'nose-parameterized>=0.6.0']
      )
