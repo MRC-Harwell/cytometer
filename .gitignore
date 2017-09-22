@@ -6,3 +6,5 @@
 __pycache__
 /private_keys
 /.cache
+.DS_Store
+._.DS_Store
