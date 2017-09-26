@@ -145,36 +145,34 @@ im[0,:,:] = deepcell.process_image(im[0,:,:], 30, 30)
 im[1,:,:] = deepcell.process_image(im[1,:,:], 30, 30)
 
 # split into chunks, so that the GPU doesn't crash the system
-block_slices, blocks = pymproc.block_split(im, (1, 2, 2))
+block_slices, blocks, im_padded = pymproc.block_split(im, nblocks=(1,2,2), pad_width=((0,0),(30,30),(30,30)), mode='reflect')
 
 # apply models and compute average result
-for j in range(5):
-    # instantiate model (same for all validation data)
-    model = deepcell_models.sparse_bn_feature_net_61x61(batch_input_shape = (1,) + blocks[0].shape)
-    model = deepcell.set_weights(model, os.path.join(netdir, model_dir[i], model_weights_file[i] + str(j) + '.h5'))
-    if j == 0:
-        import timeit
-        tic = timeit.default_timer()
-        im_out = model.predict(blocks[0].reshape((1,) + blocks[0].shape))
-        toc = timeit.default_timer()
-    else:
-        im_out += model.predict(blocks[0].reshape((1,) + blocks[0].shape))
-im_out /= 5
+blocks_out = []
+for b in blocks:
+    b = b.reshape((1,) + b.shape)
+    for j in range(5):
+        # instantiate model (same for all validation data)
+        model = deepcell_models.sparse_bn_feature_net_61x61(batch_input_shape = b.shape)
+        model = deepcell.set_weights(model, os.path.join(netdir, model_dir[i], model_weights_file[i] + str(j) + '.h5'))
+        if j == 0:
+            import timeit
+            tic = timeit.default_timer()
+            b_out = model.predict(b)
+            toc = timeit.default_timer()
+        else:
+            b_out += model.predict(b)
+    b_out /= 5
+    b_out = b_out.reshape(b_out.shape[1:])
+    blocks_out += [b_out]
 
-###############
-plt.subplot(2,2,1)
-plt.imshow(blocks[0][0,:,:])
-plt.subplot(2,2,2)
-plt.imshow(im_out.reshape(3, 190, 190)[0,:,:])
-plt.subplot(2,2,3)
-plt.imshow(im_out.reshape(3, 190, 190)[1,:,:])
-plt.subplot(2,2,4)
-plt.imshow(im_out.reshape(3, 190, 190)[2,:,:])
+# correct slice indices
+block_slices_out = []
+for sl in block_slices:
+    block_slices_out += [[slice(0,3,1), slice(sl[1].start, sl[1].stop-60, 1), slice(sl[2].start, sl[2].stop-60, 1)]]
 
-
-im_out = im_out.reshape(3, 440, 440)
-im_out = np.pad(im_out, pad_width=((0,0), (30,30), (30,30)), 
-                mode = 'constant', constant_values = [(0,0), (0,0), (0,0)])
+# reassemble images
+im_out, _ = pymproc.block_stack(blocks_out, block_slices_out, pad_width=0)
 
 # plot output
 plt.subplot(2,2,1)
