@@ -28,7 +28,7 @@ else:
 
 # configure Theano global options
 #os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,gpuarray.preallocate=0.5'
-os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.5'
+os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.75'
 
 # configure Theano
 if os.environ['KERAS_BACKEND'] == 'theano':
