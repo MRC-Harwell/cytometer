@@ -25,10 +25,12 @@ def sparse_feature_net_61x61_no_dilated_pooling(input_shape=(3,None,None), n_fea
     model.add(Conv2D(input_shape=input_shape, 
                      filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis = 1))
     model.add(Activation('relu'))
     
     model.add(Conv2D(filters=64, kernel_size=(4, 4), dilation_rate=d, strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis = 1))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=tuple(np.array((2,2))*d), strides=1,
                            padding='same'))
@@ -36,41 +38,42 @@ def sparse_feature_net_61x61_no_dilated_pooling(input_shape=(3,None,None), n_fea
     d *= 2
     model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis = 1))
     model.add(Activation('relu'))
     
     model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis = 1))
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=tuple(np.array((2,2))*d), strides=1,
+    model.add(MaxPooling2D(pool_size=(2*d,2*d)), strides=1,
                            padding='same'))
     
     d *= 2
     model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis = 1))
     model.add(Activation('relu'))
     
     model.add(Conv2D(filters=64, kernel_size=(3, 3), dilation_rate=d, strides=1, 
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis = 1))
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=tuple(np.array((2,2))*d), strides=1,
+    model.add(MaxPooling2D(pool_size=(2*d,2*d), strides=1,
                            padding='same'))
     
     d *= 2
     model.add(Conv2D(filters=200, kernel_size=(4, 4), dilation_rate=d, strides=1, 
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis = 1))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(filters=200, kernel_size=(1, 1), dilation_rate=1, strides=1, 
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg))))
+    model.add(BatchNormalization(axis = 1))
     model.add(Activation('relu'))
     
-    if K.image_data_format() == 'channels_first':
-        model.add(Permute((2, 3, 1)))
-    
-    model.add(Dense(units=200,
-                    kernel_initializer=init, kernel_regularizer=l2(reg)))
-    model.add(Activation('relu'))
-    
-    model.add(Dense(units=n_features, 
-                    kernel_initializer=init, kernel_regularizer=l2(reg)))
-    if K.image_data_format() == 'channels_first':
-        model.add(Permute((3, 1, 2)))
+    model.add(Conv2D(filters=3, kernel_size=(1, 1), dilation_rate=1, strides=1, 
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg))))
     model.add(Activation('softmax'))
     
     return model
