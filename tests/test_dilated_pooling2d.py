@@ -36,9 +36,9 @@ def pooling_general_no_dilation(nbatch, nchan, nrows, ncols, pool_size=(2, 2),
                                    (nbatch, nchan, nrows, ncols)))
     
     # instantiate max pooling layer
-    pool_layer = layers.MaxPooling2D(pool_size=pool_size, strides=strides, 
-                                     padding=padding, data_format=data_format, 
-                                     dilation_rate=dilation_rate)
+    pool_layer = layers.DilatedMaxPooling2D(pool_size=pool_size, strides=strides, 
+                                            padding=padding, data_format=data_format, 
+                                            dilation_rate=dilation_rate)
 
     # compute output using MaxPooling2D    
     output = pool_layer._pooling_function(inputs, 
