@@ -53,7 +53,7 @@ pip install tensorflow-gpu pyyaml
 pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
 pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
 pip install nose-parameterized
-conda install -y Cython cudnn=6
+conda install -y Cython cudnn=6 mkl-service
 
 # install libgpuarray from source, with python bindings
 cd ~/Software
