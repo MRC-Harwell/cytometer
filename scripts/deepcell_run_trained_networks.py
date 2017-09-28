@@ -3,6 +3,8 @@
 """
 Created on Thu Aug 31 12:07:23 2017
 
+Run DeepCell trained networks on validation data and compute ROC
+
 @author: rcasero
 """
 
@@ -58,9 +60,6 @@ K.set_epsilon('1e-07')
 
 ##
 ###############################################################################
-
-# pop out window for plots
-%matplotlib qt5
 
 import cytometer.deepcell as deepcell
 import cytometer.deepcell_models as deepcell_models
