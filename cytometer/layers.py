@@ -225,14 +225,14 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         # column) goes into a separate block
         nblocks = dilation_rate
         
-        # size of each block we are going to split the input images in
-        block_sz = (int(np.ceil(nrows / dilation_rate[0]).eval()), 
-                    int(np.ceil(ncols / dilation_rate[1]).eval()))
-
-        # pad inputs so that they can be split into equal blocks
-        padded_size = np.multiply(block_sz, nblocks)
-        padding_len = ((0, padded_size[0] - nrows), (0, padded_size[1] - ncols))
-        inputs = K.spatial_2d_padding(inputs, padding=padding_len, data_format=data_format)
+#        # size of each block we are going to split the input images in
+#        block_sz = (int(np.ceil(nrows / dilation_rate[0]).eval()), 
+#                    int(np.ceil(ncols / dilation_rate[1]).eval()))
+#
+#        # pad inputs so that they can be split into equal blocks
+#        padded_size = np.multiply(block_sz, nblocks)
+#        padding_len = ((0, padded_size[0] - nrows), (0, padded_size[1] - ncols))
+#        inputs = K.spatial_2d_padding(inputs, padding=padding_len, data_format=data_format)
         
         # slice objects to split the input into blocks. Each block is pooled 
         # with dilation=1 (no dilation). The overall effect is like pooling the
