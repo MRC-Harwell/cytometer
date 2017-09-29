@@ -15,6 +15,15 @@ from keras.utils import conv_utils
 from keras.legacy import interfaces
 
 import numpy as np
+import itertools
+
+if K.backend() == 'theano':
+    import theano.tensor as T
+elif K.backend() == 'tensorflow':
+    raise Exception('Functions not implemented for tensorflow')
+else:
+    raise Exception('Functions not implemented for this backend')
+
 
 class _DilatedPooling2D(Layer):
     """Abstract class for different pooling 2D layers.
@@ -201,12 +210,12 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         sz = K.shape(inputs)
         if data_format == 'channels_first': # (batch,chan,row,col)
             nbatch = sz[0]
-            #nchan = sz[1]
+            nchan = sz[1]
             nrows = sz[2]
             ncols = sz[3]
         elif data_format == 'channels_last': # (batch,row,col,chan)
             nbatch = sz[0]
-            #nchan = sz[1]
+            nchan = sz[1]
             nrows = sz[2]
             ncols = sz[3]
         else:
@@ -217,43 +226,50 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         nblocks = dilation_rate
         
         # size of each block we are going to split the input images in
-        block_sz = ((np.ceil(nrows / dilation_rate[0])), 
-                    (np.ceil(ncols / dilation_rate[1])))
-        block_sz = block_sz.eval()
+        block_sz = (int(np.ceil(nrows / dilation_rate[0]).eval()), 
+                    int(np.ceil(ncols / dilation_rate[1]).eval()))
 
         # pad inputs so that they can be split into equal blocks
         padded_size = np.multiply(block_sz, nblocks)
         padding_len = ((0, padded_size[0] - nrows), (0, padded_size[1] - ncols))
         inputs = K.spatial_2d_padding(inputs, padding=padding_len, data_format=data_format)
- 
-        # split the inputs into blocks
-        split_inputs = []
-        for row_offset in range(nblocks[0]):
-            for col_offset in range(nblocks[1]):
-                if data_format == 'channels_first': # (batch,chan,row,col)
-                    split_inputs = split_inputs + [inputs[:, :, row_offset::dilation_rate[0], col_offset::dilation_rate[1]]]
-                elif data_format == 'channels_last': # (batch,row,col,chan)
-                    split_inputs = split_inputs + [inputs[:, row_offset::dilation_rate[0], col_offset::dilation_rate[1], :]]
-        split_inputs = K.concatenate(split_inputs, axis=0)                        
-    
-        # pool each block without dilation
-        split_inputs = K.pool2d(split_inputs, pool_size, strides=(1,1),
-                                padding='same', data_format=data_format,
-                                pool_mode='max')
-
-        # reassemble blocks
-        output = np.zeros(shape=list(inputs.shape.eval()), dtype=inputs.dtype)
-        for idx in range(nbatch*nblocks[0]*nblocks[1]):
-            multi_index = np.unravel_index(idx, dims=(nblocks[0], nblocks[1], nbatch))
-            row_offset = multi_index[0]
-            col_offset = multi_index[1]
-            batch = multi_index[2]
-            if data_format == 'channels_first': # (batch,chan,row,col)
-                output[batch, :, row_offset::dilation_rate[0], col_offset::dilation_rate[1]] = split_inputs[idx, :, :, :].eval()
-            elif data_format == 'channels_last': # (batch,row,col,chan)
-                output[batch, row_offset::dilation_rate[0], col_offset::dilation_rate[1], :] = split_inputs[idx, :, :, :].eval()
-        output = K.variable(output)
         
+        # slice objects to split the input into blocks. Each block is pooled 
+        # with dilation=1 (no dilation). The overall effect is like pooling the
+        # the whole image with dilation>1
+        
+        # allocate space for output
+        outputs = K.zeros(shape=sz.eval())
+        
+        # first, we get the slices to split in horizontal and vertical blocks,
+        # separatedly
+        block_slices_row = [slice(i,inputs.shape[2],dilation_rate[0]) 
+        for i in range(dilation_rate[0])]
+        block_slices_col = [slice(j,inputs.shape[3],dilation_rate[1]) 
+        for j in range(dilation_rate[1])]
+
+        # then, we make all combinations of row-blocks and col-blocks, to get
+        # all the blocks that split the inputs. Now we can iterate all the 
+        # blocks and process them separately
+        block_slices_combinatorial = itertools.product(*[block_slices_row, block_slices_col])
+        for sl in block_slices_combinatorial:
+            block_slice = list((slice(0,nbatch,1), slice(0,nchan,1)) + sl)
+            
+            # extract block
+            block = inputs[block_slice]
+            print(block.eval())
+            
+            # pool each block without dilation
+            block_pooled = K.pool2d(block, pool_size, strides=(1,1),
+                                    padding='same', data_format=data_format,
+                                    pool_mode='max')
+            print(block_pooled.eval())
+            
+            # put block into output
+            if (K.backend() == 'theano'):
+                outputs = T.set_subtensor(outputs[block_slice], block_pooled)
+
+ 
         # remove padding (following the same behaviour as K.pool2d)
         if padding == 'valid':
             
