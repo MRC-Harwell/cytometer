@@ -207,16 +207,20 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         
         """
 
-        if padding == 'same':
-            
-            # padding is the size of the dilated pooling kernel, minus one
-            padding_size = np.multiply(dilation_rate, pool_size)
-            padding_size = ((padding_size[0],padding_size[0]),
-                            (padding_size[1],padding_size[1]))
-            
-            # pad the inputs so that when pooling produces an output of the 
-            # same size as the input
-            inputs = K.spatial_2d_padding(inputs, padding=padding_size, data_format=data_format)
+#        # the output will be smaller than the input, because pooling is computed 
+#        # within the range where the pooling kernel completely overlaps the 
+#        # image. Thus, to get an output of the same size as the input, we need
+#        # to pad the borders of the 
+#        if padding == 'same':
+#            
+#            # padding is the size of the dilated pooling kernel, minus one
+#            padding_size = np.multiply(dilation_rate, pool_size)
+#            padding_size = ((padding_size[0],padding_size[0]),
+#                            (padding_size[1],padding_size[1]))
+#            
+#            # pad the inputs so that when pooling produces an output of the 
+#            # same size as the input
+#            inputs = K.spatial_2d_padding(inputs, padding=padding_size, data_format=data_format)
 
         sz = K.shape(inputs)
         if data_format == 'channels_first': # (batch,chan,row,col)
@@ -226,28 +230,25 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
             ncols = sz[3]
         elif data_format == 'channels_last': # (batch,row,col,chan)
             nbatch = sz[0]
-            nchan = sz[1]
-            nrows = sz[2]
-            ncols = sz[3]
+            nrows = sz[1]
+            ncols = sz[2]
+            nchan = sz[3]
         else:
-            raise ValueError('Expected data format to be channels_first or channels_last')
+            raise ValueError('Expected data_format to be channels_first or channels_last')
 
-        # number of blocks to split the input into. Each dilation (row or 
-        # column) goes into a separate block
-        nblocks = dilation_rate
-        
-        # slice objects to split the input into blocks. Each block is pooled 
-        # with dilation=1 (no dilation). The overall effect is like pooling the
-        # the whole image with dilation>1
-        
         # allocate space for output
         outputs = K.zeros(shape=sz.eval())
         
-        # first, we get the slices to split in horizontal and vertical blocks,
-        # separatedly
-        block_slices_row = [slice(i,inputs.shape[2],dilation_rate[0]) 
+        # compute slice objects. Each slice object will be used to split the 
+        # input into a block. Each block will be pooled with dilation=1 (no 
+        # dilation). The overall effect is like pooling the whole image with 
+        # dilation>1
+        
+        # first, we compute the slices to split the input in horizontal and 
+        # vertical blocks, separately
+        block_slices_row = [slice(i,nrows,dilation_rate[0]) 
         for i in range(dilation_rate[0])]
-        block_slices_col = [slice(j,inputs.shape[3],dilation_rate[1]) 
+        block_slices_col = [slice(j,ncols,dilation_rate[1]) 
         for j in range(dilation_rate[1])]
 
         # then, we make all combinations of row-blocks and col-blocks, to get
@@ -256,7 +257,12 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         block_slices_combinatorial = itertools.product(*[block_slices_row, block_slices_col])
         for sl in block_slices_combinatorial:
             # DEBUG: sl = list(itertools.islice(block_slices_combinatorial, 1))[0]
-            block_slice = list((slice(0,nbatch,1), slice(0,nchan,1)) + sl)
+            
+            # extend the slice with the batch and channel
+            if data_format == 'channels_first': # (batch,chan,row,col)
+                block_slice = list((slice(0,nbatch,1), slice(0,nchan,1)) + sl)
+            elif data_format == 'channels_last': # (batch,row,col,chan)
+                block_slice = list((slice(0,nbatch,1),) + sl + (slice(0,nchan,1),))
             
             # extract block
             block = inputs[block_slice]
@@ -277,8 +283,11 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
                 raise Exception('not implemented')
 
  
-        # remove padding (following the same behaviour as K.pool2d)
-        if padding == 'same':
+        # remove the border where the kernel didn't fully overlap the input
+        raise Exception('TODO: This block')
+        if padding == 'valid':
+            
+            #padding_size = 
             
             if data_format == 'channels_first': # (batch,chan,row,col)
                 outputs = outputs[:, :, padding_size[0][0]:-padding_size[0][1], 
