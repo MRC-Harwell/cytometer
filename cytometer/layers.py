@@ -207,6 +207,17 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         
         """
 
+        if padding == 'same':
+            
+            # padding is the size of the dilated pooling kernel, minus one
+            padding_size = np.multiply(dilation_rate, pool_size)
+            padding_size = ((padding_size[0],padding_size[0]),
+                            (padding_size[1],padding_size[1]))
+            
+            # pad the inputs so that when pooling produces an output of the 
+            # same size as the input
+            inputs = K.spatial_2d_padding(inputs, padding=padding_size, data_format=data_format)
+
         sz = K.shape(inputs)
         if data_format == 'channels_first': # (batch,chan,row,col)
             nbatch = sz[0]
@@ -224,15 +235,6 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         # number of blocks to split the input into. Each dilation (row or 
         # column) goes into a separate block
         nblocks = dilation_rate
-        
-#        # size of each block we are going to split the input images in
-#        block_sz = (int(np.ceil(nrows / dilation_rate[0]).eval()), 
-#                    int(np.ceil(ncols / dilation_rate[1]).eval()))
-#
-#        # pad inputs so that they can be split into equal blocks
-#        padded_size = np.multiply(block_sz, nblocks)
-#        padding_len = ((0, padded_size[0] - nrows), (0, padded_size[1] - ncols))
-#        inputs = K.spatial_2d_padding(inputs, padding=padding_len, data_format=data_format)
         
         # slice objects to split the input into blocks. Each block is pooled 
         # with dilation=1 (no dilation). The overall effect is like pooling the
@@ -253,46 +255,40 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         # blocks and process them separately
         block_slices_combinatorial = itertools.product(*[block_slices_row, block_slices_col])
         for sl in block_slices_combinatorial:
+            # DEBUG: sl = list(itertools.islice(block_slices_combinatorial, 1))[0]
             block_slice = list((slice(0,nbatch,1), slice(0,nchan,1)) + sl)
             
             # extract block
             block = inputs[block_slice]
-            print(block.eval())
+            #print(block.eval()) # DEBUG
             
             # pool each block without dilation
             block_pooled = K.pool2d(block, pool_size, strides=(1,1),
                                     padding='same', data_format=data_format,
                                     pool_mode='max')
-            print(block_pooled.eval())
+            #print(block_pooled.eval()) # DEBUG
             
             # put block into output
             if (K.backend() == 'theano'):
                 outputs = T.set_subtensor(outputs[block_slice], block_pooled)
+            elif (K.backend() == 'tensorflow'):
+                raise Exception('not implemented')
+            else:
+                raise Exception('not implemented')
 
  
         # remove padding (following the same behaviour as K.pool2d)
-        if padding == 'valid':
+        if padding == 'same':
             
             if data_format == 'channels_first': # (batch,chan,row,col)
-                output = output[:, :, (pool_size[0]-1)*dilation_rate[0]:nrows, 
-                                (pool_size[1]-1)*dilation_rate[1]:ncols]
+                outputs = outputs[:, :, padding_size[0][0]:-padding_size[0][1], 
+                                  padding_size[1][0]:-padding_size[1][1]]
             elif data_format == 'channels_last': # (batch,row,col,chan)
-                output = output[:, (pool_size[0]-1)*dilation_rate[0]:nrows, 
-                                (pool_size[1]-1)*dilation_rate[1]:ncols, :]
+                outputs = outputs[:, padding_size[0][0]:-padding_size[0][1], 
+                                  padding_size[1][0]:-padding_size[1][1], :]
                     
-        elif padding == 'same':
-        
-            if data_format == 'channels_first': # (batch,chan,row,col)
-                output = output[:, :, 0:nrows, 0:ncols]
-            elif data_format == 'channels_last': # (batch,row,col,chan)
-                output = output[:, 0:nrows, 0:ncols, :]
-                
-        else:
-            
-            raise NotImplementedError
-
         # return tensor
-        return output
+        return outputs
 
 # Aliases
 
