@@ -145,21 +145,20 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         0 0 0 0 0
         * 0 0 0 *
         
-        Let's have a large image with two different pixels (here we represent 
-        only a corner of the image)
+        Let's have the following image (each dot represents a pixel)
         
-        X X X X X X X
-        X X X X X X X
-        X X X X X X X
-        X X X X X X X
-        X X X X X X X
-        X X X X X X X
-        + + + + + + +
-        + + + + + + +
-        + + + + + + +
-        + + + + + + +
-        + + + + + + +
-        + + + + + + +
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
+        · · · · · · · · ·
         
         The pooling kernel will slide over the image, similarly to convolution,
         computing a pooling result at each step. For example, for the vertical 
@@ -167,60 +166,60 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         
             dr = 0          dr = 1          dr = 2 
         
-        * 0 0 0 * X X   X X X X X X X   X X X X X X X 
-        0 0 0 0 0 X X   * 0 0 0 * X X   X X X X X X X 
-        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X
-        0 0 0 0 0 X X   * 0 0 0 * X X   0 0 0 0 0 X X
-        * 0 0 0 * X X   0 0 0 0 0 X X   * 0 0 0 * X X
-        X X X X X X X , * 0 0 0 * X X , 0 0 0 0 0 X X
-        + + + + + + +   + + + + + + +   * 0 0 0 * + +
-        + + + + + + +   + + + + + + +   + + + + + + +
-        + + + + + + +   + + + + + + +   + + + + + + +
-        + + + + + + +   + + + + + + +   + + + + + + +
-        + + + + + + +   + + + + + + +   + + + + + + +
-        + + + + + + +   + + + + + + +   + + + + + + +
+        X · · · X · · · ·   · · · · · · · · ·   · · · · · · · · ·
+        · · · · · · · · ·   X · · · X · · · ·   · · · · · · · · ·
+        X · · · X · · · ·   · · · · · · · · ·   X · · · X · · · ·
+        · · · · · · · · ·   X · · · X · · · ·   · · · · · · · · ·
+        X · · · X · · · ·   · · · · · · · · ·   X · · · X · · · ·
+        · · · · · · · · · , X · · · X · · · · , · · · · · · · · · , etc
+        · · · · · · · · ·   · · · · · · · · ·   X · · · X · · · ·
+        · · · · · · · · ·   · · · · · · · · ·   · · · · · · · · ·
+        · · · · · · · · ·   · · · · · · · · ·   · · · · · · · · ·
+        · · · · · · · · ·   · · · · · · · · ·   · · · · · · · · ·
+        · · · · · · · · ·   · · · · · · · · ·   · · · · · · · · ·
+        · · · · · · · · ·   · · · · · · · · ·   · · · · · · · · ·
         
-        The last step, dr=2, is unnecesary. Instead, if we overlap dr=0 and 
-        dr=2, we see that if we subsample every odd row, and every fourth 
-        column, we can use the regular pool2d() function to compute the pooling
+        Ideally, this process should be implemented at low level in Theano and
+        TensorFlow. This here is a high-level implementation, but in order to
+        preserve some performance, we reuse K.pool2d() as much as possible.
         
-          dr = {0, 2}
+        For that, we are going to subsample each axis of the input D times if
+        the dilation factor is D. For the example above (subsampling marked 
+        with X):
+            
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · · ,  · · · · · · · · · ,  · · · · · · · · · ,  · · · · · · · · · ,
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
         
-        * 0 0 0 * X X                     * 0 0 0 * X X                     * *
-        0 0 0 0 0 X X
-        * 0 0 0 * X X                     * 0 0 0 * X X                     * *
-        0 0 0 0 0 X X
-        * 0 0 0 * X X                     * 0 0 0 * X X                     * *
-        X X X X X X X  =subsample rows=>                 =subsample cols=>  
-        * 0 0 0 * + +                     * 0 0 0 * + +                     * *
-        0 0 0 0 0 + +
-        * 0 0 0 * + +                     * 0 0 0 * + +                     * *
-        0 0 0 0 0 + +
-        * 0 0 0 * + +                     * 0 0 0 * + +                     * *
-        + + + + + + +
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · · ,  · · · · · · · · · ,  · · · · · · · · · ,  · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
+        · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·    · · · · · · · · ·
+        X · · · X · · · X    · X · · · X · · ·    · · X · · · X · ·    · · · X · · · X ·
         
-        Thus, sliding pooling can be computed as a double loop
+        We then apply K.pool2d() to each of the subsamplings above (with 
+        padding='same' so that each block produces a block of the same size).
+        The results are restacked to form an array of the same size as inputs.
         
-        for row in 0, 1, 2, 3, ..., pool_size[0]*dilation_rate[0]:
-            for col in 0, 1, 2, 3, ..., pool_size[1]*dilation_rate[1]:
-                pool2d(inputs[:, :, 0:end:dilation_rate[0], 0:end:dilation_rate[1]])
-        
+        Finally, if the user wanted only padding='valid', we crop out the 
+        borders of the array.
         """
-
-#        # the output will be smaller than the input, because pooling is computed 
-#        # within the range where the pooling kernel completely overlaps the 
-#        # image. Thus, to get an output of the same size as the input, we need
-#        # to pad the borders of the 
-#        if padding == 'same':
-#            
-#            # padding is the size of the dilated pooling kernel, minus one
-#            padding_size = np.multiply(dilation_rate, pool_size)
-#            padding_size = ((padding_size[0],padding_size[0]),
-#                            (padding_size[1],padding_size[1]))
-#            
-#            # pad the inputs so that when pooling produces an output of the 
-#            # same size as the input
-#            inputs = K.spatial_2d_padding(inputs, padding=padding_size, data_format=data_format)
 
         sz = K.shape(inputs)
         if data_format == 'channels_first': # (batch,chan,row,col)
@@ -257,7 +256,7 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         block_slices_combinatorial = itertools.product(*[block_slices_row, block_slices_col])
         for sl in block_slices_combinatorial:
             # DEBUG: sl = list(itertools.islice(block_slices_combinatorial, 1))[0]
-            
+
             # extend the slice with the batch and channel
             if data_format == 'channels_first': # (batch,chan,row,col)
                 block_slice = list((slice(0,nbatch,1), slice(0,nchan,1)) + sl)
@@ -284,17 +283,18 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
 
  
         # remove the border where the kernel didn't fully overlap the input
-        raise Exception('TODO: This block')
         if padding == 'valid':
             
-            #padding_size = 
+            padding_size = np.true_divide(np.array(pool_size)-1, 2.0)
+            padding_size = {'row': (int(np.ceil(padding_size[0])), int(np.floor(padding_size[0]))),
+                            'col': (int(np.ceil(padding_size[1])), int(np.floor(padding_size[1])))}
             
             if data_format == 'channels_first': # (batch,chan,row,col)
-                outputs = outputs[:, :, padding_size[0][0]:-padding_size[0][1], 
-                                  padding_size[1][0]:-padding_size[1][1]]
+                outputs = outputs[:, :, padding_size['row'][0]:nrows-padding_size['row'][1], 
+                                  padding_size['col'][0]:ncols-padding_size['col'][1]]
             elif data_format == 'channels_last': # (batch,row,col,chan)
-                outputs = outputs[:, padding_size[0][0]:-padding_size[0][1], 
-                                  padding_size[1][0]:-padding_size[1][1], :]
+                outputs = outputs[:, padding_size['row'][0]:nrows-padding_size['row'][1], 
+                                  padding_size['col'][0]:ncols-padding_size['col'][1], :]
                     
         # return tensor
         return outputs

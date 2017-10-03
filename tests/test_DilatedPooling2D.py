@@ -25,7 +25,8 @@ K.set_image_data_format(data_format)
 import cytometer.layers as layers
 
 
-# compare Keras K.pool2d to dilated MaxPooling2D._pooling_function
+# compare Keras K.pool2d to dilated MaxPooling2D._pooling_function. When 
+# there's no pooling, they have to work the same
 def pooling_general_no_dilation(nbatch, nchan, nrows, ncols, pool_size=(2, 2), 
                     strides=(1, 1), padding='valid'):
 
@@ -59,7 +60,7 @@ def pooling_general_no_dilation(nbatch, nchan, nrows, ncols, pool_size=(2, 2),
     output_ref = output_ref.eval()
     
     # compare both methods
-    np.testing.assert_array_equal(output, output_ref)
+    np.testing.assert_array_equal(output_ref, output)
 
 # simple (2,2) kernel, no dilation
 def test_pooling_no_dilation_1_batch_1_channel_valid_padding():
@@ -85,6 +86,7 @@ def test_pooling_no_dilation_kernel_3x3_valid_padding():
     pooling_general_no_dilation(nbatch=6, nchan=3, nrows=5, ncols=8, 
                                 padding='valid', pool_size=(3, 3))
     
+# fails
 def test_pooling_no_dilation_kernel_3x4_valid_padding():
     pooling_general_no_dilation(nbatch=6, nchan=3, nrows=5, ncols=8, 
                                 padding='valid', pool_size=(3, 4))
@@ -104,8 +106,27 @@ def test_pooling_no_dilation_kernel_3x4_same_padding():
 def test_pooling_no_dilation_kernel_4x7_same_padding():
     pooling_general_no_dilation(nbatch=6, nchan=3, nrows=5, ncols=8, 
                                 padding='same', pool_size=(4, 7))
+
+def test_dilated_pooling():
     
-    
+    # create shape=(1, 1, 4, 5) shape
+    x = np.array([[[
+            [47, 68, 25, 67, 83],
+            [23, 92, 57, 14, 23],
+            [72, 89, 42, 90,  8],
+            [39, 68, 48,  7, 44]]]])
+
+np.random.seed(seed=7)
+foo = np.random.randint(0, 99, size=(1,1,4,5))
+bar = K.pool2d(foo, pool_size=(3,2), strides=(1,1),
+               padding='same', pool_mode='max')
+bar.eval()
+bar = K.pool2d(foo, pool_size=(3,2), strides=(1,1),
+               padding='valid', pool_mode='max')
+bar.eval()
+bar = K.pool2d(foo, pool_size=(3,3), strides=(1,1),
+               padding='valid', pool_mode='max')
+bar.eval()
 
 if __name__ == '__main__':
     pytest.main([__file__])
