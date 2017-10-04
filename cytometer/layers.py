@@ -131,6 +131,42 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
                  data_format=None, dilation_rate=1, **kwargs):
         super(DilatedMaxPooling2D, self).__init__(pool_size, strides, padding,
                                            data_format, dilation_rate, **kwargs)
+        
+    def _block_padding(self, block, pool_size, data_format):
+        
+        # how many rows/cols has padding='same' added BEFORE the 
+        # padding='valid' block
+        # this follows the padding formula in keras/backend/theano_backend.py
+        row_padding_before = pool_size[0] - 2 if pool_size[0] > 2 and pool_size[0] % 2 == 1 else pool_size[0] - 1
+        col_padding_before = pool_size[1] - 2 if pool_size[1] > 2 and pool_size[1] % 2 == 1 else pool_size[1] - 1
+
+        # block size
+        sz = K.shape(block)
+        if data_format == 'channels_first': # (batch,chan,row,col)
+            nbatch = sz[0]
+            nchan = sz[1]
+            nrows = sz[2]
+            ncols = sz[3]
+        elif data_format == 'channels_last': # (batch,row,col,chan)
+            nbatch = sz[0]
+            nrows = sz[1]
+            ncols = sz[2]
+            nchan = sz[3]
+        else:
+            raise ValueError('Expected data_format to be channels_first or channels_last')
+
+        # output size that we would have with padding='valid'
+        row_valid_size = nrows - pool_size[0] + 1
+        col_valid_size = ncols - pool_size[1] + 1
+
+        # how many rows/cols has padding='same' added AFTER the 
+        # padding='valid' block
+        row_padding_after = nrows - row_valid_size - row_padding_before
+        col_padding_after = ncols - col_valid_size - col_padding_before
+        
+        return ((row_padding_before, row_padding_after), 
+                (col_padding_before, col_padding_after))
+
 
     def _pooling_function(self, inputs, pool_size, strides,
                           padding, data_format, dilation_rate):
@@ -220,6 +256,9 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         Finally, if the user wanted only padding='valid', we crop out the 
         borders of the array.
         """
+        
+        if (strides != 1) and (strides != (1,1)):
+            raise Exception('Only implemented for strides=1 or strides=(1,1)')
 
         sz = K.shape(inputs)
         if data_format == 'channels_first': # (batch,chan,row,col)
@@ -254,6 +293,10 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         # all the blocks that split the inputs. Now we can iterate all the 
         # blocks and process them separately
         block_slices_combinatorial = itertools.product(*[block_slices_row, block_slices_col])
+        total_row_padding_before=0
+        total_row_padding_after=0
+        total_col_padding_before=0
+        total_col_padding_after=0
         for sl in block_slices_combinatorial:
             # DEBUG: sl = list(itertools.islice(block_slices_combinatorial, 1))[0]
 
@@ -273,6 +316,14 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
                                     pool_mode='max')
             #print(block_pooled.eval()) # DEBUG
             
+            # compute amount of padding that this blocks contributes
+            ((row_padding_before, row_padding_after), 
+             (col_padding_before, col_padding_after)) = self._block_padding(block=block_pooled, pool_size=pool_size, data_format=data_format)
+            total_row_padding_before += row_padding_before
+            total_row_padding_after += row_padding_after
+            total_col_padding_before += col_padding_before
+            total_col_padding_after += col_padding_after
+            
             # put block into output
             if (K.backend() == 'theano'):
                 outputs = T.set_subtensor(outputs[block_slice], block_pooled)
@@ -281,33 +332,28 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
             else:
                 raise Exception('not implemented')
 
+        # row blocks contribute redundantly to the amount of padding columns,
+        # and column blocks to padding rows. We divide by the number of blocks
+        # alon each axis to obtain the actual amount of padding in the input
+        total_row_padding_before /= dilation_rate[1]
+        total_row_padding_after /= dilation_rate[1]
+        total_col_padding_before /= dilation_rate[0]
+        total_col_padding_after /= dilation_rate[0]
  
+        total_row_padding_before = int(total_row_padding_before)
+        total_row_padding_after = int(total_row_padding_after.eval())
+        total_col_padding_before = int(total_col_padding_before)
+        total_col_padding_after = int(total_col_padding_after.eval())
+    
         # remove the border where the kernel didn't fully overlap the input
         if padding == 'valid':
 
-            # size of the dilated kernel            
-            dilated_pool_size = ((pool_size[0] - 1) * dilation_rate[0] + 1,
-                                 (pool_size[1] - 1) * dilation_rate[1] + 1)
-            
-            # first index to slice the output that corresponds to padding='same'
-            # this follows the padding formula in keras/backend/theano_backend.py
-            row_first_idx = dilated_pool_size[0] - 2 if dilated_pool_size[0] > 2 and dilated_pool_size[0] % 2 == 1 else dilated_pool_size[0] - 1
-            col_first_idx = dilated_pool_size[1] - 2 if dilated_pool_size[1] > 2 and dilated_pool_size[1] % 2 == 1 else dilated_pool_size[1] - 1
-
-            # output size with padding='valid'
-            row_valid_size = nrows - dilated_pool_size[0] + 1
-            col_valid_size = ncols - dilated_pool_size[1] + 1
-
-            # last idex to slice the output
-            row_last_idx = row_first_idx + row_valid_size
-            col_last_idx = col_first_idx + col_valid_size
-            
             if data_format == 'channels_first': # (batch,chan,row,col)
-                outputs = outputs[:, :, row_first_idx:row_last_idx, 
-                                  col_first_idx:col_last_idx]
+                outputs = outputs[:, :, total_row_padding_before:(nrows-total_row_padding_after), 
+                                  total_col_padding_before:(ncols-total_col_padding_after)]
             elif data_format == 'channels_last': # (batch,row,col,chan)
-                outputs = outputs[:, row_first_idx:row_last_idx, 
-                                  col_first_idx:col_last_idx, :]
+                outputs = outputs[:, total_row_padding_before:(nrows-total_row_padding_after), 
+                                  total_col_padding_before:(ncols-total_col_padding_after), :]
                     
         # return tensor
         return outputs

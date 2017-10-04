@@ -107,8 +107,41 @@ def test_pooling_no_dilation_kernel_4x7_same_padding():
     pooling_general_no_dilation(nbatch=6, nchan=3, nrows=5, ncols=8, 
                                 padding='same', pool_size=(4, 7))
 
+# Test dilated pooling in MaxPooling2D._pooling_function
 def test_dilated_pooling():
-    
 
-if __name__ == '__main__':
-    pytest.main([__file__])
+    inputs = K.variable(
+        np.array([[[[ 47.,  68.,  25.,  67.,  83.,  23.,  92.,  57.,  14.,  23.,  72.],
+                    [ 89.,  42.,  90.,   8.,  39.,  68.,  48.,   7.,  44.,   0.,  75.],
+                    [ 55.,   6.,  19.,  60.,  44.,  63.,  69.,  56.,  24.,  55.,  53.],
+                    [ 61.,  64.,  34.,  56.,  73.,  78.,  38.,   4.,   9.,  87.,  67.],
+                    [ 72.,  83.,  48.,   1.,  64.,  16.,  31.,  93.,  44.,  92.,  71.],
+                    [ 23.,  10.,  35.,  64.,  61.,   7.,  23.,  92.,  96.,  21.,  35.],
+                    [ 97.,  67.,  91.,  97.,  19.,  27.,   4.,  19.,  33.,  30.,  57.],
+                    [ 73.,  93.,  81.,  31.,   2.,  83.,  50.,  18.,  21.,  67.,  75.]]]]))
+
+    # instantiate max pooling layer
+    pool_layer = layers.DilatedMaxPooling2D(pool_size=(3,3), strides=(1,1), 
+                                            padding='valid', data_format='channels_first', 
+                                            dilation_rate=(2,3))
+    
+    # compute output using MaxPooling2D    
+    outputs = pool_layer._pooling_function(inputs, 
+                                          pool_size=pool_layer.get_config()['pool_size'], 
+                                          strides=pool_layer.get_config()['strides'],
+                                          padding=pool_layer.get_config()['padding'], 
+                                          data_format=pool_layer.get_config()['data_format'], 
+                                          dilation_rate=pool_layer.get_config()['dilation_rate'])
+    outputs = outputs.eval()
+    
+    expected_outputs = np.array([[[
+            [ 92.,  93.,  63.,  92.,  93.],
+            [ 89.,  92.,  96.,  87.,  92.],
+            [ 97.,  93.,  91.,  97.,  93.],
+            [ 73.,  93.,  96.,  87.,  92.]]]])
+
+
+    np.testing.assert_array_equal(expected_outputs, outputs)
+    
+#if __name__ == '__main__':
+#    pytest.main([__file__])
