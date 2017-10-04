@@ -109,24 +109,6 @@ def test_pooling_no_dilation_kernel_4x7_same_padding():
 
 def test_dilated_pooling():
     
-    # create shape=(1, 1, 4, 5) shape
-    x = np.array([[[
-            [47, 68, 25, 67, 83],
-            [23, 92, 57, 14, 23],
-            [72, 89, 42, 90,  8],
-            [39, 68, 48,  7, 44]]]])
-
-np.random.seed(seed=7)
-foo = np.random.randint(0, 99, size=(1,1,4,5))
-bar = K.pool2d(foo, pool_size=(3,2), strides=(1,1),
-               padding='same', pool_mode='max')
-bar.eval()
-bar = K.pool2d(foo, pool_size=(3,2), strides=(1,1),
-               padding='valid', pool_mode='max')
-bar.eval()
-bar = K.pool2d(foo, pool_size=(3,3), strides=(1,1),
-               padding='valid', pool_mode='max')
-bar.eval()
 
 if __name__ == '__main__':
     pytest.main([__file__])
