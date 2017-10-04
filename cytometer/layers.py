@@ -284,17 +284,30 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
  
         # remove the border where the kernel didn't fully overlap the input
         if padding == 'valid':
+
+            # size of the dilated kernel            
+            dilated_pool_size = ((pool_size[0] - 1) * dilation_rate[0] + 1,
+                                 (pool_size[1] - 1) * dilation_rate[1] + 1)
             
-            padding_size = np.true_divide(np.array(pool_size)-1, 2.0)
-            padding_size = {'row': (int(np.ceil(padding_size[0])), int(np.floor(padding_size[0]))),
-                            'col': (int(np.ceil(padding_size[1])), int(np.floor(padding_size[1])))}
+            # first index to slice the output that corresponds to padding='same'
+            # this follows the padding formula in keras/backend/theano_backend.py
+            row_first_idx = dilated_pool_size[0] - 2 if dilated_pool_size[0] > 2 and dilated_pool_size[0] % 2 == 1 else dilated_pool_size[0] - 1
+            col_first_idx = dilated_pool_size[1] - 2 if dilated_pool_size[1] > 2 and dilated_pool_size[1] % 2 == 1 else dilated_pool_size[1] - 1
+
+            # output size with padding='valid'
+            row_valid_size = nrows - dilated_pool_size[0] + 1
+            col_valid_size = ncols - dilated_pool_size[1] + 1
+
+            # last idex to slice the output
+            row_last_idx = row_first_idx + row_valid_size
+            col_last_idx = col_first_idx + col_valid_size
             
             if data_format == 'channels_first': # (batch,chan,row,col)
-                outputs = outputs[:, :, padding_size['row'][0]:nrows-padding_size['row'][1], 
-                                  padding_size['col'][0]:ncols-padding_size['col'][1]]
+                outputs = outputs[:, :, row_first_idx:row_last_idx, 
+                                  col_first_idx:col_last_idx]
             elif data_format == 'channels_last': # (batch,row,col,chan)
-                outputs = outputs[:, padding_size['row'][0]:nrows-padding_size['row'][1], 
-                                  padding_size['col'][0]:ncols-padding_size['col'][1], :]
+                outputs = outputs[:, row_first_idx:row_last_idx, 
+                                  col_first_idx:col_last_idx, :]
                     
         # return tensor
         return outputs
