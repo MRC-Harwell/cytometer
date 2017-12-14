@@ -37,6 +37,10 @@ else
     source ~/.bashrc
 fi
 
+# delete compiled python files. After an Ubuntu upgrade, it seems that the old .pyc files give the error
+# "subprocess.CalledProcessError: Command 'lsb_release -a' returned non-zero exit status 1."
+
+
 ########################################################################
 ## python environment for cytometer
 if [ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -w cytometer)" ]; then
