@@ -174,17 +174,17 @@ to the beginning of every python script
         keras.backend.set_image_dim_ordering('th')
 1. If you want to use Theano as the backend, instead of using `~/.theanorc`, add configuration options to your script, e.g.
 
-	os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0'
-	
-	# configure Theano
-	if os.environ['KERAS_BACKEND'] == 'theano':
-	    import theano
-	    theano.config.enabled = True
-	    theano.config.dnn.include_path = os.environ['CONDA_PREFIX'] + '/include'
-	    theano.config.dnn.library_path = os.environ['CONDA_PREFIX'] + '/lib'
-	    theano.config.blas.ldflags = '-lblas -lgfortran'
-	    theano.config.nvcc.fastmath = True
-	    theano.config.nvcc.flags = '-D_FORCE_INLINES'
+	    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0'
+	    
+	    # configure Theano
+	    if os.environ['KERAS_BACKEND'] == 'theano':
+	        import theano
+	        theano.config.enabled = True
+	        theano.config.dnn.include_path = os.environ['CONDA_PREFIX'] + '/include'
+	        theano.config.dnn.library_path = os.environ['CONDA_PREFIX'] + '/lib'
+	        theano.config.blas.ldflags = '-lblas -lgfortran'
+	        theano.config.nvcc.fastmath = True
+	        theano.config.nvcc.flags = '-D_FORCE_INLINES'
    * *Note:* `nvcc.flags=-D_FORCE_INLINES` needed to avoid `error: ‘memcpy’ was not declared in this scope`
 1. If you want to use Tensorflow as the backend, it will use the GPU automatically 
 if one is available, you don't need a configuration file
