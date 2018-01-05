@@ -73,7 +73,7 @@ python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
 python setup.py install --prefix=$CONDA_PREFIX
 
 # install gcc in conda to avoid CUDA compilation problems
-conda install -y gcc
+conda install -y gcc libgcc
 
 # install other python packages
 conda install -y matplotlib pillow spyder
@@ -93,12 +93,17 @@ fi
 
 source activate DeepCell
 
+# current latest version of pip (9.0.1) gives "Command 'lsb_release
+# -a' returned non-zero exit status 1" error, so we need to downgrade
+# to 8.1.2
+conda install -y pip=8.1.2
+
+# install gcc in conda to avoid CUDA compilation problems
+conda install -y libgcc=5.2.0
+
 # install Keras 1
 conda install -y keras=1.1.1 theano=0.9.0
 conda install -y Cython cudnn=5.1 pygpu=0.6.9
-
-# install gcc in conda to avoid CUDA compilation problems
-conda install -y gcc
 
 # install other python packages
 conda install -y matplotlib pillow spyder
