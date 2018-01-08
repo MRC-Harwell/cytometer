@@ -18,6 +18,9 @@ tput setaf 1; echo "** Build tools"; tput sgr0
 # build tools
 sudo apt install -y cmake
 
+# python IDE
+sudo snap install pycharm-community --classic
+
 # BLAS library, development version, so that Theano code can be compiled with it
 sudo apt install -y libblas-dev
 
@@ -70,18 +73,15 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX ||
 make || exit 1
 make install || exit 1
 cd ..
-python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include || exit 1
-python setup.py install --prefix=$CONDA_PREFIX || exit 1
-
-# install gcc in conda to avoid CUDA compilation problems
-conda install -y gcc libgcc
+python setup.py -q build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include || exit 1
+python setup.py -q install --prefix=$CONDA_PREFIX || exit 1
 
 # install other python packages
-conda install -y matplotlib pillow spyder
-conda install -y scikit-image scikit-learn h5py
-conda install -y -c conda-forge tifffile mahotas
-conda install -y nose pytest
-pip install opencv-python pysto
+conda install -y matplotlib pillow spyder || exit 1
+conda install -y scikit-image scikit-learn h5py || exit 1
+conda install -y -c conda-forge tifffile mahotas || exit 1
+conda install -y nose pytest || exit 1
+pip install opencv-python pysto || exit 1
 
 ########################################################################
 ## python environment for DeepCell
@@ -97,21 +97,18 @@ source activate DeepCell
 # current latest version of pip (9.0.1) gives "Command 'lsb_release
 # -a' returned non-zero exit status 1" error, so we need to downgrade
 # to 8.1.2
-conda install -y pip=8.1.2
-
-# install gcc in conda to avoid CUDA compilation problems
-conda install -y libgcc=5.2.0
+conda install -y pip=8.1.2 || exit
 
 # install Keras 1
-conda install -y keras=1.1.1 theano=0.9.0
-conda install -y Cython cudnn=5.1 pygpu=0.6.9
+conda install -y keras=1.1.1 theano=0.9.0 || exit 1
+conda install -y Cython cudnn=5.1 pygpu=0.6.9 || exit 1
 
 # install other python packages
-conda install -y matplotlib pillow spyder
-conda install -y scikit-image scikit-learn h5py
-conda install -y -c conda-forge tifffile mahotas
-conda install -y nose pytest
-pip install opencv-python pysto
+conda install -y matplotlib pillow spyder || exit 1
+conda install -y scikit-image scikit-learn h5py || exit 1
+conda install -y -c conda-forge tifffile mahotas || exit 1
+conda install -y nose pytest || exit 1
+pip install opencv-python pysto || exit 1
 
 # clear Theano cache. Previous runs of Keras may cause CUDA compilation/version compatibility problems
 theano-cache purge
