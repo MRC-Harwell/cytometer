@@ -30,7 +30,9 @@ else:
 
 # configure Theano global options
 #os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,gpuarray.preallocate=0.5'
-os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.75'
+os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.75,dnn.include_path=' + os.environ['CONDA_PREFIX'] + '/include'
+#####################include_path=/usr/include/x86_64-linux-gnu:/usr/include
+os.environ['INCLUDE_PATH'] = '/usr/include'
 
 # configure Theano
 if os.environ['KERAS_BACKEND'] == 'theano':
