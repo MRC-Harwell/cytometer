@@ -66,11 +66,12 @@ else # no previous version exists
     mkdir Build
 fi
 cd Build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
-make install
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX || exit 1
+make || exit 1
+make install || exit 1
 cd ..
-python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
-python setup.py install --prefix=$CONDA_PREFIX
+python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include || exit 1
+python setup.py install --prefix=$CONDA_PREFIX || exit 1
 
 # install gcc in conda to avoid CUDA compilation problems
 conda install -y gcc libgcc
