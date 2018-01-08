@@ -49,19 +49,19 @@ fi
 source activate cytometer
 
 # install Tensorflow, Theano and keras latest version from source
-pip install tensorflow-gpu pyyaml
-pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
-pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
-pip install nose-parameterized
-conda install -y Cython cudnn=6 mkl-service
+pip install tensorflow-gpu pyyaml || exit 1
+pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps || exit 1
+pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps || exit 1
+pip install nose-parameterized || exit 1
+conda install -y Cython cudnn=6 mkl-service || exit 1
 
 # install libgpuarray from source, with python bindings
 cd ~/Software
 if [ -d libgpuarray ]; then # previous version present
     cd libgpuarray
-    git pull
+    git pull || exit 1
 else # no previous version exists
-    git clone https://github.com/Theano/libgpuarray.git
+    git clone https://github.com/Theano/libgpuarray.git || exit 1
     cd libgpuarray
     mkdir Build
 fi
