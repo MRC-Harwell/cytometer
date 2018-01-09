@@ -18,6 +18,9 @@ tput setaf 1; echo "** Build tools"; tput sgr0
 # build tools
 sudo apt install -y cmake
 
+# for DeepCell
+sudo apt install gcc-5 g++-5
+
 # python IDE
 sudo snap install pycharm-community --classic
 
