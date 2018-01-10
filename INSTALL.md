@@ -36,11 +36,25 @@ drive.
 
         cd cytometer
 
-# Dependencies and local conda environment
+# Dependencies and local conda environments
 
-You can install the dependencies and set up the local conda environment running
-the shell script `install_dependencies.sh` (some user interaction required), or 
-manually following the steps below
+You can install the dependencies and set up the local conda environments running
+the shell script [`install_dependencies.sh`](http://phobos/r.casero/cytometer/blob/master/install_dependencies.sh).
+
+This will create two local environments:
+* `cytometer`: for the code of this project.
+* `DeepCell`: for experiments with the DeepCell architectures by D. Van Valen (Keras 1 / Theano).
+   * Installed with [`install_deepcell_environment.sh`](https://github.com/rcasero/pysto/blob/master/tools/install_deepcell_environment.sh)
+
+
+## Notes on Ubuntu dependencies
+
+* We use the NVIDIA drivers (`nvidia-387`) rather than the open source nouveau 
+  (`xserver-xorg-video-nouveau`), so that we have full access to the NVIDIA 
+  graphic card features.
+* We use Miniconda to install conda and create local python environments.
+* We install the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), 
+rather than using Ubuntu packages.
 
 ## GPU drivers and python package manager
 
