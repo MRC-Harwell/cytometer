@@ -10,8 +10,28 @@
 
 tput setaf 1; echo "** NVIDIA drivers"; tput sgr0
 
-# nVIDIA CUDA drivers and toolkit
-sudo apt install -y nvidia-cuda-dev nvidia-cuda-toolkit
+## CUDA Toolkit installation. There are several options (uncomment the preferred one):
+
+# Option 1. CUDA Toolkit from the Ubuntu distribution packages
+# sudo apt install -y nvidia-cuda-dev nvidia-cuda-toolkit
+
+# Option 2. From Nvidia website: CUDA Toolkit 9.1 for Ubuntu 16.04
+# pushd ~/Downloads || exit 1
+# wget https://developer.nvidia.com/compute/cuda/9.1/Prod/local_installers/cuda-repo-ubuntu1604-9-1-local_9.1.85-1_amd64 || exit 1
+# sudo dpkg -i cuda-repo-ubuntu1604-9-1-local_9.1.85-1_amd64.deb
+# sudo apt-key add /var/cuda-repo-9-1-local/7fa2af80.pub
+# sudo apt-get update
+# sudo apt-get install cuda
+# popd
+
+# Option 3. From Nvidia website: CUDA Toolkit 9.1 for Ubuntu 17.04
+pushd ~/Downloads || exit 1
+wget https://developer.nvidia.com/compute/cuda/9.1/Prod/local_installers/cuda-repo-ubuntu1704-9-1-local_9.1.85-1_amd64
+sudo dpkg -i cuda-repo-ubuntu1704-9-1-local_9.1.85-1_amd64.deb
+sudo apt-key add /var/cuda-repo-9-1-local/7fa2af80.pub
+sudo apt-get update
+sudo apt-get install cuda
+popd
 
 tput setaf 1; echo "** Build tools"; tput sgr0
 
@@ -104,7 +124,7 @@ conda install -y pip=8.1.2 || exit
 
 # install Keras 1
 conda install -y keras=1.1.1 theano=0.9.0 || exit 1
-conda install -y Cython cudnn=5.1 pygpu=0.6.9 || exit 1
+conda install -y cudnn=5.1 pygpu=0.6.9 || exit 1
 
 # install other python packages
 conda install -y matplotlib pillow spyder || exit 1
