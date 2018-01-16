@@ -160,18 +160,26 @@ You need to set
  * Setting `LD_LIBRARY_PATH` in `~/.bashrc` won't work because when `.bashrc` is read (upon opening a shell), you have not activated a conda environment yet
 * `PYTHONPATH` so that python can find the cytometer modules
 
-If you are working with an IDE, e.g.
+## If the IDE is spyder
 
-    PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH pycharm-community &
-
-or
+You can launch the IDE from a terminal
 
     PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH spyder &
 
+Alternatively, set and export the environmental variables once
 
-To run a python script directly from the shell
+    export PYTHONPATH=~/Software/cytometer:$PYTHONPATH
+    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
-    PYTHONPATH=~/Software/cytometer:$PYTHONPATH LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH python scripts/basic_cnn.py
+and then call the IDE as
+
+    spyder &
+
+## If the IDE is pycharm-community
+
+You can launch the IDE from a terminal
+
+    PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH pycharm-community &
 
 Alternatively, set and export the environmental variables once
 
@@ -182,13 +190,21 @@ and then call the IDE as
 
     pycharm-community &
 
-or
+## To run a python script directly from the shell
 
-    spyder &
+You can run the script as
 
-or run the script as
+    PYTHONPATH=~/Software/cytometer:$PYTHONPATH LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH python scripts/basic_cnn.py
+
+Alternatively, set and export the environmental variables once
+
+    export PYTHONPATH=~/Software/cytometer:$PYTHONPATH
+    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+and then run the script as
 
     python scripts/basic_cnn.py
+
 
 # Cloud computing on Amazon Web Services
 
