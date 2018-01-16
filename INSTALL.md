@@ -194,6 +194,11 @@ Alternatively, set and export the environmental variables once
 and then call the IDE as
 
     pycharm-community &
+    
+You also have to select the python version in File -> Settings -> Project: scripts 
+-> Project Interpreter.
+
+For example, "Python 3.6 (cytometer) ~/.conda/envs/cytometer/bin/python"
 
 ## To run a python script directly from the shell
 
