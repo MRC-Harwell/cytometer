@@ -57,25 +57,9 @@ The `install_dependencies.sh` script:
 * Installs the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), 
 rather than using Ubuntu packages.
 
-## GPU drivers and python package manager
+# Checking that your GPU is correctly set-up
 
-1. Make sure you are using the nVIDIA drivers, instead of `xserver-xorg-video-nouveau`.
-1. Install NVIDIA CUDA development files
-
-        sudo apt-get install -y nvidia-cuda-dev nvidia-cuda-toolkit
-1. Install [conda](https://conda.io/docs/intro.html)
-   1. Download the [Miniconda bash installer](https://conda.io/miniconda.html) (e.g. for linux 64-bit, `Miniconda2-latest-Linux-x86_64.sh`).
-   1. Make the script executable and run it as root
-
-            cd ~/Downloads
-            chmod u+x Miniconda3-latest-Linux-x86_64.sh
-            sudo ./Miniconda3-latest-Linux-x86_64.sh
-   1. When it asks for the install destination, select `/opt/miniconda2`, rather than the default `/home/rcasero/miniconda2`.
-   1. "Do you wish the installer to prepend the Miniconda2 install location to PATH in your /home/rcasero/.bashrc ? [yes|no]". Select yes.
-
-### Checking your GPU set-up
-
-1. Check that you have a working GPU
+1. Check that you get something similar to this on a terminal
 
         $ nvidia-smi
         Wed Jun 28 15:20:35 2017
@@ -98,125 +82,46 @@ rather than using Ubuntu packages.
         |    0      2283    G   ...el-token=493C1790BE0AE309A3CB57689C7C3E71   146MiB |
         +-----------------------------------------------------------------------------+
 
-## Create `conda` virtual environment
+# Configuring Keras to be used in a python script
 
-1. Create a conda environment for cytometer
- * Python 3.6 for Keras/Theano master versions
+Keras can be configured with file [`~/.keras/keras.json`](https://keras.io/backend/#kerasjson-details), 
+but this will set the same configuration for all conda environments.
 
-            conda create -y --name cytometer python=3.6
+Alternatively, you can configure Keras in each separate script with code similar
+to this:
 
-## Preparing virtual python environment to run `cytometer`
+    import os
+    os.environ['KERAS_BACKEND'] = 'theano'
+    import keras.backend as K
+    K.set_image_dim_ordering('th') # theano's image format
+    K.set_floatx('float32')
+    K.set_epsilon('1e-07')
 
-Installing official conda packages for Keras/Theano didn't work for me. Installing
-Theano 0.8.2 with Keras 2.0.2 and python 3.5 would fail to `import theano` due to
-compilation errors when the GPU was selected, whereas Theano 0.9.0 would make Keras segfault with `model.add()`
-using the GPU. Instead, we work with the latest `master` versions of Keras and Theano.
+# Configuring Theano to be used in a python script in a conda environment
 
-1. Install build tool CMake
-        sudo apt install -y cmake
+Theano can be configured with file `.theanorc`, but as above, this gives the same
+configuration to all conda environments and scripts.
 
-1. Install BLAS library, development version, so that Theano code can be compiled with it
+It's also possible to use assignments to `theano.config.<property>`. However, 
+some options need to be set in `THEANO_FLAGS` **before** the `import theano` or
+`import keras` statement.
 
-        sudo apt install -y libblas-dev
-1. Install python packages
+In particular, to avoid CUDA/cuDNN compilation errors when we want to use the 
+GPU, it's necessary to add something like this
 
-        # Select local conda environment
-        source activate cytometer
-        
-        # install keras, theano and tensorflow (this way we get their dependencies)
-        # As of this writing: keras-2.0.6 numpy-1.13.1 pyyaml-3.12 scipy-0.19.1 six-1.10.0 theano-0.9.0
-        # backports.weakref-1.0rc1 bleach-1.5.0 html5lib-0.9999999 markdown-2.6.8 protobuf-3.3.0 tensorflow-1.2.1 tensorflow-gpu-1.2.1 werkzeug-0.12.2
-        pip install tensorflow-gpu pyyaml
-        
-        # Upgrade keras and theano to latest versions
-        # As of this writing: Keras-2.0.6, Theano-0.10.0.dev1
-        pip install git+https://github.com/fchollet/keras.git --upgrade --no-deps
-        pip install git+https://github.com/Theano/Theano.git --upgrade --no-deps
-        
-        # For theano.test()
-        # As of this writing: nose-parameterized-0.6.0
-        pip install nose-parameterized
-        
-        # Tensorflow/Theano GPU dependencies
-        # As of this writing: Cython=0.26
-        conda install -y Cython
-    If you want to use tensorflow, current package needs cudnn 5.x
-    
-        conda install -y cudnn=5
-        
-    If you want to use theano, current package needs cudnn 6.x
-    
-        conda install cudnn=6
-    Rest of common packages
-    
-        # Build and install libgpuarray/pygpu from source (we are going to install in the local conda environment)
-        # As of this writing: pygpu=0.6.8 libgpuarray=0.6.8
-        cd ~/Software
-        git clone https://github.com/Theano/libgpuarray.git
-        cd libgpuarray
-        mkdir Build
-        cd Build
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$CONDA_PREFIX
-        make install
-        cd ..
-        python setup.py build_ext -L $CONDA_PREFIX/lib -I $CONDA_PREFIX/include
-        python setup.py install --prefix=$CONDA_PREFIX
-        
-        
-        # Basic python dependencies
-        # As of this writing: matplotlib=2.0.2 pillow=4.2.1 spyder=3.1.4
-        conda install -y matplotlib pillow spyder
-        
-        # DeepCell dependencies
-        # As of this writing: scikit-image=0.13.0 scikit-learn=0.18.2 h5py=2.7.0
-        # tifffile=0.12.0 mahotas=1.4.3
-        conda install -y scikit-image scikit-learn h5py
-        conda install -y -c conda-forge tifffile mahotas
-        
-		# To test pygpu
-		conda install -y nose
-		
-        # go back to the cytometer directory
-        cd ~/Software/cytometer
-1. So that we can have a Keras configuration for DeepCell and another for our project, 
-we are not going to use `~/.keras/keras.json`. Instead, we add snippets like this
-to the beginning of every python script
-       
-        import os
-        import keras
-        os.environ['KERAS_BACKEND'] = 'theano'
-        reload(keras.backend)
-        keras.backend.set_image_dim_ordering('th')
-1. If you want to use Theano as the backend, instead of using `~/.theanorc`, add configuration options to your script, e.g.
+    import os
+    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.75,' \
+                                 + 'dnn.include_path=' + os.environ['CONDA_PREFIX'] + '/include,' \
+                                 + 'dnn.library_path=' + os.environ['CONDA_PREFIX'] + '/lib,' \
+                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
+                                 + 'nvcc.fastmath=True'
+    import theano
 
-	    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0'
-	    
-	    # configure Theano
-	    if os.environ['KERAS_BACKEND'] == 'theano':
-	        import theano
-	        theano.config.enabled = True
-	        theano.config.dnn.include_path = os.environ['CONDA_PREFIX'] + '/include'
-	        theano.config.dnn.library_path = os.environ['CONDA_PREFIX'] + '/lib'
-	        theano.config.blas.ldflags = '-lblas -lgfortran'
-	        theano.config.nvcc.fastmath = True
-	        theano.config.nvcc.flags = '-D_FORCE_INLINES'
-   * *Note:* `nvcc.flags=-D_FORCE_INLINES` needed to avoid `error: ‘memcpy’ was not declared in this scope`
-1. If you want to use Tensorflow as the backend, it will use the GPU automatically 
-if one is available, you don't need a configuration file
-1. In python, choose a backend. E.g. Tensorflow
+# Configuring Tensorflow to be used in a python script in a conda environment
 
-        import os
-        os.environ['KERAS_BACKEND'] = 'tensorflow'
-        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer/lib'
-        import keras
-        keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
-   or Theano
 
-        import os
-        os.environ['KERAS_BACKEND'] = 'theano'
-        os.environ['LIBRARY_PATH'] = '/home/rcasero/.conda/envs/cytometer/lib'
-        import keras
-        keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
+If you want to use Tensorflow as the backend, it will use the GPU automatically 
+if one is available, you don't need a configuration file.
 
 ### Tests
 
