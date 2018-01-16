@@ -49,11 +49,12 @@ This will create two local environments:
 
 ## Notes on Ubuntu dependencies
 
-* We use the NVIDIA drivers (`nvidia-387`) rather than the open source nouveau 
+The `install_dependencies.sh` script:
+* Installs the NVIDIA drivers (`nvidia-387`) rather than the open source nouveau 
   (`xserver-xorg-video-nouveau`), so that we have full access to the NVIDIA 
   graphic card features.
-* We use Miniconda to install conda and create local python environments.
-* We install the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), 
+* Uses Miniconda to install conda and create local python environments.
+* Installs the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), 
 rather than using Ubuntu packages.
 
 ## GPU drivers and python package manager
