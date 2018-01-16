@@ -123,7 +123,7 @@ GPU, it's necessary to add something like this
 If you want to use Tensorflow as the backend, it will use the GPU automatically 
 if one is available, you don't need a configuration file.
 
-### Tests
+# Testing conda environment from the command line
 
 1. To test `pygpu`
 
@@ -160,20 +160,29 @@ You need to set
  * Setting `LD_LIBRARY_PATH` in `~/.bashrc` won't work because when `.bashrc` is read (upon opening a shell), you have not activated a conda environment yet
 * `PYTHONPATH` so that python can find the cytometer modules
 
-If you are working in Spyder,
+If you are working with an IDE, e.g.
+
+    PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH pycharm-community &
+
+or
 
     PYTHONPATH=~/Software/cytometer LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH spyder &
 
-To run the script directly from the shell
+
+To run a python script directly from the shell
 
     PYTHONPATH=~/Software/cytometer:$PYTHONPATH LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH python scripts/basic_cnn.py
 
-Or simply set and export the environmental variables once
+Alternatively, set and export the environmental variables once
 
     export PYTHONPATH=~/Software/cytometer:$PYTHONPATH
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
-and then call spyder as
+and then call the IDE as
+
+    pycharm-community &
+
+or
 
     spyder &
 
