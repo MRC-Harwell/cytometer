@@ -115,6 +115,7 @@ In particular, to avoid CUDA/cuDNN compilation errors when we want to use the
 GPU, it's necessary to add something like this
 
     import os
+    os.environ['MKL_THREADING_LAYER'] = 'GNU'
     os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.75,' \
                                  + 'dnn.include_path=' + os.environ['CONDA_PREFIX'] + '/include,' \
                                  + 'dnn.library_path=' + os.environ['CONDA_PREFIX'] + '/lib,' \
