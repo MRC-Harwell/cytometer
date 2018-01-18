@@ -10,8 +10,7 @@ import pytest
 
 import os
 os.environ['KERAS_BACKEND'] = 'theano'
-if (K.backend() == 'tensorflow'):
-    os.environ['MKL_THREADING_LAYER'] = 'GNU'
+os.environ['MKL_THREADING_LAYER'] = 'GNU'
 
 # different versions of conda keep the path in different variables
 if 'CONDA_ENV_PATH' in os.environ:
