@@ -19,11 +19,6 @@ import itertools
 
 if K.backend() == 'theano':
     import theano.tensor as T
-elif K.backend() == 'tensorflow':
-    raise Exception('Functions not implemented for tensorflow')
-else:
-    raise Exception('Functions not implemented for this backend')
-
 
 class _DilatedPooling2D(Layer):
     """Abstract class for different pooling 2D layers.
@@ -276,8 +271,14 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
 
         # allocate space for output
         outputs = K.zeros(shape=sz.eval())
-        
-        # compute slice objects. Each slice object will be used to split the 
+
+        # initialise session for tensorflow
+        if (K.backend() == 'tensorflow'):
+            import tensorflow as tf
+            with tf.Session() as sess:
+                sess.run(outputs)
+
+        # compute slice objects. Each slice object will be used to split the
         # input into a block. Each block will be pooled with dilation=1 (no 
         # dilation). The overall effect is like pooling the whole image with 
         # dilation>1
@@ -328,7 +329,7 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
             if (K.backend() == 'theano'):
                 outputs = T.set_subtensor(outputs[block_slice], block_pooled)
             elif (K.backend() == 'tensorflow'):
-                raise Exception('not implemented')
+                sess.run(outputs[block_slice].assign(block_pooled))
             else:
                 raise Exception('not implemented')
 
