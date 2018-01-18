@@ -10,11 +10,16 @@ import pytest
 
 import os
 os.environ['KERAS_BACKEND'] = 'theano'
+if (K.backend() == 'tensorflow'):
+    os.environ['MKL_THREADING_LAYER'] = 'GNU'
 
-if 'LIBRARY_PATH' in os.environ:
-    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib:' + os.environ['LIBRARY_PATH']
+# different versions of conda keep the path in different variables
+if 'CONDA_ENV_PATH' in os.environ:
+    conda_env_path = os.environ['CONDA_ENV_PATH']
+elif 'CONDA_PREFIX' in os.environ:
+    conda_env_path = os.environ['CONDA_PREFIX']
 else:
-    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib'
+    conda_env_path = '.'
 
 import numpy as np
 
