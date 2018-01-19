@@ -272,12 +272,6 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
         # allocate space for output
         outputs = K.zeros(shape=sz.eval())
 
-        # initialise session for tensorflow
-        if (K.backend() == 'tensorflow'):
-            import tensorflow as tf
-            with tf.Session() as sess:
-                sess.run(outputs)
-
         # compute slice objects. Each slice object will be used to split the
         # input into a block. Each block will be pooled with dilation=1 (no 
         # dilation). The overall effect is like pooling the whole image with 
@@ -329,7 +323,7 @@ class DilatedMaxPooling2D(_DilatedPooling2D):
             if (K.backend() == 'theano'):
                 outputs = T.set_subtensor(outputs[block_slice], block_pooled)
             elif (K.backend() == 'tensorflow'):
-                sess.run(outputs[block_slice].assign(block_pooled))
+                outputs[block_slice].assign(block_pooled)
             else:
                 raise Exception('not implemented')
 
