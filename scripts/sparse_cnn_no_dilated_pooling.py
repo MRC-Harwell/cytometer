@@ -7,30 +7,57 @@ Created on Tue Aug 29 22:15:54 2017
 """
 
 import os
-os.environ['KERAS_BACKEND'] = 'theano'
-#os.environ['KERAS_BACKEND'] = 'tensorflow'
 
-if 'LIBRARY_PATH' in os.environ:
-    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib:' + os.environ['LIBRARY_PATH']
+os.environ['KERAS_BACKEND'] = 'tensorflow'
+
+import sys
+
+cytometer_dir = os.path.expanduser("~/Software/cytometer")
+if cytometer_dir not in sys.path:
+    sys.path.append(cytometer_dir)
+
+# export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+# different versions of conda keep the path in different variables
+if 'CONDA_ENV_PATH' in os.environ:
+    conda_env_path = os.environ['CONDA_ENV_PATH']
+elif 'CONDA_PREFIX' in os.environ:
+    conda_env_path = os.environ['CONDA_PREFIX']
 else:
-    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib'
+    conda_env_path = '.'
 
-from importlib import reload
-import keras
+if os.environ['KERAS_BACKEND'] == 'theano':
+    # configure Theano
+    os.environ['MKL_THREADING_LAYER'] = 'GNU'
+    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
+                                 + 'dnn.include_path=' + conda_env_path + '/include,' \
+                                 + 'dnn.library_path=' + conda_env_path + '/lib,' \
+                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include'
+    import theano
+elif os.environ['KERAS_BACKEND'] == 'tensorflow':
+    # configure tensorflow
+    import tensorflow
+else:
+    raise Exception('No configuration found when the backend is ' + os.environ['KERAS_BACKEND'])
+
+import keras.backend as K
+#from keras import __version__ as keras_version
+#from pkg_resources import parse_version
 
 # configure Keras, to avoid using file ~/.keras/keras.json
-keras.backend.set_image_data_format('channels_first') # theano's image format (required by DeepCell)
-
+K.set_image_dim_ordering('tf')
+K.set_floatx('float32')
+K.set_epsilon('1e-07')
 # fix "RuntimeError: Invalid DISPLAY variable" in cluster runs
-#import matplotlib
-#matplotlib.use('agg')
+# import matplotlib
+# matplotlib.use('agg')
 
 # load module dependencies
-import datetime
+#import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 
-import cytometer.deepcell as deepcell
+#import cytometer.deepcell as deepcell
 import cytometer.deepcell_models as deepcell_models
 import cytometer.models as models
 import cytometer.layers as layers
