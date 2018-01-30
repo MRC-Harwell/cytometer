@@ -30,7 +30,7 @@ set -e
 ## python environment for cytometer
 
 # create or update environment for development with Keras
-~/Software/pysto/tools/install_keras_environment.sh cytometer
+~/Software/python_setup/bin/install_keras_environment.sh cytometer
 
 # install other python packages
 conda install -y matplotlib pillow 
@@ -42,4 +42,4 @@ pip install opencv-python pysto
 ########################################################################
 ## python environment for DeepCell
 
-~/Software/pysto/tools/install_deepcell_environment.sh
+~/Software/python_setup/bin/install_deepcell_environment.sh
