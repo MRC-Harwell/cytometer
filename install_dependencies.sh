@@ -32,6 +32,8 @@ set -e
 # create or update environment for development with Keras
 ~/Software/python_setup/bin/install_keras_environment.sh cytometer
 
+source activate cytometer
+
 # install other python packages
 conda install -y matplotlib pillow 
 conda install -y scikit-image scikit-learn h5py 
