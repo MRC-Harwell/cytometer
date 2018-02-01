@@ -22,29 +22,34 @@ import pysto.imgproc as pymproc
 os.environ['KERAS_BACKEND'] = 'theano'
 #os.environ['KERAS_BACKEND'] = 'tensorflow'
 
-# access to python libraries
-if 'LIBRARY_PATH' in os.environ:
-    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib:' + os.environ['LIBRARY_PATH']
+cytometer_dir = os.path.expanduser("~/Software/cytometer")
+if cytometer_dir not in sys.path:
+    sys.path.append(cytometer_dir)
+
+# export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+# different versions of conda keep the path in different variables
+if 'CONDA_ENV_PATH' in os.environ:
+    conda_env_path = os.environ['CONDA_ENV_PATH']
+elif 'CONDA_PREFIX' in os.environ:
+    conda_env_path = os.environ['CONDA_PREFIX']
 else:
-    os.environ['LIBRARY_PATH'] = os.environ['CONDA_PREFIX'] + '/lib'
+    conda_env_path = '.'
 
-# configure Theano global options
-#os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,gpuarray.preallocate=0.5'
-os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.75,dnn.include_path=' + os.environ['CONDA_PREFIX'] + '/include'
-#####################include_path=/usr/include/x86_64-linux-gnu:/usr/include
-os.environ['PATH'] = '/usr/include:' + os.environ['PATH']
-
-# configure Theano
 if os.environ['KERAS_BACKEND'] == 'theano':
+    # configure Theano
+    os.environ['MKL_THREADING_LAYER'] = 'GNU'
+    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
+                                 + 'dnn.include_path=' + conda_env_path + '/include,' \
+                                 + 'dnn.library_path=' + conda_env_path + '/lib,' \
+                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
+                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-5'
+#                                 + 'cxx=/usr/bin/g++-5,' \
     import theano
-    theano.config.enabled = True
-    theano.config.dnn.include_path = os.environ['CONDA_PREFIX'] + '/include'
-    theano.config.dnn.library_path = os.environ['CONDA_PREFIX'] + '/lib'
-    theano.config.blas.ldflags = '-lblas -lgfortran'
-    theano.config.nvcc.fastmath = True
-    theano.config.nvcc.flags = '-D_FORCE_INLINES'
-    theano.config.cxx = os.environ['CONDA_PREFIX'] + '/bin/g++'
-else :
+elif os.environ['KERAS_BACKEND'] == 'tensorflow':
+    # configure tensorflow
+    import tensorflow
+else:
     raise Exception('No configuration found when the backend is ' + os.environ['KERAS_BACKEND'])
 
 # import and check Keras version
