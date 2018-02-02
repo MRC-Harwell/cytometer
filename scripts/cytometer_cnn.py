@@ -16,8 +16,6 @@ cytometer_dir = os.path.expanduser("~/Software/cytometer")
 if cytometer_dir not in sys.path:
     sys.path.append(cytometer_dir)
 
-# export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-
 # different versions of conda keep the path in different variables
 if 'CONDA_ENV_PATH' in os.environ:
     conda_env_path = os.environ['CONDA_ENV_PATH']
@@ -32,7 +30,8 @@ if os.environ['KERAS_BACKEND'] == 'theano':
     os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
                                  + 'dnn.include_path=' + conda_env_path + '/include,' \
                                  + 'dnn.library_path=' + conda_env_path + '/lib,' \
-                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include'
+                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
+                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-5'
     import theano
 elif os.environ['KERAS_BACKEND'] == 'tensorflow':
     # configure tensorflow
@@ -41,8 +40,6 @@ else:
     raise Exception('No configuration found when the backend is ' + os.environ['KERAS_BACKEND'])
 
 import keras.backend as K
-#from keras import __version__ as keras_version
-#from pkg_resources import parse_version
 
 # configure Keras, to avoid using file ~/.keras/keras.json
 K.set_image_dim_ordering('tf')
