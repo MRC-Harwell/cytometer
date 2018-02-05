@@ -8,7 +8,8 @@ Created on Wed Jan 17 15:40:00 2018
 
 import os
 
-os.environ['KERAS_BACKEND'] = 'tensorflow'
+#os.environ['KERAS_BACKEND'] = 'tensorflow'
+os.environ['KERAS_BACKEND'] = 'theano'
 
 import sys
 
@@ -24,14 +25,17 @@ elif 'CONDA_PREFIX' in os.environ:
 else:
     conda_env_path = '.'
 
+#os.environ['LD_LIBRARY_PATH'] = '/usr/lib/nvidia-387:' + os.environ['LD_LIBRARY_PATH']
+
 if os.environ['KERAS_BACKEND'] == 'theano':
     # configure Theano
     os.environ['MKL_THREADING_LAYER'] = 'GNU'
     os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
-                                 + 'dnn.include_path=' + conda_env_path + '/include,' \
-                                 + 'dnn.library_path=' + conda_env_path + '/lib,' \
-                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
-                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-5'
+                                 + 'dnn.include_path=/usr/include,' \
+                                 + 'dnn.library_path=/usr/lib/x86_64-linux-gnu,' \
+                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include'
+#                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
+#                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-7'
     import theano
 elif os.environ['KERAS_BACKEND'] == 'tensorflow':
     # configure tensorflow
