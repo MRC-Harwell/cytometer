@@ -43,12 +43,43 @@ drive.
 
 # Dependencies and local conda environments
 
-You can install the dependencies and set up the local conda environments running
-the shell script [`install_dependencies.sh`](http://phobos/r.casero/cytometer/blob/master/install_dependencies.sh).
+This is the [compatibility table between CUDA and CUDA versions](https://developer.nvidia.com/rdp/cudnn-download)
+
+| **cuDNN**     | **CUDA**      |
+| ------------- |---------------|
+| v7.0.5        | 9.1           |
+| v7.0.5        | 9.0           |
+| v7.0.5        | 8.0           |
+| v7.0.4        | 9.0           |
+| v7.0.4        | 8.0           |
+| v6.0          | 8.0           |
+| v6.0          | 8.0           |
+| v6.0          | 7.5           |
+| v5.1          | 8.0           |
+| v5.1          | 7.5           |
+
+1. Install dependencies and set up the local conda environments running the 
+shell script [`install_dependencies.sh`](http://phobos/r.casero/cytometer/blob/master/install_dependencies.sh).
+
+        ./install_dependencies.sh
+1. Install latest cuDNN
+ 1. Sign up as ["NVIDIA Developer"](https://developer.nvidia.com/nvidia-developer-zone).
+ 2. Download [cuDNN v7.0.5 (Dec 11, 2017), for CUDA 9.1](https://developer.nvidia.com/rdp/cudnn-download#a-collapse705-91):
+  * `libcudnn7_7.0.5.15-1+cuda9.1_amd64.deb`: [cuDNN v7.0.5 Runtime Library for Ubuntu16.04 (Deb)](https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v7.0.5/prod/9.1_20171129/Ubuntu16_04-x64/libcudnn7_7.0.5.15-1+cuda9.1_amd64).
+  * `libcudnn7-dev_7.0.5.15-1+cuda9.1_amd64.deb`: [cuDNN v7.0.5 Developer Library for Ubuntu16.04 (Deb)](https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v7.0.5/prod/9.1_20171129/Ubuntu16_04-x64/libcudnn7-dev_7.0.5.15-1+cuda9.1_amd64).
+ 3. Install cuDNN (this is a system-wide installation)
+
+        cd ~/Downloads
+        sudo dpkg -i libcudnn7_7.0.5.15-1+cuda9.1_amd64.deb libcudnn7-dev_7.0.5.15-1+cuda9.1_amd64.deb
+        cd cytometer
+2. Double-check that you don't have a local install of cuDNN in the local environment
 
 This will create two local environments:
 * `cytometer`: for the code of this project.
-* `DeepCell`: for experiments with the DeepCell architectures by D. Van Valen (Keras 1 / Theano).
+* `DeepCell`: for experiments with the DeepCell architectures by D. Van Valen 
+(Keras 1 / Theano). **Note:** This environment does not work with current versions
+of the NVIDIA drivers. It's become too old to coexist with a master version of 
+Keras, NVIDIA drivers, etc.
    * Installed with [`install_deepcell_environment.sh`](https://github.com/rcasero/pysto/blob/master/tools/install_deepcell_environment.sh)
 
 
