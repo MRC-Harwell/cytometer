@@ -43,7 +43,7 @@ drive.
 
 # Dependencies and local conda environments
 
-This is the [compatibility table between CUDA and CUDA versions](https://developer.nvidia.com/rdp/cudnn-download)
+This is the [compatibility table between cuDNN and CUDA versions](https://developer.nvidia.com/rdp/cudnn-download)
 
 | **cuDNN**     | **CUDA**      |
 | ------------- |---------------|
