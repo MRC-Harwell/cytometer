@@ -25,6 +25,8 @@ elif 'CONDA_PREFIX' in os.environ:
 else:
     conda_env_path = '.'
 
+#os.environ['LD_LIBRARY_PATH'] = '/usr/lib/nvidia-387:' + os.environ['LD_LIBRARY_PATH']
+
 if os.environ['KERAS_BACKEND'] == 'theano':
     # configure Theano
     os.environ['MKL_THREADING_LAYER'] = 'GNU'
@@ -37,6 +39,12 @@ if os.environ['KERAS_BACKEND'] == 'theano':
                                  + 'dnn.include_path=' + conda_env_path + '/include,' \
                                  + 'dnn.library_path=' + conda_env_path + '/lib,' \
                                  + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include'
+#    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
+#                                 + 'dnn.include_path=/usr/include,' \
+#                                 + 'dnn.library_path=/usr/lib/x86_64-linux-gnu,' \
+#                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include'
+##                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
+##                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-7'
     import theano
 elif os.environ['KERAS_BACKEND'] == 'tensorflow':
     # configure tensorflow
