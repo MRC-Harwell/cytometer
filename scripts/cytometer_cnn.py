@@ -8,13 +8,14 @@ Created on Wed Jan 17 15:40:00 2018
 
 import os
 
-os.environ['KERAS_BACKEND'] = 'tensorflow'
+os.environ['KERAS_BACKEND'] = 'theano'
+#os.environ['KERAS_BACKEND'] = 'tensorflow'
 
 import sys
 
-cytometer_dir = os.path.expanduser("~/Software/cytometer")
-if cytometer_dir not in sys.path:
-    sys.path.append(cytometer_dir)
+#cytometer_dir = os.path.expanduser("~/Software/cytometer")
+#if cytometer_dir not in sys.path:
+#    sys.path.append(cytometer_dir)
 
 # different versions of conda keep the path in different variables
 if 'CONDA_ENV_PATH' in os.environ:
@@ -27,11 +28,15 @@ else:
 if os.environ['KERAS_BACKEND'] == 'theano':
     # configure Theano
     os.environ['MKL_THREADING_LAYER'] = 'GNU'
+#    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
+#                                 + 'dnn.include_path=' + conda_env_path + '/include,' \
+#                                 + 'dnn.library_path=' + conda_env_path + '/lib,' \
+#                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
+#                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-5'
     os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
                                  + 'dnn.include_path=' + conda_env_path + '/include,' \
                                  + 'dnn.library_path=' + conda_env_path + '/lib,' \
-                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
-                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-5'
+                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include'
     import theano
 elif os.environ['KERAS_BACKEND'] == 'tensorflow':
     # configure tensorflow
