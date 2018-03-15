@@ -25,7 +25,8 @@ elif 'CONDA_PREFIX' in os.environ:
 else:
     conda_env_path = '.'
 
-#os.environ['LD_LIBRARY_PATH'] = '/usr/lib/nvidia-387:' + os.environ['LD_LIBRARY_PATH']
+os.environ['LD_LIBRARY_PATH'] = '/usr/lib/x86_64-linux-gnu:' + os.environ['LD_LIBRARY_PATH']
+os.environ['PATH'] = '/usr/lib/x86_64-linux-gnu:' + os.environ['PATH']
 
 if os.environ['KERAS_BACKEND'] == 'theano':
     # configure Theano
