@@ -19,6 +19,6 @@ setup(name='cytometer',
       #                      'tensorflow-gpu>=1.4.1',
       #                      'pyyaml>=3.12', 'nose-parameterized>=0.6.0']
       # cytometer_theano
-      install_requires=['python>=3.6',
+      install_requires=['python>=3.5',
                             'keras>=2.1.2', 'theano>=1.0.1+28.g96c910444']
      )
