@@ -30,7 +30,7 @@ os.environ['PATH'] = '/usr/lib/x86_64-linux-gnu:' + os.environ['PATH']
 
 if os.environ['KERAS_BACKEND'] == 'theano':
     # configure Theano
-#    os.environ['MKL_THREADING_LAYER'] = 'GNU'
+    os.environ['MKL_THREADING_LAYER'] = 'GNU'
 #    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
 #                                 + 'dnn.include_path=' + conda_env_path + '/include,' \
 #                                 + 'dnn.library_path=' + conda_env_path + '/lib,' \
