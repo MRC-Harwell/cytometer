@@ -8,14 +8,7 @@ Created on Wed Jan 17 15:40:00 2018
 
 import os
 
-os.environ['KERAS_BACKEND'] = 'theano'
-#os.environ['KERAS_BACKEND'] = 'tensorflow'
-
-import sys
-
-#cytometer_dir = os.path.expanduser("~/Software/cytometer")
-#if cytometer_dir not in sys.path:
-#    sys.path.append(cytometer_dir)
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 
 # different versions of conda keep the path in different variables
 if 'CONDA_ENV_PATH' in os.environ:
@@ -24,31 +17,6 @@ elif 'CONDA_PREFIX' in os.environ:
     conda_env_path = os.environ['CONDA_PREFIX']
 else:
     conda_env_path = '.'
-
-os.environ['LD_LIBRARY_PATH'] = '/usr/lib/x86_64-linux-gnu:' + os.environ['LD_LIBRARY_PATH']
-os.environ['PATH'] = '/usr/lib/x86_64-linux-gnu:' + os.environ['PATH']
-
-if os.environ['KERAS_BACKEND'] == 'theano':
-    # configure Theano
-    os.environ['MKL_THREADING_LAYER'] = 'GNU'
-#    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
-#                                 + 'dnn.include_path=' + conda_env_path + '/include,' \
-#                                 + 'dnn.library_path=' + conda_env_path + '/lib,' \
-#                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
-#                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-5'
-#    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,' \
-#                                 + 'dnn.include_path=/usr/include,' \
-#                                 + 'dnn.library_path=/usr/lib/x86_64-linux-gnu,' \
-#                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include'
-##                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
-##                                 + 'nvcc.flags=-ccbin=/usr/bin/g++-7'
-    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0'
-    import theano
-elif os.environ['KERAS_BACKEND'] == 'tensorflow':
-    # configure tensorflow
-    import tensorflow
-else:
-    raise Exception('No configuration found when the backend is ' + os.environ['KERAS_BACKEND'])
 
 import keras.backend as K
 
@@ -64,16 +32,14 @@ K.set_epsilon('1e-07')
 import datetime
 import matplotlib.pyplot as plt
 import numpy as np
+import importlib
+
 
 import cytometer.models as models
-import cytometer.layers as layers
 
-# reload(deepcell)
-# reload(deepcell_models)
-reload(layers)
-reload(models)
+importlib.reload(models)
 
-model = models.sparse_feature_net_61x61()
+model = models.basic_7L()
 
 optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 lr_sched = deepcell.rate_scheduler(lr=0.01, decay=0.95)
