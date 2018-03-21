@@ -39,7 +39,7 @@ import cytometer.models as models
 
 importlib.reload(models)
 
-model = models.basic_7L()
+model = models.basic_9c3mp()
 
 optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 lr_sched = deepcell.rate_scheduler(lr=0.01, decay=0.95)

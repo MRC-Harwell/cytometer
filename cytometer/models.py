@@ -17,7 +17,7 @@ import numpy as np
 
 
 # Based on DeepCell's sparse_feature_net_61x61, but here we use no dilation
-def basic_7L(input_shape=(3, None, None), reg=0.001, init='he_normal'):
+def basic_9c3mp(input_shape=(3, None, None), reg=0.001, init='he_normal'):
 
     if K.image_data_format() == 'channels_first':
         norm_axis = 1
