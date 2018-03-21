@@ -15,14 +15,18 @@ from keras.regularizers import l2
 import keras.backend as K
 import numpy as np
 
+if K.image_data_format() == 'channels_first':
+    default_input_shape = (3, None, None)
+elif K.image_data_format() == 'channels_last':
+    default_input_shape = (None, None, 3)
 
 # Based on DeepCell's sparse_feature_net_61x61, but here we use no dilation
-def basic_9c3mp(input_shape=(3, None, None), reg=0.001, init='he_normal'):
+def basic_9c3mp(input_shape=default_input_shape, reg=0.001, init='he_normal'):
 
     if K.image_data_format() == 'channels_first':
         norm_axis = 1
     elif K.image_data_format() == 'channels_last':
-        norm_axis = 4
+        norm_axis = 3
 
 
     model = Sequential()
