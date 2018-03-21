@@ -7,6 +7,18 @@ Created on Wed Jan 17 15:40:00 2018
 """
 
 import os
+import glob
+import keras
+import keras.backend as K
+import importlib
+import numpy as np
+import cytometer.models as models
+from PIL import Image
+
+# load module dependencies
+#import datetime
+#import matplotlib.pyplot as plt
+
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -18,41 +30,63 @@ elif 'CONDA_PREFIX' in os.environ:
 else:
     conda_env_path = '.'
 
-import keras.backend as K
+os.environ['PYTHONPATH'] = os.path.join(os.environ['HOME'], 'Software', 'cytometer', 'cytometer') \
+                           + ':' + os.environ['PYTHONPATH']
 
 # configure Keras, to avoid using file ~/.keras/keras.json
 K.set_image_dim_ordering('tf')
 K.set_floatx('float32')
-K.set_epsilon('1e-07')
+K.set_epsilon(1e-07)
 # fix "RuntimeError: Invalid DISPLAY variable" in cluster runs
 # import matplotlib
 # matplotlib.use('agg')
 
-# load module dependencies
-import datetime
-import matplotlib.pyplot as plt
-import numpy as np
-import importlib
-
-
-import cytometer.models as models
-
+# DEBUG: used while developing the software, not for production
 importlib.reload(models)
 
 model = models.basic_9c3mp()
 
+
+# rate scheduler from DeepCell
+def rate_scheduler(lr = .001, decay = 0.95):
+    def output_fn(epoch):
+        epoch = np.int(epoch)
+        new_lr = lr * (decay ** epoch)
+        return new_lr
+    return output_fn
+
+
 optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-lr_sched = deepcell.rate_scheduler(lr=0.01, decay=0.95)
-class_weight = {0: 1, 1: 1, 2: 1}
+lr_sched = rate_scheduler(lr=0.01, decay=0.95)
+# class_weight = {0: 1, 1: 1, 2: 1}
 
 model.compile(loss='categorical_crossentropy',
               optimizer=optimizer,
               metrics=['accuracy'])
 
-direc_data = "/home/rcasero/Software/cytometer/data/deepcell/training_data_npz/slip"
-dataset = "slip_31x31"
-direc_save = "/home/rcasero/Software/cytometer/data/deepcell/trained_networks/slip"
-expt = "bn_feature_net_31x31"
+# DEBUG: model visualisation
+# model.summary()
+# from keras.utils import plot_model
+# plot_model(model, to_file='/tmp/model.png', show_shapes=True)
+
+
+def load_list_of_files(file_list):
+    Nfiles = len(file_list)
+    file_list.sort()
+    print(file_list)
+    im = np.array(Image.open(file_list[0]))
+    data = np.zeros((Nfiles,) + im.shape, dtype=im.dtype)
+    data[0, ] = im
+    for i, filename in enumerate(file_list[1:]):
+        im = Image.open(filename)
+        data[i, ] = im
+    return data
+
+
+# load Lorna's hand segmented data
+data_dir = os.path.join('data', 'adipocyte_500x500_patches')
+data_im = load_list_of_files(glob.glob(os.path.join(data_dir, '*_rgb.tif')))
+data_seg = load_list_of_files(glob.glob(os.path.join(data_dir, '*_seg.tif')))
 
 it = 0  # iteration
 batch_size = 256
