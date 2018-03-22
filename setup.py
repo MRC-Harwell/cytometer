@@ -13,5 +13,6 @@ setup(name='cytometer',
       license='GPLv3',
       packages=find_packages(),
       data_files=[('data', ['data/*'])],
-      install_requires=['python>=3.5', 'keras>=2.1.2', 'pillow>=5']
+      install_requires=['python>=3.5', 'keras>=2.1.2', 'pillow>=5',
+                        'matplotlib=2.1.2']
      )
