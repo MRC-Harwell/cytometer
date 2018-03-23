@@ -7,20 +7,8 @@ Created on Wed Jan 17 15:40:00 2018
 """
 
 import os
-import glob
-import keras
-import keras.backend as K
-import keras.preprocessing.image
-import importlib
-import numpy as np
-import cytometer.models as models
-from PIL import Image
-import matplotlib.pyplot as plt
 
-# load module dependencies
-#import datetime
-
-
+# environment variables
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
 # different versions of conda keep the path in different variables
@@ -33,6 +21,20 @@ else:
 
 os.environ['PYTHONPATH'] = os.path.join(os.environ['HOME'], 'Software', 'cytometer', 'cytometer') \
                            + ':' + os.environ['PYTHONPATH']
+
+# imports
+import glob
+import keras
+import keras.backend as K
+import keras.preprocessing.image
+import importlib
+import numpy as np
+import cytometer.models as models
+from PIL import Image
+import matplotlib.pyplot as plt
+
+# load module dependencies
+#import datetime
 
 # configure Keras, to avoid using file ~/.keras/keras.json
 K.set_image_dim_ordering('tf')
