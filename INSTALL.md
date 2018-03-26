@@ -93,6 +93,19 @@ The `install_dependencies.sh` script:
 * Installs the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), 
 rather than using Ubuntu packages.
 
+## Activating GPU in laptops
+
+Laptops like the Dell XPS 15 come with a dual graphics card configuration, an on-board Intel chip, and an NVIDIA GPU (e.g. GeForce GTX 1050 Mobile). 
+In order to have GPU capability with Keras/Tensorflow, you need to activate the latter.
+
+The `install_dependencies.sh` script will have installed `nvidia-prime` and `nvidia-settings` for you. This allows you to launch
+
+    sudo nvidia-settings
+
+and in the PRIME tag select the "NVIDIA (Performance Mode)" option. Otherwise, if the "Intel (Power Saving Mode)" option is selected, trying
+to run Keras/TensorFlow code will throw the error `failed call to cuInit: CUDA_ERROR_UNKNOWN`.
+
+
 # Checking that your GPU is correctly set-up
 
 1. Check that you get something similar to this on a terminal
@@ -117,6 +130,10 @@ rather than using Ubuntu packages.
         |    0      1974    G   compiz                                         154MiB |
         |    0      2283    G   ...el-token=493C1790BE0AE309A3CB57689C7C3E71   146MiB |
         +-----------------------------------------------------------------------------+
+
+Note: In a laptop with a dual graphics chip configuration as explained above, you will get the same output whether the NVIDIA or Intel
+chips are selected. Thus, regardless of what `nvidia-smi` says, you still need to make sure you have selected the NVIDIA option in 
+`nvidia-settings` -> PRIME.
 
 # Configuring Keras to be used in a python script
 
