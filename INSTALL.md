@@ -8,6 +8,7 @@ Instructions to set up project `cytometer`.
    * [Installing the cytometer python code](#installing-the-cytometer-python-code)
    * [Dependencies and local conda environments](#dependencies-and-local-conda-environments)
       * [Notes on Ubuntu dependencies](#notes-on-ubuntu-dependencies)
+      * [Activating GPU in laptops](#activating-gpu-in-laptops)
    * [Checking that your GPU is correctly set-up](#checking-that-your-gpu-is-correctly-set-up)
    * [Configuring Keras to be used in a python script](#configuring-keras-to-be-used-in-a-python-script)
    * [Configuring Theano to be used in a python script in a conda environment](#configuring-theano-to-be-used-in-a-python-script-in-a-conda-environment)
@@ -21,6 +22,7 @@ Instructions to set up project `cytometer`.
    * [Cloud computing on Amazon Web Services](#cloud-computing-on-amazon-web-services)
       * [Creating a test instance](#creating-a-test-instance)
       * [Copying files to the remote instance](#copying-files-to-the-remote-instance)
+
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 
