@@ -75,7 +75,7 @@ def basic_9c3mp(input_shape=default_input_shape, reg=0.001, init='he_normal'):
     model.add(BatchNormalization(axis=norm_axis))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=3, kernel_size=(1, 1), strides=1,
+    model.add(Conv2D(filters=4, kernel_size=(1, 1), strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
     model.add(Activation('softmax'))
 
