@@ -28,6 +28,7 @@ os.environ['PYTHONPATH'] = os.path.join(os.environ['HOME'], 'Software', 'cytomet
 import glob
 import keras
 import keras.backend as K
+import tensorflow as tf
 import keras.preprocessing.image
 import importlib
 import numpy as np
@@ -45,6 +46,12 @@ K.set_epsilon(1e-07)
 # fix "RuntimeError: Invalid DISPLAY variable" in cluster runs
 # import matplotlib
 # matplotlib.use('agg')
+
+# limit the amount of GPU memory that Keras can allocate
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.8
+session = tf.Session(config=config)
+K.set_session(session)
 
 # DEBUG: used while developing the software, not for production
 importlib.reload(models)
@@ -109,7 +116,6 @@ model.compile(loss='categorical_crossentropy',
               metrics=['accuracy'])
 
 # DEBUG: model visualisation
-model.summary()
 from keras.utils import plot_model
 plot_model(model, to_file='/tmp/model.png', show_shapes=True)
 
