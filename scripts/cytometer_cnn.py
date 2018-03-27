@@ -35,9 +35,8 @@ import numpy as np
 import cytometer.models as models
 from PIL import Image
 import matplotlib.pyplot as plt
+import pysto.imgproc as pystoim
 
-# load module dependencies
-#import datetime
 
 # configure Keras, to avoid using file ~/.keras/keras.json
 K.set_image_dim_ordering('tf')
@@ -54,17 +53,17 @@ session = tf.Session(config=config)
 K.set_session(session)
 
 # DEBUG: used while developing the software, not for production
-importlib.reload(models)
+#importlib.reload(models)
 
 """
 Data
 """
 
 def load_list_of_files(file_list):
-    Nfiles = len(file_list)
+    nfiles = len(file_list)
     file_list.sort()
     im = np.array(Image.open(file_list[0]))
-    data = np.zeros((Nfiles,) + im.shape, dtype=im.dtype)
+    data = np.zeros((nfiles,) + im.shape, dtype=im.dtype)
     data[0, ] = im
     for i, filename in enumerate(file_list[1:]):
         im = Image.open(filename)
@@ -77,20 +76,25 @@ data_dir = os.path.join('data', 'adipocyte_500x500_patches')
 data_im = load_list_of_files(glob.glob(os.path.join(data_dir, '*_rgb.tif')))
 data_seg = load_list_of_files(glob.glob(os.path.join(data_dir, '*_seg.tif')))
 
-# display the training data
-plt.ion()
-for i in range(data_im.shape[0]):
-    plt.subplot(1, 2, 1)
-    plt.imshow(data_im[i, ])
-    plt.subplot(1, 2, 2)
-    plt.imshow(data_seg[i, ])
-    plt.draw_all()
-    print('i = ' + str(i))
-    plt.pause(0.1)
-    input('Press key to continue')
+# # display the training data
+# plt.ion()
+# for i in range(data_im.shape[0]):
+#     plt.subplot(1, 2, 1)
+#     plt.imshow(data_im[i, ])
+#     plt.subplot(1, 2, 2)
+#     plt.imshow(data_seg[i, ])
+#     plt.draw_all()
+#     print('i = ' + str(i))
+#     plt.pause(0.1)
+#     input('Press key to continue')
+
+# split training data to avoid GPU out of memory errors
+data_im_slice, data_im_block, foo = pystoim.block_split(data_im, (1, 3, 3, 1), pad_width=(0, 125, 125, 0),
+                                                        mode='reflect', reflect_type='even')
 
 # convert hand segmentation from uint8 to categorical binary data
 data_seg_cat = keras.utils.to_categorical(data_seg)
+
 
 """
 Keras model
@@ -121,9 +125,10 @@ plot_model(model, to_file='/tmp/model.png', show_shapes=True)
 
 # data augmentation
 train_datagen = keras.preprocessing.image.ImageDataGenerator(
-    rotation_range=90,  # randomly rotate images up to 90 degrees
+    rotation_range=90,     # randomly rotate images up to 90 degrees
+    fill_mode="reflect",   # how to fill points outside boundaries
     horizontal_flip=True,  # randomly flip images
-    vertical_flip=True)  # randomly flip images
+    vertical_flip=True)    # randomly flip images
 
 train_generator = train_datagen.flow(data_im, data_seg_cat, batch_size=batch_size)
 
