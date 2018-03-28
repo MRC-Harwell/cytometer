@@ -41,8 +41,6 @@ import matplotlib.pyplot as plt
 import pysto.imgproc as pystoim
 import cytometer.models as models
 
-from scipy.misc import imresize
-
 # configure Keras, to avoid using file ~/.keras/keras.json
 K.set_floatx('float32')
 K.set_epsilon(1e-07)
@@ -52,7 +50,7 @@ K.set_epsilon(1e-07)
 
 # limit the amount of GPU memory that Keras can allocate
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.8
+config.gpu_options.per_process_gpu_memory_fraction = 0.7
 session = tf.Session(config=config)
 K.set_session(session)
 
@@ -63,25 +61,27 @@ K.set_session(session)
 Data
 """
 
-def load_list_of_files(file_list):
+# create (5, 250, 250, 3) containing Lorna's 5 RGB training images, decimated from
+# size (500, 500) to (256, 256)
+def load_list_of_files(file_list, antialias_flag):
     nfiles = len(file_list)
     file_list.sort()
-    im = np.array(Image.open(file_list[0]))
+    im = Image.open(file_list[0])
+    im = im.resize((256, 256), antialias_flag)
+    im = np.array(im)
     data = np.zeros((nfiles,) + im.shape, dtype=im.dtype)
     data[0, ] = im
     for i, filename in enumerate(file_list[1:]):
         im = Image.open(filename)
+        im = im.resize((256, 256), antialias_flag)
         data[i+1, ] = im
     return data
 
 
 # load Lorna's hand segmented data
 data_dir = os.path.join('/home/rcasero/Software/cytometer/data', 'adipocyte_500x500_patches')
-data_im = load_list_of_files(glob.glob(os.path.join(data_dir, '*_rgb.tif')))
-data_seg = load_list_of_files(glob.glob(os.path.join(data_dir, '*_seg.tif')))
-
-# decimate the images so that training is faster
-data_im = imresize(data_im, (5, 250, 250, 3))
+data_im = load_list_of_files(glob.glob(os.path.join(data_dir, '*_rgb.tif')), Image.ANTIALIAS)
+data_seg = load_list_of_files(glob.glob(os.path.join(data_dir, '*_seg.tif')), Image.NEAREST)
 
 # # display the training data
 # plt.ion()
@@ -98,16 +98,35 @@ data_im = imresize(data_im, (5, 250, 250, 3))
 # convert hand segmentation from uint8 to categorical binary data
 data_seg_cat = keras.utils.to_categorical(data_seg)
 
-# split training data to avoid GPU out of memory errors
-data_im_slice, data_im_block, foo = pystoim.block_split(data_im, (1, 3, 3, 1),
-                                                        pad_width=((0, 0), (125, 125), (125, 125), (0, 0)),
-                                                        mode='reflect', reflect_type='even')
-data_seg_cat_slice, data_seg_cat_block, foo = pystoim.block_split(data_seg_cat, (1, 3, 3, 1),
-                                                        pad_width=((0, 0), (125, 125), (125, 125), (0, 0)),
-                                                        mode='reflect', reflect_type='even')
+# # split training data to avoid GPU out of memory errors
+# data_im_slice, data_im_block, foo = pystoim.block_split(data_im, (1, 3, 3, 1),
+#                                                         pad_width=((0, 0), (64, 64), (64, 64), (0, 0)),
+#                                                         mode='reflect', reflect_type='even')
+# data_seg_cat_slice, data_seg_cat_block, foo = pystoim.block_split(data_seg_cat, (1, 3, 3, 1),
+#                                                         pad_width=((0, 0), (64, 64), (64, 64), (0, 0)),
+#                                                         mode='reflect', reflect_type='even')
 
-for foo in data_im_block:
-    print(foo.shape)
+data_im_split = np.zeros((20, 125, 125, 3), dtype=data_im.dtype)
+data_seg_cat_split = np.zeros((20, 125, 125, 4), dtype=data_seg.dtype)
+j = 0
+for i in range(data_im.shape[0]):
+    for row_start, row_end in zip([0, 125], [125, 250]):
+        for col_start, col_end in zip([0, 125], [125, 250]):
+            data_im_split[j, :, :, :] = data_im[i, row_start:row_end, col_start:col_end, :]
+            data_seg_cat_split[j, :, :, :] = data_seg_cat[i, row_start:row_end, col_start:col_end, :]
+            j += 1
+
+# # display the training data
+# plt.ion()
+# for i in range(data_im_split.shape[0]):
+#     plt.subplot(1, 2, 1)
+#     plt.imshow(data_im_split[i, ])
+#     plt.subplot(1, 2, 2)
+#     plt.imshow(data_seg_cat_split[i, :, :, 0])
+#     plt.draw_all()
+#     print('i = ' + str(i))
+#     plt.pause(0.1)
+#     input('Press key to continue')
 
 
 
@@ -117,7 +136,7 @@ Keras model
 
 # parameters
 batch_size = 5
-n_epoch = 25
+n_epoch = 8
 
 # rate scheduler from DeepCell
 def rate_scheduler(lr = .001, decay = 0.95):
@@ -145,7 +164,7 @@ train_datagen = keras.preprocessing.image.ImageDataGenerator(
     horizontal_flip=True,  # randomly flip images
     vertical_flip=True)    # randomly flip images
 
-train_generator = train_datagen.flow(data_im_block, data_seg_cat_block, batch_size=batch_size)
+train_generator = train_datagen.flow(data_im_split, data_seg_cat_split, batch_size=batch_size)
 
 ## https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
 
