@@ -6,14 +6,14 @@ Created on Tue Aug 15 17:59:44 2017
 @author: rcasero
 """
 
-from keras import __version__ as keras_version
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten, Conv2D, MaxPooling2D, Permute
+from keras.layers import Activation, Conv2D, MaxPooling2D
 from cytometer.layers import DilatedMaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 import keras.backend as K
 import numpy as np
+
 
 if K.image_data_format() == 'channels_first':
     default_input_shape = (3, None, None)
