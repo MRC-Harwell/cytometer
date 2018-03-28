@@ -26,20 +26,24 @@ os.environ['PYTHONPATH'] = os.path.join(os.environ['HOME'], 'Software', 'cytomet
 
 # imports
 import glob
+
 import keras
 import keras.backend as K
 import tensorflow as tf
 import keras.preprocessing.image
+K.set_image_dim_ordering('tf')
+print(K.image_data_format())
+
 import importlib
 import numpy as np
-import cytometer.models as models
 from PIL import Image
 import matplotlib.pyplot as plt
 import pysto.imgproc as pystoim
+import cytometer.models as models
 
+from scipy.misc import imresize
 
 # configure Keras, to avoid using file ~/.keras/keras.json
-K.set_image_dim_ordering('tf')
 K.set_floatx('float32')
 K.set_epsilon(1e-07)
 # fix "RuntimeError: Invalid DISPLAY variable" in cluster runs
@@ -72,9 +76,12 @@ def load_list_of_files(file_list):
 
 
 # load Lorna's hand segmented data
-data_dir = os.path.join('data', 'adipocyte_500x500_patches')
+data_dir = os.path.join('/home/rcasero/Software/cytometer/data', 'adipocyte_500x500_patches')
 data_im = load_list_of_files(glob.glob(os.path.join(data_dir, '*_rgb.tif')))
 data_seg = load_list_of_files(glob.glob(os.path.join(data_dir, '*_seg.tif')))
+
+# decimate the images so that training is faster
+data_im = imresize(data_im, (5, 250, 250, 3))
 
 # # display the training data
 # plt.ion()
@@ -88,12 +95,20 @@ data_seg = load_list_of_files(glob.glob(os.path.join(data_dir, '*_seg.tif')))
 #     plt.pause(0.1)
 #     input('Press key to continue')
 
-# split training data to avoid GPU out of memory errors
-data_im_slice, data_im_block, foo = pystoim.block_split(data_im, (1, 3, 3, 1), pad_width=(0, 125, 125, 0),
-                                                        mode='reflect', reflect_type='even')
-
 # convert hand segmentation from uint8 to categorical binary data
 data_seg_cat = keras.utils.to_categorical(data_seg)
+
+# split training data to avoid GPU out of memory errors
+data_im_slice, data_im_block, foo = pystoim.block_split(data_im, (1, 3, 3, 1),
+                                                        pad_width=((0, 0), (125, 125), (125, 125), (0, 0)),
+                                                        mode='reflect', reflect_type='even')
+data_seg_cat_slice, data_seg_cat_block, foo = pystoim.block_split(data_seg_cat, (1, 3, 3, 1),
+                                                        pad_width=((0, 0), (125, 125), (125, 125), (0, 0)),
+                                                        mode='reflect', reflect_type='even')
+
+for foo in data_im_block:
+    print(foo.shape)
+
 
 
 """
@@ -130,7 +145,7 @@ train_datagen = keras.preprocessing.image.ImageDataGenerator(
     horizontal_flip=True,  # randomly flip images
     vertical_flip=True)    # randomly flip images
 
-train_generator = train_datagen.flow(data_im, data_seg_cat, batch_size=batch_size)
+train_generator = train_datagen.flow(data_im_block, data_seg_cat_block, batch_size=batch_size)
 
 ## https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
 
