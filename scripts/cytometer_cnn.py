@@ -179,3 +179,13 @@ loss_history = model.fit_generator(train_generator,
 
 # save trained model
 model.save('./foo.h5')
+
+# plot loss history
+plt.ion()
+plt.plot(loss_history.epoch, loss_history.history['acc'])
+plt.xlabel('epoch')
+plt.ylabel('acc')
+plt.draw()
+plt.pause(0.01)
+
+# apply model to training data just to visualise result (this is bad practice)
