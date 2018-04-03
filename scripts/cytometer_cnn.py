@@ -37,6 +37,7 @@ print(K.image_data_format())
 
 import numpy as np
 from PIL import Image
+import openslide
 import matplotlib.pyplot as plt
 import cytometer.models as models
 
@@ -131,7 +132,7 @@ Keras model
 
 # parameters
 batch_size = 10
-n_epoch = 1
+n_epoch = 20
 
 # rate scheduler from DeepCell
 def rate_scheduler(lr = .001, decay = 0.95):
@@ -188,3 +189,19 @@ plt.xlabel('epoch')
 plt.ylabel('acc')
 plt.draw()
 plt.pause(0.01)
+
+##################################################################################################
+
+# full image from Roger's data
+klf14_data_dir = "/home/rcasero/data/roger_data"
+klf14_data_file = os.path.join(klf14_data_dir, "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi")
+
+# open image
+im = openslide.OpenSlide(klf14_data_file)
+
+# apply trained model to one image
+im_crop = im.read_region((20000, 20000), 1, (2000, 2000))
+
+plt.clf()
+plt.imshow(im_crop)
+plt.pause(0.1)
