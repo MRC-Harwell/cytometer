@@ -14,5 +14,6 @@ setup(name='cytometer',
       packages=find_packages(),
       data_files=[('data', ['data/*'])],
       install_requires=['python>=3.5', 'keras>=2.1.2', 'pillow>=5',
-                        'matplotlib=2.1.2', 'scikit-image>=0.13.1']
+                        'matplotlib=2.1.2', 'scikit-image>=0.13.1',
+                        'openslide-python>=1.1.1']
      )

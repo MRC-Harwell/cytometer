@@ -29,6 +29,9 @@ set -e
 ########################################################################
 ## python environment for cytometer
 
+# install OpenSlide library
+sudo apt install -y openslide-tools
+
 # create or update environment for development with Keras
 ~/Software/python_setup/bin/install_keras_environment.sh cytometer
 
@@ -39,7 +42,7 @@ conda install -y matplotlib pillow
 conda install -y scikit-image scikit-learn h5py 
 #conda install -y -c conda-forge tifffile mahotas 
 conda install -y nose pytest
-pip install opencv-python pysto
+pip install opencv-python pysto openslide-python
 
 ########################################################################
 ## python environment for DeepCell
