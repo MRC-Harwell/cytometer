@@ -193,14 +193,17 @@ plt.pause(0.01)
 ##################################################################################################
 
 # full image from Roger's data
-klf14_data_dir = "/home/rcasero/data/roger_data"
+#klf14_data_dir = "/home/rcasero/data/roger_data"
+#klf14_data_file = os.path.join(klf14_data_dir, "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi")
+
+klf14_data_dir = "/home/rcasero/Dropbox/klf14"
 klf14_data_file = os.path.join(klf14_data_dir, "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi")
 
-# open image
-im = openslide.OpenSlide(klf14_data_file)
+data_test = openslide.OpenSlide(klf14_data_file)
+downsample_level = data_test.get_best_level_for_downsample(4)
 
 # apply trained model to one image
-im_crop = im.read_region((20000, 20000), 1, (2000, 2000))
+im_crop = data_test.read_region((20000, 20000), downsample_level, (2000, 2000))
 
 plt.clf()
 plt.imshow(im_crop)
