@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/cytometer_cnn.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/cytometer_cnn.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -17,8 +16,8 @@
       <file leaf-file-name="cytometer_cnn.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/cytometer_cnn.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="285">
-              <caret line="247" column="19" lean-forward="true" selection-start-line="247" selection-start-column="19" selection-end-line="247" selection-end-column="19" />
+            <state relative-caret-position="195">
+              <caret line="204" selection-start-line="204" selection-end-line="204" />
             </state>
           </provider>
         </entry>
@@ -624,8 +623,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/cytometer_cnn.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="285">
-          <caret line="247" column="19" lean-forward="true" selection-start-line="247" selection-start-column="19" selection-end-line="247" selection-end-column="19" />
+        <state relative-caret-position="195">
+          <caret line="204" selection-start-line="204" selection-end-line="204" />
         </state>
       </provider>
     </entry>
