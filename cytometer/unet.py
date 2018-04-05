@@ -1,3 +1,10 @@
+"""
+Derived from train.py by Marko Jocić (jocicmarko) for Ultrasound Nerve Segmentation
+https://github.com/jocicmarko/ultrasound-nerve-segmentation/blob/master/train.py
+
+Author: Lorna Nolan
+"""
+
 from __future__ import print_function
 
 import os
