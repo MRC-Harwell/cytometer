@@ -40,6 +40,7 @@ from PIL import Image
 import openslide
 import matplotlib.pyplot as plt
 import cytometer.models as models
+import pysto.imgproc as pystoim
 
 # configure Keras, to avoid using file ~/.keras/keras.json
 K.set_floatx('float32')
@@ -202,9 +203,52 @@ klf14_data_file = os.path.join(klf14_data_dir, "KLF14-B6NTAC-36.1a PAT 96-16 C1 
 data_test = openslide.OpenSlide(klf14_data_file)
 downsample_level = data_test.get_best_level_for_downsample(4)
 
-# apply trained model to one image
-im_crop = data_test.read_region((20000, 20000), downsample_level, (2000, 2000))
+# crop a relatively small patch of the whole image
+im_crop = data_test.read_region((10000, 20000), downsample_level, (2000, 2000))
 
+plt.ion()
 plt.clf()
 plt.imshow(im_crop)
+plt.draw()
+plt.show()
 plt.pause(0.1)
+
+# remove alpha channel
+im_crop = np.array(im_crop)
+im_crop = im_crop[:, :, 0:3]
+
+# split image into overlapping blocks
+im_crop_slices, im_crop_blocks, xout = pystoim.block_split(im_crop, (10, 10, 1),
+                                                           pad_width=((100, 100), (100, 100), (0, 0)),
+                                                           mode='reflect', reflect_type='even')
+
+# init memory and correct slices for the predictor output (input images are RGB, and predictions have 4 channels)
+im_crop_blocks_predicted = im_crop_blocks.copy()
+im_crop_slices_predicted = im_crop_slices.copy()
+for i, sl in enumerate(im_crop_slices_predicted):
+    sl[2] = slice(0, 4, 1)
+    im_crop_slices_predicted[i] = sl
+
+# apply trained model to the cropped image
+for i, block in enumerate(im_crop_blocks):
+    if DEBUG:
+        print("Processing block " + str(i) + "/" + str(len(im_crop_blocks)))
+    aux = model.predict(block.reshape((1,) + block.shape))
+    im_crop_blocks_predicted[i] = aux.reshape(aux.shape[1:])
+
+# reassemble the blocks
+im_crop_predicted, foo = pystoim.block_stack(im_crop_blocks_predicted, im_crop_slices_predicted,
+                                             pad_width=((100, 100), (100, 100), (0, 0)))
+
+# assign a label to each pixel according to the label with the largets softmax value
+im_crop_predicted = np.argmax(im_crop_predicted, axis=2)
+
+# plot segmentation results
+plt.clf()
+plt.subplot(1, 2, 1)
+plt.imshow(im_crop)
+plt.subplot(1, 2, 2)
+plt.imshow(im_crop_predicted)
+plt.show()
+plt.pause(.1)
+
