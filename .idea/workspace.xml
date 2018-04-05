@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cytometer/unet.py" beforeDir="false" afterPath="$PROJECT_DIR$/cytometer/unet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cytometer/unet_data.py" beforeDir="false" afterPath="$PROJECT_DIR$/cytometer/unet_data.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -23,23 +23,20 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="unet.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="unet.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/cytometer/unet.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="90">
-              <caret line="5" column="3" lean-forward="true" selection-end-line="5" selection-end-column="3" />
-              <folding>
-                <element signature="e#17#54#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="342">
+              <caret line="19" selection-start-line="19" selection-end-line="19" />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="unet_data.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="unet_data.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cytometer/unet_data.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="54">
-              <caret line="3" selection-start-line="3" selection-end-line="3" />
+            <state relative-caret-position="18">
+              <caret line="1" column="13" selection-start-line="1" selection-start-column="13" selection-end-line="1" selection-end-column="13" />
               <folding>
                 <element signature="e#0#37#0" expanded="true" />
               </folding>
@@ -84,8 +81,8 @@
         <option value="$PROJECT_DIR$/cytometer/deepcell.py" />
         <option value="$PROJECT_DIR$/cytometer/models.py" />
         <option value="$PROJECT_DIR$/scripts/cytometer_cnn.py" />
-        <option value="$PROJECT_DIR$/cytometer/unet.py" />
         <option value="$PROJECT_DIR$/cytometer/unet_data.py" />
+        <option value="$PROJECT_DIR$/cytometer/unet.py" />
       </list>
     </option>
   </component>
@@ -94,25 +91,6 @@
     <option name="y" value="-2" />
     <option name="width" value="1533" />
     <option name="height" value="1202" />
-  </component>
-  <component name="ProjectInspectionProfilesVisibleTreeState">
-    <entry key="Project Default">
-      <profile-state>
-        <expanded-state>
-          <State>
-            <id />
-          </State>
-          <State>
-            <id>Python</id>
-          </State>
-        </expanded-state>
-        <selected-state>
-          <State>
-            <id>PyCompatibilityInspection</id>
-          </State>
-        </selected-state>
-      </profile-state>
-    </entry>
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -205,7 +183,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="1667" y="-2" width="1533" height="1202" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2654925" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -641,23 +618,20 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cytometer/unet.py">
+    <entry file="file://$PROJECT_DIR$/cytometer/unet_data.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="5" column="3" lean-forward="true" selection-end-line="5" selection-end-column="3" />
+        <state relative-caret-position="18">
+          <caret line="1" column="13" selection-start-line="1" selection-start-column="13" selection-end-line="1" selection-end-column="13" />
           <folding>
-            <element signature="e#17#54#0" expanded="true" />
+            <element signature="e#0#37#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cytometer/unet_data.py">
+    <entry file="file://$PROJECT_DIR$/cytometer/unet.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="54">
-          <caret line="3" selection-start-line="3" selection-end-line="3" />
-          <folding>
-            <element signature="e#0#37#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="342">
+          <caret line="19" selection-start-line="19" selection-end-line="19" />
         </state>
       </provider>
     </entry>
