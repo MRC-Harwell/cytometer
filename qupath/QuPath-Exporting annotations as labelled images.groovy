@@ -37,7 +37,7 @@ double requestedPixelSizeMicrons = 4.0
 int maxTileSize = 1000
 
 // Export the original pixels (assumed ot be RGB) for each tile
-boolean exportOriginalPixels = true
+boolean exportOriginalPixels = false
 
 // Export a labelled image for each tile containing annotations
 boolean exportAnnotationLabelledImage = true
