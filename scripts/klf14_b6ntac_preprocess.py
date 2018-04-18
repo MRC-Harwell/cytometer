@@ -4,9 +4,14 @@ import numpy as np
 from statistics import mode
 import matplotlib.pyplot as plt
 import cv2
+import PIL.Image
+from random import randint
 
 
 data_dir = '/home/rcasero/data/roger_data'
+sample_size = 301
+sample_half_size = int((sample_size - 1) / 2)
+n_samples = 10
 
 for file in os.listdir(data_dir):
 
@@ -57,10 +62,19 @@ for file in os.listdir(data_dir):
     labels_large = list(labels_large)
     labels_large.remove(0)
 
-    # only set pixels that belong to the 
+    # only set pixels that belong to the large components
+    seg = np.zeros(im_4.shape[0:2], dtype=np.uint8)
+    for i in labels_large:
+        seg[labels == i] = 255
 
-    foo = seg.any(labels_large)
+    PIL.Image.fromarray(seg).save('/tmp/foo2.tif')
 
+    # pick random centroids that belong to one of the set pixels
+    sample_centroid = []
+    while (len(sample_centroid) < n_samples):
+        r = randint(sample_half_size+1, seg.shape[0])
+
+    plt.figure()
     plt.clf()
     plt.imshow(seg)
     plt.pause(.1)
