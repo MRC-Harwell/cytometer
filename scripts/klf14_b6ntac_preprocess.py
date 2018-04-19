@@ -6,9 +6,12 @@ import matplotlib.pyplot as plt
 import cv2
 import PIL.Image
 from random import randint
-
+import SimpleITK as sitk
+import tifffile
 
 data_dir = '/home/rcasero/data/roger_data'
+training_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_training'
+downsample_factor = 4.0
 sample_size = 301
 sample_half_size = int((sample_size - 1) / 2)
 n_samples = 10
@@ -19,9 +22,9 @@ for file in os.listdir(data_dir):
     im = openslide.OpenSlide(os.path.join(data_dir, file))
 
     # level for a x4 downsample factor
-    level_4 = im.get_best_level_for_downsample(4)
+    level_4 = im.get_best_level_for_downsample(downsample_factor)
 
-    assert(im.level_downsamples[level_4] == 4.0)
+    assert(im.level_downsamples[level_4] == downsample_factor)
 
     # get downsampled image
     im_4 = im.read_region(location=(0, 0), level=level_4, size=im.level_dimensions[level_4])
@@ -48,18 +51,21 @@ for file in os.listdir(data_dir):
     seg = seg.astype(dtype=np.uint8)
     seg[seg == 1] = 255
 
-    # dilate the segmentation
-    kernel = np.ones((20, 20), np.uint8)
+    # dilate the segmentation to fill gaps within tissue
+    kernel = np.ones((50, 50), np.uint8)
     seg = cv2.dilate(seg, kernel, iterations=1)
+    seg = cv2.erode(seg, kernel, iterations=1)
 
     # find connected components
     labels = seg.copy()
     nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
     lblareas = stats[:, cv2.CC_STAT_AREA]
 
-    # labels of large components, that we assume correspond to tissue areas (label=0 is the background)
+    # labels of large components, that we assume correspond to tissue areas
     labels_large = np.where(lblareas > 1e5)[0]
     labels_large = list(labels_large)
+
+    # label=0 is the background, so we remove it
     labels_large.remove(0)
 
     # only set pixels that belong to the large components
@@ -67,18 +73,44 @@ for file in os.listdir(data_dir):
     for i in labels_large:
         seg[labels == i] = 255
 
-    PIL.Image.fromarray(seg).save('/tmp/foo2.tif')
+    #PIL.Image.fromarray(seg).save('/tmp/foo2.tif')
 
     # pick random centroids that belong to one of the set pixels
     sample_centroid = []
-    while (len(sample_centroid) < n_samples):
-        r = randint(sample_half_size+1, seg.shape[0])
+    while len(sample_centroid) < n_samples:
+        row = randint(sample_half_size+1, seg.shape[0])
+        col = randint(sample_half_size+1, seg.shape[1])
+        # if the centroid is a pixel that belongs to tissue...
+        if seg[row, col] != 0:
+            # ... add it to the list of random samples
+            sample_centroid.append((row, col))
+
+    # create the training dataset by sampling the images with boxes around the centroids
+    for row, col in sample_centroid:
+        # extract the sample of the image
+        print("row=" + str(row) + ", " + str(col))
+        tile = im_4[row-sample_half_size:row+sample_half_size+1, col-sample_half_size:col+sample_half_size+1]
+
+        # save as a tiff file
+        imout = sitk.GetImageFromArray(tile, isVector=True)
+        imout.SetSpacing((10000 / int(im.properties["tiff.XResolution"]) * 1e-6 * downsample_factor,
+                          10000 / int(im.properties["tiff.YResolution"]) * 1e-6 * downsample_factor))
+        imout.SetOrigin(((col - sample_half_size) * imout.GetSpacing()[0],
+                         (row - sample_half_size) * imout.GetSpacing()[1]))
+        outfilename = os.path.splitext(file)[0] + '_row_'+ str(row).zfill(6) + '_col_' + str(col).zfill(6)
+        sitk.WriteImage(imout, os.path.join(training_dir, outfilename + '.tif'), useCompression=True)
+
+        foo = PIL.Image.open(os.path.join(training_dir, outfilename + '.tif'))
+        foo.load()
+        foo.info
+
+        tifffile.imsave(os.path.join(training_dir, outfilename + '.tif'), imout, )
 
     plt.figure()
     plt.clf()
     plt.imshow(seg)
     plt.pause(.1)
 
-    plt.figure()
-    plt.imshow(output)
+    plt.figure(0)
+    plt.imshow(tile)
     plt.pause(.1)
