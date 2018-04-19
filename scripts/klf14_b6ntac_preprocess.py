@@ -4,19 +4,27 @@ import numpy as np
 from statistics import mode
 import matplotlib.pyplot as plt
 import cv2
-import PIL.Image
-from random import randint
-import SimpleITK as sitk
+from random import randint, seed
 import tifffile
+import glob
+
+
+DEBUG = False
 
 data_dir = '/home/rcasero/data/roger_data'
 training_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_training'
+seg_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_seg'
 downsample_factor = 4.0
 sample_size = 301
 sample_half_size = int((sample_size - 1) / 2)
 n_samples = 10
 
-for file in os.listdir(data_dir):
+files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
+
+seed(0)
+for file_i, file in enumerate(files_list):
+
+    print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
     # load file
     im = openslide.OpenSlide(os.path.join(data_dir, file))
@@ -31,8 +39,9 @@ for file in os.listdir(data_dir):
     im_4 = np.array(im_4)
     im_4 = im_4[:, :, 0:3]
 
-    plt.imshow(im_4)
-    plt.pause(.1)
+    if DEBUG:
+        plt.imshow(im_4)
+        plt.pause(.1)
 
     # reshape image to matrix with one column per colour channel
     im_4_mat = im_4.copy()
@@ -73,7 +82,21 @@ for file in os.listdir(data_dir):
     for i in labels_large:
         seg[labels == i] = 255
 
-    #PIL.Image.fromarray(seg).save('/tmp/foo2.tif')
+    # save segmentation as a tiff file
+    outfilename = os.path.splitext(file)[0] + '_seg'
+    outfilename = os.path.join(seg_dir, outfilename + '.tif')
+    tifffile.imsave(outfilename, seg,
+                    compress='LZMA',
+                    resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
+                                int(im.properties["tiff.YResolution"]) / downsample_factor,
+                                im.properties["tiff.ResolutionUnit"].upper()))
+
+    # plot the segmentation
+    if DEBUG:
+        plt.figure()
+        plt.clf()
+        plt.imshow(seg)
+        plt.pause(.1)
 
     # pick random centroids that belong to one of the set pixels
     sample_centroid = []
@@ -88,29 +111,13 @@ for file in os.listdir(data_dir):
     # create the training dataset by sampling the images with boxes around the centroids
     for row, col in sample_centroid:
         # extract the sample of the image
-        print("row=" + str(row) + ", " + str(col))
         tile = im_4[row-sample_half_size:row+sample_half_size+1, col-sample_half_size:col+sample_half_size+1]
 
-        # save as a tiff file
-        imout = sitk.GetImageFromArray(tile, isVector=True)
-        imout.SetSpacing((10000 / int(im.properties["tiff.XResolution"]) * 1e-6 * downsample_factor,
-                          10000 / int(im.properties["tiff.YResolution"]) * 1e-6 * downsample_factor))
-        imout.SetOrigin(((col - sample_half_size) * imout.GetSpacing()[0],
-                         (row - sample_half_size) * imout.GetSpacing()[1]))
+        # save tile as a tiff file
         outfilename = os.path.splitext(file)[0] + '_row_'+ str(row).zfill(6) + '_col_' + str(col).zfill(6)
-        sitk.WriteImage(imout, os.path.join(training_dir, outfilename + '.tif'), useCompression=True)
-
-        foo = PIL.Image.open(os.path.join(training_dir, outfilename + '.tif'))
-        foo.load()
-        foo.info
-
-        tifffile.imsave(os.path.join(training_dir, outfilename + '.tif'), imout, )
-
-    plt.figure()
-    plt.clf()
-    plt.imshow(seg)
-    plt.pause(.1)
-
-    plt.figure(0)
-    plt.imshow(tile)
-    plt.pause(.1)
+        outfilename = os.path.join(training_dir, outfilename + '.tif')
+        tifffile.imsave(outfilename, tile,
+                        compress='LZMA',
+                        resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
+                                    int(im.properties["tiff.YResolution"]) / downsample_factor,
+                                    im.properties["tiff.ResolutionUnit"].upper()))
