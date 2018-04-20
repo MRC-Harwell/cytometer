@@ -17,7 +17,7 @@ seg_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_seg'
 downsample_factor = 4.0
 sample_size = 301
 sample_half_size = int((sample_size - 1) / 2)
-n_samples = 10
+n_samples = 5
 
 files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
 
@@ -83,7 +83,8 @@ for file_i, file in enumerate(files_list):
         seg[labels == i] = 255
 
     # save segmentation as a tiff file
-    outfilename = os.path.splitext(file)[0] + '_seg'
+    outfilename = os.path.basename(file)
+    outfilename = os.path.splitext(outfilename)[0] + '_seg'
     outfilename = os.path.join(seg_dir, outfilename + '.tif')
     tifffile.imsave(outfilename, seg,
                     compress='LZMA',
@@ -114,7 +115,8 @@ for file_i, file in enumerate(files_list):
         tile = im_4[row-sample_half_size:row+sample_half_size+1, col-sample_half_size:col+sample_half_size+1]
 
         # save tile as a tiff file
-        outfilename = os.path.splitext(file)[0] + '_row_'+ str(row).zfill(6) + '_col_' + str(col).zfill(6)
+        outfilename = os.path.basename(file)
+        outfilename = os.path.splitext(outfilename)[0] + '_row_'+ str(row).zfill(6) + '_col_' + str(col).zfill(6)
         outfilename = os.path.join(training_dir, outfilename + '.tif')
         tifffile.imsave(outfilename, tile,
                         compress='LZMA',
