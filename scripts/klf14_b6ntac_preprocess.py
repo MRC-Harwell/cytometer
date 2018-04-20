@@ -82,12 +82,12 @@ for file_i, file in enumerate(files_list):
     for i in labels_large:
         seg[labels == i] = 255
 
-    # save segmentation as a tiff file
+    # save segmentation as a tiff file (with ZLIB compression)
     outfilename = os.path.basename(file)
     outfilename = os.path.splitext(outfilename)[0] + '_seg'
     outfilename = os.path.join(seg_dir, outfilename + '.tif')
     tifffile.imsave(outfilename, seg,
-                    compress='LZMA',
+                    compress=9,
                     resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
                                 int(im.properties["tiff.YResolution"]) / downsample_factor,
                                 im.properties["tiff.ResolutionUnit"].upper()))
@@ -114,12 +114,12 @@ for file_i, file in enumerate(files_list):
         # extract the sample of the image
         tile = im_4[row-sample_half_size:row+sample_half_size+1, col-sample_half_size:col+sample_half_size+1]
 
-        # save tile as a tiff file
+        # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
         outfilename = os.path.basename(file)
         outfilename = os.path.splitext(outfilename)[0] + '_row_'+ str(row).zfill(6) + '_col_' + str(col).zfill(6)
         outfilename = os.path.join(training_dir, outfilename + '.tif')
         tifffile.imsave(outfilename, tile,
-                        compress='LZMA',
+                        compress=9,
                         resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
                                     int(im.properties["tiff.YResolution"]) / downsample_factor,
                                     im.properties["tiff.ResolutionUnit"].upper()))
