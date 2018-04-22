@@ -14,9 +14,10 @@ DEBUG = False
 data_dir = '/home/rcasero/data/roger_data'
 training_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_training'
 seg_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_seg'
-downsample_factor = 4.0
-sample_size = 301
-sample_half_size = int((sample_size - 1) / 2)
+downsample_factor = 8.0
+
+box_size = 1001
+box_half_size = int((box_size - 1) / 2)
 n_samples = 5
 
 files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
@@ -61,7 +62,7 @@ for file_i, file in enumerate(files_list):
     seg[seg == 1] = 255
 
     # dilate the segmentation to fill gaps within tissue
-    kernel = np.ones((50, 50), np.uint8)
+    kernel = np.ones((25, 25), np.uint8)
     seg = cv2.dilate(seg, kernel, iterations=1)
     seg = cv2.erode(seg, kernel, iterations=1)
 
@@ -101,18 +102,33 @@ for file_i, file in enumerate(files_list):
 
     # pick random centroids that belong to one of the set pixels
     sample_centroid = []
+    sample_centroid_upsampled = []
     while len(sample_centroid) < n_samples:
-        row = randint(sample_half_size+1, seg.shape[0])
-        col = randint(sample_half_size+1, seg.shape[1])
+        row = randint(0, seg.shape[0])
+        col = randint(0, seg.shape[1])
         # if the centroid is a pixel that belongs to tissue...
         if seg[row, col] != 0:
             # ... add it to the list of random samples
             sample_centroid.append((row, col))
+            # ... recompute the centroid's coordinates in the full-resolution image (approximately)
+            sample_centroid_upsampled.append((int(row * downsample_factor + np.round((downsample_factor - 1) / 2)),
+                                              int(col * downsample_factor + np.round((downsample_factor - 1) / 2))))
 
-    # create the training dataset by sampling the images with boxes around the centroids
-    for row, col in sample_centroid:
-        # extract the sample of the image
-        tile = im_4[row-sample_half_size:row+sample_half_size+1, col-sample_half_size:col+sample_half_size+1]
+    # create the training dataset by sampling the full resolution image with boxes around the centroids
+    for row, col in sample_centroid_upsampled:
+
+        # compute from the centroid the top-left corner of the box
+        box_corner_row = row - box_half_size
+        box_corner_col = col - box_half_size
+        tile = im.read_region(location=(box_corner_col, box_corner_row), level=0, size=(box_size, box_size))
+        tile = np.array(tile)
+        tile = tile[:, :, 0:3]
+
+        # plot tile
+        if DEBUG:
+            plt.clf()
+            plt.imshow(tile)
+            plt.pause(.1)
 
         # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
         outfilename = os.path.basename(file)
@@ -120,6 +136,6 @@ for file_i, file in enumerate(files_list):
         outfilename = os.path.join(training_dir, outfilename + '.tif')
         tifffile.imsave(outfilename, tile,
                         compress=9,
-                        resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
-                                    int(im.properties["tiff.YResolution"]) / downsample_factor,
+                        resolution=(int(im.properties["tiff.XResolution"]),
+                                    int(im.properties["tiff.YResolution"]),
                                     im.properties["tiff.ResolutionUnit"].upper()))
