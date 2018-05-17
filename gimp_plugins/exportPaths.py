@@ -1,4 +1,36 @@
 # coding: utf-8
+#
+# This plugin saves all paths in the open image to the same path with
+# extension .svg. For example, if input image is
+# "~/Downloads/foo.tif", the paths will be saved to file
+# "~/Downloads/foo.svg".
+#
+# The .svg file looks like this:
+#
+#==============================================================================
+# <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+# <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+#               "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+#
+# <svg xmlns="http://www.w3.org/2000/svg"
+#      width="0.454277mm" height="0.454236mm"
+#      viewBox="0 0 1001 1001">
+#   <path id="Other #5"
+#         fill="none" stroke="black" stroke-width="1"
+#         d="M 151.00,999.00
+#            C 151.00,999.00 129.00,959.00 129.00,959.00
+#              129.00,959.00 98.00,929.00 98.00,929.00
+#              98.00,929.00 79.00,924.00 79.00,924.00
+#              79.00,924.00 43.00,968.00 43.00,968.00
+#              43.00,968.00 22.00,978.00 22.00,978.00
+#              22.00,978.00 18.00,999.00 18.00,999.00
+#              18.00,999.00 151.00,999.00 151.00,999.00 Z" />
+# ...
+# </svg>
+#==============================================================================
+#
+#
+# To enable this plugin, save it to or link to it from ~/.gimp-2.8/plug-ins
 
 #!/usr/bin/env python
 
