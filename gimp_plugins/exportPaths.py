@@ -2,22 +2,35 @@
 
 #!/usr/bin/env python
 
+import os
 from gimpfu import *
 
-def exportPaths(img, layer) :
-    pdb.gimp_vectors_export_to_file(img,"/tmp/output.svg",None)
+
+DEBUG=False
+
+def export_Paths(img):
+    outfilename, file_extension = os.path.splitext(img.filename)
+    outfilename = outfilename + '.svg'
+    if DEBUG:
+        print("Saving paths to: " + outfilename)
+
+    pdb.gimp_vectors_export_to_file(img, outfilename, None)
 
 register(
-    "ExportPaths",    
+    "export_Paths",    
     "Export all paths",   
-    "Export all paths from current image",
+    "Export all paths from current image to .svg file with same name",
     "Ramón Casero", 
-    "MRC Harwell, UK", 
+    "MRC Harwell Institute, Oxfordshire, UK", 
     "2018",
-    "<Image>/Filters/Paths/Export paths", 
+    "Export all paths",
     "*", 
-    [], 
+    [
+        (PF_IMAGE, "img", "Input image", None),
+    ], 
     [],
-    exportPaths)
+    export_Paths,
+    menu="<Image>/Filters/Paths"
+)
 
 main()
