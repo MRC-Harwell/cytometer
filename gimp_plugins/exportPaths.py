@@ -1,3 +1,5 @@
+# coding: utf-8
+
 #!/usr/bin/env python
 
 from gimpfu import *
@@ -12,7 +14,7 @@ register(
     "Ramón Casero", 
     "MRC Harwell, UK", 
     "2018",
-    "<Image>/MyScripts/Export paths", 
+    "<Image>/Filters/Paths/Export paths", 
     "*", 
     [], 
     [],
