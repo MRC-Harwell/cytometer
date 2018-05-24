@@ -5,8 +5,8 @@ from svgpathtools import svg2paths
 import matplotlib.pyplot as plt
 import openslide
 import csv
-from enum import Enum
-
+import pandas as pd
+import seaborn as sns
 
 DEBUG = False
 
@@ -72,16 +72,14 @@ def extract_cell_contour_and_compute_area(file, x_res=1.0, y_res=1.0):
 ## Warning: We are assuming that all images have the same resolution, so we only do this once
 
 
-# # file = '/path/to/file/KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_015004_col_010364.svg'
-# # original_file = 'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_015004_col_010364.svg'
-# original_file = os.path.basename(file)
-#
-# # original_file = 'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53'
-# original_file = original_file.rsplit(sep='_row_')[0]
-#
-# # original_file = '/home/rcasero/data/roger_data/KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53.ndpi'
-# original_file = os.path.join(image_data_dir, original_file + '.ndpi')
+# check that all files have the same pixel size
+for file in glob.glob(os.path.join(image_data_dir, '*.ndpi')):
+    im = openslide.OpenSlide(file)
+    print("Xres = " + str(1e-2 / float(im.properties['tiff.XResolution'])) + ', ' +
+          "Yres = " + str(1e-2 / float(im.properties['tiff.YResolution'])))
 
+# in practice, we read the pixel size from one file. The reason is that the whole dataset is large, and cannot be
+# conveniently stored in the laptop, so when I'm working from home, I have no access to all full original images
 original_file = os.path.join(root_data_dir, 'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi')
 
 # open original image
@@ -89,8 +87,8 @@ im = openslide.OpenSlide(original_file)
 
 # compute pixel size in the original image, where patches were taken from
 if im.properties['tiff.ResolutionUnit'].lower() == 'centimeter':
-    x_res = 1e-2 / float(im.properties['tiff.XResolution']) # meters / pixel
-    y_res = 1e-2 / float(im.properties['tiff.YResolution']) # meters / pixel
+    x_res = 1e-2 / float(im.properties['tiff.XResolution'])  # meters / pixel
+    y_res = 1e-2 / float(im.properties['tiff.YResolution'])  # meters / pixel
 else:
     raise ValueError('Only centimeter units implemented')
 
@@ -130,40 +128,70 @@ for file in file_list:
     mouse_sex = klf14_info[idx]['sex']
     mouse_ko  = klf14_info[idx]['ko']
 
-    # append values of cell areas to corresponding categories
-    cell_areas[mouse_sex][mouse_ko] = np.append(cell_areas[mouse_sex][mouse_ko],
-                                                extract_cell_contour_and_compute_area(file, x_res=x_res, y_res=y_res))
 
-# compute mean and std of cell size in um^2
-F = 0
-M = 1
-MAT = 0
-PAT = 1
+## boxplots of each image
 
-cell_areas_mean = np.zeros((2, 2), dtype=np.float32)
-cell_areas_std = np.zeros((2, 2), dtype=np.float32)
+# create empty dataframe to host the data
+df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [], 'image_id': []})
 
-cell_areas_mean[F, MAT] = np.mean(cell_areas['f']['MAT']) * 1e12
-cell_areas_mean[F, PAT] = np.mean(cell_areas['f']['PAT']) * 1e12
-cell_areas_mean[M, MAT] = np.mean(cell_areas['m']['MAT']) * 1e12
-cell_areas_mean[M, PAT] = np.mean(cell_areas['m']['PAT']) * 1e12
+for file in file_list:
 
-cell_areas_std[F, MAT] = np.std(cell_areas['f']['MAT']) * 1e12
-cell_areas_std[F, PAT] = np.std(cell_areas['f']['PAT']) * 1e12
-cell_areas_std[M, MAT] = np.std(cell_areas['m']['MAT']) * 1e12
-cell_areas_std[M, PAT] = np.std(cell_areas['m']['PAT']) * 1e12
+    # image ID
+    image_id = os.path.basename(file)
+    image_id = os.path.splitext(image_id)[-2]
 
-# plot results
-width = 0.35
-ind = np.arange(2)
-fig, ax = plt.subplots()
-rects_mat = ax.bar(ind, cell_areas_mean[:, MAT], width=width, color='r',
-                 yerr=cell_areas_std[:, MAT])
-rects_pat = ax.bar(ind + width, cell_areas_mean[:, PAT], width=width, color='g',
-                 yerr=cell_areas_mean[:, PAT])
-ax.set_xlabel('Sex')
-ax.set_ylabel('Area (um^2)')
-ax.set_title('Cell area by sex and KO side')
-ax.set_xticks(ind + width / 2)
-ax.set_xticklabels(('f', 'm'))
-ax.legend((rects_mat[0], rects_pat[0]), ('MAT', 'PAT'), loc='upper left')
+    # get mouse ID from the file name
+    mouse_id = None
+    for x in klf14_ids:
+        if x in image_id:
+            mouse_id = x
+            break
+    if mouse_id is None:
+        raise ValueError('Filename does not seem to correspond to any known mouse ID: ' + file)
+
+    # index of mouse ID
+    idx = klf14_ids.index(mouse_id)
+
+    # sex and KO-side for this mouse
+    mouse_sex = klf14_info[idx]['sex']
+    mouse_ko  = klf14_info[idx]['ko']
+
+    # compute areas of all non-edge cells
+    areas = extract_cell_contour_and_compute_area(file, x_res=x_res, y_res=y_res)
+
+    # area, image id, mouse id, sex, KO
+    for a in areas:
+        df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko, 'image_id': image_id},
+                       ignore_index=True)
+
+
+# plot boxplots for each individual image
+df.boxplot(column='area', by='image_id', vert=False)
+
+
+## boxplots comparing MAT/PAT and f/m
+
+area_f = df.loc[df.sex == 'f', ('area', 'ko')]
+area_m = df.loc[df.sex == 'm', ('area', 'ko')]
+
+# make sure that in the boxplots PAT comes before MAT
+area_f['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+area_m['ko'] = area_m['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+
+# scale area values to um^2
+area_f['area'] *= 1e12
+area_m['area'] *= 1e12
+
+# plot boxplots
+ax = plt.subplot(121)
+area_f.boxplot(column='area', by='ko', ax=ax)
+ax.set_ylim(0, 2e4)
+ax.set_title('female')
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)')
+ax = plt.subplot(122)
+area_m.boxplot(column='area', by='ko', ax=ax)
+ax.set_ylim(0, 2e4)
+ax.set_title('male')
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)')
