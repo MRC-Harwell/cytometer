@@ -195,3 +195,18 @@ ax.set_ylim(0, 2e4)
 ax.set_title('male')
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)')
+
+# plot boxplots without outliers
+ax = plt.subplot(121)
+area_f.boxplot(column='area', by='ko', ax=ax, showfliers=False)
+ax.set_ylim(0, 1e4)
+ax.set_title('female')
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)')
+ax = plt.subplot(122)
+area_m.boxplot(column='area', by='ko', ax=ax, showfliers=False)
+ax.set_ylim(0, 1e4)
+ax.set_title('male')
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)')
+
