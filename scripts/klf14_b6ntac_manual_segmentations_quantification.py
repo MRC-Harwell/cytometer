@@ -184,6 +184,7 @@ area_f['area'] *= 1e12
 area_m['area'] *= 1e12
 
 # plot boxplots
+plt.clf()
 ax = plt.subplot(121)
 area_f.boxplot(column='area', by='ko', ax=ax, notch=True)
 ax.set_ylim(0, 2e4)
@@ -198,7 +199,7 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)')
 
 # plot boxplots without outliers
-plt.close()
+plt.clf()
 ax = plt.subplot(121)
 area_f.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 1e4)
@@ -212,56 +213,55 @@ ax.set_title('male')
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)')
 
-# compute optimal bandwidth
-params = {'bandwidth': np.logspace(-1, 3, 20)}
-grid = GridSearchCV(KernelDensity(), params)
-grid.fit(area_f['area'][:, np.newaxis])
-print("best bandwidth: {0}".format(grid.best_estimator_.bandwidth))
 
 # split dataset into groups
-area_f_MAT = area_f['area'][area_f['ko']=='MAT']
-area_f_PAT = area_f['area'][area_f['ko']=='PAT']
-area_m_MAT = area_m['area'][area_m['ko']=='MAT']
-area_m_PAT = area_m['area'][area_m['ko']=='PAT']
+area_f_MAT = area_f['area'][area_f['ko'] == 'MAT']
+area_f_PAT = area_f['area'][area_f['ko'] == 'PAT']
+area_m_MAT = area_m['area'][area_m['ko'] == 'MAT']
+area_m_PAT = area_m['area'][area_m['ko'] == 'PAT']
+
+
+# function to estimate PDF of areas
+def compute_and_plot_pdf(ax, bin_edges, area, title):
+    # compute optimal bandwidth
+    params = {'bandwidth': np.logspace(-1, 3, 200)}
+    grid = GridSearchCV(KernelDensity(), params)
+    grid.fit(area[:, np.newaxis])
+    print("best bandwidth: {0}".format(grid.best_estimator_.bandwidth))
+
+    # compute and plot histogram
+    hist, bin_edges, foo = plt.hist(area, bins=100, density=True)
+
+    # compute and plot pdf
+    bin_centers = (bin_edges[0:-1] + bin_edges[1:]) / 2.0
+    kde = KernelDensity(kernel='gaussian', bandwidth=grid.best_estimator_.bandwidth).fit(area[:, np.newaxis])
+    area_log_pdf = kde.score_samples(bin_centers[:, np.newaxis])
+    area_pdf = np.exp(area_log_pdf)
+    plt.plot(bin_centers, area_pdf)
+
+    # metainfo for plot
+    ax.set_xlabel('area (um^2)')
+    ax.set_ylabel('pdf')
+    plt.title(title)
+
+    return bin_centers, area_pdf
+
 
 ## plot estimated pdfs separated by f/m, MAT/PAT
 plt.clf()
 
-# female
+ax = plt.subplot(221)
+bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, bin_edges_f_PAT, area_f_PAT, 'f, PAT')
 
-plt.subplot(221)
-hist, bin_edges_f_PAT, foo = plt.hist(area_f_PAT, bins=100, density=True)
-bin_centers_f_PAT = (bin_edges_f_PAT[0:-1] + bin_edges_f_PAT[1:]) / 2.0
-kde = KernelDensity(kernel='gaussian', bandwidth=grid.best_estimator_.bandwidth).fit(area_f_PAT[:, np.newaxis])
-area_f_PAT_pdf = kde.score_samples(bin_centers_f_PAT[:, np.newaxis])
-plt.plot(bin_centers_f_PAT, np.exp(area_f_PAT_pdf))
-plt.title('f, PAT')
+ax = plt.subplot(223)
+bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, bin_edges_f_MAT, area_f_MAT, 'f, MAT')
 
-plt.subplot(223)
-hist, bin_edges_f_MAT, foo = plt.hist(area_f_MAT, bins=100, density=True)
-bin_centers_f_MAT = (bin_edges_f_MAT[0:-1] + bin_edges_f_MAT[1:]) / 2.0
-kde = KernelDensity(kernel='gaussian', bandwidth=grid.best_estimator_.bandwidth).fit(area_f_MAT[:, np.newaxis])
-area_f_MAT_pdf = kde.score_samples(bin_centers_f_MAT[:, np.newaxis])
-plt.plot(bin_centers_f_MAT, np.exp(area_f_MAT_pdf))
-plt.title('f, MAT')
+ax = plt.subplot(222)
+bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, bin_edges_m_PAT, area_m_PAT, 'm, PAT')
 
-# male
+ax = plt.subplot(224)
+bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, bin_edges_m_MAT, area_m_MAT, 'm, MAT')
 
-plt.subplot(222)
-hist, bin_edges_m_PAT, foo = plt.hist(area_m_PAT, bins=100, density=True)
-bin_centers_m_PAT = (bin_edges_m_PAT[0:-1] + bin_edges_m_PAT[1:]) / 2.0
-kde = KernelDensity(kernel='gaussian', bandwidth=grid.best_estimator_.bandwidth).fit(area_m_PAT[:, np.newaxis])
-area_m_PAT_pdf = kde.score_samples(bin_centers_m_PAT[:, np.newaxis])
-plt.plot(bin_centers_m_PAT, np.exp(area_m_PAT_pdf))
-plt.title('m, PAT')
-
-plt.subplot(224)
-hist, bin_edges_m_MAT, foo = plt.hist(area_m_MAT, bins=100, density=True)
-bin_centers_m_MAT = (bin_edges_m_MAT[0:-1] + bin_edges_m_MAT[1:]) / 2.0
-kde = KernelDensity(kernel='gaussian', bandwidth=grid.best_estimator_.bandwidth).fit(area_m_MAT[:, np.newaxis])
-area_m_MAT_pdf = kde.score_samples(bin_centers_m_MAT[:, np.newaxis])
-plt.plot(bin_centers_m_MAT, np.exp(area_m_MAT_pdf))
-plt.title('m, MAT')
 
 
 ## plot pdfs
@@ -269,17 +269,20 @@ plt.title('m, MAT')
 plt.clf()
 
 ax = plt.subplot(211)
-plt.plot(bin_centers_f_PAT, np.exp(area_f_PAT_pdf))
-plt.plot(bin_centers_f_MAT, np.exp(area_f_PAT_pdf))
+plt.plot(bin_centers_f_PAT, np.exp(area_pdf_f_PAT))
+plt.plot(bin_centers_f_MAT, np.exp(area_pdf_f_MAT))
 plt.legend(('PAT', 'MAT'))
 ax.set_xlabel('area (um^2)')
 ax.set_ylabel('pdf')
 plt.title('female')
+ax.set_xlim(0, 20000)
+
 
 ax = plt.subplot(212)
-plt.plot(bin_centers_m_PAT, np.exp(area_m_PAT_pdf))
-plt.plot(bin_centers_m_MAT, np.exp(area_m_PAT_pdf))
+plt.plot(bin_centers_m_PAT, np.exp(area_pdf_m_PAT))
+plt.plot(bin_centers_m_MAT, np.exp(area_pdf_m_MAT))
 plt.legend(('PAT', 'MAT'))
 ax.set_xlabel('area (um^2)')
 ax.set_ylabel('pdf')
 plt.title('male')
+ax.set_xlim(0, 20000)
