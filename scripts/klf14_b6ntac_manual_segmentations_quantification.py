@@ -222,7 +222,7 @@ area_m_PAT = area_m['area'][area_m['ko'] == 'PAT']
 
 
 # function to estimate PDF of areas
-def compute_and_plot_pdf(ax, bin_edges, area, title):
+def compute_and_plot_pdf(ax, area, title):
     # compute optimal bandwidth
     params = {'bandwidth': np.logspace(-1, 3, 200)}
     grid = GridSearchCV(KernelDensity(), params)
@@ -251,16 +251,16 @@ def compute_and_plot_pdf(ax, bin_edges, area, title):
 plt.clf()
 
 ax = plt.subplot(221)
-bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, bin_edges_f_PAT, area_f_PAT, 'f, PAT')
+bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT, 'f, PAT')
 
 ax = plt.subplot(223)
-bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, bin_edges_f_MAT, area_f_MAT, 'f, MAT')
+bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT, 'f, MAT')
 
 ax = plt.subplot(222)
-bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, bin_edges_m_PAT, area_m_PAT, 'm, PAT')
+bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT, 'm, PAT')
 
 ax = plt.subplot(224)
-bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, bin_edges_m_MAT, area_m_MAT, 'm, MAT')
+bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT, 'm, MAT')
 
 
 
