@@ -8,6 +8,7 @@ import csv
 import pandas as pd
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.model_selection import GridSearchCV
+from scipy.stats import mannwhitneyu
 
 DEBUG = False
 
@@ -265,3 +266,15 @@ ax.set_xlabel('area (um^2)')
 ax.set_ylabel('pdf')
 plt.title('male')
 ax.set_xlim(0, 20000)
+
+## statistical comparison
+
+# Box-cox transformation to remove outliers
+# TODO
+
+# Mann–Whitney U test
+statistic_f, pvalue_f = mannwhitneyu(area_f_MAT, area_f_PAT, alternative='less')
+statistic_m, pvalue_m = mannwhitneyu(area_m_MAT, area_m_PAT, alternative='less')
+
+print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
+print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
