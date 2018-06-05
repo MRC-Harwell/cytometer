@@ -37,8 +37,8 @@
       <file leaf-file-name="klf14_b6ntac_manual_segmentations_quantification.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="601">
-              <caret line="288" selection-start-line="268" selection-end-line="288" />
+            <state relative-caret-position="2088">
+              <caret line="266" column="21" lean-forward="true" selection-start-line="245" selection-end-line="266" selection-end-column="21" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -98,6 +98,7 @@
       <find>load_train</find>
       <find>model</find>
       <find>image_data_dir</find>
+      <find>cell_areas</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -123,7 +124,7 @@
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="4">
-    <option name="x" value="273" />
+    <option name="x" value="272" />
     <option name="y" value="27" />
     <option name="width" value="1647" />
     <option name="height" value="1413" />
@@ -218,8 +219,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="273" y="27" width="1647" height="1413" extended-state="4" />
-    <editor active="true" />
+    <frame x="272" y="27" width="1647" height="1413" extended-state="4" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.33636916" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -656,8 +656,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="601">
-          <caret line="288" selection-start-line="268" selection-end-line="288" />
+        <state relative-caret-position="2088">
+          <caret line="266" column="21" lean-forward="true" selection-start-line="245" selection-end-line="266" selection-end-column="21" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>

@@ -107,30 +107,7 @@ f.close()
 # list of mouse IDs
 klf14_ids = [x['id'] for x in klf14_info]
 
-cell_areas = {'f': {'MAT': np.empty(0), 'PAT': np.empty(0)},
-              'm': {'MAT': np.empty(0), 'PAT': np.empty(0)}}
-
 file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
-for file in file_list:
-
-    # get mouse ID from the file name
-    mouse_id = None
-    for x in klf14_ids:
-        if x in os.path.basename(file):
-            mouse_id = x
-            break
-    if mouse_id is None:
-        raise ValueError('Filename does not seem to correspond to any known mouse ID: ' + file)
-
-    # index of mouse ID
-    idx = klf14_ids.index(mouse_id)
-
-    # sex and KO-side for this mouse
-    mouse_sex = klf14_info[idx]['sex']
-    mouse_ko  = klf14_info[idx]['ko']
-
-
-## boxplots of each image
 
 # create empty dataframe to host the data
 df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [], 'image_id': []})
@@ -165,6 +142,8 @@ for file in file_list:
         df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko, 'image_id': image_id},
                        ignore_index=True)
 
+
+## boxplots of each image
 
 # plot boxplots for each individual image
 df.boxplot(column='area', by='image_id', vert=False)
