@@ -8,7 +8,7 @@ import csv
 import pandas as pd
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.model_selection import GridSearchCV
-from scipy.stats import mannwhitneyu
+from scipy.stats import mannwhitneyu, boxcox
 
 DEBUG = False
 
@@ -22,7 +22,7 @@ training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 # FB - 20120218
 # corners must be ordered in clockwise or counter-clockwise direction
 def polygon_area(corners):
-    n = len(corners) # of corners
+    n = len(corners)  # of corners
     area = 0.0
     for i in range(n):
         j = (i + 1) % n
@@ -133,13 +133,15 @@ for file in file_list:
 
     # sex and KO-side for this mouse
     mouse_sex = klf14_info[idx]['sex']
-    mouse_ko  = klf14_info[idx]['ko']
+    mouse_ko = klf14_info[idx]['ko']
 
     # compute areas of all non-edge cells
     areas = extract_cell_contour_and_compute_area(file, x_res=x_res, y_res=y_res)
 
     # area, image id, mouse id, sex, KO
-    for a in areas:
+    for i, a in enumerate(areas):
+        if a == 0.0:
+            print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
         df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko, 'image_id': image_id},
                        ignore_index=True)
 
@@ -193,7 +195,6 @@ ax.set_title('male')
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)')
 
-
 # split dataset into groups
 area_f_MAT = area_f['area'][area_f['ko'] == 'MAT']
 area_f_PAT = area_f['area'][area_f['ko'] == 'PAT']
@@ -202,9 +203,9 @@ area_m_PAT = area_m['area'][area_m['ko'] == 'PAT']
 
 
 # function to estimate PDF of areas
-def compute_and_plot_pdf(ax, area, title):
+def compute_and_plot_pdf(ax, area, title, bandwidth=None):
     # compute optimal bandwidth
-    params = {'bandwidth': np.logspace(-1, 3, 200)}
+    params = {'bandwidth': bandwidth}
     grid = GridSearchCV(KernelDensity(), params)
     grid.fit(area[:, np.newaxis])
     print("best bandwidth: {0}".format(grid.best_estimator_.bandwidth))
@@ -231,20 +232,19 @@ def compute_and_plot_pdf(ax, area, title):
 plt.clf()
 
 ax = plt.subplot(221)
-bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT, 'f, PAT')
+bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT, 'f, PAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(223)
-bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT, 'f, MAT')
+bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT, 'f, MAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(222)
-bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT, 'm, PAT')
+bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT, 'm, PAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(224)
-bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT, 'm, MAT')
+bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT, 'm, MAT', bandwidth=np.logspace(2, 3, 200))
 
 
-
-## plot pdfs
+## plot pdfs side by side
 
 plt.clf()
 
@@ -257,7 +257,6 @@ ax.set_ylabel('pdf')
 plt.title('female')
 ax.set_xlim(0, 20000)
 
-
 ax = plt.subplot(212)
 plt.plot(bin_centers_m_PAT, np.exp(area_pdf_m_PAT))
 plt.plot(bin_centers_m_MAT, np.exp(area_pdf_m_MAT))
@@ -269,12 +268,148 @@ ax.set_xlim(0, 20000)
 
 ## statistical comparison
 
-# Box-cox transformation to remove outliers
-# TODO
-
 # Mann–Whitney U test
 statistic_f, pvalue_f = mannwhitneyu(area_f_MAT, area_f_PAT, alternative='less')
 statistic_m, pvalue_m = mannwhitneyu(area_m_MAT, area_m_PAT, alternative='less')
 
 print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
 print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
+
+# ## identification of outliers
+#
+# # log transform of area data
+# df_norm = df.copy()
+# df_norm.area = np.log10(df_norm.area)
+#
+# # plot boxplots
+# area_f_norm = df_norm.loc[df.sex == 'f', ('area', 'ko')]
+# area_m_norm = df_norm.loc[df.sex == 'm', ('area', 'ko')]
+#
+# # make sure that in the boxplots PAT comes before MAT
+# area_f_norm['ko'] = area_f_norm['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+# area_m_norm['ko'] = area_m_norm['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+#
+# plt.clf()
+# ax = plt.subplot(121)
+# area_f_norm.boxplot(column='area', by='ko', ax=ax, notch=True)
+# ax.set_ylim(-10.5, -7.5)
+# ax.set_title('female')
+# ax.set_xlabel('')
+# ax.set_ylabel('log(area)')
+# ax = plt.subplot(122)
+# area_m_norm.boxplot(column='area', by='ko', ax=ax, notch=True)
+# ax.set_ylim(-10.5, -7.5)
+# ax.set_title('male')
+# ax.set_xlabel('')
+# ax.set_ylabel('log(area)')
+#
+# # split dataset into groups
+# area_f_MAT_norm = area_f_norm['area'][area_f_norm['ko'] == 'MAT']
+# area_f_PAT_norm = area_f_norm['area'][area_f_norm['ko'] == 'PAT']
+# area_m_MAT_norm = area_m_norm['area'][area_m_norm['ko'] == 'MAT']
+# area_m_PAT_norm = area_m_norm['area'][area_m_norm['ko'] == 'PAT']
+#
+#
+# # compute limits beyond which we consider data points to be outliers
+# def outlier_limits(x):
+#     q75, q25 = np.percentile(x, [75, 25])
+#     iqr = q75 - q25
+#     min = q25 - (iqr * 1.5)
+#     max = q75 + (iqr * 1.5)
+#     return min, max
+#
+#
+# area_f_MAT_norm_min, area_f_MAT_norm_max = outlier_limits(area_f_MAT_norm)
+# area_f_PAT_norm_min, area_f_PAT_norm_max = outlier_limits(area_f_PAT_norm)
+# area_m_MAT_norm_min, area_m_MAT_norm_max = outlier_limits(area_m_MAT_norm)
+# area_m_PAT_norm_min, area_m_PAT_norm_max = outlier_limits(area_m_PAT_norm)
+#
+# area_f_MAT_norm_outlier = np.logical_or(area_f_MAT_norm < area_f_MAT_norm_min,
+#                                         area_f_MAT_norm > area_f_MAT_norm_max)
+# area_f_PAT_norm_outlier = np.logical_or(area_f_PAT_norm < area_f_PAT_norm_min,
+#                                         area_f_PAT_norm > area_f_PAT_norm_max)
+# area_m_MAT_norm_outlier = np.logical_or(area_m_MAT_norm < area_m_MAT_norm_min,
+#                                         area_m_MAT_norm > area_m_MAT_norm_max)
+# area_m_PAT_norm_outlier = np.logical_or(area_m_PAT_norm < area_m_PAT_norm_min,
+#                                         area_m_PAT_norm > area_m_PAT_norm_max)
+#
+# # remove outliers from groups
+# area_f_MAT = area_f_MAT[np.logical_not(area_f_MAT_norm_outlier)]
+# area_f_PAT = area_f_PAT[np.logical_not(area_f_PAT_norm_outlier)]
+# area_m_MAT = area_m_MAT[np.logical_not(area_m_MAT_norm_outlier)]
+# area_m_PAT = area_m_PAT[np.logical_not(area_m_PAT_norm_outlier)]
+#
+# ## plot estimated pdfs separated by f/m, MAT/PAT
+# plt.clf()
+#
+# ax = plt.subplot(221)
+# bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT, 'f, PAT', bandwidth=np.logspace(2, 3, 200))
+#
+# ax = plt.subplot(223)
+# bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT, 'f, MAT', bandwidth=np.logspace(2, 3, 200))
+#
+# ax = plt.subplot(222)
+# bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT, 'm, PAT', bandwidth=np.logspace(2, 3, 200))
+#
+# ax = plt.subplot(224)
+# bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT, 'm, MAT', bandwidth=np.logspace(2, 3, 200))
+#
+#
+# ## plot pdfs side by side
+#
+# plt.clf()
+#
+# ax = plt.subplot(211)
+# plt.plot(bin_centers_f_PAT, np.exp(area_pdf_f_PAT))
+# plt.plot(bin_centers_f_MAT, np.exp(area_pdf_f_MAT))
+# plt.legend(('PAT', 'MAT'))
+# ax.set_xlabel('area (um^2)')
+# ax.set_ylabel('pdf')
+# plt.title('female')
+# ax.set_xlim(0, 20000)
+#
+# ax = plt.subplot(212)
+# plt.plot(bin_centers_m_PAT, np.exp(area_pdf_m_PAT))
+# plt.plot(bin_centers_m_MAT, np.exp(area_pdf_m_MAT))
+# plt.legend(('PAT', 'MAT'))
+# ax.set_xlabel('area (um^2)')
+# ax.set_ylabel('pdf')
+# plt.title('male')
+# ax.set_xlim(0, 20000)
+#
+# ## statistical comparison
+#
+# # Mann–Whitney U test
+# statistic_f, pvalue_f = mannwhitneyu(area_f_MAT, area_f_PAT, alternative='less')
+# statistic_m, pvalue_m = mannwhitneyu(area_m_MAT, area_m_PAT, alternative='less')
+#
+# print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
+# print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
+
+## measure effect size (um^2)
+
+# compute effect as difference of the median areas
+effect_f = np.median(area_f_MAT) - np.median(area_f_PAT)
+effect_m = np.median(area_m_MAT) - np.median(area_m_PAT)
+
+# area change
+print('Female: Median area change from PAT to MAT: ' +
+      "{0:.1f}".format(np.median(area_f_MAT) - np.median(area_f_PAT)) + ' um^2 (' +
+      "{0:.1f}".format((np.median(area_f_MAT) - np.median(area_f_PAT)) / np.median(area_f_PAT) * 100) + '%)')
+print('Male: Median area change from PAT to MAT: ' +
+      "{0:.1f}".format(np.median(area_m_MAT) - np.median(area_m_PAT)) + ' um^2 (' +
+      "{0:.1f}".format((np.median(area_m_MAT) - np.median(area_m_PAT)) / np.median(area_m_PAT) * 100) + '%)')
+
+# for the median cells areas, compute radii as if cells were circles
+radius_f_MAT = np.sqrt(np.median(area_f_MAT) / np.pi)  # (um)
+radius_f_PAT = np.sqrt(np.median(area_f_PAT) / np.pi)  # (um)
+radius_m_MAT = np.sqrt(np.median(area_m_MAT) / np.pi)  # (um)
+radius_m_PAT = np.sqrt(np.median(area_m_PAT) / np.pi)  # (um)
+
+# radius change in percentage
+print('Female: Radius change from PAT to MAT: ' +
+      "{0:.1f}".format(radius_f_MAT - radius_f_PAT) + ' um ('
+      "{0:.1f}".format((radius_f_MAT - radius_f_PAT) / radius_f_PAT * 100) + '%)')
+print('Male: Radius change from PAT to MAT: ' +
+      "{0:.1f}".format(radius_m_MAT - radius_m_PAT) + ' um ('
+      "{0:.1f}".format((radius_m_MAT - radius_m_PAT) / radius_m_PAT * 100) + '%)')

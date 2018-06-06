@@ -14,8 +14,9 @@ setup(name='cytometer',
       packages=find_packages(),
       data_files=[('data', ['data/*'])],
       install_requires=['python>=3.5', 'keras>=2.1.2', 'pillow>=5',
-                        'matplotlib=2.1.2', 'scikit-image>=0.13.1',
-                        'scikit-learn>=0.19.1',
+                        'numpy>=1.14.2', 'pandas>=0.22.0',
+                        'matplotlib>=2.1.2', 'scikit-image>=0.13.1',
+                        'scikit-learn>=0.19.1', 'scipy>=1.0.0',
                         'openslide-python>=1.1.1', 'tifffile>=0.14.0',
-                        'svgpathtools>=1.3.2', 'seaborn>=0.8.1']
+                        'svgpathtools>=1.3.2']
      )

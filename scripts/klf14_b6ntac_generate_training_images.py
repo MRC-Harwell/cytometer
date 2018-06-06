@@ -12,7 +12,7 @@ import glob
 DEBUG = False
 
 data_dir = '/home/rcasero/data/roger_data'
-training_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_training'
+training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
 seg_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_seg'
 downsample_factor = 8.0
 
