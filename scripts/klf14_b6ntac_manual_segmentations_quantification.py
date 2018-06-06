@@ -413,3 +413,24 @@ print('Female: Radius change from PAT to MAT: ' +
 print('Male: Radius change from PAT to MAT: ' +
       "{0:.1f}".format(radius_m_MAT - radius_m_PAT) + ' um ('
       "{0:.1f}".format((radius_m_MAT - radius_m_PAT) / radius_m_PAT * 100) + '%)')
+
+## compare percentiles of the distributions
+
+perc = np.linspace(0, 100, num=100)
+perc_f_MAT = np.percentile(area_f_MAT, perc)
+perc_f_PAT = np.percentile(area_f_PAT, perc)
+perc_m_MAT = np.percentile(area_m_MAT, perc)
+perc_m_PAT = np.percentile(area_m_PAT, perc)
+
+# plot curves comparing cell area change at each percentile
+plt.clf()
+plt.subplot(211)
+plt.plot(perc, (perc_f_MAT - perc_f_PAT) / perc_f_PAT * 100)
+plt.title('female')
+plt.xlabel('percentile (%)')
+plt.ylabel('change in cell area size from PAT to MAT (%)')
+plt.subplot(212)
+plt.plot(perc, (perc_m_MAT - perc_m_PAT) / perc_m_PAT * 100)
+plt.title('male')
+plt.xlabel('percentile (%)')
+plt.ylabel('change in cell area size from PAT to MAT (%)')
