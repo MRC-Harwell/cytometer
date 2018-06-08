@@ -45,7 +45,8 @@ def extract_contour(path, x_res=1.0, y_res=1.0):
 
     return contour
 
-# extract the polygon from the path object, and compute polygon area
+
+# extract contours that correspond to non-edge cells in SVG file as list of polygons
 def extract_cell_contour_and_compute_area(file, x_res=1.0, y_res=1.0):
 
     # extract all paths from the SVG file
