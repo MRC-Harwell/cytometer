@@ -147,24 +147,53 @@ for file in file_list:
                        ignore_index=True)
 
 
-## boxplots of each image
+# save dataframe to file
+#df.to_csv(os.path.join(root_data_dir, 'klf14_b6ntac_cell_areas.csv'))
 
-# plot boxplots for each individual image
-df.boxplot(column='area', by='image_id', vert=False)
+# split dataset into groups
+area_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id')]
+area_m = df.loc[df.sex == 'm', ('area', 'ko', 'image_id')]
 
-
-## boxplots comparing MAT/PAT and f/m
-
-area_f = df.loc[df.sex == 'f', ('area', 'ko')]
-area_m = df.loc[df.sex == 'm', ('area', 'ko')]
+area_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id')]
+area_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id')]
 
 # make sure that in the boxplots PAT comes before MAT
 area_f['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
 area_m['ko'] = area_m['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
 
+# TODO HERE
+#area_MAT['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+#area_PAT['ko'] = area_m['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+
 # scale area values to um^2
 area_f['area'] *= 1e12
 area_m['area'] *= 1e12
+
+area_MAT['area'] *= 1e12
+area_PAT['area'] *= 1e12
+
+area_f_MAT = area_f.loc[area_f.ko == 'MAT', 'area']
+area_f_PAT = area_f.loc[area_f.ko == 'PAT', 'area']
+area_m_MAT = area_m.loc[area_m.ko == 'MAT', 'area']
+area_m_PAT = area_m.loc[area_m.ko == 'PAT', 'area']
+
+## boxplots of each image
+
+# plot boxplots for each individual image
+df.boxplot(column='area', by='image_id', vert=False)
+
+## boxplots comparing MAT/PAT and f/m
+
+# plot boxplots for each individual image, split into f/m groups and MAT/PAT groups
+plt.clf()
+ax = plt.subplot(211)
+area_f.boxplot(column='area', by='image_id', vert=False, ax=ax)
+plt.title('female')
+
+ax = plt.subplot(212)
+area_m.boxplot(column='area', by='image_id', vert=False, ax=ax)
+plt.title('male')
+
 
 # plot boxplots
 plt.clf()
@@ -196,12 +225,6 @@ ax.set_title('male')
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)')
 
-# split dataset into groups
-area_f_MAT = area_f['area'][area_f['ko'] == 'MAT']
-area_f_PAT = area_f['area'][area_f['ko'] == 'PAT']
-area_m_MAT = area_m['area'][area_m['ko'] == 'MAT']
-area_m_PAT = area_m['area'][area_m['ko'] == 'PAT']
-
 
 # function to estimate PDF of areas
 def compute_and_plot_pdf(ax, area, title, bandwidth=None):
@@ -209,7 +232,8 @@ def compute_and_plot_pdf(ax, area, title, bandwidth=None):
     params = {'bandwidth': bandwidth}
     grid = GridSearchCV(KernelDensity(), params)
     grid.fit(area[:, np.newaxis])
-    print("best bandwidth: {0}".format(grid.best_estimator_.bandwidth))
+    if DEBUG:
+        print("best bandwidth: {0}".format(grid.best_estimator_.bandwidth))
 
     # compute and plot histogram
     hist, bin_edges, foo = plt.hist(area, bins=100, density=True)
@@ -427,11 +451,13 @@ perc_m_PAT = np.percentile(area_m_PAT, perc)
 plt.clf()
 plt.subplot(211)
 plt.plot(perc, (perc_f_MAT - perc_f_PAT) / perc_f_PAT * 100)
-plt.title('female')
-plt.xlabel('percentile (%)')
-plt.ylabel('change in cell area size from PAT to MAT (%)')
+plt.title('female', fontsize=20)
+plt.xlabel('percentile (%)', fontsize=18)
+plt.ylabel('change in cell area size from PAT to MAT (%)', fontsize=16)
+plt.tick_params(axis='both', which='major', labelsize=16)
 plt.subplot(212)
 plt.plot(perc, (perc_m_MAT - perc_m_PAT) / perc_m_PAT * 100)
-plt.title('male')
-plt.xlabel('percentile (%)')
-plt.ylabel('change in cell area size from PAT to MAT (%)')
+plt.title('male', fontsize=20)
+plt.xlabel('percentile (%)', fontsize=18)
+plt.ylabel('change in cell area size from PAT to MAT (%)', fontsize=16)
+plt.tick_params(axis='both', which='major', labelsize=16)
