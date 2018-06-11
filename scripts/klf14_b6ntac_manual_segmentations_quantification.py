@@ -8,7 +8,8 @@ import csv
 import pandas as pd
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.model_selection import GridSearchCV
-from scipy.stats import mannwhitneyu, boxcox
+from scipy.stats import mannwhitneyu
+from statsmodels.distributions.empirical_distribution import ECDF
 
 DEBUG = False
 
@@ -180,6 +181,7 @@ area_m_PAT = area_m.loc[area_m.ko == 'PAT', ('area', 'image_id')]
 ## boxplots of each image
 
 # plot boxplots for each individual image
+plt.clf()
 df.boxplot(column='area', by='image_id', vert=False)
 
 ## boxplots comparing MAT/PAT and f/m
@@ -210,33 +212,37 @@ plt.clf()
 ax = plt.subplot(121)
 area_f.boxplot(column='area', by='ko', ax=ax, notch=True)
 ax.set_ylim(0, 2e4)
-ax.set_title('female')
+ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
-ax.set_ylabel('area (um^2)')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
 area_m.boxplot(column='area', by='ko', ax=ax, notch=True)
 ax.set_ylim(0, 2e4)
-ax.set_title('male')
+ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
-ax.set_ylabel('area (um^2)')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
 
 # plot boxplots without outliers
 plt.clf()
 ax = plt.subplot(121)
 area_f.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 1e4)
-ax.set_title('female')
+ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
-ax.set_ylabel('area (um^2)')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
 area_m.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 1e4)
-ax.set_title('male')
+ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
-ax.set_ylabel('area (um^2)')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
 
 
-# function to estimate PDF of areas
+# function to estimate PDF of areas using Kernel Density
 def compute_and_plot_pdf(ax, area, title, bandwidth=None):
     # compute optimal bandwidth
     params = {'bandwidth': bandwidth}
@@ -256,9 +262,10 @@ def compute_and_plot_pdf(ax, area, title, bandwidth=None):
     plt.plot(bin_centers, area_pdf)
 
     # metainfo for plot
-    ax.set_xlabel('area (um^2)')
-    ax.set_ylabel('pdf')
-    plt.title(title)
+    ax.set_xlabel('area (um^2)', fontsize=14)
+    ax.set_ylabel('pdf', fontsize=14)
+    plt.title(title, fontsize=15)
+    plt.tick_params(axis='both', which='major', labelsize=12)
 
     return bin_centers, area_pdf
 
@@ -267,39 +274,41 @@ def compute_and_plot_pdf(ax, area, title, bandwidth=None):
 plt.clf()
 
 ax = plt.subplot(221)
-bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT, 'f, PAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT['area'], 'f, PAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(223)
-bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT, 'f, MAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT['area'], 'f, MAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(222)
-bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT, 'm, PAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT['area'], 'm, PAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(224)
-bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT, 'm, MAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT['area'], 'm, MAT', bandwidth=np.logspace(2, 3, 200))
 
 
 ## plot pdfs side by side
 
 plt.clf()
 
-ax = plt.subplot(211)
+ax = plt.subplot(121)
 plt.plot(bin_centers_f_PAT, np.exp(area_pdf_f_PAT))
 plt.plot(bin_centers_f_MAT, np.exp(area_pdf_f_MAT))
 plt.legend(('PAT', 'MAT'))
-ax.set_xlabel('area (um^2)')
-ax.set_ylabel('pdf')
-plt.title('female')
+ax.set_xlabel('area (um^2)', fontsize=18)
+ax.set_ylabel('pdf', fontsize=18)
+plt.title('female', fontsize=20)
 ax.set_xlim(0, 20000)
+plt.tick_params(axis='both', which='major', labelsize=16)
 
-ax = plt.subplot(212)
+ax = plt.subplot(122)
 plt.plot(bin_centers_m_PAT, np.exp(area_pdf_m_PAT))
 plt.plot(bin_centers_m_MAT, np.exp(area_pdf_m_MAT))
 plt.legend(('PAT', 'MAT'))
-ax.set_xlabel('area (um^2)')
-ax.set_ylabel('pdf')
-plt.title('male')
+ax.set_xlabel('area (um^2)', fontsize=18)
+ax.set_ylabel('pdf', fontsize=18)
+plt.title('male', fontsize=20)
 ax.set_xlim(0, 20000)
+plt.tick_params(axis='both', which='major', labelsize=16)
 
 ## statistical comparison
 
@@ -309,6 +318,46 @@ statistic_m, pvalue_m = mannwhitneyu(area_m_MAT, area_m_PAT, alternative='less')
 
 print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
 print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
+
+## compute ECDF
+
+
+def area_linspace(x, n=100):
+    return np.linspace(np.min(x['area']), np.max(x['area']), n)
+
+area_ecdf_f_PAT = ECDF(area_f_PAT['area'])
+area_ecdf_f_MAT = ECDF(area_f_MAT['area'])
+area_ecdf_m_PAT = ECDF(area_m_PAT['area'])
+area_ecdf_m_MAT = ECDF(area_m_MAT['area'])
+
+area_linspace_f_PAT = area_linspace(area_f_PAT)
+area_linspace_f_MAT = area_linspace(area_f_MAT)
+area_linspace_m_PAT = area_linspace(area_m_PAT)
+area_linspace_m_MAT = area_linspace(area_m_MAT)
+
+# plot ECDF curves side by side
+plt.clf()
+
+ax = plt.subplot(121)
+plt.plot(area_linspace_f_PAT, area_ecdf_f_PAT(area_linspace_f_PAT))
+plt.plot(area_linspace_f_MAT, area_ecdf_f_MAT(area_linspace_f_MAT))
+plt.legend(('PAT', 'MAT'))
+ax.set_xlabel('area (um^2)', fontsize=14)
+ax.set_ylabel('ECDF', fontsize=14)
+plt.title('female', fontsize=16)
+ax.set_xlim(0, 20000)
+plt.tick_params(axis='both', which='major', labelsize=16)
+
+ax = plt.subplot(122)
+plt.plot(area_linspace_m_PAT, area_ecdf_m_PAT(area_linspace_m_PAT))
+plt.plot(area_linspace_m_MAT, area_ecdf_m_MAT(area_linspace_m_MAT))
+plt.legend(('PAT', 'MAT'))
+ax.set_xlabel('area (um^2)', fontsize=14)
+ax.set_ylabel('ECDF', fontsize=14)
+plt.title('male', fontsize=16)
+ax.set_xlim(0, 20000)
+plt.tick_params(axis='both', which='major', labelsize=16)
+
 
 # ## identification of outliers
 #
