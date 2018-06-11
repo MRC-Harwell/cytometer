@@ -158,12 +158,12 @@ area_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id')]
 area_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id')]
 
 # make sure that in the boxplots PAT comes before MAT
-area_f['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
-area_m['ko'] = area_m['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+area_f['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+area_m['ko'] = area_m['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
-# TODO HERE
-#area_MAT['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
-#area_PAT['ko'] = area_m['ko'].astype(pd.api.types.CategoricalDtype(categories=["PAT", "MAT"], ordered=True))
+# make sure that in the boxplots f comes before m
+area_MAT['sex'] = area_MAT['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+area_PAT['sex'] = area_PAT['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
 
 # scale area values to um^2
 area_f['area'] *= 1e12
@@ -172,10 +172,10 @@ area_m['area'] *= 1e12
 area_MAT['area'] *= 1e12
 area_PAT['area'] *= 1e12
 
-area_f_MAT = area_f.loc[area_f.ko == 'MAT', 'area']
-area_f_PAT = area_f.loc[area_f.ko == 'PAT', 'area']
-area_m_MAT = area_m.loc[area_m.ko == 'MAT', 'area']
-area_m_PAT = area_m.loc[area_m.ko == 'PAT', 'area']
+area_f_MAT = area_f.loc[area_f.ko == 'MAT', ('area', 'image_id')]
+area_f_PAT = area_f.loc[area_f.ko == 'PAT', ('area', 'image_id')]
+area_m_MAT = area_m.loc[area_m.ko == 'MAT', ('area', 'image_id')]
+area_m_PAT = area_m.loc[area_m.ko == 'PAT', ('area', 'image_id')]
 
 ## boxplots of each image
 
@@ -184,7 +184,7 @@ df.boxplot(column='area', by='image_id', vert=False)
 
 ## boxplots comparing MAT/PAT and f/m
 
-# plot boxplots for each individual image, split into f/m groups and MAT/PAT groups
+# plot boxplots for each individual image, split into f/m groups
 plt.clf()
 ax = plt.subplot(211)
 area_f.boxplot(column='area', by='image_id', vert=False, ax=ax)
@@ -193,6 +193,16 @@ plt.title('female')
 ax = plt.subplot(212)
 area_m.boxplot(column='area', by='image_id', vert=False, ax=ax)
 plt.title('male')
+
+# plot boxplots for each individual image, split into MAT/PAT groups
+plt.clf()
+ax = plt.subplot(211)
+area_MAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
+plt.title('MAT')
+
+ax = plt.subplot(212)
+area_PAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
+plt.title('PAT')
 
 
 # plot boxplots
