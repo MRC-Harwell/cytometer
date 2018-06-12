@@ -173,15 +173,14 @@ area_m['area'] *= 1e12
 area_MAT['area'] *= 1e12
 area_PAT['area'] *= 1e12
 
-area_f_MAT = area_f.loc[area_f.ko == 'MAT', ('area', 'image_id')]
-area_f_PAT = area_f.loc[area_f.ko == 'PAT', ('area', 'image_id')]
-area_m_MAT = area_m.loc[area_m.ko == 'MAT', ('area', 'image_id')]
-area_m_PAT = area_m.loc[area_m.ko == 'PAT', ('area', 'image_id')]
+df_f_MAT = area_f.loc[area_f.ko == 'MAT', ('area', 'image_id')]
+df_f_PAT = area_f.loc[area_f.ko == 'PAT', ('area', 'image_id')]
+df_m_MAT = area_m.loc[area_m.ko == 'MAT', ('area', 'image_id')]
+df_m_PAT = area_m.loc[area_m.ko == 'PAT', ('area', 'image_id')]
 
 ## boxplots of each image
 
 # plot boxplots for each individual image
-plt.clf()
 df.boxplot(column='area', by='image_id', vert=False)
 
 ## boxplots comparing MAT/PAT and f/m
@@ -274,16 +273,16 @@ def compute_and_plot_pdf(ax, area, title, bandwidth=None):
 plt.clf()
 
 ax = plt.subplot(221)
-bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT['area'], 'f, PAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, df_f_PAT.area, 'f, PAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(223)
-bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT['area'], 'f, MAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, df_f_MAT.area, 'f, MAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(222)
-bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT['area'], 'm, PAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, df_m_PAT.area, 'm, PAT', bandwidth=np.logspace(2, 3, 200))
 
 ax = plt.subplot(224)
-bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT['area'], 'm, MAT', bandwidth=np.logspace(2, 3, 200))
+bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, df_m_MAT.area, 'm, MAT', bandwidth=np.logspace(2, 3, 200))
 
 
 ## plot pdfs side by side
@@ -313,8 +312,8 @@ plt.tick_params(axis='both', which='major', labelsize=16)
 ## statistical comparison
 
 # Mann–Whitney U test
-statistic_f, pvalue_f = mannwhitneyu(area_f_MAT, area_f_PAT, alternative='less')
-statistic_m, pvalue_m = mannwhitneyu(area_m_MAT, area_m_PAT, alternative='less')
+statistic_f, pvalue_f = mannwhitneyu(df_f_MAT.area, df_f_PAT.area, alternative='less')
+statistic_m, pvalue_m = mannwhitneyu(df_m_MAT.area, df_m_PAT.area, alternative='less')
 
 print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
 print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
@@ -325,15 +324,16 @@ print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0
 def area_linspace(x, n=100):
     return np.linspace(np.min(x['area']), np.max(x['area']), n)
 
-area_ecdf_f_PAT = ECDF(area_f_PAT['area'])
-area_ecdf_f_MAT = ECDF(area_f_MAT['area'])
-area_ecdf_m_PAT = ECDF(area_m_PAT['area'])
-area_ecdf_m_MAT = ECDF(area_m_MAT['area'])
 
-area_linspace_f_PAT = area_linspace(area_f_PAT)
-area_linspace_f_MAT = area_linspace(area_f_MAT)
-area_linspace_m_PAT = area_linspace(area_m_PAT)
-area_linspace_m_MAT = area_linspace(area_m_MAT)
+area_ecdf_f_PAT = ECDF(df_f_PAT.area)
+area_ecdf_f_MAT = ECDF(df_f_MAT.area)
+area_ecdf_m_PAT = ECDF(df_m_PAT.area)
+area_ecdf_m_MAT = ECDF(df_m_MAT.area)
+
+area_linspace_f_PAT = area_linspace(df_f_PAT)
+area_linspace_f_MAT = area_linspace(df_f_MAT)
+area_linspace_m_PAT = area_linspace(df_m_PAT)
+area_linspace_m_MAT = area_linspace(df_m_MAT)
 
 # plot ECDF curves side by side
 plt.clf()
@@ -418,25 +418,25 @@ plt.tick_params(axis='both', which='major', labelsize=16)
 #                                         area_m_PAT_norm > area_m_PAT_norm_max)
 #
 # # remove outliers from groups
-# area_f_MAT = area_f_MAT[np.logical_not(area_f_MAT_norm_outlier)]
-# area_f_PAT = area_f_PAT[np.logical_not(area_f_PAT_norm_outlier)]
-# area_m_MAT = area_m_MAT[np.logical_not(area_m_MAT_norm_outlier)]
-# area_m_PAT = area_m_PAT[np.logical_not(area_m_PAT_norm_outlier)]
+# df_f_MAT = df_f_MAT[np.logical_not(area_f_MAT_norm_outlier)]
+# df_f_PAT = df_f_PAT[np.logical_not(area_f_PAT_norm_outlier)]
+# df_m_MAT = df_m_MAT[np.logical_not(area_m_MAT_norm_outlier)]
+# df_m_PAT = df_m_PAT[np.logical_not(area_m_PAT_norm_outlier)]
 #
 # ## plot estimated pdfs separated by f/m, MAT/PAT
 # plt.clf()
 #
 # ax = plt.subplot(221)
-# bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, area_f_PAT, 'f, PAT', bandwidth=np.logspace(2, 3, 200))
+# bin_centers_f_PAT, area_pdf_f_PAT = compute_and_plot_pdf(ax, df_f_PAT, 'f, PAT', bandwidth=np.logspace(2, 3, 200))
 #
 # ax = plt.subplot(223)
-# bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, area_f_MAT, 'f, MAT', bandwidth=np.logspace(2, 3, 200))
+# bin_centers_f_MAT, area_pdf_f_MAT = compute_and_plot_pdf(ax, df_f_MAT, 'f, MAT', bandwidth=np.logspace(2, 3, 200))
 #
 # ax = plt.subplot(222)
-# bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, area_m_PAT, 'm, PAT', bandwidth=np.logspace(2, 3, 200))
+# bin_centers_m_PAT, area_pdf_m_PAT = compute_and_plot_pdf(ax, df_m_PAT, 'm, PAT', bandwidth=np.logspace(2, 3, 200))
 #
 # ax = plt.subplot(224)
-# bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, area_m_MAT, 'm, MAT', bandwidth=np.logspace(2, 3, 200))
+# bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, df_m_MAT, 'm, MAT', bandwidth=np.logspace(2, 3, 200))
 #
 #
 # ## plot pdfs side by side
@@ -464,8 +464,8 @@ plt.tick_params(axis='both', which='major', labelsize=16)
 # ## statistical comparison
 #
 # # Mann–Whitney U test
-# statistic_f, pvalue_f = mannwhitneyu(area_f_MAT, area_f_PAT, alternative='less')
-# statistic_m, pvalue_m = mannwhitneyu(area_m_MAT, area_m_PAT, alternative='less')
+# statistic_f, pvalue_f = mannwhitneyu(df_f_MAT, df_f_PAT, alternative='less')
+# statistic_m, pvalue_m = mannwhitneyu(df_m_MAT, df_m_PAT, alternative='less')
 #
 # print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
 # print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
@@ -473,22 +473,22 @@ plt.tick_params(axis='both', which='major', labelsize=16)
 ## measure effect size (um^2)
 
 # compute effect as difference of the median areas
-effect_f = np.median(area_f_MAT) - np.median(area_f_PAT)
-effect_m = np.median(area_m_MAT) - np.median(area_m_PAT)
+effect_f = np.median(df_f_MAT.area) - np.median(df_f_PAT.area)
+effect_m = np.median(df_m_MAT.area) - np.median(df_m_PAT.area)
 
 # area change
 print('Female: Median area change from PAT to MAT: ' +
-      "{0:.1f}".format(np.median(area_f_MAT) - np.median(area_f_PAT)) + ' um^2 (' +
-      "{0:.1f}".format((np.median(area_f_MAT) - np.median(area_f_PAT)) / np.median(area_f_PAT) * 100) + '%)')
+      "{0:.1f}".format(np.median(df_f_MAT.area) - np.median(df_f_PAT.area)) + ' um^2 (' +
+      "{0:.1f}".format((np.median(df_f_MAT.area) - np.median(df_f_PAT.area)) / np.median(df_f_PAT.area) * 100) + '%)')
 print('Male: Median area change from PAT to MAT: ' +
-      "{0:.1f}".format(np.median(area_m_MAT) - np.median(area_m_PAT)) + ' um^2 (' +
-      "{0:.1f}".format((np.median(area_m_MAT) - np.median(area_m_PAT)) / np.median(area_m_PAT) * 100) + '%)')
+      "{0:.1f}".format(np.median(df_m_MAT.area) - np.median(df_m_PAT.area)) + ' um^2 (' +
+      "{0:.1f}".format((np.median(df_m_MAT.area) - np.median(df_m_PAT.area)) / np.median(df_m_PAT.area) * 100) + '%)')
 
 # for the median cells areas, compute radii as if cells were circles
-radius_f_MAT = np.sqrt(np.median(area_f_MAT) / np.pi)  # (um)
-radius_f_PAT = np.sqrt(np.median(area_f_PAT) / np.pi)  # (um)
-radius_m_MAT = np.sqrt(np.median(area_m_MAT) / np.pi)  # (um)
-radius_m_PAT = np.sqrt(np.median(area_m_PAT) / np.pi)  # (um)
+radius_f_MAT = np.sqrt(np.median(df_f_MAT.area) / np.pi)  # (um)
+radius_f_PAT = np.sqrt(np.median(df_f_PAT.area) / np.pi)  # (um)
+radius_m_MAT = np.sqrt(np.median(df_m_MAT.area) / np.pi)  # (um)
+radius_m_PAT = np.sqrt(np.median(df_m_PAT.area) / np.pi)  # (um)
 
 # radius change in percentage
 print('Female: Radius change from PAT to MAT: ' +
@@ -501,10 +501,10 @@ print('Male: Radius change from PAT to MAT: ' +
 ## compare percentiles of the distributions
 
 perc = np.linspace(0, 100, num=100)
-perc_f_MAT = np.percentile(area_f_MAT, perc)
-perc_f_PAT = np.percentile(area_f_PAT, perc)
-perc_m_MAT = np.percentile(area_m_MAT, perc)
-perc_m_PAT = np.percentile(area_m_PAT, perc)
+perc_f_MAT = np.percentile(df_f_MAT.area, perc)
+perc_f_PAT = np.percentile(df_f_PAT.area, perc)
+perc_m_MAT = np.percentile(df_m_MAT.area, perc)
+perc_m_PAT = np.percentile(df_m_PAT.area, perc)
 
 # plot curves comparing cell area change at each percentile
 plt.clf()
@@ -520,3 +520,6 @@ plt.title('male', fontsize=20)
 plt.xlabel('percentile (%)', fontsize=18)
 plt.ylabel('change in cell area size from PAT to MAT (%)', fontsize=16)
 plt.tick_params(axis='both', which='major', labelsize=16)
+
+## count how many windows and animals each percentile comes from
+

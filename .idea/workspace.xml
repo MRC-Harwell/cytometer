@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -38,8 +37,8 @@
       <file leaf-file-name="klf14_b6ntac_manual_segmentations_quantification.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="390">
-              <caret line="360" lean-forward="true" selection-start-line="337" selection-end-line="360" />
+            <state relative-caret-position="414">
+              <caret line="326" lean-forward="true" selection-start-line="326" selection-end-line="326" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -128,10 +127,10 @@
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="4">
-    <option name="x" value="960" />
-    <option name="y" value="-2" />
-    <option name="width" value="960" />
-    <option name="height" value="1202" />
+    <option name="x" value="67" />
+    <option name="y" value="25" />
+    <option name="width" value="1687" />
+    <option name="height" value="1415" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -228,14 +227,15 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="960" y="-2" width="960" height="1202" extended-state="4" />
+    <frame x="67" y="25" width="1687" height="1415" extended-state="4" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.5816435" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.33076468" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32950193" />
       <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.53414404" />
+      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.48122606" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.3299817" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="7" />
@@ -248,7 +248,6 @@
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.32967034" />
     </layout>
   </component>
   <component name="VcsContentAnnotationSettings">
@@ -660,8 +659,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="390">
-          <caret line="360" lean-forward="true" selection-start-line="337" selection-end-line="360" />
+        <state relative-caret-position="414">
+          <caret line="326" lean-forward="true" selection-start-line="326" selection-end-line="326" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
