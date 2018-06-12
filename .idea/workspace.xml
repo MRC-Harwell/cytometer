@@ -37,8 +37,8 @@
       <file leaf-file-name="klf14_b6ntac_manual_segmentations_quantification.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="476">
-              <caret line="204" column="8" selection-start-line="204" selection-start-column="8" selection-end-line="204" selection-end-column="8" />
+            <state relative-caret-position="195">
+              <caret line="618" column="31" selection-start-line="618" selection-start-column="31" selection-end-line="618" selection-end-column="31" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -137,8 +137,9 @@
   </component>
   <component name="ProjectFrameBounds" extendedState="4">
     <option name="x" value="67" />
+    <option name="y" value="27" />
     <option name="width" value="1687" />
-    <option name="height" value="1200" />
+    <option name="height" value="1053" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -235,14 +236,14 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="67" y="0" width="1687" height="1200" extended-state="4" />
+    <frame x="67" y="27" width="1687" height="1053" extended-state="4" />
     <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.33052886" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.48266166" />
+      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.5597826" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.3299817" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="7" />
@@ -667,8 +668,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="476">
-          <caret line="204" column="8" selection-start-line="204" selection-start-column="8" selection-end-line="204" selection-end-column="8" />
+        <state relative-caret-position="195">
+          <caret line="618" column="31" selection-start-line="618" selection-start-column="31" selection-end-line="618" selection-end-column="31" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>

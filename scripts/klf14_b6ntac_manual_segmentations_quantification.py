@@ -10,6 +10,7 @@ from sklearn.neighbors.kde import KernelDensity
 from sklearn.model_selection import GridSearchCV
 from scipy.stats import mannwhitneyu
 from statsmodels.distributions.empirical_distribution import ECDF
+from scipy.stats.mstats import normaltest
 
 DEBUG = False
 
@@ -604,8 +605,17 @@ plt.bar(perc, count_animals_m_PAT, width=2.5, edgecolor='black')
 plt.legend(('windows', 'animals'))
 plt.xlabel('Population percentile (%)', fontsize=18)
 
-## logit model analysis
+## Linear Mixed Effects Model model analysis
 
+print('Normality tests:')
+print('===========================================================')
+print('area_f: ' + str(normaltest(df_f.area)))
+print('area_m: ' + str(normaltest(df_m.area)))
+print('sqrt(area_f): ' + str(normaltest(np.sqrt(df_f.area))))
+print('sqrt(area_m): ' + str(normaltest(np.sqrt(df_m.area))))
+print('log10(area_f): ' + str(normaltest(np.log10(df_f.area))))
+print('log10(area_m): ' + str(normaltest(np.log10(df_m.area))))
 
-
-
+md = smf.mixedlm("Weight ~ Time", d, groups=data["Pig"])
+mdf = md.fit()
+print(mdf.summary())
