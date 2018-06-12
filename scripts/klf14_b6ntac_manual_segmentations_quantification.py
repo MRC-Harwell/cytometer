@@ -152,31 +152,31 @@ for file in file_list:
 #df.to_csv(os.path.join(root_data_dir, 'klf14_b6ntac_cell_areas.csv'))
 
 # split dataset into groups
-area_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
-area_m = df.loc[df.sex == 'm', ('area', 'ko', 'image_id', 'mouse_id')]
+df_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
+df_m = df.loc[df.sex == 'm', ('area', 'ko', 'image_id', 'mouse_id')]
 
-area_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id', 'mouse_id')]
-area_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id', 'mouse_id')]
+df_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id', 'mouse_id')]
+df_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id', 'mouse_id')]
 
 # make sure that in the boxplots PAT comes before MAT
-area_f['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
-area_m['ko'] = area_m['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_f['ko'] = df_f['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_m['ko'] = df_m['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
 # make sure that in the boxplots f comes before m
-area_MAT['sex'] = area_MAT['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-area_PAT['sex'] = area_PAT['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+df_MAT['sex'] = df_MAT['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+df_PAT['sex'] = df_PAT['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
 
 # scale area values to um^2
-area_f['area'] *= 1e12
-area_m['area'] *= 1e12
+df_f['area'] *= 1e12
+df_m['area'] *= 1e12
 
-area_MAT['area'] *= 1e12
-area_PAT['area'] *= 1e12
+df_MAT['area'] *= 1e12
+df_PAT['area'] *= 1e12
 
-df_f_MAT = area_f.loc[area_f.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
-df_f_PAT = area_f.loc[area_f.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
-df_m_MAT = area_m.loc[area_m.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
-df_m_PAT = area_m.loc[area_m.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
+df_f_MAT = df_f.loc[df_f.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
+df_f_PAT = df_f.loc[df_f.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
+df_m_MAT = df_m.loc[df_m.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
+df_m_PAT = df_m.loc[df_m.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
 
 ## boxplots of each image
 
@@ -188,35 +188,35 @@ df.boxplot(column='area', by='image_id', vert=False)
 # plot boxplots for each individual image, split into f/m groups
 plt.clf()
 ax = plt.subplot(211)
-area_f.boxplot(column='area', by='image_id', vert=False, ax=ax)
+df_f.boxplot(column='area', by='image_id', vert=False, ax=ax)
 plt.title('female')
 
 ax = plt.subplot(212)
-area_m.boxplot(column='area', by='image_id', vert=False, ax=ax)
+df_m.boxplot(column='area', by='image_id', vert=False, ax=ax)
 plt.title('male')
 
 # plot boxplots for each individual image, split into MAT/PAT groups
 plt.clf()
 ax = plt.subplot(211)
-area_MAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
+df_MAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
 plt.title('MAT')
 
 ax = plt.subplot(212)
-area_PAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
+df_PAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
 plt.title('PAT')
 
 
 # plot boxplots
 plt.clf()
 ax = plt.subplot(121)
-area_f.boxplot(column='area', by='ko', ax=ax, notch=True)
+df_f.boxplot(column='area', by='ko', ax=ax, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-area_m.boxplot(column='area', by='ko', ax=ax, notch=True)
+df_m.boxplot(column='area', by='ko', ax=ax, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
@@ -226,14 +226,14 @@ plt.tick_params(axis='both', which='major', labelsize=14)
 # plot boxplots without outliers
 plt.clf()
 ax = plt.subplot(121)
-area_f.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
+df_f.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 1e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-area_m.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
+df_m.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 1e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
@@ -603,6 +603,8 @@ plt.bar(perc, count_windows_m_PAT, width=5, edgecolor='black')
 plt.bar(perc, count_animals_m_PAT, width=2.5, edgecolor='black')
 plt.legend(('windows', 'animals'))
 plt.xlabel('Population percentile (%)', fontsize=18)
+
+## logit model analysis
 
 
 
