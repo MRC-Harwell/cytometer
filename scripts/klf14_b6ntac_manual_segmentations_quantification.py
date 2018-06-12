@@ -152,11 +152,11 @@ for file in file_list:
 #df.to_csv(os.path.join(root_data_dir, 'klf14_b6ntac_cell_areas.csv'))
 
 # split dataset into groups
-area_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id')]
-area_m = df.loc[df.sex == 'm', ('area', 'ko', 'image_id')]
+area_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
+area_m = df.loc[df.sex == 'm', ('area', 'ko', 'image_id', 'mouse_id')]
 
-area_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id')]
-area_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id')]
+area_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id', 'mouse_id')]
+area_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id', 'mouse_id')]
 
 # make sure that in the boxplots PAT comes before MAT
 area_f['ko'] = area_f['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
@@ -173,10 +173,10 @@ area_m['area'] *= 1e12
 area_MAT['area'] *= 1e12
 area_PAT['area'] *= 1e12
 
-df_f_MAT = area_f.loc[area_f.ko == 'MAT', ('area', 'image_id')]
-df_f_PAT = area_f.loc[area_f.ko == 'PAT', ('area', 'image_id')]
-df_m_MAT = area_m.loc[area_m.ko == 'MAT', ('area', 'image_id')]
-df_m_PAT = area_m.loc[area_m.ko == 'PAT', ('area', 'image_id')]
+df_f_MAT = area_f.loc[area_f.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
+df_f_PAT = area_f.loc[area_f.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
+df_m_MAT = area_m.loc[area_m.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
+df_m_PAT = area_m.loc[area_m.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
 
 ## boxplots of each image
 
@@ -322,7 +322,7 @@ print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0
 
 
 def area_linspace(x, n=100):
-    return np.linspace(np.min(x['area']), np.max(x['area']), n)
+    return np.linspace(np.min(x.area), np.max(x.area), n)
 
 
 area_ecdf_f_PAT = ECDF(df_f_PAT.area)
@@ -500,26 +500,110 @@ print('Male: Radius change from PAT to MAT: ' +
 
 ## compare percentiles of the distributions
 
-perc = np.linspace(0, 100, num=100)
-perc_f_MAT = np.percentile(df_f_MAT.area, perc)
-perc_f_PAT = np.percentile(df_f_PAT.area, perc)
-perc_m_MAT = np.percentile(df_m_MAT.area, perc)
-perc_m_PAT = np.percentile(df_m_PAT.area, perc)
+perc = np.linspace(0, 100, num=101)
+perc_area_f_MAT = np.percentile(df_f_MAT.area, perc)
+perc_area_f_PAT = np.percentile(df_f_PAT.area, perc)
+perc_area_m_MAT = np.percentile(df_m_MAT.area, perc)
+perc_area_m_PAT = np.percentile(df_m_PAT.area, perc)
 
 # plot curves comparing cell area change at each percentile
 plt.clf()
 plt.subplot(211)
-plt.plot(perc, (perc_f_MAT - perc_f_PAT) / perc_f_PAT * 100)
+plt.plot(perc, (perc_area_f_MAT - perc_area_f_PAT) / perc_area_f_PAT * 100)
 plt.title('female', fontsize=20)
 plt.xlabel('percentile (%)', fontsize=18)
 plt.ylabel('change in cell area size from PAT to MAT (%)', fontsize=16)
 plt.tick_params(axis='both', which='major', labelsize=16)
 plt.subplot(212)
-plt.plot(perc, (perc_m_MAT - perc_m_PAT) / perc_m_PAT * 100)
+plt.plot(perc, (perc_area_m_MAT - perc_area_m_PAT) / perc_area_m_PAT * 100)
 plt.title('male', fontsize=20)
 plt.xlabel('percentile (%)', fontsize=18)
 plt.ylabel('change in cell area size from PAT to MAT (%)', fontsize=16)
 plt.tick_params(axis='both', which='major', labelsize=16)
 
 ## count how many windows and animals each percentile comes from
+
+
+def count_windows_animals_in_perc(x, perc):
+
+    # create a bin around each percentile, including a first bin that starts at -inf, and last bin that ends at inf
+    bin_edges = np.concatenate(([-np.Inf], (perc[0:-1]+perc[1:])/2, [np.Inf]))
+
+    count_cells = []
+    count_windows = []
+    count_animals = []
+
+    # loop bins
+    for i in range(len(perc)):
+
+        # get cells that belong in current bin according to their area
+        x_bin = x[np.logical_and(x.area >= bin_edges[i], x.area < bin_edges[i+1])]
+
+        # count number of cells
+        count_cells.append(x_bin.shape[0])
+
+        # count number of different windows those cells come from
+        count_windows.append(len(np.unique(x_bin.image_id)))
+
+        # count number of different animals those cells come from
+        count_animals.append(len(np.unique(x_bin.mouse_id)))
+
+    return count_cells, count_windows, count_animals
+
+
+# create larger bins
+perc = np.linspace(0, 100, num=21)
+perc_area_f_MAT = np.percentile(df_f_MAT.area, perc)
+perc_area_f_PAT = np.percentile(df_f_PAT.area, perc)
+perc_area_m_MAT = np.percentile(df_m_MAT.area, perc)
+perc_area_m_PAT = np.percentile(df_m_PAT.area, perc)
+
+count_cells_f_MAT, count_windows_f_MAT, count_animals_f_MAT = count_windows_animals_in_perc(df_f_MAT, perc_area_f_MAT)
+count_cells_f_PAT, count_windows_f_PAT, count_animals_f_PAT = count_windows_animals_in_perc(df_f_PAT, perc_area_f_PAT)
+count_cells_m_MAT, count_windows_m_MAT, count_animals_m_MAT = count_windows_animals_in_perc(df_m_MAT, perc_area_m_MAT)
+count_cells_m_PAT, count_windows_m_PAT, count_animals_m_PAT = count_windows_animals_in_perc(df_m_PAT, perc_area_m_PAT)
+
+# plot bar charts with number of counts
+plt.clf()
+
+plt.subplot(421)
+plt.bar(perc, count_cells_f_MAT, width=5, edgecolor='black')
+plt.legend(('cells',))
+plt.ylabel('f/MAT', fontsize=20)
+plt.subplot(422)
+plt.bar(perc, count_windows_f_MAT, width=5, edgecolor='black')
+plt.bar(perc, count_animals_f_MAT, width=2.5, edgecolor='black')
+plt.legend(('windows', 'animals'))
+
+plt.subplot(423)
+plt.bar(perc, count_cells_f_PAT, width=5, edgecolor='black')
+plt.legend(('cells',))
+plt.ylabel('f/PAT', fontsize=20)
+plt.subplot(424)
+plt.bar(perc, count_windows_f_PAT, width=5, edgecolor='black')
+plt.bar(perc, count_animals_f_PAT, width=2.5, edgecolor='black')
+plt.legend(('windows', 'animals'))
+
+plt.subplot(425)
+plt.bar(perc, count_cells_m_MAT, width=5, edgecolor='black')
+plt.legend(('cells',))
+plt.ylabel('m/MAT', fontsize=20)
+plt.subplot(426)
+plt.bar(perc, count_windows_m_MAT, width=5, edgecolor='black')
+plt.bar(perc, count_animals_m_MAT, width=2.5, edgecolor='black')
+plt.legend(('windows', 'animals'))
+
+plt.subplot(427)
+plt.bar(perc, count_cells_m_PAT, width=5, edgecolor='black')
+plt.legend(('cells',))
+plt.ylabel('m/PAT', fontsize=20)
+plt.xlabel('Population percentile (%)', fontsize=18)
+plt.subplot(428)
+plt.bar(perc, count_windows_m_PAT, width=5, edgecolor='black')
+plt.bar(perc, count_animals_m_PAT, width=2.5, edgecolor='black')
+plt.legend(('windows', 'animals'))
+plt.xlabel('Population percentile (%)', fontsize=18)
+
+
+
 
