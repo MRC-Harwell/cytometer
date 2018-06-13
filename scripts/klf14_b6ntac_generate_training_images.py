@@ -30,34 +30,35 @@ for file_i, file in enumerate(files_list):
     # load file
     im = openslide.OpenSlide(os.path.join(data_dir, file))
 
-    # level for a x4 downsample factor
-    level_4 = im.get_best_level_for_downsample(downsample_factor)
+    # level for a x8 downsample factor
+    level_8 = im.get_best_level_for_downsample(downsample_factor)
 
-    assert(im.level_downsamples[level_4] == downsample_factor)
+    assert(im.level_downsamples[level_8] == downsample_factor)
 
     # get downsampled image
-    im_4 = im.read_region(location=(0, 0), level=level_4, size=im.level_dimensions[level_4])
-    im_4 = np.array(im_4)
-    im_4 = im_4[:, :, 0:3]
+    im_8 = im.read_region(location=(0, 0), level=level_8, size=im.level_dimensions[level_8])
+    im_8 = np.array(im_8)
+    im_8 = im_8[:, :, 0:3]
 
     if DEBUG:
-        plt.imshow(im_4)
+        plt.clf()
+        plt.imshow(im_8)
         plt.pause(.1)
 
     # reshape image to matrix with one column per colour channel
-    im_4_mat = im_4.copy()
-    im_4_mat = im_4_mat.reshape((im_4_mat.shape[0] * im_4_mat.shape[1], im_4_mat.shape[2]))
+    im_8_mat = im_8.copy()
+    im_8_mat = im_8_mat.reshape((im_8_mat.shape[0] * im_8_mat.shape[1], im_8_mat.shape[2]))
 
     # background colour
     background_colour = []
     for i in range(3):
-        background_colour += [mode(im_4_mat[:, i]), ]
-    background_colour_std = np.std(im_4_mat, axis=0)
+        background_colour += [mode(im_8_mat[:, i]), ]
+    background_colour_std = np.std(im_8_mat, axis=0)
 
     # threshold segmentation
-    seg = np.ones(im_4.shape[0:2], dtype=bool)
+    seg = np.ones(im_8.shape[0:2], dtype=bool)
     for i in range(3):
-        seg = np.logical_and(seg, im_4[:, :, i] < background_colour[i] - background_colour_std[i])
+        seg = np.logical_and(seg, im_8[:, :, i] < background_colour[i] - background_colour_std[i])
     seg = seg.astype(dtype=np.uint8)
     seg[seg == 1] = 255
 
@@ -79,7 +80,7 @@ for file_i, file in enumerate(files_list):
     labels_large.remove(0)
 
     # only set pixels that belong to the large components
-    seg = np.zeros(im_4.shape[0:2], dtype=np.uint8)
+    seg = np.zeros(im_8.shape[0:2], dtype=np.uint8)
     for i in labels_large:
         seg[labels == i] = 255
 
