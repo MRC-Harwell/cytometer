@@ -32,6 +32,10 @@ set -e
 # install OpenSlide library
 sudo apt install -y openslide-tools
 
+# install LaTeX dependencies for matplotlib
+sudo apt install -y texlive-latex-base texlive-latex-extra
+sudo apt install -y dvipng
+
 # create or update environment for development with Keras
 ~/Software/python_setup/bin/install_keras_environment.sh cytometer
 
