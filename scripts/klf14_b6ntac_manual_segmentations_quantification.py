@@ -5,19 +5,19 @@ from svgpathtools import svg2paths
 import matplotlib.pyplot as plt
 import openslide
 import csv
-import pandas as pd
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.model_selection import GridSearchCV
-from scipy.stats import mannwhitneyu
+import scipy.stats as stats
+from scipy.special import logit
+import pandas as pd
 from statsmodels.distributions.empirical_distribution import ECDF
-from scipy.stats.mstats import normaltest
+import statsmodels.formula.api as smf
 
 DEBUG = False
 
 image_data_dir = '/home/rcasero/data/roger_data'
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
-
 
 # Area of Polygon using Shoelace formula
 # http://en.wikipedia.org/wiki/Shoelace_formula
@@ -313,8 +313,8 @@ plt.tick_params(axis='both', which='major', labelsize=16)
 ## statistical comparison
 
 # Mann–Whitney U test
-statistic_f, pvalue_f = mannwhitneyu(df_f_MAT.area, df_f_PAT.area, alternative='less')
-statistic_m, pvalue_m = mannwhitneyu(df_m_MAT.area, df_m_PAT.area, alternative='less')
+statistic_f, pvalue_f = stats.mannwhitneyu(df_f_MAT.area, df_f_PAT.area, alternative='less')
+statistic_m, pvalue_m = stats.mannwhitneyu(df_m_MAT.area, df_m_PAT.area, alternative='less')
 
 print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
 print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
@@ -461,15 +461,6 @@ plt.tick_params(axis='both', which='major', labelsize=16)
 # ax.set_ylabel('pdf')
 # plt.title('male')
 # ax.set_xlim(0, 20000)
-#
-# ## statistical comparison
-#
-# # Mann–Whitney U test
-# statistic_f, pvalue_f = mannwhitneyu(df_f_MAT, df_f_PAT, alternative='less')
-# statistic_m, pvalue_m = mannwhitneyu(df_m_MAT, df_m_PAT, alternative='less')
-#
-# print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
-# print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
 
 ## measure effect size (um^2)
 
@@ -609,13 +600,64 @@ plt.xlabel('Population percentile (%)', fontsize=18)
 
 print('Normality tests:')
 print('===========================================================')
-print('area_f: ' + str(normaltest(df_f.area)))
-print('area_m: ' + str(normaltest(df_m.area)))
-print('sqrt(area_f): ' + str(normaltest(np.sqrt(df_f.area))))
-print('sqrt(area_m): ' + str(normaltest(np.sqrt(df_m.area))))
-print('log10(area_f): ' + str(normaltest(np.log10(df_f.area))))
-print('log10(area_m): ' + str(normaltest(np.log10(df_m.area))))
+print('area_f: ' + str(stats.normaltest(df_f.area)))
+print('area_m: ' + str(stats.normaltest(df_m.area)))
+print('sqrt(area_f): ' + str(stats.normaltest(np.sqrt(df_f.area))))
+print('sqrt(area_m): ' + str(stats.normaltest(np.sqrt(df_m.area))))
+print('log10(area_f): ' + str(stats.normaltest(np.log10(df_f.area))))
+print('log10(area_m): ' + str(stats.normaltest(np.log10(df_m.area))))
 
-md = smf.mixedlm("Weight ~ Time", d, groups=data["Pig"])
+# Box-Cox transformation of areas (scaled from m^2 to um^2 to avoid numerical errors with the lambda parameter) to make
+# data normal
+df = df.assign(boxcox_area=stats.boxcox(df.area * 1e12)[0])
+
+if DEBUG:
+    # show that data is now normal
+    plt.clf()
+    ax = plt.subplot(311)
+    prob = stats.probplot(df.area * 1e12, dist=stats.norm, plot=ax)
+    plt.title(r'Areas ($\mu m^2$)')
+    ax = plt.subplot(312)
+    prob = stats.probplot(df.boxcox_area, dist=stats.norm, plot=ax)
+    plt.title(r'Box Cox transformation of areas ($\mu m^2$)')
+    ax = plt.subplot(313)
+    plt.hist(df.boxcox_area)
+
+# logit(ECDF) of the Box-Cox'ed area
+ecdf_boxcox_area = ECDF(df.boxcox_area)  # this creates an ECDF function, but doesn't evaluate it
+df = df.assign(ecdf_boxcox_area=ecdf_boxcox_area(df.boxcox_area))
+df = df.assign(logit_boxcox_area=logit(df.ecdf_boxcox_area))
+
+# remove rows with inf values
+df = df.set_index("logit_boxcox_area")
+df = df.drop(np.inf, axis=0)
+df = df.reset_index()
+
+if DEBUG:
+    # plot ECDF
+    plt.clf()
+    plt.subplot(211)
+    boxcox_area_linspace = np.linspace(np.min(df.boxcox_area), np.max(df.boxcox_area), 101)
+    plt.plot(boxcox_area_linspace, ecdf_boxcox_area(boxcox_area_linspace))
+    plt.title(r'ECDF$_{f_{Box-Cox}(a)} = P( f_{Box-Cox}(a) < \tau )$', fontsize=20)
+    plt.xlabel(r'$\tau$', fontsize=18)
+    plt.tick_params(axis='both', which='major', labelsize=16)
+    plt.subplot(212)
+    plt.plot(boxcox_area_linspace, logit(ecdf_boxcox_area(boxcox_area_linspace)))
+    plt.title(r'logit$(P)$', fontsize=20)
+    plt.xlabel(r'$\tau$', fontsize=18)
+    plt.tick_params(axis='both', which='major', labelsize=16)
+
+# for the mixed-effects linear model, we want the KO variable to be ordered, so that it's PAT=0, MAT=1 in terms of
+# genetic risk, and the sex variable to be ordered in the sense that males have larger cells than females
+df['ko'] = df['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df['sex'] = df['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+
+# Mixed-effects linear model
+vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+md = smf.mixedlm('logit_boxcox_area ~ sex + ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
 mdf = md.fit()
 print(mdf.summary())
+
+# params: intercept, sex, ko
+md.predict(mdf.params, [1, 1, 1])
