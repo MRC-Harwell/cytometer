@@ -622,31 +622,7 @@ if DEBUG:
     plt.title(r'Box Cox transformation of areas ($\mu m^2$)')
     ax = plt.subplot(313)
     plt.hist(df.boxcox_area)
-
-# logit(ECDF) of the Box-Cox'ed area
-ecdf_boxcox_area = ECDF(df.boxcox_area)  # this creates an ECDF function, but doesn't evaluate it
-df = df.assign(ecdf_boxcox_area=ecdf_boxcox_area(df.boxcox_area))
-df = df.assign(logit_boxcox_area=logit(df.ecdf_boxcox_area))
-
-# remove rows with inf values
-df = df.set_index("logit_boxcox_area")
-df = df.drop(np.inf, axis=0)
-df = df.reset_index()
-
-if DEBUG:
-    # plot ECDF
-    plt.clf()
-    plt.subplot(211)
-    boxcox_area_linspace = np.linspace(np.min(df.boxcox_area), np.max(df.boxcox_area), 101)
-    plt.plot(boxcox_area_linspace, ecdf_boxcox_area(boxcox_area_linspace))
-    plt.title(r'ECDF$_{f_{Box-Cox}(a)} = P( f_{Box-Cox}(a) < \tau )$', fontsize=20)
-    plt.xlabel(r'$\tau$', fontsize=18)
-    plt.tick_params(axis='both', which='major', labelsize=16)
-    plt.subplot(212)
-    plt.plot(boxcox_area_linspace, logit(ecdf_boxcox_area(boxcox_area_linspace)))
-    plt.title(r'logit$(P)$', fontsize=20)
-    plt.xlabel(r'$\tau$', fontsize=18)
-    plt.tick_params(axis='both', which='major', labelsize=16)
+    plt.tight_layout()
 
 # for the mixed-effects linear model, we want the KO variable to be ordered, so that it's PAT=0, MAT=1 in terms of
 # genetic risk, and the sex variable to be ordered in the sense that males have larger cells than females
@@ -655,9 +631,43 @@ df['sex'] = df['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm']
 
 # Mixed-effects linear model
 vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
-md = smf.mixedlm('logit_boxcox_area ~ sex + ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+md = smf.mixedlm('boxcox_area ~ sex + ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
 mdf = md.fit()
 print(mdf.summary())
 
 # params: intercept, sex, ko
 md.predict(mdf.params, [1, 1, 1])
+
+
+# # logit(ECDF) of the Box-Cox'ed area
+# ecdf_boxcox_area = ECDF(df.boxcox_area)  # this creates an ECDF function, but doesn't evaluate it
+# df = df.assign(ecdf_boxcox_area=ecdf_boxcox_area(df.boxcox_area))
+# df = df.assign(logit_boxcox_area=logit(df.ecdf_boxcox_area))
+#
+# # remove rows with inf values
+# df = df.set_index("logit_boxcox_area")
+# df = df.drop(np.inf, axis=0)
+# df = df.reset_index()
+#
+# if DEBUG:
+#     # plot ECDF
+#     plt.clf()
+#     plt.subplot(211)
+#     boxcox_area_linspace = np.linspace(np.min(df.boxcox_area), np.max(df.boxcox_area), 101)
+#     plt.plot(boxcox_area_linspace, ecdf_boxcox_area(boxcox_area_linspace))
+#     plt.title(r'ECDF$_{f_{Box-Cox}(a)} = P( f_{Box-Cox}(a) < \tau )$', fontsize=20)
+#     plt.xlabel(r'$\tau$', fontsize=18)
+#     plt.tick_params(axis='both', which='major', labelsize=16)
+#     plt.subplot(212)
+#     plt.plot(boxcox_area_linspace, logit(ecdf_boxcox_area(boxcox_area_linspace)))
+#     plt.title(r'logit$(P)$', fontsize=20)
+#     plt.xlabel(r'$\tau$', fontsize=18)
+#     plt.tick_params(axis='both', which='major', labelsize=16)
+#     plt.tight_layout()
+#
+# # Mixed-effects linear model
+# vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+# md = smf.mixedlm('logit_boxcox_area ~ sex + ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+# mdf = md.fit()
+# print(mdf.summary())
+
