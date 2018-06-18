@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -37,8 +38,8 @@
       <file leaf-file-name="klf14_b6ntac_manual_segmentations_quantification.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="304">
-              <caret line="639" lean-forward="true" selection-start-line="639" selection-end-line="639" />
+            <state relative-caret-position="286">
+              <caret line="727" lean-forward="true" selection-start-line="727" selection-end-line="727" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -140,9 +141,9 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="174" />
-    <option name="y" value="1227" />
-    <option name="width" value="1677" />
+    <option name="x" value="175" />
+    <option name="y" value="27" />
+    <option name="width" value="1717" />
     <option name="height" value="1053" />
   </component>
   <component name="ProjectView">
@@ -240,10 +241,10 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="174" y="1227" width="1677" height="1053" extended-state="0" />
+    <frame x="175" y="27" width="1717" height="1053" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.33192262" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.324085" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="bottom" id="Version Control" order="7" />
@@ -672,8 +673,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="304">
-          <caret line="639" lean-forward="true" selection-start-line="639" selection-end-line="639" />
+        <state relative-caret-position="286">
+          <caret line="727" lean-forward="true" selection-start-line="727" selection-end-line="727" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
