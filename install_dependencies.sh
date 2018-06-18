@@ -36,6 +36,9 @@ sudo apt install -y openslide-tools
 sudo apt install -y texlive-latex-base texlive-latex-extra
 sudo apt install -y dvipng
 
+# install GNU R with lme4 module (generilised linear mixed models)
+sudo apt install -y r-base r-cran-lme4
+
 # create or update environment for development with Keras
 ~/Software/python_setup/bin/install_keras_environment.sh cytometer
 
