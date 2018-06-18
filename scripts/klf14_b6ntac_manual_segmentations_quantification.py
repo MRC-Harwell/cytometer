@@ -609,7 +609,8 @@ print('log10(area_m): ' + str(stats.normaltest(np.log10(df_m.area))))
 
 # Box-Cox transformation of areas (scaled from m^2 to um^2 to avoid numerical errors with the lambda parameter) to make
 # data normal
-df = df.assign(boxcox_area=stats.boxcox(df.area * 1e12)[0])
+df = df.assign(boxcox_area=stats.boxcox(np.sqrt(df.area * 1e12))[0])
+df_m = df_m.assign(boxcox_area=stats.boxcox(np.sqrt(df_m.area * 1e12))[0])
 
 if DEBUG:
     # show that data is now normal
@@ -624,14 +625,33 @@ if DEBUG:
     plt.hist(df.boxcox_area)
     plt.tight_layout()
 
+    # show that data is now normal
+    plt.clf()
+    ax = plt.subplot(311)
+    prob = stats.probplot(df_m.area * 1e12, dist=stats.norm, plot=ax)
+    plt.title(r'Areas ($\mu m^2$)')
+    ax = plt.subplot(312)
+    prob = stats.probplot(df_m.boxcox_area, dist=stats.norm, plot=ax)
+    plt.title(r'Box Cox transformation of areas ($\mu m^2$)')
+    ax = plt.subplot(313)
+    plt.hist(df_m.boxcox_area)
+    plt.tight_layout()
+
 # for the mixed-effects linear model, we want the KO variable to be ordered, so that it's PAT=0, MAT=1 in terms of
 # genetic risk, and the sex variable to be ordered in the sense that males have larger cells than females
 df['ko'] = df['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 df['sex'] = df['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+df_m['ko'] = df_m['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
 # Mixed-effects linear model
 vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
 md = smf.mixedlm('boxcox_area ~ sex + ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+mdf = md.fit()
+print(mdf.summary())
+
+# Mixed-effects linear model for only males
+vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+md = smf.mixedlm('boxcox_area ~ ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
 mdf = md.fit()
 print(mdf.summary())
 
@@ -671,3 +691,39 @@ md.predict(mdf.params, [1, 1, 1])
 # mdf = md.fit()
 # print(mdf.summary())
 
+## George Nicholson's binarised model
+
+from rpy2.robjects import r
+
+
+def r_lme4_glmer(formula, df, family=r('binomial(link="logit")')):
+
+    from rpy2.robjects import pandas2ri
+    from rpy2.robjects.packages import importr
+    base = importr('base')
+    lme4 = importr('lme4')
+
+    pandas2ri.activate()
+    r_df = pandas2ri.py2ri(df)
+
+    #control = r('glmerControl(optimizer="Nelder_Mead")')
+    control = r('glmerControl(optimizer="bobyqa")')
+    model = lme4.glmer(formula, data=r_df, family=family, control=control)
+    return base.summary(model)
+
+
+# threshold values
+threshold = np.linspace(np.min(df.area), np.max(df.area), 101)
+
+# loop thresholds
+for i, thr in enumerate(threshold):
+
+    # binarise output variable depending on whether cell size is smaller or larger than the threshold
+    df = df.assign(thresholded_area=df.area >= thr)
+
+    # compute GLMM
+    lme4_output = r_lme4_glmer('thresholded_area ~ sex + ko + (1|mouse_id/image_id)', df)
+
+    print(lme4_output)
+
+    lme4_output.rx2('coefficients')
