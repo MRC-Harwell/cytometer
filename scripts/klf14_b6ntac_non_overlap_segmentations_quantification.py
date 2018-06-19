@@ -1,10 +1,12 @@
 import os
 import glob
 import matplotlib.pyplot as plt
-from PIL import Image
 import numpy as np
 from svgpathtools import svg2paths
-import PIL.Image, PIL.ImageDraw
+from PIL import Image
+import PIL.ImageDraw
+from PIL.TiffTags import TAGS
+import tifffile
 from cv2 import watershed
 
 
@@ -12,7 +14,7 @@ DEBUG = True
 
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
-
+training_nooverlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_nooverlap')
 
 # extract contour as a list of (X,Y) coordinates
 def extract_contour(path, x_res=1.0, y_res=1.0):
@@ -59,7 +61,9 @@ file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 # DEBUG
 file_svg = file_list[4]
 
-for file_svg in file_list:
+for n, file_svg in enumerate(file_list):
+
+    print('file ' + str(n) + '/' + str(len(file_list)-1))
 
     # change file extension from .svg to .tif
     file_tif = file_svg.replace('.svg', '.tif')
@@ -128,5 +132,23 @@ for file_svg in file_list:
         plt.imshow(labels)
 
     ## save segmentation results
-    
+    file_tif_out = file_tif.replace(training_data_dir, training_nooverlap_data_dir)
+
+    # TIFF tag codes
+    xresolution_tag = 282
+    yresolution_tag = 283
+    resolution_unit = 296
+
+    assert(TAGS[xresolution_tag] == 'XResolution')
+    assert(TAGS[yresolution_tag] == 'YResolution')
+    assert(TAGS[resolution_unit] == 'ResolutionUnit')
+
+    # make label values positive
+    labels += 1
+
+    tifffile.imsave(file_tif_out, np.reshape(labels.astype(np.uint8), newshape=(1,)+labels.shape),
+                    compress=9,
+                    resolution=(im.tag[xresolution_tag][0][0],
+                                im.tag[yresolution_tag][0][0],
+                                im.tag[resolution_unit][0]))
 
