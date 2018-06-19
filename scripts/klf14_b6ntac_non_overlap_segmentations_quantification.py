@@ -127,3 +127,6 @@ for file_svg in file_list:
         plt.subplot(224)
         plt.imshow(labels)
 
+    ## save segmentation results
+    
+
