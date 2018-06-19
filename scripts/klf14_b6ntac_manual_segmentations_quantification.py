@@ -711,19 +711,61 @@ def r_lme4_glmer(formula, df, family=r('binomial(link="logit")')):
     model = lme4.glmer(formula, data=r_df, family=family, control=control)
     return base.summary(model)
 
+from rpy2.robjects import r
+model = lme4.glmer('thresholded_area ~ sex + ko + (1|mouse_id/image_id)', data=r_df, family=r('binomial(link="logit")'),
+                   control=r('glmerControl(optimizer="bobyqa")'))
 
 # threshold values
 threshold = np.linspace(np.min(df.area), np.max(df.area), 101)
 
 # loop thresholds
+lme4_ko_coeff = np.empty(shape=(len(threshold)))
+lme4_sex_coeff = np.empty(shape=(len(threshold)))
+lme4_ko_pval = np.empty(shape=(len(threshold)))
+lme4_sex_pval = np.empty(shape=(len(threshold)))
+lme4_ko_coeff[:] = np.nan
+lme4_sex_coeff[:] = np.nan
+lme4_ko_pval[:] = np.nan
+lme4_sex_pval[:] = np.nan
 for i, thr in enumerate(threshold):
 
     # binarise output variable depending on whether cell size is smaller or larger than the threshold
     df = df.assign(thresholded_area=df.area >= thr)
 
     # compute GLMM
-    lme4_output = r_lme4_glmer('thresholded_area ~ sex + ko + (1|mouse_id/image_id)', df)
+    try:
+        lme4_output = r_lme4_glmer('thresholded_area ~ sex + ko + (1|mouse_id/image_id)', df)
+    except:
+        continue
 
-    print(lme4_output)
+    if DEBUG:
+        print(lme4_output)
 
-    lme4_output.rx2('coefficients')
+    lme4_sex_coeff[i] = lme4_output.rx2('coefficients')[1]
+    lme4_ko_coeff[i] = lme4_output.rx2('coefficients')[2]
+    lme4_sex_pval[i] = lme4_output.rx2('coefficients')[10]
+    lme4_ko_pval[i] = lme4_output.rx2('coefficients')[11]
+
+# plot coefficients and p-values
+plt.clf()
+plt.subplot(221)
+plt.plot(threshold * 1e12, lme4_sex_coeff)
+plt.ylabel(r'$\beta_{sex}$', fontsize=18)
+plt.title('sex', fontsize=20)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.subplot(222)
+plt.plot(threshold * 1e12, lme4_ko_coeff)
+plt.ylabel(r'$\beta_{ko}$', fontsize=18)
+plt.title('ko', fontsize=20)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.subplot(223)
+plt.semilogy(threshold * 1e12, lme4_sex_pval)
+plt.xlabel(r'$\tau\ (\mu m^2)$', fontsize=18)
+plt.ylabel(r'p-value$_{sex}$', fontsize=18)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.subplot(224)
+plt.semilogy(threshold * 1e12, lme4_ko_pval)
+plt.xlabel(r'$\tau\ (\mu m^2)$', fontsize=18)
+plt.ylabel(r'p-value$_{ko}$', fontsize=18)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.tight_layout()
