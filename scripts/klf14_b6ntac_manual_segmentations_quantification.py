@@ -8,16 +8,17 @@ import csv
 from sklearn.neighbors.kde import KernelDensity
 from sklearn.model_selection import GridSearchCV
 import scipy.stats as stats
-from scipy.special import logit
 import pandas as pd
 from statsmodels.distributions.empirical_distribution import ECDF
 import statsmodels.formula.api as smf
+import PIL
 
 DEBUG = False
 
 image_data_dir = '/home/rcasero/data/roger_data'
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
+training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 
 ''' auxiliary functions for area computations from Gimp paths
 ========================================================================================================================
@@ -78,7 +79,7 @@ def extract_cell_contour_and_compute_area(file, x_res=1.0, y_res=1.0):
 ========================================================================================================================
 '''
 
-''' read input data and create dataframe
+''' checks on the original histology slices, and get pixel size
 ========================================================================================================================
 '''
 
@@ -109,6 +110,10 @@ with open(os.path.join(root_data_dir, 'klf14_b6ntac_sex_info.csv'), 'r') as f:
     for row in reader:
         klf14_info.append(row)
 f.close()
+
+''' load hand traced contours, compute cell areas and create dataframe
+========================================================================================================================
+'''
 
 # list of mouse IDs
 klf14_ids = [x['id'] for x in klf14_info]
@@ -144,7 +149,7 @@ for file in file_list:
     # compute areas of all non-edge cells
     areas = extract_cell_contour_and_compute_area(file, x_res=x_res, y_res=y_res)
 
-    # area, image id, mouse id, sex, KO
+    # add to dataframe: area, image id, mouse id, sex, KO
     for i, a in enumerate(areas):
         if a == 0.0:
             print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
@@ -154,6 +159,70 @@ for file in file_list:
 # save dataframe with input data to file
 #df.to_csv(os.path.join(root_data_dir, 'klf14_b6ntac_cell_areas.csv'))
 
+''' load non-overlapping segmentations, compute cell areas and create dataframe
+========================================================================================================================
+'''
+
+file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
+
+# create empty dataframe to host the data
+df_no = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [], 'image_id': []})
+
+for file in file_list:
+
+    # image ID
+    image_id = os.path.basename(file)
+    image_id = os.path.splitext(image_id)[-2]
+
+    # get mouse ID from the file name
+    mouse_id = None
+    for x in klf14_ids:
+        if x in image_id:
+            mouse_id = x
+            break
+    if mouse_id is None:
+        raise ValueError('Filename does not seem to correspond to any known mouse ID: ' + file)
+
+    # index of mouse ID
+    idx = klf14_ids.index(mouse_id)
+
+    # sex and KO-side for this mouse
+    mouse_sex = klf14_info[idx]['sex']
+    mouse_ko = klf14_info[idx]['ko']
+
+    # load file with the whatershed non-overlapping labels
+    im = PIL.Image.open(file)
+    im = im.getchannel(0)
+
+    if DEBUG:
+        plt.clf()
+        plt.imshow(im)
+
+    # number of pixels in each label
+    areas = np.array(im.histogram(), dtype=np.float32)
+
+    # remove cell contour and background labels
+    CONTOUR = 0
+    BACKGROUND = 1
+    areas = areas[BACKGROUND+1:]
+
+    # remove labels with no pixels (cells that are completely covered by other cells)
+    areas = areas[areas != 0]
+
+    # compute areas (m^2) from number of pixels
+    areas *= x_res * y_res
+
+    # convert areas to um^2
+    areas *= 1e12
+
+    # add to dataframe: area, image id, mouse id, sex, KO
+    for i, a in enumerate(areas):
+        if a == 0.0:
+            print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
+        df_no = df_no.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko, 'image_id': image_id},
+                             ignore_index=True)
+
+
 ''' split full dataset into smaller datasets for different groups 
 ========================================================================================================================
 '''
@@ -161,6 +230,9 @@ for file in file_list:
 # split dataset into groups
 df_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
 df_m = df.loc[df.sex == 'm', ('area', 'ko', 'image_id', 'mouse_id')]
+
+df_no_f = df_no.loc[df_no.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
+df_no_m = df_no.loc[df_no.sex == 'm', ('area', 'ko', 'image_id', 'mouse_id')]
 
 df_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id', 'mouse_id')]
 df_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id', 'mouse_id')]
@@ -184,6 +256,11 @@ df_f_MAT = df_f.loc[df_f.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
 df_f_PAT = df_f.loc[df_f.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
 df_m_MAT = df_m.loc[df_m.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
 df_m_PAT = df_m.loc[df_m.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
+
+df_no_f_MAT = df_no_f.loc[df_no_f.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
+df_no_f_PAT = df_no_f.loc[df_no_f.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
+df_no_m_MAT = df_no_m.loc[df_no_m.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
+df_no_m_PAT = df_no_m.loc[df_no_m.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
 
 ''' boxplots of each image
 ========================================================================================================================
@@ -658,3 +735,13 @@ plt.xlabel(r'$\tau\ (\mu m^2)$', fontsize=18)
 plt.ylabel(r'p-value$_{ko}$', fontsize=18)
 plt.tick_params(axis='both', which='major', labelsize=16)
 plt.tight_layout()
+
+''' compare overlapping segmentation areas to non-overlapping segmentation areas
+========================================================================================================================
+'''
+
+# Mann–Whitney U test
+statistic_f_MAT, pvalue_f_MAT = stats.mannwhitneyu(df_f_MAT.area, df_no_f_MAT.area, alternative='two-sided')
+
+print('females/MAT, statistic: ' + "{0:.1f}".format(statistic_f_MAT) + ', p-value: ' + "{0:.2e}".format(pvalue_f_MAT))
+
