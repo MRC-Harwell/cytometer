@@ -19,6 +19,10 @@ image_data_dir = '/home/rcasero/data/roger_data'
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 
+''' auxiliary functions for area computations from Gimp paths
+========================================================================================================================
+'''
+
 # Area of Polygon using Shoelace formula
 # http://en.wikipedia.org/wiki/Shoelace_formula
 # FB - 20120218
@@ -69,15 +73,16 @@ def extract_cell_contour_and_compute_area(file, x_res=1.0, y_res=1.0):
 
     return np.array(areas)
 
-##################################################################################################################
-# main programme
-##################################################################################################################
 
-## get pixel size in original images, so that we can compute areas in um^2, instead of pixel^2
-## Warning: We are assuming that all images have the same resolution, so we only do this once
+'''main programme
+========================================================================================================================
+'''
 
+''' read input data and create dataframe
+========================================================================================================================
+'''
 
-# check that all files have the same pixel size
+# check that all histology files have the same pixel size
 for file in glob.glob(os.path.join(image_data_dir, '*.ndpi')):
     im = openslide.OpenSlide(file)
     print("Xres = " + str(1e-2 / float(im.properties['tiff.XResolution'])) + ', ' +
@@ -97,16 +102,13 @@ if im.properties['tiff.ResolutionUnit'].lower() == 'centimeter':
 else:
     raise ValueError('Only centimeter units implemented')
 
-## read CSV file with female/male labels for mice
-
+# read CSV file with female/male labels for mice
 with open(os.path.join(root_data_dir, 'klf14_b6ntac_sex_info.csv'), 'r') as f:
     reader = csv.DictReader(f, skipinitialspace=True)
     klf14_info = []
     for row in reader:
         klf14_info.append(row)
 f.close()
-
-## read all contour files, and categorise them into MAT/PAT and f/m
 
 # list of mouse IDs
 klf14_ids = [x['id'] for x in klf14_info]
@@ -116,6 +118,7 @@ file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 # create empty dataframe to host the data
 df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [], 'image_id': []})
 
+# read all contour files, and categorise them into MAT/PAT and f/m
 for file in file_list:
 
     # image ID
@@ -148,9 +151,12 @@ for file in file_list:
         df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko, 'image_id': image_id},
                        ignore_index=True)
 
-
-# save dataframe to file
+# save dataframe with input data to file
 #df.to_csv(os.path.join(root_data_dir, 'klf14_b6ntac_cell_areas.csv'))
+
+''' split full dataset into smaller datasets for different groups 
+========================================================================================================================
+'''
 
 # split dataset into groups
 df_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
@@ -179,12 +185,12 @@ df_f_PAT = df_f.loc[df_f.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
 df_m_MAT = df_m.loc[df_m.ko == 'MAT', ('area', 'image_id', 'mouse_id')]
 df_m_PAT = df_m.loc[df_m.ko == 'PAT', ('area', 'image_id', 'mouse_id')]
 
-## boxplots of each image
+''' boxplots of each image
+========================================================================================================================
+'''
 
-# plot boxplots for each individual image
+# plot cell area boxplots for each individual image
 df.boxplot(column='area', by='image_id', vert=False)
-
-## boxplots comparing MAT/PAT and f/m
 
 # plot boxplots for each individual image, split into f/m groups
 plt.clf()
@@ -206,8 +212,7 @@ ax = plt.subplot(212)
 df_PAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
 plt.title('PAT')
 
-
-# plot boxplots
+# plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
 plt.clf()
 ax = plt.subplot(121)
 df_f.boxplot(column='area', by='ko', ax=ax, notch=True)
@@ -224,7 +229,7 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
-# plot boxplots without outliers
+# same boxplots without outliers
 plt.clf()
 ax = plt.subplot(121)
 df_f.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
@@ -241,6 +246,9 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
+''' cell area PDF estimation
+========================================================================================================================
+'''
 
 # function to estimate PDF of areas using Kernel Density
 def compute_and_plot_pdf(ax, area, title, bandwidth=None):
@@ -270,7 +278,7 @@ def compute_and_plot_pdf(ax, area, title, bandwidth=None):
     return bin_centers, area_pdf
 
 
-## plot estimated pdfs separated by f/m, MAT/PAT
+# plot estimated pdfs separated by f/m, MAT/PAT
 plt.clf()
 
 ax = plt.subplot(221)
@@ -286,7 +294,7 @@ ax = plt.subplot(224)
 bin_centers_m_MAT, area_pdf_m_MAT = compute_and_plot_pdf(ax, df_m_MAT.area, 'm, MAT', bandwidth=np.logspace(2, 3, 200))
 
 
-## plot pdfs side by side
+# plot pdfs side by side
 
 plt.clf()
 
@@ -310,16 +318,9 @@ plt.title('male', fontsize=20)
 ax.set_xlim(0, 20000)
 plt.tick_params(axis='both', which='major', labelsize=16)
 
-## statistical comparison
-
-# Mann–Whitney U test
-statistic_f, pvalue_f = stats.mannwhitneyu(df_f_MAT.area, df_f_PAT.area, alternative='less')
-statistic_m, pvalue_m = stats.mannwhitneyu(df_m_MAT.area, df_m_PAT.area, alternative='less')
-
-print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
-print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
-
-## compute ECDF
+''' cell area ECDF estimation
+========================================================================================================================
+'''
 
 
 def area_linspace(x, n=100):
@@ -359,7 +360,20 @@ plt.title('male', fontsize=16)
 ax.set_xlim(0, 20000)
 plt.tick_params(axis='both', which='major', labelsize=16)
 
-## measure effect size (um^2)
+''' compare distributions to show that female cells are smaller than male cells
+========================================================================================================================
+'''
+
+# Mann–Whitney U test
+statistic_f, pvalue_f = stats.mannwhitneyu(df_f_MAT.area, df_f_PAT.area, alternative='less')
+statistic_m, pvalue_m = stats.mannwhitneyu(df_m_MAT.area, df_m_PAT.area, alternative='less')
+
+print('females, statistic: ' + "{0:.1f}".format(statistic_f) + ', p-value: ' + "{0:.2e}".format(pvalue_f))
+print('males, statistic: ' + "{0:.1f}".format(statistic_m) + ', p-value: ' + "{0:.2e}".format(pvalue_m))
+
+''' measure effect size (um^2) as change in median cell area
+========================================================================================================================
+'''
 
 # compute effect as difference of the median areas
 effect_f = np.median(df_f_MAT.area) - np.median(df_f_PAT.area)
@@ -387,7 +401,9 @@ print('Male: Radius change from PAT to MAT: ' +
       "{0:.1f}".format(radius_m_MAT - radius_m_PAT) + ' um ('
       "{0:.1f}".format((radius_m_MAT - radius_m_PAT) / radius_m_PAT * 100) + '%)')
 
-## compare percentiles of the distributions
+''' study changes in whole cell population by comparing areas in the same percentiles
+========================================================================================================================
+'''
 
 perc = np.linspace(0, 100, num=101)
 perc_area_f_MAT = np.percentile(df_f_MAT.area, perc)
@@ -410,7 +426,9 @@ plt.xlabel('percentile (%)', fontsize=18)
 plt.ylabel('change in cell area size from PAT to MAT (%)', fontsize=16)
 plt.tick_params(axis='both', which='major', labelsize=16)
 
-## count how many windows and animals each percentile comes from
+''' count how many windows and animals each percentile comes from
+========================================================================================================================
+'''
 
 
 def count_windows_animals_in_perc(x, perc):
@@ -493,7 +511,9 @@ plt.bar(perc, count_animals_m_PAT, width=2.5, edgecolor='black')
 plt.legend(('windows', 'animals'))
 plt.xlabel('Population percentile (%)', fontsize=18)
 
-## Linear Mixed Effects Model model analysis
+''' Linear Mixed Effects Model analysis (boxcox_area ~ sex + ko + random(mouse|window))
+========================================================================================================================
+'''
 
 print('Normality tests:')
 print('===========================================================')
@@ -555,40 +575,12 @@ print(mdf.summary())
 # params: intercept, sex, ko
 md.predict(mdf.params, [1, 1, 1])
 
+''' Logistic regression Mixed Effects Model analysis (thresholded_area ~ sex + ko + (1|mouse_id/image_id))
+========================================================================================================================
+'''
 
-# # logit(ECDF) of the Box-Cox'ed area
-# ecdf_boxcox_area = ECDF(df.boxcox_area)  # this creates an ECDF function, but doesn't evaluate it
-# df = df.assign(ecdf_boxcox_area=ecdf_boxcox_area(df.boxcox_area))
-# df = df.assign(logit_boxcox_area=logit(df.ecdf_boxcox_area))
-#
-# # remove rows with inf values
-# df = df.set_index("logit_boxcox_area")
-# df = df.drop(np.inf, axis=0)
-# df = df.reset_index()
-#
-# if DEBUG:
-#     # plot ECDF
-#     plt.clf()
-#     plt.subplot(211)
-#     boxcox_area_linspace = np.linspace(np.min(df.boxcox_area), np.max(df.boxcox_area), 101)
-#     plt.plot(boxcox_area_linspace, ecdf_boxcox_area(boxcox_area_linspace))
-#     plt.title(r'ECDF$_{f_{Box-Cox}(a)} = P( f_{Box-Cox}(a) < \tau )$', fontsize=20)
-#     plt.xlabel(r'$\tau$', fontsize=18)
-#     plt.tick_params(axis='both', which='major', labelsize=16)
-#     plt.subplot(212)
-#     plt.plot(boxcox_area_linspace, logit(ecdf_boxcox_area(boxcox_area_linspace)))
-#     plt.title(r'logit$(P)$', fontsize=20)
-#     plt.xlabel(r'$\tau$', fontsize=18)
-#     plt.tick_params(axis='both', which='major', labelsize=16)
-#     plt.tight_layout()
-#
-# # Mixed-effects linear model
-# vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
-# md = smf.mixedlm('logit_boxcox_area ~ sex + ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
-# mdf = md.fit()
-# print(mdf.summary())
+# suggested by George Nicholson's
 
-## George Nicholson's binarised model
 
 from rpy2.robjects import r
 
