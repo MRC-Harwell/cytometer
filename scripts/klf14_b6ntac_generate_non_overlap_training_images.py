@@ -58,9 +58,6 @@ file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 
 # TODO https://github.com/luispedro/python-image-tutorial/blob/master/Segmenting%20cell%20images%20(fluorescent%20microscopy).ipynb
 
-# DEBUG
-file_svg = file_list[4]
-
 for n, file_svg in enumerate(file_list):
 
     print('file ' + str(n) + '/' + str(len(file_list)-1))
