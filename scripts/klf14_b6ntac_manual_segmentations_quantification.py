@@ -740,8 +740,76 @@ plt.tight_layout()
 ========================================================================================================================
 '''
 
-# Mann–Whitney U test
+# Mann–Whitney U tests to check that each distribution from the overlapping areas is different to the distribution from
+# the non-overlapping areas
 statistic_f_MAT, pvalue_f_MAT = stats.mannwhitneyu(df_f_MAT.area, df_no_f_MAT.area, alternative='two-sided')
+statistic_f_PAT, pvalue_f_PAT = stats.mannwhitneyu(df_f_PAT.area, df_no_f_PAT.area, alternative='two-sided')
+statistic_m_MAT, pvalue_m_MAT = stats.mannwhitneyu(df_m_MAT.area, df_no_m_MAT.area, alternative='two-sided')
+statistic_m_PAT, pvalue_m_PAT = stats.mannwhitneyu(df_m_PAT.area, df_no_m_PAT.area, alternative='two-sided')
 
-print('females/MAT, statistic: ' + "{0:.1f}".format(statistic_f_MAT) + ', p-value: ' + "{0:.2e}".format(pvalue_f_MAT))
+print('f/MAT, statistic: ' + "{0:.1f}".format(statistic_f_MAT) + ', p-value: ' + "{0:.2e}".format(pvalue_f_MAT))
+print('f/PAT, statistic: ' + "{0:.1f}".format(statistic_f_PAT) + ', p-value: ' + "{0:.2e}".format(pvalue_f_PAT))
+print('m/MAT, statistic: ' + "{0:.1f}".format(statistic_m_MAT) + ', p-value: ' + "{0:.2e}".format(pvalue_m_MAT))
+print('m/PAT, statistic: ' + "{0:.1f}".format(statistic_m_PAT) + ', p-value: ' + "{0:.2e}".format(pvalue_m_PAT))
+
+# compute ECDFs for non-overlap areas
+area_no_ecdf_f_MAT = ECDF(df_no_f_MAT.area)
+area_no_ecdf_f_PAT = ECDF(df_no_f_PAT.area)
+area_no_ecdf_m_MAT = ECDF(df_no_m_MAT.area)
+area_no_ecdf_m_PAT = ECDF(df_no_m_PAT.area)
+
+area_no_linspace_f_PAT = area_linspace(df_no_f_PAT)
+area_no_linspace_f_MAT = area_linspace(df_no_f_MAT)
+area_no_linspace_m_PAT = area_linspace(df_no_m_PAT)
+area_no_linspace_m_MAT = area_linspace(df_no_m_MAT)
+
+# compute effect as difference of the median areas
+effect_no_f_PAT = np.median(df_no_f_PAT.area) - np.median(df_f_PAT.area)
+effect_no_f_MAT = np.median(df_no_f_MAT.area) - np.median(df_f_MAT.area)
+effect_no_m_PAT = np.median(df_no_m_PAT.area) - np.median(df_m_PAT.area)
+effect_no_m_MAT = np.median(df_no_m_MAT.area) - np.median(df_m_MAT.area)
+
+# area change
+print('Median area change from non-overlap to overlap:')
+print('\tf/PAT: ' +
+      "{0:.1f}".format(effect_no_f_PAT) + ' um^2 (' +
+      "{0:.1f}".format(effect_no_f_PAT / np.median(df_no_f_PAT.area) * 100) + '%)')
+print('\tf/MAT: ' +
+      "{0:.1f}".format(effect_no_f_MAT) + ' um^2 (' +
+      "{0:.1f}".format(effect_no_f_MAT / np.median(df_no_f_MAT.area) * 100) + '%)')
+print('\tm/PAT: ' +
+      "{0:.1f}".format(effect_no_m_PAT) + ' um^2 (' +
+      "{0:.1f}".format(effect_no_m_PAT / np.median(df_no_m_PAT.area) * 100) + '%)')
+print('\tm/MAT: ' +
+      "{0:.1f}".format(effect_no_m_MAT) + ' um^2 (' +
+      "{0:.1f}".format(effect_no_m_MAT / np.median(df_no_m_MAT.area) * 100) + '%)')
+
+# plot to compare ECDFs of distributions
+plt.clf()
+plt.subplot(221)
+plt.plot(area_linspace_f_PAT, area_ecdf_f_PAT(area_linspace_f_PAT))
+plt.plot(area_no_linspace_f_PAT, area_no_ecdf_f_PAT(area_no_linspace_f_PAT))
+plt.legend(('overlap', 'no overlap'))
+plt.ylabel('Probability')
+plt.title('f/PAT')
+plt.subplot(222)
+plt.plot(area_linspace_f_MAT, area_ecdf_f_MAT(area_linspace_f_MAT))
+plt.plot(area_no_linspace_f_MAT, area_no_ecdf_f_MAT(area_no_linspace_f_MAT))
+plt.legend(('overlap', 'no overlap'))
+plt.title('f/MAT')
+plt.subplot(223)
+plt.plot(area_linspace_m_PAT, area_ecdf_m_PAT(area_linspace_m_PAT))
+plt.plot(area_no_linspace_m_PAT, area_no_ecdf_m_PAT(area_no_linspace_m_PAT))
+plt.legend(('overlap', 'no overlap'))
+plt.xlabel(r'Area ($\mu m^2$)')
+plt.ylabel('Probability')
+plt.title('m/PAT')
+plt.subplot(224)
+plt.plot(area_linspace_m_MAT, area_ecdf_m_MAT(area_linspace_m_MAT))
+plt.plot(area_no_linspace_m_MAT, area_no_ecdf_m_MAT(area_no_linspace_m_MAT))
+plt.legend(('overlap', 'no overlap'))
+plt.xlabel(r'Area ($\mu m^2$)')
+plt.title('m/MAT')
+
+
 
