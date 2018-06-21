@@ -457,7 +457,7 @@ effect_f = np.median(df_f_MAT.area) - np.median(df_f_PAT.area)
 effect_m = np.median(df_m_MAT.area) - np.median(df_m_PAT.area)
 
 # area change
-print('Median area change from PAT to MAT:')
+print('Overlap: Median area change from PAT to MAT:')
 print('\tFemale: ' +
       "{0:.1f}".format(effect_f) + ' um^2 (' +
       "{0:.1f}".format(effect_f / np.median(df_f_PAT.area) * 100) + '%)')
@@ -650,9 +650,6 @@ md = smf.mixedlm('boxcox_area ~ ko', vc_formula=vc, re_formula='1', groups='mous
 mdf = md.fit()
 print(mdf.summary())
 
-# params: intercept, sex, ko
-md.predict(mdf.params, [1, 1, 1])
-
 ''' Logistic regression Mixed Effects Model analysis (thresholded_area ~ sex + ko + (1|mouse_id/image_id))
 ========================================================================================================================
 '''
@@ -678,9 +675,6 @@ def r_lme4_glmer(formula, df, family=r('binomial(link="logit")')):
     model = lme4.glmer(formula, data=r_df, family=family, control=control)
     return base.summary(model)
 
-from rpy2.robjects import r
-model = lme4.glmer('thresholded_area ~ sex + ko + (1|mouse_id/image_id)', data=r_df, family=r('binomial(link="logit")'),
-                   control=r('glmerControl(optimizer="bobyqa")'))
 
 # threshold values
 threshold = np.linspace(np.min(df.area), np.max(df.area), 101)
@@ -771,7 +765,7 @@ effect_no_m_PAT = np.median(df_no_m_PAT.area) - np.median(df_m_PAT.area)
 effect_no_m_MAT = np.median(df_no_m_MAT.area) - np.median(df_m_MAT.area)
 
 # area change
-print('Median area change from non-overlap to overlap:')
+print('Median area change from overlap to non-overlap:')
 print('\tf/PAT: ' +
       "{0:.1f}".format(effect_no_f_PAT) + ' um^2 (' +
       "{0:.1f}".format(effect_no_f_PAT / np.median(df_no_f_PAT.area) * 100) + '%)')
@@ -833,26 +827,46 @@ print('\tMale: ' +
 ========================================================================================================================
 '''
 
-perc = np.linspace(0, 100, num=101)
-perc_area_no_f_MAT = np.percentile(df_no_f_MAT.area, perc)
-perc_area_no_f_PAT = np.percentile(df_no_f_PAT.area, perc)
-perc_area_no_m_MAT = np.percentile(df_no_m_MAT.area, perc)
-perc_area_no_m_PAT = np.percentile(df_no_m_PAT.area, perc)
+perc_no = np.linspace(0, 100, num=101)
+perc_area_no_f_MAT = np.percentile(df_no_f_MAT.area, perc_no)
+perc_area_no_f_PAT = np.percentile(df_no_f_PAT.area, perc_no)
+perc_area_no_m_MAT = np.percentile(df_no_m_MAT.area, perc_no)
+perc_area_no_m_PAT = np.percentile(df_no_m_PAT.area, perc_no)
 
 # plot curves comparing cell area change at each percentile
 plt.clf()
 plt.subplot(211)
-plt.plot(perc, (perc_area_no_f_MAT - perc_area_no_f_PAT) / perc_area_no_f_PAT * 100)
+plt.plot(perc_no, (perc_area_no_f_MAT - perc_area_no_f_PAT) / perc_area_no_f_PAT * 100)
 plt.title('female', fontsize=20)
 plt.xlabel('percentile (%)', fontsize=18)
 plt.ylabel('change in non-overlap cell area size from PAT to MAT (%)', fontsize=16)
 plt.tick_params(axis='both', which='major', labelsize=16)
 ax = plt.subplot(212)
-plt.plot(perc, (perc_area_no_m_MAT - perc_area_no_m_PAT) / perc_area_no_m_PAT * 100)
+plt.plot(perc_no, (perc_area_no_m_MAT - perc_area_no_m_PAT) / perc_area_no_m_PAT * 100)
 plt.title('male', fontsize=20)
 plt.xlabel('percentile (%)', fontsize=18)
 plt.ylabel('change in non-overlap cell area size from PAT to MAT (%)', fontsize=16)
 ax.set_ylim(-30, 0)
 plt.tick_params(axis='both', which='major', labelsize=16)
+plt.tight_layout()
 
-
+# plot curves from overlap and no overlap areas together
+plt.clf()
+plt.subplot(211)
+plt.plot(perc_no, (perc_area_no_f_MAT - perc_area_no_f_PAT) / perc_area_no_f_PAT * 100)
+plt.plot(perc, (perc_area_f_MAT - perc_area_f_PAT) / perc_area_f_PAT * 100)
+plt.legend(('no overlap', 'overlap'))
+plt.title('female', fontsize=20)
+plt.xlabel('percentile (%)', fontsize=18)
+plt.ylabel('change in non-overlap cell area size\nfrom PAT to MAT (%)', fontsize=16)
+plt.tick_params(axis='both', which='major', labelsize=16)
+ax = plt.subplot(212)
+plt.plot(perc_no, (perc_area_no_m_MAT - perc_area_no_m_PAT) / perc_area_no_m_PAT * 100)
+plt.plot(perc, (perc_area_m_MAT - perc_area_m_PAT) / perc_area_m_PAT * 100)
+plt.legend(('no overlap', 'overlap'))
+plt.title('male', fontsize=20)
+plt.xlabel('percentile (%)', fontsize=18)
+plt.ylabel('change in non-overlap cell area size\nfrom PAT to MAT (%)', fontsize=16)
+ax.set_ylim(-55, 5)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.tight_layout()
