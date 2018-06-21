@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -35,8 +34,8 @@
       <file leaf-file-name="klf14_b6ntac_manual_segmentations_quantification.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1762">
-              <caret line="813" selection-start-line="813" selection-end-line="813" />
+            <state relative-caret-position="668">
+              <caret line="858" lean-forward="true" selection-start-line="858" selection-end-line="858" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -684,8 +683,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_manual_segmentations_quantification.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1762">
-          <caret line="813" selection-start-line="813" selection-end-line="813" />
+        <state relative-caret-position="668">
+          <caret line="858" lean-forward="true" selection-start-line="858" selection-end-line="858" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>

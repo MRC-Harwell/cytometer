@@ -457,12 +457,13 @@ effect_f = np.median(df_f_MAT.area) - np.median(df_f_PAT.area)
 effect_m = np.median(df_m_MAT.area) - np.median(df_m_PAT.area)
 
 # area change
-print('Female: Median area change from PAT to MAT: ' +
-      "{0:.1f}".format(np.median(df_f_MAT.area) - np.median(df_f_PAT.area)) + ' um^2 (' +
-      "{0:.1f}".format((np.median(df_f_MAT.area) - np.median(df_f_PAT.area)) / np.median(df_f_PAT.area) * 100) + '%)')
-print('Male: Median area change from PAT to MAT: ' +
-      "{0:.1f}".format(np.median(df_m_MAT.area) - np.median(df_m_PAT.area)) + ' um^2 (' +
-      "{0:.1f}".format((np.median(df_m_MAT.area) - np.median(df_m_PAT.area)) / np.median(df_m_PAT.area) * 100) + '%)')
+print('Median area change from PAT to MAT:')
+print('\tFemale: ' +
+      "{0:.1f}".format(effect_f) + ' um^2 (' +
+      "{0:.1f}".format(effect_f / np.median(df_f_PAT.area) * 100) + '%)')
+print('\tMale: ' +
+      "{0:.1f}".format(effect_m) + ' um^2 (' +
+      "{0:.1f}".format(effect_m / np.median(df_m_PAT.area) * 100) + '%)')
 
 # for the median cells areas, compute radii as if cells were circles
 radius_f_MAT = np.sqrt(np.median(df_f_MAT.area) / np.pi)  # (um)
@@ -736,7 +737,7 @@ plt.ylabel(r'p-value$_{ko}$', fontsize=18)
 plt.tick_params(axis='both', which='major', labelsize=16)
 plt.tight_layout()
 
-''' compare overlapping segmentation areas to non-overlapping segmentation areas
+''' No-overlap analysis: compare overlapping segmentation areas to non-overlapping segmentation areas
 ========================================================================================================================
 '''
 
@@ -811,5 +812,47 @@ plt.legend(('overlap', 'no overlap'))
 plt.xlabel(r'Area ($\mu m^2$)')
 plt.title('m/MAT')
 
+''' No-overlap analysis: measure effect size (um^2) as change in median cell area
+========================================================================================================================
+'''
+
+# compute effect as difference of the median areas
+effect_no_f = np.median(df_no_f_MAT.area) - np.median(df_no_f_PAT.area)
+effect_no_m = np.median(df_no_m_MAT.area) - np.median(df_no_m_PAT.area)
+
+# area change
+print('No-overlap: Median area change from PAT to MAT:')
+print('\tFemale: ' +
+      "{0:.1f}".format(effect_no_f) + ' um^2 (' +
+      "{0:.1f}".format(effect_no_f / np.median(df_no_f_PAT.area) * 100) + '%)')
+print('\tMale: ' +
+      "{0:.1f}".format(effect_no_m) + ' um^2 (' +
+      "{0:.1f}".format(effect_no_m / np.median(df_no_m_PAT.area) * 100) + '%)')
+
+''' No-overlap analysis: study changes in whole cell population by comparing areas in the same percentiles
+========================================================================================================================
+'''
+
+perc = np.linspace(0, 100, num=101)
+perc_area_no_f_MAT = np.percentile(df_no_f_MAT.area, perc)
+perc_area_no_f_PAT = np.percentile(df_no_f_PAT.area, perc)
+perc_area_no_m_MAT = np.percentile(df_no_m_MAT.area, perc)
+perc_area_no_m_PAT = np.percentile(df_no_m_PAT.area, perc)
+
+# plot curves comparing cell area change at each percentile
+plt.clf()
+plt.subplot(211)
+plt.plot(perc, (perc_area_no_f_MAT - perc_area_no_f_PAT) / perc_area_no_f_PAT * 100)
+plt.title('female', fontsize=20)
+plt.xlabel('percentile (%)', fontsize=18)
+plt.ylabel('change in non-overlap cell area size from PAT to MAT (%)', fontsize=16)
+plt.tick_params(axis='both', which='major', labelsize=16)
+ax = plt.subplot(212)
+plt.plot(perc, (perc_area_no_m_MAT - perc_area_no_m_PAT) / perc_area_no_m_PAT * 100)
+plt.title('male', fontsize=20)
+plt.xlabel('percentile (%)', fontsize=18)
+plt.ylabel('change in non-overlap cell area size from PAT to MAT (%)', fontsize=16)
+ax.set_ylim(-30, 0)
+plt.tick_params(axis='both', which='major', labelsize=16)
 
 
