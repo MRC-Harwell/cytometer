@@ -1,4 +1,5 @@
 import os
+
 import glob
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +15,7 @@ DEBUG = True
 
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
-training_nooverlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_nooverlap')
+training_nooverlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 
 # extract contour as a list of (X,Y) coordinates
 def extract_contour(path, x_res=1.0, y_res=1.0):
