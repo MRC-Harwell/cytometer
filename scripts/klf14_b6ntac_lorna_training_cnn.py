@@ -241,7 +241,7 @@ for i, block in enumerate(im_crop_blocks):
 im_crop_predicted, foo = pystoim.block_stack(im_crop_blocks_predicted, im_crop_slices_predicted,
                                              pad_width=((100, 100), (100, 100), (0, 0)))
 
-# assign a label to each pixel according to the label with the largets softmax value
+# assign a label to each pixel according to the label with the largest softmax value
 im_crop_predicted = np.argmax(im_crop_predicted, axis=2)
 
 # plot segmentation results
