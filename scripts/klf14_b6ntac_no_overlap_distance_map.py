@@ -7,6 +7,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 
+import keras.backend as K
+import tensorflow as tf
+import keras.preprocessing.image
+K.set_image_dim_ordering('tf')
+print(K.image_data_format())
+
+import cytometer.models as models
+
+# keras model
+from keras.models import Sequential
+from keras.layers import Activation, Conv2D, MaxPooling2D
+from cytometer.layers import DilatedMaxPooling2D
+from keras.layers.normalization import BatchNormalization
+from keras.regularizers import l2
+
+
+
 
 # environment variables
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -29,38 +46,227 @@ root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 
+''' create training dataset objects
+========================================================================================================================
+'''
+
 # list of segmented files
 seg_file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
 
 # loop segmented files
-for seg_file in seg_file_list:
+mask = np.zeros(shape=(len(seg_file_list), 1001, 1001), dtype='float32')
+seg = np.zeros(shape=(len(seg_file_list), 1001, 1001), dtype='uint8')
+im = np.zeros(shape=(len(seg_file_list), 1001, 1001, 3), dtype='uint8')
+for i, seg_file in enumerate(seg_file_list):
 
-    # load segmentations
-    seg = Image.open(seg_file)
-    seg = np.array(seg)
+    # load segmentation
+    seg_aux = np.array(Image.open(seg_file))
+
+    # we are not going to use for training the pixels that have no cell or contour label. They could be background, but
+    # also a broken cell, another type of cell, etc
+    mask[i, :, :] = seg_aux != 1
 
     # set pixels that were background in the watershed algorithm to background here too
-    seg[seg == 1] = 0
+    seg_aux[seg_aux == 1] = 0
+
+    # copy data to whole array
+    seg[i, :, :] = seg_aux
 
     # plot image
     if DEBUG:
         plt.clf()
         plt.subplot(221)
-        plt.imshow(seg, cmap="gray")
+        plt.imshow(seg[i, :, :], cmap="gray")
+        plt.title('Cell labels')
+        plt.subplot(222)
+        plt.imshow(mask[i, :, :], cmap="gray")
+        plt.title('Training mask')
 
     # compute distance map to the cell contours
-    dmap = ndimage.distance_transform_edt(seg)
+    dmap = ndimage.distance_transform_edt(seg_aux)
 
     # plot distance map
     if DEBUG:
-        plt.subplot(222)
+        plt.subplot(223)
         plt.imshow(dmap)
+        plt.title('Distance map')
 
     # load corresponding original image
     im_file = seg_file.replace(training_non_overlap_data_dir, training_data_dir)
-    im = Image.open(im_file)
+    im[i, :, :, :] = np.array(Image.open(im_file))
 
     # plot original image
     if DEBUG:
-        plt.subplot(223)
-        plt.imshow(im)
+        plt.subplot(224)
+        plt.imshow(im[i, :, :, :])
+        plt.title('Histology')
+
+''' Keras convolutional neural network
+========================================================================================================================
+'''
+
+# configure Keras, to avoid using file ~/.keras/keras.json
+K.set_floatx('float32')
+K.set_epsilon(1e-07)
+# fix "RuntimeError: Invalid DISPLAY variable" in cluster runs
+# import matplotlib
+# matplotlib.use('agg')
+
+# limit the amount of GPU memory that Keras can allocate
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.7
+session = tf.Session(config=config)
+K.set_session(session)
+
+# parameters
+batch_size = 10
+n_epoch = 20
+
+
+# rate scheduler from DeepCell
+def rate_scheduler(lr = .001, decay = 0.95):
+    def output_fn(epoch):
+        epoch = np.int(epoch)
+        new_lr = lr * (decay ** epoch)
+        return new_lr
+    return output_fn
+
+
+if K.image_data_format() == 'channels_first':
+    default_input_shape = (3, None, None)
+elif K.image_data_format() == 'channels_last':
+    default_input_shape = (None, None, 3)
+
+
+# Based on DeepCell's sparse_feature_net_61x61, but here we use no dilation
+def regression_9c3mp(input_shape=default_input_shape, reg=0.001, init='he_normal'):
+
+    if K.image_data_format() == 'channels_first':
+        norm_axis = 1
+    elif K.image_data_format() == 'channels_last':
+        norm_axis = 3
+
+    model = Sequential()
+
+    model.add(Conv2D(input_shape=input_shape,
+                     filters=64, kernel_size=(3, 3), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2), strides=1, padding='same'))
+
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(4, 4), strides=1, padding='same'))
+
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+    model.add(MaxPooling2D(pool_size=(8, 8), strides=1, padding='same'))
+
+    model.add(Conv2D(filters=200, kernel_size=(4, 4), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(filters=200, kernel_size=(1, 1), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    model.add(BatchNormalization(axis=norm_axis))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(filters=4, kernel_size=(1, 1), strides=1,
+                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+
+    return model
+
+
+model = regression_9c3mp()
+optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+model.compile(loss='categorical_crossentropy',
+              optimizer=optimizer,
+              metrics=['accuracy'])
+
+## DEBUG: model visualisation
+#from keras.utils import plot_model
+#plot_model(model, to_file='/tmp/model.png', show_shapes=True)
+
+# data augmentation
+train_datagen = keras.preprocessing.image.ImageDataGenerator(
+    rotation_range=90,     # randomly rotate images up to 90 degrees
+    fill_mode="reflect",   # how to fill points outside boundaries
+    horizontal_flip=True,  # randomly flip images
+    vertical_flip=True)    # randomly flip images
+
+# we create two instances with the same arguments
+data_gen_args = dict(featurewise_center=True,
+                     featurewise_std_normalization=True,
+                     rotation_range=90.,
+                     horizontal_flip=True,
+                     vertical_flip=True,
+                     width_shift_range=0.1,
+                     height_shift_range=0.1,
+                     zoom_range=0.2)
+image_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
+mask_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
+
+"""
+# Provide the same seed and keyword arguments to the fit and flow methods
+seed = 1
+image_datagen.fit(images, augment=True, seed=seed)
+mask_datagen.fit(masks, augment=True, seed=seed)
+
+image_generator = image_datagen.flow_from_directory(
+    'data/images',
+    class_mode=None,
+    seed=seed)
+
+mask_generator = mask_datagen.flow_from_directory(
+    'data/masks',
+    class_mode=None,
+    seed=seed)
+
+# combine generators into one which yields image and masks
+train_generator = zip(image_generator, mask_generator)
+
+model.fit_generator(
+    train_generator,
+    steps_per_epoch=2000,
+    epochs=50)
+"""
+
+if DEBUG:
+    # save the images generated by image augmentation
+    train_generator = train_datagen.flow(data_im_split, data_seg_cat_split, batch_size=batch_size,
+                                         save_to_dir='/tmp/preview', save_prefix='foo', save_format='jpeg')
+else:
+    train_generator = train_datagen.flow(data_im_split, data_seg_cat_split, batch_size=batch_size)
+
+## https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
+## https://machinelearningmastery.com/evaluate-performance-deep-learning-models-keras/
+
+# set seed of random number generator so that we can reproduce results
+seed = 0
+np.random.seed(seed)
+
+# fit the model on the batches generated by datagen.flow()
+loss_history = model.fit_generator(train_generator,
+                                   steps_per_epoch=1,
+                                   epochs=n_epoch)
