@@ -260,6 +260,12 @@ model.fit_generator(
     steps_per_epoch=10,
     epochs=n_epoch)
 
+val = np.array([[1, 2], [3, 4]])
+kvar = K.variable(value=val, dtype='float64', name='example_var')
+K.eval(kvar * kvar)
+
+
+
 """
 image_generator = image_datagen.flow_from_directory(
     'data/images',
