@@ -1,6 +1,9 @@
+import os
+
 # environment variables
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
+# remove warning "Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Just disables the warning, doesn't enable AVX/FMA
 
 # different versions of conda keep the path in different variables
@@ -15,7 +18,6 @@ os.environ['PYTHONPATH'] = os.path.join(os.environ['HOME'], 'Software', 'cytomet
                            + ':' + os.environ['PYTHONPATH']
 
 
-import os
 import glob
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -80,7 +82,7 @@ for i, seg_file in enumerate(seg_file_list):
         plt.title('Cell labels')
         plt.subplot(222)
         plt.imshow(mask[i, :, :], cmap="gray")
-        plt.title('Training mask')
+        plt.title('Training weight')
 
     # compute distance map to the cell contours
     dmap = ndimage.distance_transform_edt(seg_aux)
@@ -102,8 +104,9 @@ for i, seg_file in enumerate(seg_file_list):
         plt.title('Histology')
 
 
-# we have to add a dummy channels dimension to the masks for Keras
+# we have to add a dummy dimension to comply with Keras expected format
 mask = mask.reshape((mask.shape + (1,)))
+seg = seg.reshape((seg.shape + (1,)))
 
 ''' Keras convolutional neural network
 ========================================================================================================================
@@ -135,11 +138,17 @@ def rate_scheduler(lr = .001, decay = 0.95):
         return new_lr
     return output_fn
 
+# TODO: crop images
+im = im[:, 0:256, 0:256, :]
+seg = seg[:, 0:256, 0:256, :]
+mask = mask[:, 0:256, 0:256, :]
 
 if K.image_data_format() == 'channels_first':
-    default_input_shape = (3, None, None)
+    #    default_input_shape = (3, None, None)
+    default_input_shape = (im.shape[3], im.shape[1], im.shape[2])
 elif K.image_data_format() == 'channels_last':
-    default_input_shape = (None, None, 3)
+    #    default_input_shape = (None, None, 3)
+    default_input_shape = im.shape[1:4]
 
 
 # Based on DeepCell's sparse_feature_net_61x61, but here we use no dilation
@@ -153,50 +162,50 @@ def regression_9c3mp(input_shape=default_input_shape, reg=0.001, init='he_normal
     model = Sequential()
 
     model.add(Conv2D(input_shape=input_shape,
-                     filters=64, kernel_size=(3, 3), strides=1,
+                     filters=32, kernel_size=(3, 3), strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
     model.add(BatchNormalization(axis=norm_axis))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+    model.add(Conv2D(filters=32, kernel_size=(3, 3), strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
     model.add(BatchNormalization(axis=norm_axis))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2), strides=1, padding='same'))
 
-    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+    # model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+    #                  kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    # model.add(BatchNormalization(axis=norm_axis))
+    # model.add(Activation('relu'))
+    #
+    # model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+    #                  kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    # model.add(BatchNormalization(axis=norm_axis))
+    # model.add(Activation('relu'))
+    # model.add(MaxPooling2D(pool_size=(4, 4), strides=1, padding='same'))
+    #
+    # model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+    #                  kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    # model.add(BatchNormalization(axis=norm_axis))
+    # model.add(Activation('relu'))
+    #
+    # model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+    #                  kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
+    # model.add(BatchNormalization(axis=norm_axis))
+    # model.add(Activation('relu'))
+    # model.add(MaxPooling2D(pool_size=(8, 8), strides=1, padding='same'))
+
+    model.add(Conv2D(filters=10, kernel_size=(4, 4), strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
     model.add(BatchNormalization(axis=norm_axis))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
-                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
-    model.add(BatchNormalization(axis=norm_axis))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(4, 4), strides=1, padding='same'))
-
-    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
+    model.add(Conv2D(filters=10, kernel_size=(1, 1), strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
     model.add(BatchNormalization(axis=norm_axis))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1,
-                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
-    model.add(BatchNormalization(axis=norm_axis))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(8, 8), strides=1, padding='same'))
-
-    model.add(Conv2D(filters=200, kernel_size=(4, 4), strides=1,
-                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
-    model.add(BatchNormalization(axis=norm_axis))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(filters=200, kernel_size=(1, 1), strides=1,
-                     kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
-    model.add(BatchNormalization(axis=norm_axis))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(filters=4, kernel_size=(1, 1), strides=1,
+    model.add(Conv2D(filters=1, kernel_size=(1, 1), strides=1,
                      kernel_initializer=init, padding='same', kernel_regularizer=l2(reg)))
 
     return model
@@ -204,13 +213,21 @@ def regression_9c3mp(input_shape=default_input_shape, reg=0.001, init='he_normal
 
 model = regression_9c3mp()
 optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-model.compile(loss='categorical_crossentropy',
-              optimizer=optimizer,
-              metrics=['accuracy'])
+
+model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'])
+
+#run_opts = tf.RunOptions(report_tensor_allocations_upon_oom = True)
+#model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'], options=run_opts)
+
 
 ## DEBUG: model visualisation
 #from keras.utils import plot_model
 #plot_model(model, to_file='/tmp/model.png', show_shapes=True)
+
+model.fit(im, seg, sample_weight=mask, batch_size=32, epochs=3)
+
+
+## TODO: Once we have things working with plain np.ndarrays, we'll look into data augmentation, flows, etc. (below)
 
 # data augmentation
 train_datagen = keras.preprocessing.image.ImageDataGenerator(
