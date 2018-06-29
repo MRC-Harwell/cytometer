@@ -1,4 +1,5 @@
 import os
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 import numpy as np
@@ -7,24 +8,23 @@ from keras.models import Sequential
 from keras.layers import Activation, Conv2D
 from keras.layers.normalization import BatchNormalization
 
-# environment variables
-os.environ['KERAS_BACKEND'] = 'tensorflow'
-
 # remove warning "Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Just disables the warning, doesn't enable AVX/FMA
 
+assert(K.image_data_format() == 'channels_first')
+
 # simulate input images
-im = np.zeros(shape=(10, 128, 128, 3), dtype='uint8')
+im = np.zeros(shape=(10, 3, 128, 128), dtype='uint8')
 
 # simulate network output
-out = np.zeros(shape=(10, 128, 128, 1), dtype='float32')
+out = np.zeros(shape=(10, 1, 128, 128), dtype='float32')
 
 # simulate training weights for network output
-weight = np.zeros(shape=(10, 128, 128, 1), dtype='float32')
+weight = np.zeros(shape=(10, 1, 128, 128), dtype='float32')
 
 # create network model
 model = Sequential()
-model.add(Conv2D(input_shape=(128, 128, 3),
+model.add(Conv2D(input_shape=(3, 128, 128),
                  filters=32, kernel_size=(3, 3), strides=1, padding='same'))
 model.add(BatchNormalization(axis=3))
 model.add(Activation('relu'))
