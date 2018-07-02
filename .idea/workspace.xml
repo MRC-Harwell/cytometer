@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -13,20 +14,56 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="keras_branch_sample_weight.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="keras_branch_sample_weight.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="609">
-              <caret line="37" lean-forward="true" selection-start-line="37" selection-end-line="37" />
+            <state relative-caret-position="486">
+              <caret line="27" column="39" selection-start-line="27" selection-start-column="39" selection-end-line="27" selection-end-column="39" />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="training_utils.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="codecs.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/codecs.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="187">
+              <caret line="308" selection-start-line="308" selection-end-line="308" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="training.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="168">
+              <caret line="509" column="35" selection-start-line="509" selection-start-column="16" selection-end-line="509" selection-end-column="35" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="training_arrays.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="3330">
+              <caret line="198" column="24" selection-start-line="198" selection-start-column="23" selection-end-line="198" selection-end-column="24" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="tensorflow_backend.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="331">
+              <caret line="2660" selection-start-line="2660" selection-end-line="2660" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="training_utils.py" pinned="false" current-in-tab="true">
         <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="313">
-              <caret line="135" selection-start-line="135" selection-end-line="135" />
+            <state relative-caret-position="-128">
+              <caret line="477" column="101" lean-forward="true" selection-start-line="449" selection-end-line="477" selection-end-column="101" />
             </state>
           </provider>
         </entry>
@@ -34,7 +71,7 @@
       <file leaf-file-name="klf14_b6ntac_no_overlap_distance_map.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_no_overlap_distance_map.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1098">
+            <state relative-caret-position="5688">
               <caret line="316" selection-start-line="316" selection-end-line="316" />
             </state>
           </provider>
@@ -43,7 +80,7 @@
       <file leaf-file-name="klf14_b6ntac_segmentations_quantification.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_segmentations_quantification.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="288">
+            <state relative-caret-position="1620">
               <caret line="103" column="57" selection-end-line="103" selection-end-column="57" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
@@ -99,6 +136,16 @@
       <find>ecdf</find>
       <find>perc</find>
       <find>found a sample</find>
+      <find>shape</find>
+      <find>train_function</find>
+      <find>sample_weights</find>
+      <find>standardize_weights</find>
+      <find>feed_sample_weight_modes</find>
+      <find>self._feed_sample_weight_modes</find>
+      <find>self.sample_weight_modes</find>
+      <find>_feed_sample_weights</find>
+      <find>sample_weight_mode</find>
+      <find>self.train_function</find>
     </findStrings>
     <replaceStrings>
       <replace>perc_area_f_MAT</replace>
@@ -135,6 +182,7 @@
         <option value="$PROJECT_DIR$/scripts/keras_branch_sample_weights.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_no_overlap_distance_map.py" />
         <option value="$PROJECT_DIR$/../keras_branch_sample_weight/keras/engine/training_utils.py" />
+        <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py" />
         <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py" />
         <option value="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" />
       </list>
@@ -142,7 +190,7 @@
   </component>
   <component name="ProjectFrameBounds" extendedState="4">
     <option name="x" value="67" />
-    <option name="width" value="1717" />
+    <option name="width" value="1707" />
     <option name="height" value="1200" />
   </component>
   <component name="ProjectView">
@@ -150,6 +198,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -180,12 +229,11 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="com.intellij.ide.scratch.LRUPopupBuilder$2/Languages" value="Python" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../keras_branch_sample_weight/keras/engine/training_utils.py" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -205,7 +253,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.keras_branch_sample_weights">
     <configuration name="cytometer_cnn" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="cytometer" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -224,6 +272,28 @@
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
     </configuration>
+    <configuration name="keras_branch_sample_weights" type="PythonConfigurationType" factoryName="Python">
+      <module name="cytometer" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="$USER_HOME$/.conda/envs/cytometer_tensorflow/bin/python" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scripts" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.keras_branch_sample_weights" />
+      <item itemvalue="Python.cytometer_cnn" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.cytometer_cnn" />
@@ -244,19 +314,19 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="67" y="0" width="1717" height="1200" extended-state="4" />
-    <editor active="true" />
+    <frame x="67" y="0" width="1707" height="1200" extended-state="4" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.3199528" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.31947744" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.3289597" />
       <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.34676662" />
+      <window_info anchor="bottom" id="Python Console" order="7" weight="0.34582943" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.3298969" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="7" weight="0.3298969" />
       <window_info id="Favorites" order="2" side_tool="true" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.39945155" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.44892222" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -264,7 +334,6 @@
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.3292402" />
     </layout>
   </component>
   <component name="VcsContentAnnotationSettings">
@@ -278,6 +347,11 @@
           <line>180</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py</url>
+          <line>198</line>
+          <option name="timeStamp" value="17" />
+        </line-breakpoint>
       </breakpoints>
       <breakpoints-dialog>
         <breakpoints-dialog />
@@ -289,85 +363,97 @@
           </properties>
         </breakpoint>
       </default-breakpoints>
-      <option name="time" value="2" />
+      <option name="time" value="18" />
     </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
+    <expressions id="evaluateCodeFragment">
+      <expression>
+        <expression-string>sample_weight_mode</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>loss</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>loss_weights</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>weight</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>foo</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>foo=K.placeholder(ndim=1, name=name + '_sample_weights')</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>foo=K.placeholder(ndim=1,
+                                          name=name + '_sample_weights'))</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>CODE_FRAGMENT</evaluation-mode>
+      </expression>
+    </expressions>
     <expressions id="evaluateExpression">
       <expression>
-        <expression-string>np.lib.pad(x, (0,0,0,0), mode='constant', constant_values=0)</expression-string>
+        <expression-string>f</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>np.lib.pad(x, 0, mode='constant', constant_values=0)</expression-string>
+        <expression-string>ins_batch</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>foo = np.lib.pad(x, 0, mode='constant', constant_values=0)</expression-string>
+        <expression-string>len(output_shape)</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>foo = np.lib.pad(x, 0, mode='constant', constant_value=0)</expression-string>
+        <expression-string>output_shape</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>foo = np.lib.pad(x, ((0,0,0,0),(0,0,0,0),(0,0,0,0),(0,0,0,0)), mode='constant', constant_value=0)</expression-string>
+        <expression-string>self.get_output_shape_at(0)</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>foo = np.lib.pad(x, pad_width, mode='constant', constant_value=0)</expression-string>
+        <expression-string>self.get_output_shape_at(1)</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>foo = np.lib.pad(x, pad_width, mode='constant', 'constant_value'=0)</expression-string>
+        <expression-string>self.get_output_shape_at(-1)</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>foo = np.lib.pad(x, pad_width, mode='constant', 0)</expression-string>
+        <expression-string>self.get_output_shape_at()</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>foo = np.lib.pad(x, pad_width)</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>x.shape</expression-string>
+        <expression-string>self.get_input_shape_at(0)</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_lorna_training_cnn.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3204">
-          <caret line="178" column="50" lean-forward="true" selection-start-line="170" selection-end-line="178" selection-end-column="50" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/scripts/deepcell_run_trained_networks.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="3744">
-          <caret line="213" selection-start-line="213" selection-end-line="213" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cytometer/models.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="252">
-          <caret line="20" selection-start-line="20" selection-end-line="20" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_lorna_training_cnn.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="810">
@@ -603,18 +689,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="455">
-          <caret line="503" column="55" selection-start-line="503" selection-start-column="55" selection-end-line="503" selection-end-column="55" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/../keras/keras/backend/tensorflow_backend.py" />
     <entry file="file://$PROJECT_DIR$/../keras/keras/engine/training_utils.py" />
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_no_overlap_distance_map.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1098">
+        <state relative-caret-position="5688">
           <caret line="316" selection-start-line="316" selection-end-line="316" />
         </state>
       </provider>
@@ -631,9 +710,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="609">
           <caret line="82" selection-start-line="17" selection-end-line="82" />
-          <folding>
-            <element signature="e#110#145#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -653,7 +729,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_segmentations_quantification.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="288">
+        <state relative-caret-position="1620">
           <caret line="103" column="57" selection-end-line="103" selection-end-column="57" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
@@ -661,17 +737,45 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py">
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/codecs.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="313">
-          <caret line="135" selection-start-line="135" selection-end-line="135" />
+        <state relative-caret-position="187">
+          <caret line="308" selection-start-line="308" selection-end-line="308" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="331">
+          <caret line="2660" selection-start-line="2660" selection-end-line="2660" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3330">
+          <caret line="198" column="24" selection-start-line="198" selection-start-column="23" selection-end-line="198" selection-end-column="24" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="609">
-          <caret line="37" lean-forward="true" selection-start-line="37" selection-end-line="37" />
+        <state relative-caret-position="486">
+          <caret line="27" column="39" selection-start-line="27" selection-start-column="39" selection-end-line="27" selection-end-column="39" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="509" column="35" selection-start-line="509" selection-start-column="16" selection-end-line="509" selection-end-column="35" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-128">
+          <caret line="477" column="101" lean-forward="true" selection-start-line="449" selection-end-line="477" selection-end-column="101" />
         </state>
       </provider>
     </entry>
