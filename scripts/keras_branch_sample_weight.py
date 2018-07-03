@@ -11,7 +11,7 @@ from keras.layers.normalization import BatchNormalization
 # remove warning "Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Just disables the warning, doesn't enable AVX/FMA
 
-assert(K.image_data_format() == 'channels_first')
+K.set_image_data_format('channels_first')
 
 # simulate input images
 im = np.zeros(shape=(10, 3, 64, 64), dtype='uint8')
