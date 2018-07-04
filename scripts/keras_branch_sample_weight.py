@@ -21,7 +21,11 @@ out = 2 * np.ones(shape=(10, 1, 64, 64), dtype='float32')
 
 # simulate training weights for network output
 weight = np.ones(shape=(10, 1, 64, 64), dtype='float32')
-#weight = np.zeros(shape=(10, ), dtype='float32')
+
+# simulate validation data
+im_validation = 3 * np.ones(shape=(5, 3, 64, 64), dtype='uint8')
+out_validation = 4 * np.ones(shape=(5, 1, 64, 64), dtype='float32')
+validation_data = (im_validation, out_validation)
 
 # create network model
 model = Sequential()
@@ -35,4 +39,8 @@ optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=Tru
 
 model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'], sample_weight_mode='element')
 
-model.fit(im, out, sample_weight=weight, batch_size=3, epochs=3)
+# train with validation_split
+#model.fit(im, out, sample_weight=weight, validation_split=0.1, batch_size=3, epochs=3)
+
+# train with validation_data
+model.fit(im, out, sample_weight=weight, validation_data=validation_data, batch_size=3, epochs=3)
