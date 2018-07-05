@@ -104,7 +104,7 @@ else:
     raise ValueError('Only centimeter units implemented')
 
 # read CSV file with female/male labels for mice
-with open(os.path.join(root_data_dir, 'klf14_b6ntac_sex_info.csv'), 'r') as f:
+with open(os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv'), 'r') as f:
     reader = csv.DictReader(f, skipinitialspace=True)
     klf14_info = []
     for row in reader:
@@ -121,7 +121,8 @@ klf14_ids = [x['id'] for x in klf14_info]
 file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 
 # create empty dataframe to host the data
-df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [], 'image_id': []})
+df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [],
+                        'bw': [], 'sc': [], 'gwat': [], 'liver': [], 'image_id': []})
 
 # read all contour files, and categorise them into MAT/PAT and f/m
 for file in file_list:
@@ -142,9 +143,13 @@ for file in file_list:
     # index of mouse ID
     idx = klf14_ids.index(mouse_id)
 
-    # sex and KO-side for this mouse
+    # metainformation for this mouse
     mouse_sex = klf14_info[idx]['sex']
     mouse_ko = klf14_info[idx]['ko']
+    mouse_bw = float(klf14_info[idx]['BW'])
+    mouse_sc = float(klf14_info[idx]['SC'])
+    mouse_gwat = float(klf14_info[idx]['gWAT'])
+    mouse_liver = float(klf14_info[idx]['Liver'])
 
     # compute areas of all non-edge cells
     areas = extract_cell_contour_and_compute_area(file, x_res=x_res, y_res=y_res)
@@ -153,7 +158,8 @@ for file in file_list:
     for i, a in enumerate(areas):
         if a == 0.0:
             print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
-        df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko, 'image_id': image_id},
+        df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko,
+                        'bw': mouse_bw, 'sc': mouse_sc, 'gwat': mouse_gwat, 'liver': mouse_liver, 'image_id': image_id},
                        ignore_index=True)
 
 # save dataframe with input data to file
@@ -589,9 +595,24 @@ plt.bar(perc, count_animals_m_PAT, width=2.5, edgecolor='black')
 plt.legend(('windows', 'animals'))
 plt.xlabel('Population percentile (%)', fontsize=18)
 
-''' Linear Mixed Effects Model analysis (boxcox_area ~ sex + ko + random(mouse|window))
+''' Gaussianise continuous variables
 ========================================================================================================================
 '''
+
+# plot original variables
+plt.clf()
+plt.subplot(221)
+plt.hist(df.bw)
+plt.title('BW')
+plt.subplot(222)
+plt.hist(df.sc)
+plt.title('SC')
+plt.subplot(223)
+plt.hist(df.gwat)
+plt.title('gWAT')
+plt.subplot(224)
+plt.hist(df.liver)
+plt.title('liver')
 
 print('Normality tests:')
 print('===========================================================')
@@ -606,6 +627,34 @@ print('log10(area_m): ' + str(stats.normaltest(np.log10(df_m.area))))
 # data normal
 df = df.assign(boxcox_area=stats.boxcox(np.sqrt(df.area * 1e12))[0])
 df_m = df_m.assign(boxcox_area=stats.boxcox(np.sqrt(df_m.area * 1e12))[0])
+
+bw + sc + gwat + liver
+
+# Box-Cox transformation of other variables
+df = df.assign(boxcox_bw=stats.boxcox(df.bw)[0])
+df = df.assign(boxcox_sc=stats.boxcox(df.sc)[0])
+df = df.assign(boxcox_gwat=stats.boxcox(df.gwat)[0])
+df = df.assign(boxcox_liver=stats.boxcox(df.liver)[0])
+
+# plot original variables
+plt.clf()
+plt.subplot(221)
+plt.hist(df.boxcox_bw)
+plt.title('BW')
+plt.subplot(222)
+plt.hist(df.boxcox_sc)
+plt.title('SC')
+plt.subplot(223)
+plt.hist(df.boxcox_gwat)
+plt.title('gWAT')
+plt.subplot(224)
+plt.hist(df.boxcox_liver)
+plt.title('liver')
+
+
+''' Linear Mixed Effects Model analysis (boxcox_area ~ sex + ko + other variables + random(mouse|window))
+========================================================================================================================
+'''
 
 if DEBUG:
     # show that data is now normal
@@ -649,6 +698,34 @@ vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested ins
 md = smf.mixedlm('boxcox_area ~ ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
 mdf = md.fit()
 print(mdf.summary())
+
+# Mixed-effects linear model with extra meta information
+vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+
+md = smf.mixedlm('bw ~ sex + ko + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('bw ~ sex + ko + boxcox_sc + boxcox_gwat + boxcox_liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('boxcox_area ~ sex + ko + bw + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('boxcox_area ~ sex + ko + bw + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('boxcox_area ~ sc + gwat', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('boxcox_area ~ ko + gwat', vc_formula=vc, re_formula='1', groups='mouse_id', data=df)
+mdf = md.fit()
+print(mdf.summary())
+
 
 ''' Logistic regression Mixed Effects Model analysis (thresholded_area ~ sex + ko + (1|mouse_id/image_id))
 ========================================================================================================================
