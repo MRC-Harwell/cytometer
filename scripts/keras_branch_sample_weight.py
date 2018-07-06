@@ -37,10 +37,21 @@ model.add(Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same'))
 
 optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 
+'''string format for sample_weights_mode
+'''
+
 model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'], sample_weight_mode='element')
 
 # train with validation_split
-#model.fit(im, out, sample_weight=weight, validation_split=0.1, batch_size=3, epochs=3)
+##model.fit(im, out, sample_weight=weight, validation_split=0.1, batch_size=3, epochs=3)
+
+# train with validation_data
+model.fit(im, out, sample_weight=weight, validation_data=validation_data, batch_size=3, epochs=3)
+
+'''dictionary format for sample_weights_mode
+'''
+
+model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'], sample_weight_mode={'conv2d_2': 'element'})
 
 # train with validation_data
 model.fit(im, out, sample_weight=weight, validation_data=validation_data, batch_size=3, epochs=3)

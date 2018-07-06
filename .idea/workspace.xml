@@ -3,6 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -13,23 +14,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="keras_branch_sample_weight.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="keras_branch_sample_weight.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="541">
-              <caret line="45" column="72" selection-start-line="45" selection-start-column="57" selection-end-line="45" selection-end-column="72" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="klf14_b6ntac_segmentations_quantification.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_segmentations_quantification.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="12816">
-              <caret line="725" column="14" selection-start-line="725" selection-start-column="14" selection-end-line="725" selection-end-column="14" />
-              <folding>
-                <element signature="e#0#9#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="302">
+              <caret line="35" column="73" selection-start-line="35" selection-start-column="73" selection-end-line="35" selection-end-column="73" />
             </state>
           </provider>
         </entry>
@@ -43,11 +32,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="training.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="training.py" pinned="false" current-in-tab="false">
         <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="352">
-              <caret line="980" selection-start-line="980" selection-end-line="980" />
+            <state relative-caret-position="360">
+              <caret line="272" selection-start-line="272" selection-end-line="272" />
             </state>
           </provider>
         </entry>
@@ -55,7 +44,7 @@
       <file leaf-file-name="training_arrays.py" pinned="false" current-in-tab="false">
         <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="918">
+            <state relative-caret-position="864">
               <caret line="64" selection-start-line="64" selection-end-line="64" />
             </state>
           </provider>
@@ -73,8 +62,8 @@
       <file leaf-file-name="training_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="8460">
-              <caret line="478" selection-start-line="449" selection-end-line="478" />
+            <state relative-caret-position="362">
+              <caret line="526" column="45" lean-forward="true" selection-start-line="526" selection-start-column="45" selection-end-line="526" selection-end-column="45" />
             </state>
           </provider>
         </entry>
@@ -111,9 +100,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>cell_areas</find>
-      <find>df_norm</find>
-      <find>.loc</find>
       <find>area_m</find>
       <find>area_PAT</find>
       <find>mannwhit</find>
@@ -123,7 +109,6 @@
       <find>found a sample</find>
       <find>shape</find>
       <find>train_function</find>
-      <find>standardize_weights</find>
       <find>feed_sample_weight_modes</find>
       <find>self._feed_sample_weight_modes</find>
       <find>self.sample_weight_modes</find>
@@ -132,15 +117,19 @@
       <find>self.train_function</find>
       <find>self.sample_weights</find>
       <find>boxcox_area</find>
-      <find>TODO</find>
       <find>self.test_function</find>
       <find>self._feed_sample_weights</find>
-      <find>ins_batch</find>
       <find>sample_weights</find>
+      <find>test_loop</find>
+      <find>element</find>
+      <find>ins_batch</find>
       <find>slice_arrays</find>
       <find>ins</find>
-      <find>test_loop</find>
+      <find>feed_output_names</find>
+      <find>standardize_we</find>
       <find>val_ins</find>
+      <find>standardize_weights</find>
+      <find>TODO</find>
     </findStrings>
     <replaceStrings>
       <replace>perc_area_f_MAT</replace>
@@ -176,11 +165,11 @@
         <option value="$PROJECT_DIR$/scripts/keras_branch_sample_weights.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_no_overlap_distance_map.py" />
         <option value="$PROJECT_DIR$/../keras_branch_sample_weight/keras/engine/training_utils.py" />
-        <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py" />
-        <option value="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_segmentations_quantification.py" />
         <option value="$PROJECT_DIR$/scripts/tmp/keras_validation_data.py" />
+        <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py" />
         <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py" />
+        <option value="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" />
       </list>
     </option>
   </component>
@@ -318,7 +307,7 @@
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="bottom" id="Version Control" order="7" />
       <window_info anchor="bottom" id="Python Console" order="7" weight="0.3453125" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.3298969" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.3296875" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Terminal" order="7" weight="0.3296875" />
       <window_info id="Favorites" order="2" side_tool="true" />
@@ -345,39 +334,19 @@
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py</url>
-          <line>397</line>
-          <option name="timeStamp" value="25" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py</url>
-          <line>286</line>
-          <option name="timeStamp" value="28" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py</url>
-          <line>1110</line>
+          <line>1115</line>
           <option name="timeStamp" value="31" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py</url>
-          <line>1121</line>
+          <line>1126</line>
           <option name="timeStamp" value="32" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py</url>
-          <line>210</line>
-          <option name="timeStamp" value="35" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py</url>
-          <line>1038</line>
-          <option name="timeStamp" value="37" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py</url>
-          <line>656</line>
-          <option name="timeStamp" value="40" />
+          <line>813</line>
+          <option name="timeStamp" value="53" />
         </line-breakpoint>
       </breakpoints>
       <breakpoints-dialog>
@@ -390,7 +359,7 @@
           </properties>
         </breakpoint>
       </default-breakpoints>
-      <option name="time" value="41" />
+      <option name="time" value="56" />
     </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
@@ -434,17 +403,12 @@
     </expressions>
     <expressions id="evaluateExpression">
       <expression>
-        <expression-string>foo = standardize_sample_weights(sample_weight, feed_output_names)</expression-string>
+        <expression-string>foo</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>sample_weight</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>feed_sample_weight_modes</expression-string>
+        <expression-string>for (ref, sw, cw, mode) in zip(y, sample_weights, class_weights, feed_sample_weight_modes)</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
@@ -454,32 +418,32 @@
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>val_y</expression-string>
+        <expression-string>sample_weights</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
-        <expression-string>val_x</expression-string>
+        <expression-string>sample_weight</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>self._feed_output_names</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>self.sample_weight_mode</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+      <expression>
+        <expression-string>validation_data</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
       <expression>
         <expression-string>val_ins</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>ins_batch</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>ins</expression-string>
-        <language-id>Python</language-id>
-        <evaluation-mode>EXPRESSION</evaluation-mode>
-      </expression>
-      <expression>
-        <expression-string>foo</expression-string>
         <language-id>Python</language-id>
         <evaluation-mode>EXPRESSION</evaluation-mode>
       </expression>
@@ -759,13 +723,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="8460">
-          <caret line="478" selection-start-line="449" selection-end-line="478" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_segmentations_quantification.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="12816">
@@ -777,13 +734,6 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/tmp/keras_validation_data.py" />
-    <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="541">
-          <caret line="45" column="72" selection-start-line="45" selection-start-column="57" selection-end-line="45" selection-end-column="72" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/utils/generic_utils.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-143">
@@ -793,15 +743,29 @@
     </entry>
     <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_arrays.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="918">
+        <state relative-caret-position="864">
           <caret line="64" selection-start-line="64" selection-end-line="64" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training_utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="362">
+          <caret line="526" column="45" lean-forward="true" selection-start-line="526" selection-start-column="45" selection-end-line="526" selection-end-column="45" />
         </state>
       </provider>
     </entry>
     <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="352">
-          <caret line="980" selection-start-line="980" selection-end-line="980" />
+        <state relative-caret-position="360">
+          <caret line="272" selection-start-line="272" selection-end-line="272" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="302">
+          <caret line="35" column="73" selection-start-line="35" selection-start-column="73" selection-end-line="35" selection-end-column="73" />
         </state>
       </provider>
     </entry>
