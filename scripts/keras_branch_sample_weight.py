@@ -93,4 +93,3 @@ model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'],
 model.fit(im, {'main_output': out, 'aux_output': aux_out},
           sample_weight={'main_output': weight, 'aux_output': aux_weight},
           batch_size=3, epochs=3)
-
