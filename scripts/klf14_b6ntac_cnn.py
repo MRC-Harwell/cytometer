@@ -4,6 +4,10 @@ import tifffile
 import matplotlib.pyplot as plt
 import numpy as np
 
+# use CPU for testing on laptop
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
 from keras.models import Model
@@ -60,6 +64,8 @@ for i, labels_file in enumerate(labels_file_list):
 
 '''CNN
 '''
+
+
 
 # declare network model
 input = Input(shape=(3, 1001, 1001), dtype='float32')
