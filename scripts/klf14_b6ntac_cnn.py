@@ -3,6 +3,7 @@ import glob
 import tifffile
 import matplotlib.pyplot as plt
 import numpy as np
+import pysto.imgproc as pystoim
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
@@ -11,7 +12,7 @@ from keras.layers import Activation, Conv2D, Input
 from keras.layers.normalization import BatchNormalization
 
 
-DEBUG = True
+DEBUG = False
 
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
@@ -61,12 +62,64 @@ for i, labels_file in enumerate(labels_file_list):
 '''CNN
 '''
 
+if K.image_data_format() == 'channels_first':
+    norm_axis = 1
+elif K.image_data_format() == 'channels_last':
+    norm_axis = 3
+
 # declare network model
 input = Input(shape=(3, 1001, 1001), dtype='float32')
+x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(input)
+x = BatchNormalization(axis=3)(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+
+
+input = Input(shape=(3, 64, 64), dtype='float32')
 x = Conv2D(filters=32, kernel_size=(3, 3), strides=1, padding='same')(input)
 x = BatchNormalization(axis=3)(x)
 x = Activation('relu')(x)
-x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same')(x)
+
+
+
+
+
+
+
+x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+x = MaxPooling2D(pool_size=(2, 2), strides=1, padding='same')(x)
+
+x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+
+x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+x = MaxPooling2D(pool_size=(4, 4), strides=1, padding='same')(x)
+
+x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+
+x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+x = MaxPooling2D(pool_size=(8, 8), strides=1, padding='same')(x)
+
+x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, padding='same')(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+
+x = Conv2D(filters=200, kernel_size=(1, 1), strides=1, padding='same')(x)
+x = BatchNormalization(axis=norm_axis)(x)
+x = Activation('relu')(x)
+
+x = Conv2D(filters=4, kernel_size=(1, 1), strides=1, padding='same')(x)
+x = Activation('softmax')(x)
+
 main_output = Activation('softmax', name='main_output')(x)
 model = Model(inputs=input, outputs=main_output)
 
@@ -75,3 +128,27 @@ model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy']
 
 # train model
 model.fit(im, mask, batch_size=6, epochs=50, validation_split=.1)
+
+model.save('/home/rcasero/Downloads/foo.model')
+
+# visualise results
+if DEBUG:
+    for i in range(len(labels_file_list)):
+
+        # run image through network
+        mask_pred = model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
+
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im[i, :, :, :].transpose((1, 2, 0)))
+        plt.subplot(222)
+        plt.imshow(mask[i, :, :, :].reshape((1001, 1001)))
+        plt.subplot(223)
+        plt.imshow(mask_pred.reshape((1001, 1001)) * 255)
+        plt.subplot(224)
+        a = mask[i, :, :, :].reshape((1001, 1001))
+        b = mask_pred.reshape((1001, 1001)) * 255
+        plt.imshow(pystoim.imfuse(a, b))
+
+plt.clf()
+plt.hist(b.flatten())
