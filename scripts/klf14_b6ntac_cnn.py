@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pysto.imgproc as pystoim
 
+# use CPU for testing on laptop
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
 from keras.models import Model
