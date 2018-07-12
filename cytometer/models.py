@@ -43,7 +43,7 @@ def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_
         activation = 'linear'
         pooling_func = AvgPool2D
 
-    input = Input(shape=input_shape, dtype='float32')
+    input = Input(shape=input_shape, dtype='float32', name='input_image')
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(input)
     x = BatchNormalization(axis=norm_axis)(x)
     x = Activation(activation)(x)
