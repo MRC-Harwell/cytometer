@@ -6,8 +6,8 @@ Created on Tue Aug 15 17:59:44 2017
 @author: rcasero
 """
 
-from keras.models import Sequential
-from keras.layers import Activation, Conv2D, MaxPooling2D
+from keras.models import Sequential, Model
+from keras.layers import Input, Conv2D, MaxPooling2D, Activation
 from cytometer.layers import DilatedMaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
@@ -20,8 +20,64 @@ if K.image_data_format() == 'channels_first':
 elif K.image_data_format() == 'channels_last':
     default_input_shape = (None, None, 3)
 
-# Based on DeepCell's sparse_feature_net_61x61, but here we use no dilation
+
+def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape):
+    """Deep binary classifier.
+    Similar to basic_9c3mp (no dilation), but with default options, and using the
+    x = layer(...)(x) notation
+    :param input_shape: (tuple) size of inputs (W,H,C) without batch size, e.g. (200,200,3)
+    :return: model: Keras model object
+    """
+
+    if K.image_data_format() != 'channels_last':
+        raise ValueError('Expected Keras running with K.image_data_format()==channels_last')
+
+    input = Input(shape=input_shape, dtype='float32')
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(input)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(4, 4), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(8, 8), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters=200, kernel_size=(1, 1), strides=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation('relu')(x)
+
+    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same')(x)
+    x = Activation('softmax')(x)
+
+    main_output = Activation('softmax', name='main_output')(x)
+    return Model(inputs=input, outputs=main_output)
+
+
 def basic_9c3mp(input_shape=default_input_shape, reg=0.001, init='he_normal'):
+    """Based on DeepCell's sparse_feature_net_61x61, but here we use no dilation
+    """
 
     if K.image_data_format() == 'channels_first':
         norm_axis = 1
