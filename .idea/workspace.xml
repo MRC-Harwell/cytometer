@@ -27,8 +27,8 @@
       <file leaf-file-name="klf14_b6ntac_cnn.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="749">
-              <caret line="119" lean-forward="true" selection-start-line="119" selection-end-line="119" />
+            <state relative-caret-position="633">
+              <caret line="139" lean-forward="true" selection-start-line="139" selection-end-line="139" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -51,8 +51,8 @@
       <file leaf-file-name="models.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cytometer/models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="414">
-              <caret line="23" column="52" selection-start-line="23" selection-start-column="4" selection-end-line="23" selection-end-column="52" />
+            <state relative-caret-position="585">
+              <caret line="84" column="40" selection-start-line="84" selection-start-column="40" selection-end-line="84" selection-end-column="40" />
               <folding>
                 <element signature="e#110#152#0" expanded="true" />
               </folding>
@@ -83,7 +83,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>area_PAT</find>
       <find>mannwhit</find>
       <find>'1'</find>
       <find>ecdf</find>
@@ -113,6 +112,7 @@
       <find>val_ins</find>
       <find>TODO</find>
       <find>get_output_shape</find>
+      <find>norm_axis</find>
     </findStrings>
     <replaceStrings>
       <replace>perc_area_f_MAT</replace>
@@ -153,8 +153,8 @@
         <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py" />
         <option value="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" />
         <option value="$PROJECT_DIR$/scripts/keras_bug_batchnormalization.py" />
-        <option value="$PROJECT_DIR$/cytometer/models.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py" />
+        <option value="$PROJECT_DIR$/cytometer/models.py" />
       </list>
     </option>
   </component>
@@ -378,7 +378,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py</url>
-          <line>81</line>
+          <line>85</line>
           <option name="timeStamp" value="60" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -770,6 +770,13 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="522">
+          <caret line="29" selection-start-line="15" selection-end-line="29" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_generate_training_images.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="108">
@@ -780,17 +787,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="522">
-          <caret line="29" selection-start-line="15" selection-end-line="29" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/cytometer/models.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="414">
-          <caret line="23" column="52" selection-start-line="23" selection-start-column="4" selection-end-line="23" selection-end-column="52" />
+        <state relative-caret-position="585">
+          <caret line="84" column="40" selection-start-line="84" selection-start-column="40" selection-end-line="84" selection-end-column="40" />
           <folding>
             <element signature="e#110#152#0" expanded="true" />
           </folding>
@@ -799,8 +799,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="749">
-          <caret line="119" lean-forward="true" selection-start-line="119" selection-end-line="119" />
+        <state relative-caret-position="633">
+          <caret line="139" lean-forward="true" selection-start-line="139" selection-end-line="139" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>

@@ -5,7 +5,7 @@ import tifffile
 import matplotlib.pyplot as plt
 import numpy as np
 import pysto.imgproc as pystoim
-import cytometer.models as models
+from receptivefield.keras import KerasReceptiveField
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -13,12 +13,17 @@ import cytometer.models as models
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
+import cytometer.models as models
 
+# limit GPU memory used
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.9
 set_session(tf.Session(config=config))
+
+# allow data parallelism
+from keras.utils import multi_gpu_model
 
 
 
@@ -33,7 +38,6 @@ saved_models_dir = '/home/rcasero/Software/cytometer/saved_models'
 '''
 
 K.set_image_data_format('channels_last')
-norm_axis = 3
 
 labels_file_list = glob.glob(os.path.join(training_nooverlap_data_dir, '*.tif'))
 
@@ -85,15 +89,20 @@ mask_split = np.concatenate(mask_blocks, axis=0)
 '''
 
 # declare network model
-foo = models.basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im.shape[1:])
-model = models.basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im.shape[1:])
+model = models.basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
+#model.load_weights('/home/rcasero/Software/cytometer/saved_models/2018-07-12T14:58:10.433876_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5')
 
 # compile model
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+parallel_model = multi_gpu_model(model, gpus=2)
+parallel_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # train model
-model.fit(im_split, mask_split, batch_size=10, epochs=100, validation_split=.1)
+tic = datetime.datetime.now()
+parallel_model.fit(im_split, mask_split, batch_size=10, epochs=100, validation_split=.1)
+toc = datetime.datetime.now()
+print('Training duration: ' + str(toc - tic))
 
+# save result (note, we save the template model, not the multiparallel object)
 model.save(os.path.join(saved_models_dir, datetime.datetime.utcnow().isoformat() + '_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
 
 # visualise results
@@ -115,5 +124,16 @@ if DEBUG:
         b = mask_pred.reshape((200, 200)) * 255
         plt.imshow(pystoim.imfuse(a, b))
 
-plt.clf()
-plt.hist(b.flatten())
+# estimate receptive field of the model
+def model_build_func(input_shape):
+    return models.basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=input_shape,
+                                                                   for_receptive_field=True)
+
+rf = KerasReceptiveField(model_build_func, init_weights=True)
+
+rf_params = rf.compute(
+    input_shape=(250, 250, 3),
+    input_layer='input_image',
+    output_layer='main_output'
+)
+print(rf_params)
