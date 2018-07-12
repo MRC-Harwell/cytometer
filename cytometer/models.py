@@ -7,7 +7,7 @@ Created on Tue Aug 15 17:59:44 2017
 """
 
 from keras.models import Sequential, Model
-from keras.layers import Input, Conv2D, MaxPooling2D, Activation
+from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
 from cytometer.layers import DilatedMaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
@@ -33,6 +33,8 @@ def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_
 
     if K.image_data_format() != 'channels_last':
         raise ValueError('Expected Keras running with K.image_data_format()==channels_last')
+    else:
+        norm_axis = 3
 
     if for_receptive_field:
         activation = 'relu'
