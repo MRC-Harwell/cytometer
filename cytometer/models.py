@@ -21,52 +21,61 @@ elif K.image_data_format() == 'channels_last':
     default_input_shape = (None, None, 3)
 
 
-def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape):
+def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_field=False):
     """Deep binary classifier.
     Similar to basic_9c3mp (no dilation), but with default options, and using the
     x = layer(...)(x) notation
     :param input_shape: (tuple) size of inputs (W,H,C) without batch size, e.g. (200,200,3)
+    :param for_receptive_field: (bool, def False) only set to True if you are going to estimate the size of the
+    input receptive field using [`receptivefield`](https://github.com/kmkolasinski/receptivefield)
     :return: model: Keras model object
     """
 
     if K.image_data_format() != 'channels_last':
         raise ValueError('Expected Keras running with K.image_data_format()==channels_last')
 
+    if for_receptive_field:
+        activation = 'relu'
+        pooling_func = MaxPooling2D
+    else:
+        activation = 'linear'
+        pooling_func = AvgPool2D
+
     input = Input(shape=input_shape, dtype='float32')
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(input)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
+    x = Activation(activation)(x)
 
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=1, padding='same')(x)
+    x = Activation(activation)(x)
+    x = pooling_func(pool_size=(2, 2), strides=1, padding='same')(x)
 
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
+    x = Activation(activation)(x)
 
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
-    x = MaxPooling2D(pool_size=(4, 4), strides=1, padding='same')(x)
+    x = Activation(activation)(x)
+    x = pooling_func(pool_size=(4, 4), strides=1, padding='same')(x)
 
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
+    x = Activation(activation)(x)
 
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
-    x = MaxPooling2D(pool_size=(8, 8), strides=1, padding='same')(x)
+    x = Activation(activation)(x)
+    x = pooling_func(pool_size=(8, 8), strides=1, padding='same')(x)
 
     x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
+    x = Activation(activation)(x)
 
     x = Conv2D(filters=200, kernel_size=(1, 1), strides=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation('relu')(x)
+    x = Activation(activation)(x)
 
     x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same')(x)
     x = Activation('softmax')(x)
