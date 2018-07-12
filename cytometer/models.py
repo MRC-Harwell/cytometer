@@ -37,11 +37,11 @@ def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_
         norm_axis = 3
 
     if for_receptive_field:
-        activation = 'relu'
-        pooling_func = MaxPooling2D
-    else:
         activation = 'linear'
         pooling_func = AvgPool2D
+    else:
+        activation = 'relu'
+        pooling_func = MaxPooling2D
 
     input = Input(shape=input_shape, dtype='float32', name='input_image')
     x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(input)
@@ -80,9 +80,11 @@ def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_
     x = Activation(activation)(x)
 
     x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same')(x)
-    x = Activation('softmax')(x)
 
-    main_output = Activation('softmax', name='main_output')(x)
+    if for_receptive_field:
+        main_output = Activation('linear', name='main_output')(x)
+    else:
+        main_output = Activation('softmax', name='main_output')(x)
     return Model(inputs=input, outputs=main_output)
 
 
