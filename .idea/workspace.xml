@@ -18,8 +18,8 @@
       <file leaf-file-name="keras_branch_sample_weight.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="522">
-              <caret line="29" selection-start-line="15" selection-end-line="29" />
+            <state relative-caret-position="144">
+              <caret line="8" column="45" selection-end-line="8" selection-end-column="45" />
             </state>
           </provider>
         </entry>
@@ -27,8 +27,8 @@
       <file leaf-file-name="klf14_b6ntac_cnn.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="633">
-              <caret line="139" lean-forward="true" selection-start-line="139" selection-end-line="139" />
+            <state relative-caret-position="746">
+              <caret line="135" column="24" selection-start-line="135" selection-start-column="24" selection-end-line="135" selection-end-column="24" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -36,10 +36,19 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="plotting.py" pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/plotting.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="18">
+              <caret line="4" column="22" selection-start-line="4" selection-start-column="22" selection-end-line="4" selection-end-column="22" />
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="klf14_b6ntac_generate_training_images.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_generate_training_images.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="108">
+            <state relative-caret-position="-324">
               <caret line="14" column="58" selection-start-line="14" selection-end-line="15" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
@@ -51,11 +60,8 @@
       <file leaf-file-name="models.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cytometer/models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="585">
-              <caret line="84" column="40" selection-start-line="84" selection-start-column="40" selection-end-line="84" selection-end-column="40" />
-              <folding>
-                <element signature="e#110#152#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="-14">
+              <caret line="63" column="42" selection-start-line="63" selection-start-column="42" selection-end-line="63" selection-end-column="42" />
             </state>
           </provider>
         </entry>
@@ -153,22 +159,22 @@
         <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/training.py" />
         <option value="$PROJECT_DIR$/scripts/keras_branch_sample_weight.py" />
         <option value="$PROJECT_DIR$/scripts/keras_bug_batchnormalization.py" />
-        <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py" />
+        <option value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/plotting.py" />
         <option value="$PROJECT_DIR$/cytometer/models.py" />
+        <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="4">
-    <option name="x" value="67" />
-    <option name="width" value="1677" />
-    <option name="height" value="1413" />
+    <option name="x" value="190" />
+    <option name="width" value="1657" />
+    <option name="height" value="1080" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -199,11 +205,12 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="com.intellij.ide.scratch.LRUPopupBuilder$2/Languages" value="Python" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/scripts/keras_bug_batchnormalization.py" />
+    <property name="last_opened_file_path" value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/plotting.py" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -322,23 +329,23 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="67" y="0" width="1677" height="1413" extended-state="4" />
+    <frame x="190" y="0" width="1657" height="1080" extended-state="4" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.32224908" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.32190943" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
-      <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.34609374" />
+      <window_info anchor="bottom" id="Version Control" order="8" />
+      <window_info active="true" anchor="bottom" id="Python Console" order="9" visible="true" weight="0.38965154" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.3296875" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
-      <window_info anchor="bottom" id="Terminal" order="7" weight="0.3289597" />
+      <window_info anchor="bottom" id="Terminal" order="11" weight="0.3284055" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.44765624" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
-      <window_info anchor="bottom" id="Inspection Results" order="8" weight="0.329718" />
+      <window_info anchor="bottom" id="Inspection Results" order="10" weight="0.329718" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
@@ -375,11 +382,6 @@
           <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/layers/normalization.py</url>
           <line>164</line>
           <option name="timeStamp" value="59" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py</url>
-          <line>85</line>
-          <option name="timeStamp" value="60" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/layers/normalization.py</url>
@@ -488,34 +490,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_lorna_training_cnn.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="810">
-          <caret line="45" column="17" selection-start-line="44" selection-start-column="3" selection-end-line="45" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../python_setup/test/test_theano_setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="324">
-          <caret line="18" column="31" selection-start-line="18" selection-start-column="16" selection-end-line="18" selection-end-column="31" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_lorna_training_cnn.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="810">
-          <caret line="45" column="17" lean-forward="true" selection-start-line="44" selection-start-column="3" selection-end-line="45" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../python_setup/test/test_theano_setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="432">
-          <caret line="24" column="49" selection-end-line="56" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_lorna_training_cnn.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="882">
@@ -756,13 +730,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/scripts/keras_bug_batchnormalization.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="468">
-          <caret line="26" lean-forward="true" selection-start-line="26" selection-end-line="26" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/scripts/keras_bug_batchnormalization.py" />
     <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/keras/engine/sequential.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="180">
@@ -770,16 +738,46 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/types.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-266">
+          <caret line="8" column="6" selection-start-line="8" selection-start-column="6" selection-end-line="8" selection-end-column="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/keras.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="180">
+          <caret line="10" column="23" lean-forward="true" selection-start-line="10" selection-start-column="20" selection-end-line="10" selection-end-column="26" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/common.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <folding>
+            <element signature="e#0#24#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="522">
-          <caret line="29" selection-start-line="15" selection-end-line="29" />
+        <state relative-caret-position="144">
+          <caret line="8" column="45" selection-end-line="8" selection-end-column="45" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/plotting.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="18">
+          <caret line="4" column="22" selection-start-line="4" selection-start-column="22" selection-end-line="4" selection-end-column="22" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_generate_training_images.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="108">
+        <state relative-caret-position="-324">
           <caret line="14" column="58" selection-start-line="14" selection-end-line="15" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
@@ -789,18 +787,15 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/cytometer/models.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="585">
-          <caret line="84" column="40" selection-start-line="84" selection-start-column="40" selection-end-line="84" selection-end-column="40" />
-          <folding>
-            <element signature="e#110#152#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="-14">
+          <caret line="63" column="42" selection-start-line="63" selection-start-column="42" selection-end-line="63" selection-end-column="42" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="633">
-          <caret line="139" lean-forward="true" selection-start-line="139" selection-end-line="139" />
+        <state relative-caret-position="746">
+          <caret line="135" column="24" selection-start-line="135" selection-start-column="24" selection-end-line="135" selection-end-column="24" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
