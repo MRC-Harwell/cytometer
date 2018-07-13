@@ -32,7 +32,7 @@ DEBUG = False
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
 training_nooverlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-saved_models_dir = '/home/rcasero/Software/cytometer/saved_models'
+saved_models_dir = '/home/rcasero/Dropbox/klf14/saved_models'
 
 '''Load data
 '''
@@ -90,17 +90,30 @@ mask_split = np.concatenate(mask_blocks, axis=0)
 
 # declare network model
 model = models.basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
-#model.load_weights('/home/rcasero/Software/cytometer/saved_models/2018-07-12T14:58:10.433876_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5')
+#model.load_weights(os.path.join(saved_models_dir, '2018-07-13T12:53:06.071299_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
 
-# compile model
-parallel_model = multi_gpu_model(model, gpus=2)
-parallel_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+# compile and train model
+if isinstance(tf.test.gpu_device_name(), str) > 1:  # only one GPU
+    # compile model
+    parallel_model = multi_gpu_model(model, gpus=2)
+    parallel_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-# train model
-tic = datetime.datetime.now()
-parallel_model.fit(im_split, mask_split, batch_size=10, epochs=100, validation_split=.1)
-toc = datetime.datetime.now()
-print('Training duration: ' + str(toc - tic))
+    # train model
+    tic = datetime.datetime.now()
+    parallel_model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
+    toc = datetime.datetime.now()
+    print('Training duration: ' + str(toc - tic))
+
+else:  # multiple GPUs
+    # compile model
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # train model
+    tic = datetime.datetime.now()
+    model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
+    toc = datetime.datetime.now()
+    print('Training duration: ' + str(toc - tic))
+
 
 # save result (note, we save the template model, not the multiparallel object)
 model.save(os.path.join(saved_models_dir, datetime.datetime.utcnow().isoformat() + '_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
