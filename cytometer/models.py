@@ -21,7 +21,7 @@ elif K.image_data_format() == 'channels_last':
     default_input_shape = (None, None, 3)
 
 
-def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_field=False):
+def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_field=False, dilation_rate=1):
     """Deep binary classifier.
     Similar to basic_9c3mp (no dilation), but with default options, and using the
     x = layer(...)(x) notation
@@ -44,42 +44,45 @@ def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_
         pooling_func = MaxPooling2D
 
     input = Input(shape=input_shape, dtype='float32', name='input_image')
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(input)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=dilation_rate, padding='same')(input)
     x = BatchNormalization(axis=norm_axis)(x)
     x = Activation(activation)(x)
 
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=dilation_rate, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
     x = Activation(activation)(x)
-    x = pooling_func(pool_size=(2, 2), strides=1, padding='same')(x)
+    pool_size = dilation_rate * 3 * 2 - 1
+    x = pooling_func(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation(activation)(x)
-
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation(activation)(x)
-    x = pooling_func(pool_size=(4, 4), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=dilation_rate**2, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
     x = Activation(activation)(x)
 
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same')(x)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=dilation_rate**2, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
     x = Activation(activation)(x)
-    x = pooling_func(pool_size=(8, 8), strides=1, padding='same')(x)
+    pool_size += (dilation_rate**2) * 3 * 2 - 1
+    x = pooling_func(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation(activation)(x)
-
-    x = Conv2D(filters=200, kernel_size=(1, 1), strides=1, padding='same')(x)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=dilation_rate**3, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
     x = Activation(activation)(x)
 
-    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same')(x)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=dilation_rate**3, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation(activation)(x)
+    pool_size += (dilation_rate**3) * 3 * 2 - 1
+    x = pooling_func(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, dilation_rate=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation(activation)(x)
+
+    x = Conv2D(filters=3, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation(activation)(x)
+
+    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
 
     if for_receptive_field:
         main_output = Activation('linear', name='main_output')(x)
