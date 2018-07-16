@@ -12,7 +12,6 @@ import pysto.imgproc as pystoim
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
 import cytometer.models as models
-from receptivefield.keras import KerasReceptiveField
 import matplotlib.pyplot as plt
 
 # limit GPU memory used
@@ -89,7 +88,7 @@ mask_split = np.concatenate(mask_blocks, axis=0)
 '''
 
 # declare network model
-model = models.basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
+model = models.fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
 #model.load_weights(os.path.join(saved_models_dir, '2018-07-13T12:53:06.071299_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
 
 # compile and train model
@@ -137,24 +136,3 @@ if DEBUG:
         b = mask_pred.reshape((200, 200)) * 255
         plt.imshow(pystoim.imfuse(a, b))
 
-# estimate receptive field of the model
-def model_build_func(input_shape):
-    return models.basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=input_shape,
-                                                                   for_receptive_field=True,
-                                                                   dilation_rate=2)
-
-rf = KerasReceptiveField(model_build_func, init_weights=True)
-
-rf_params = rf.compute(
-    input_shape=(200, 200, 3),
-    input_layer='input_image',
-    output_layer='main_output'
-)
-print(rf_params)
-
-plt.clf()
-plt.imshow(im_split[i, :, :, :])
-rf.plot_rf_grid(custom_image=im_split[i, :, :, :], figsize=(6, 6))
-plt.show()
-
-rf.plot_rf_grid(get_default_image(shape, name='doge'))
