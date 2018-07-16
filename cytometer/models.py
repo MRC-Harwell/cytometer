@@ -21,7 +21,7 @@ elif K.image_data_format() == 'channels_last':
     default_input_shape = (None, None, 3)
 
 
-def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_field=False, dilation_rate=1):
+def fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_field=False, dilation_rate=1):
     """Deep binary classifier.
     Similar to basic_9c3mp (no dilation), but with default options, and using the
     x = layer(...)(x) notation
@@ -73,6 +73,57 @@ def basic_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_
     x = Activation(activation)(x)
     pool_size += (dilation_rate**3) * 3 * 2 - 1
     x = pooling_func(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, dilation_rate=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation(activation)(x)
+
+    x = Conv2D(filters=3, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    x = Activation(activation)(x)
+
+    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+
+    if for_receptive_field:
+        main_output = Activation('linear', name='main_output')(x)
+    else:
+        main_output = Activation('softmax', name='main_output')(x)
+    return Model(inputs=input, outputs=main_output)
+
+
+def fcn_conv_bnorm_maxpool_binary_classifier(input_shape, for_receptive_field=False, nblocks=3,
+                                             kernel_size=(3, 3), dilation_rate=1):
+    """Deep binary classifier.
+    Similar to basic_9c3mp (no dilation), but with default options, and using the
+    x = layer(...)(x) notation
+    :param input_shape: (tuple) size of inputs (W,H,C) without batch size, e.g. (200,200,3)
+    :param for_receptive_field: (bool, def False) only set to True if you are going to estimate the size of the
+    input receptive field using [`receptivefield`](https://github.com/kmkolasinski/receptivefield)
+    :return: model: Keras model object
+    """
+
+    if K.image_data_format() != 'channels_last':
+        raise ValueError('Expected Keras running with K.image_data_format()==channels_last')
+    else:
+        norm_axis = 3
+
+    # input layer of the network
+    input = Input(shape=input_shape, dtype='float32', name='input_image')
+
+    # convolutional blocks
+    for i in range(nblocks):
+        x = Conv2D(filters=64, kernel_size=kernel_size, strides=1,
+                   dilation_rate=dilation_rate**i, padding='same')(x)
+        x = BatchNormalization(axis=norm_axis)(x)
+        if for_receptive_field:
+            x = Activation('linear')(x)
+            x = AvgPool2D(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
+        else:
+            x = Activation('relu')(x)
+            x = MaxPool2D(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
+        pool_size = dilation_rate * 3 * 2 - 1
+        x = pooling_func(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
+
 
     x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, dilation_rate=1, padding='same')(x)
     x = BatchNormalization(axis=norm_axis)(x)
