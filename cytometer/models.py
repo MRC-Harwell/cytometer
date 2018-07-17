@@ -91,9 +91,9 @@ def fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_fi
     return Model(inputs=input, outputs=main_output)
 
 
-def fcn_conv_bnorm_maxpool_binary_classifier(input_shape, for_receptive_field=False, nblocks=3,
-                                             kernel_size=(3, 3), dilation_rate=1):
-    """Deep binary classifier.
+def fcn_conv_bnorm_maxpool_regression(input_shape, for_receptive_field=False,
+                                      nblocks=3, kernel_len=3, dilation_rate=1):
+    """Deep CNN for regression.
     Similar to basic_9c3mp (no dilation), but with default options, and using the
     x = layer(...)(x) notation
     :param input_shape: (tuple) size of inputs (W,H,C) without batch size, e.g. (200,200,3)
@@ -110,35 +110,54 @@ def fcn_conv_bnorm_maxpool_binary_classifier(input_shape, for_receptive_field=Fa
     # input layer of the network
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
-    # convolutional blocks
+    # convolutional blocks, with dilation=dilation_rate**i in each layer
+    x = input
     for i in range(nblocks):
-        x = Conv2D(filters=64, kernel_size=kernel_size, strides=1,
-                   dilation_rate=dilation_rate**i, padding='same')(x)
-        x = BatchNormalization(axis=norm_axis)(x)
+        # length of the pooling kernel so that it's as large as the dilated convolutional kernel
+        pool_size = dilation_rate * (kernel_len - 1) + 1
+
+        x = Conv2D(filters=64, kernel_size=(kernel_len, kernel_len), strides=1,
+                   dilation_rate=dilation_rate, padding='same')(x)
+        if not for_receptive_field:
+            x = BatchNormalization(axis=norm_axis)(x)
         if for_receptive_field:
             x = Activation('linear')(x)
             x = AvgPool2D(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
         else:
             x = Activation('relu')(x)
             x = MaxPool2D(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
-        pool_size = dilation_rate * 3 * 2 - 1
-        x = pooling_func(pool_size=(pool_size, pool_size), strides=1, padding='same')(x)
 
+        # increase dilation rate
+        dilation_rate *= dilation_rate
 
-    x = Conv2D(filters=200, kernel_size=(4, 4), strides=1, dilation_rate=1, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation(activation)(x)
+    # large-number-of-features block
+    x = Conv2D(filters=100, kernel_size=(4, 4), strides=1, dilation_rate=1, padding='same')(x)
+    if not for_receptive_field:
+        x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
 
+    # feature reduction with 1x1 convolution
     x = Conv2D(filters=3, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
-    x = Activation(activation)(x)
+    if not for_receptive_field:
+        x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
 
-    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
-
+    # feature reduction with 1x1 convolution
+    x = Conv2D(filters=3, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    if not for_receptive_field:
+        x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         main_output = Activation('linear', name='main_output')(x)
     else:
-        main_output = Activation('softmax', name='main_output')(x)
+        main_output = Activation('relu', name='main_output')(x)
+
+    # create model object
     return Model(inputs=input, outputs=main_output)
 
 
