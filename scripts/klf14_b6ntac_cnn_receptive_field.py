@@ -10,8 +10,10 @@ import numpy as np
 
 training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
 
+'''DeepCell-based network
+'''
 
-nblocks_vec = list(range(3, 6))
+nblocks_vec = list(range(2, 6))
 kernel_len_vec = list(range(2, 5))
 dilation_rate_vec = list(range(1, 3))
 rf_size = []
@@ -30,7 +32,7 @@ for nblocks in nblocks_vec:
 
             try:
                 rf_params = rf.compute(
-                    input_shape=(800, 800, 1),
+                    input_shape=(1000, 1000, 1),
                     input_layer='input_image',
                     output_layer='main_output'
                 )
@@ -55,7 +57,7 @@ output['rf_size'] = np.array(output['rf_size'])
 # plot results
 plt.clf()
 for kernel_len in kernel_len_vec:
-    for dilation_rate in dilation_rate_vec:
+    for dilation_rate in dilation_rate_vec[:-1]:
         idx = np.logical_and(output['kernel_len'] == kernel_len, output['dilation_rate'] == dilation_rate)
         p = plt.plot(output['nblocks'][idx], output['rf_size'][idx])
         ymin = output['rf_size'][idx][0]
@@ -87,4 +89,62 @@ im = tifffile.imread(im_file)
 # plot receptive field on histology image
 rf.plot_rf_grid(custom_image=im)
 plt.show()
+
+'''
+Sherrah 2016 fully convolutional network'''
+
+# estimate receptive field of the model
+def model_build_func(input_shape):
+    return models.fcn_sherrah2016(input_shape=input_shape, for_receptive_field=True)
+
+
+rf = KerasReceptiveField(model_build_func, init_weights=True)
+
+rf_params = rf.compute(
+    input_shape=(600, 600, 1),
+    input_layer='input_image',
+    output_layer='main_output')
+
+rf_params[2].w
+
+# load typical histology window
+im_file = os.path.join(training_dir, 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.tif')
+im = tifffile.imread(im_file)
+
+# plot receptive field on histology image
+rf.plot_rf_grid(custom_image=im)
+plt.show()
+
+# show model
+model = models.fcn_sherrah2016(input_shape=(600, 600, 3))
+model.summary()
+
+'''
+Extended Sherrah 2016 fully convolutional network'''
+
+# estimate receptive field of the model
+def model_build_func(input_shape):
+    return models.fcn_sherrah2016_modified(input_shape=input_shape, for_receptive_field=True)
+
+
+rf = KerasReceptiveField(model_build_func, init_weights=True)
+
+rf_params = rf.compute(
+    input_shape=(600, 600, 1),
+    input_layer='input_image',
+    output_layer='main_output')
+
+rf_params[2].w
+
+# load typical histology window
+im_file = os.path.join(training_dir, 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.tif')
+im = tifffile.imread(im_file)
+
+# plot receptive field on histology image
+rf.plot_rf_grid(custom_image=im)
+plt.show()
+
+# show model
+model = models.fcn_sherrah2016(input_shape=(600, 600, 3))
+model.summary()
 
