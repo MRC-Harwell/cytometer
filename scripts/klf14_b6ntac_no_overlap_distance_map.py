@@ -1,46 +1,12 @@
 import os
-
-# environment variables
-os.environ['KERAS_BACKEND'] = 'tensorflow'
-
-# remove warning "Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA"
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Just disables the warning, doesn't enable AVX/FMA
-
-# different versions of conda keep the path in different variables
-if 'CONDA_ENV_PATH' in os.environ:
-    conda_env_path = os.environ['CONDA_ENV_PATH']
-elif 'CONDA_PREFIX' in os.environ:
-    conda_env_path = os.environ['CONDA_PREFIX']
-else:
-    conda_env_path = '.'
-
-os.environ['PYTHONPATH'] = os.path.join(os.environ['HOME'], 'Software', 'cytometer', 'cytometer') \
-                           + ':' + os.environ['PYTHONPATH']
-
-
 import glob
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 
-import keras.backend as K
-import tensorflow as tf
-import keras.preprocessing.image
-K.set_image_dim_ordering('tf')
-print(K.image_data_format())
-
-import cytometer.models as models
-
-# keras model
-from keras.models import Sequential
-from keras.layers import Activation, Conv2D, MaxPooling2D
-from cytometer.layers import DilatedMaxPooling2D
-from keras.layers.normalization import BatchNormalization
-from keras.regularizers import l2
 
 DEBUG = False
-
 
 
 # data directories
@@ -59,6 +25,7 @@ seg_file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
 mask = np.zeros(shape=(len(seg_file_list), 1001, 1001), dtype='float32')
 seg = np.zeros(shape=(len(seg_file_list), 1001, 1001), dtype='uint8')
 im = np.zeros(shape=(len(seg_file_list), 1001, 1001, 3), dtype='uint8')
+dmap = np.zeros(shape=(len(seg_file_list), 1001, 1001), dtype='float32')
 for i, seg_file in enumerate(seg_file_list):
 
     # load segmentation
@@ -85,12 +52,12 @@ for i, seg_file in enumerate(seg_file_list):
         plt.title('Training weight')
 
     # compute distance map to the cell contours
-    dmap = ndimage.distance_transform_edt(seg_aux)
+    dmap[i, :, :] = ndimage.distance_transform_edt(seg_aux)
 
     # plot distance map
     if DEBUG:
         plt.subplot(223)
-        plt.imshow(dmap)
+        plt.imshow(dmap[i, :, :])
         plt.title('Distance map')
 
     # load corresponding original image
@@ -107,3 +74,4 @@ for i, seg_file in enumerate(seg_file_list):
 # we have to add a dummy dimension to comply with Keras expected format
 mask = mask.reshape((mask.shape + (1,)))
 seg = seg.reshape((seg.shape + (1,)))
+dmap = dmap.reshape((dmap.shape + (1,)))
