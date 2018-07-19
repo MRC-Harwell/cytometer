@@ -88,30 +88,35 @@ mask_split = np.concatenate(mask_blocks, axis=0)
 '''
 
 # declare network model
-model = models.fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
+model = models.fcn_sherrah2016(input_shape=im_split.shape[1:])
+#model = models.fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
 #model.load_weights(os.path.join(saved_models_dir, '2018-07-13T12:53:06.071299_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
 
-# compile and train model
-if isinstance(tf.test.gpu_device_name(), str) > 1:  # only one GPU
-    # compile model
-    parallel_model = multi_gpu_model(model, gpus=2)
-    parallel_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+# compile and train model: Multiple GPUs
 
-    # train model
-    tic = datetime.datetime.now()
-    parallel_model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
-    toc = datetime.datetime.now()
-    print('Training duration: ' + str(toc - tic))
+# compile model
+parallel_model = multi_gpu_model(model, gpus=2)
+parallel_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-else:  # multiple GPUs
-    # compile model
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+# train model
+tic = datetime.datetime.now()
+parallel_model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
+toc = datetime.datetime.now()
+print('Training duration: ' + str(toc - tic))
 
-    # train model
-    tic = datetime.datetime.now()
-    model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
-    toc = datetime.datetime.now()
-    print('Training duration: ' + str(toc - tic))
+
+# # compile and train model: One GPU
+#
+# # compile model
+# model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+# #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+#
+# # train model
+# tic = datetime.datetime.now()
+# model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
+# toc = datetime.datetime.now()
+# print('Training duration: ' + str(toc - tic))
+
 
 
 # save result (note, we save the template model, not the multiparallel object)
