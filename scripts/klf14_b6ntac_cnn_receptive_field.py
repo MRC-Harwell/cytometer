@@ -130,11 +130,11 @@ def model_build_func(input_shape):
 rf = KerasReceptiveField(model_build_func, init_weights=True)
 
 rf_params = rf.compute(
-    input_shape=(600, 600, 1),
+    input_shape=(333, 333, 3),
     input_layer='input_image',
     output_layer='main_output')
 
-rf_params[2].w
+print('Receptive field size: ' + str(rf_params[2].w))
 
 # load typical histology window
 im_file = os.path.join(training_dir, 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.tif')
