@@ -45,7 +45,7 @@ for i, seg_file in enumerate(seg_file_list):
     if DEBUG:
         plt.clf()
         plt.subplot(221)
-        plt.imshow(seg[i, :, :], cmap="gray")
+        plt.imshow(seg_aux, cmap="gray")
         plt.title('Cell labels')
         plt.subplot(222)
         plt.imshow(mask[i, :, :], cmap="gray")
