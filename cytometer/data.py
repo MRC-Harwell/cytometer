@@ -7,6 +7,34 @@ from scipy import ndimage
 DEBUG = False
 
 
+def load_im_file_list_to_array(file_list):
+    '''
+    Loads a list of images, all with the same size, into a numpy array (file, row, col, channel)
+    :param file_list:
+    :return:
+    '''
+    if not isinstance(file_list, list):
+        raise ValueError('file_list must be a list')
+    if len(file_list) == 0:
+        return np.empty((1, 0))
+
+    # load first image to get the image size
+    im0 = np.array(Image.open(file_list[0]))
+
+    # allocate memory for the output
+    im_out = np.zeros(shape=(len(file_list),) + im0.shape, dtype=im0.dtype)
+
+    # read files and copy them to output array
+    for i, file in enumerate(file_list):
+        im_out[i, ...] = np.array(Image.open(file))
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(im_out[i, ...])
+
+    return im_out
+
+
 def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     '''
     Loads a list of segmentation files and computes distance maps to the objects boundaries/background.
