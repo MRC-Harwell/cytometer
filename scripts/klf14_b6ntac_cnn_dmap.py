@@ -1,9 +1,9 @@
 import os
 import glob
 import datetime
-import tifffile
 import numpy as np
 import pysto.imgproc as pystoim
+import cytometer.data
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -30,39 +30,58 @@ DEBUG = False
 
 root_data_dir = '/home/rcasero/Dropbox/klf14'
 training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
-training_nooverlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
+training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 saved_models_dir = '/home/rcasero/Dropbox/klf14/saved_models'
 
 '''Load data
 '''
 
-import klf14_b6ntac_no_overlap_distance_map
+# list of segmented files
+seg_file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
 
+# list of corresponding image patches
+im_file_list = [seg_file.replace(training_non_overlap_data_dir, training_dir) for seg_file in seg_file_list]
+
+# load segmentations and compute distance maps
+dmap, mask, seg = cytometer.data.load_watershed_seg_and_compute_dmap(seg_file_list)
+
+# load corresponding images
+im = cytometer.data.load_im_file_list_to_array(im_file_list)
+
+# remove a 1-pixel thick border so that images are 999x999 and we can split them into 3x3 tiles
+dmap = dmap[:, 1:-1, 1:-1, :]
+mask = mask[:, 1:-1, 1:-1, :]
+seg = seg[:, 1:-1, 1:-1, :]
+im = im[:, 1:-1, 1:-1, :]
 
 # split images into smaller blocks to avoid GPU memory overflows in training
-im_slices, im_blocks, _ = pystoim.block_split(im, nblocks=(1, 5, 5, 1))
-mask_slices, mask_blocks, _ = pystoim.block_split(mask, nblocks=(1, 5, 5, 1))
+dmap_slices, dmap_blocks, _ = pystoim.block_split(dmap, nblocks=(1, 3, 3, 1))
+im_slices, im_blocks, _ = pystoim.block_split(im, nblocks=(1, 3, 3, 1))
+mask_slices, mask_blocks, _ = pystoim.block_split(mask, nblocks=(1, 3, 3, 1))
 
+dmap_split = np.concatenate(dmap_blocks, axis=0)
 im_split = np.concatenate(im_blocks, axis=0)
 mask_split = np.concatenate(mask_blocks, axis=0)
 
 '''CNN
+
+Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
+function
 '''
 
 # declare network model
-model = models.fcn_sherrah2016(input_shape=im_split.shape[1:])
-#model = models.fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
-#model.load_weights(os.path.join(saved_models_dir, '2018-07-13T12:53:06.071299_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
+model = models.fcn_sherrah2016_modified(input_shape=im_split.shape[1:])
+#model.load_weights(os.path.join(saved_models_dir, 'foo.h5'))
 
 # compile and train model: Multiple GPUs
 
 # compile model
 parallel_model = multi_gpu_model(model, gpus=2)
-parallel_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+parallel_model.compile(loss='mse', optimizer='adam', metrics=['accuracy'], sample_weight_mode='element')
 
 # train model
 tic = datetime.datetime.now()
-parallel_model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
+parallel_model.fit(im_split, dmap_split, batch_size=1, epochs=10, validation_split=.1, sample_weight=mask_split)
 toc = datetime.datetime.now()
 print('Training duration: ' + str(toc - tic))
 
