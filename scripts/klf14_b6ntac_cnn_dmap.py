@@ -63,6 +63,16 @@ dmap_split = np.concatenate(dmap_blocks, axis=0)
 im_split = np.concatenate(im_blocks, axis=0)
 mask_split = np.concatenate(mask_blocks, axis=0)
 
+# find images that have no valid pixels, to remove them from the dataset
+idx_to_keep = np.sum(np.sum(np.sum(mask_split, axis=3), axis=2), axis=1)
+idx_to_keep = idx_to_keep != 0
+
+dmap_split = dmap_split[idx_to_keep, :, :, :]
+im_split = im_split[idx_to_keep, :, :, :]
+mask_split = mask_split[idx_to_keep, :, :, :]
+
+
+
 '''CNN
 
 Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -77,11 +87,12 @@ model = models.fcn_sherrah2016_modified(input_shape=im_split.shape[1:])
 
 # compile model
 parallel_model = multi_gpu_model(model, gpus=2)
-parallel_model.compile(loss='mse', optimizer='adam', metrics=['accuracy'], sample_weight_mode='element')
+parallel_model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'], sample_weight_mode='element')
 
 # train model
 tic = datetime.datetime.now()
-parallel_model.fit(im_split, dmap_split, batch_size=1, epochs=10, validation_split=.1, sample_weight=mask_split)
+parallel_model.fit(im_split, dmap_split, batch_size=1, epochs=10, validation_split=.1,
+                   sample_weight=mask_split)
 toc = datetime.datetime.now()
 print('Training duration: ' + str(toc - tic))
 
