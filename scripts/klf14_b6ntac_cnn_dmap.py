@@ -115,25 +115,30 @@ else:  # compile and train model: One GPU
     print('Training duration: ' + str(toc - tic))
 
 # save result (note, we save the template model, not the multiparallel object)
-model.save(os.path.join(saved_models_dir, datetime.datetime.utcnow().isoformat() + '_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
+saved_model_filename = os.path.join(saved_models_dir, datetime.datetime.utcnow().isoformat() + '_fcn_sherrah2016_modified.h5')
+saved_model_filename = saved_model_filename.replace(':', '_')
+model.save(saved_model_filename)
 
 # visualise results
 if DEBUG:
     for i in range(im_split.shape[0]):
 
         # run image through network
-        mask_pred = model.predict(im_split[i, :, :, :].reshape((1,) + im_split.shape[1:]))
+        dmap_pred = model.predict(im_split[i, :, :, :].reshape((1,) + im_split.shape[1:]))
 
         plt.clf()
         plt.subplot(221)
         plt.imshow(im_split[i, :, :, :])
         plt.subplot(222)
-        plt.imshow(mask_split[i, :, :, :].reshape((200, 200)))
+        plt.imshow(dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3]))
         plt.subplot(223)
-        plt.imshow(mask_pred.reshape((200, 200)) * 255)
+        plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
         plt.subplot(224)
-        a = mask_split[i, :, :, :].reshape((200, 200))
-        b = mask_pred.reshape((200, 200)) * 255
+        a = dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3])
+        b = dmap_pred.reshape(dmap_split.shape[1:3])
+        imax = np.max((np.max(a), np.max(b)))
+        a /= imax
+        b /= imax
         plt.imshow(pystoim.imfuse(a, b))
 
 
