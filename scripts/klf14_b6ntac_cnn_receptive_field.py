@@ -9,6 +9,7 @@ from tensorflow.python.framework.errors_impl import ResourceExhaustedError
 import numpy as np
 
 training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
+saved_models = '/home/rcasero/Dropbox/klf14/saved_models'
 
 '''DeepCell-based network
 '''
@@ -105,7 +106,7 @@ rf_params = rf.compute(
     input_layer='input_image',
     output_layer='main_output')
 
-rf_params[2].w
+print('Receptive field size: ' + str(rf_params[2].w))
 
 # load typical histology window
 im_file = os.path.join(training_dir, 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.tif')
@@ -132,9 +133,41 @@ rf = KerasReceptiveField(model_build_func, init_weights=True)
 rf_params = rf.compute(
     input_shape=(333, 333, 3),
     input_layer='input_image',
-    output_layer='main_output')
+    output_layers=['main_output'])
 
-print('Receptive field size: ' + str(rf_params[2].w))
+print('Receptive field size: ' + str(rf._rf_params[0].size))
+
+# load typical histology window
+im_file = os.path.join(training_dir, 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.tif')
+im = tifffile.imread(im_file)
+
+# plot receptive field on histology image
+rf.plot_rf_grids(custom_image=im, figsize=(6, 6))
+plt.show()
+
+# show model
+model = models.fcn_sherrah2016(input_shape=(600, 600, 3))
+model.summary()
+
+'''
+Extended Sherrah 2016 fully convolutional network with trained weights'''
+
+# estimate receptive field of the model
+def model_build_func(input_shape):
+    model = models.fcn_sherrah2016_modified(input_shape=input_shape, for_receptive_field=True)
+    model.load_weights(os.path.join(saved_models, '2018-07-22T18_37_14.641079_fcn_sherrah2016_modified.h5'))
+    return model
+
+
+rf = KerasReceptiveField(model_build_func, init_weights=False)
+
+rf_params = rf.compute(
+    input_shape=(333, 333, 3),
+    input_layer='input_image',
+    output_layers=['main_output'])
+print(rf_params)
+
+print('Receptive field size: ' + str(rf._rf_params[0].size))
 
 # load typical histology window
 im_file = os.path.join(training_dir, 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.tif')
