@@ -24,14 +24,16 @@ set_session(tf.Session(config=config))
 # allow data parallelism
 from keras.utils import multi_gpu_model
 
-
+# cross-platform home directory
+from pathlib import Path
 
 DEBUG = False
 
-root_data_dir = '/home/rcasero/Dropbox/klf14'
-training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
+home = str(Path.home())
+root_data_dir = os.path.join(home, 'Dropbox/klf14')
+training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-saved_models_dir = '/home/rcasero/Dropbox/klf14/saved_models'
+saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
 '''Load data
 '''
@@ -48,16 +50,22 @@ dmap, mask, seg = cytometer.data.load_watershed_seg_and_compute_dmap(seg_file_li
 # load corresponding images
 im = cytometer.data.load_im_file_list_to_array(im_file_list)
 
-# remove a 1-pixel thick border so that images are 999x999 and we can split them into 3x3 tiles
-dmap = dmap[:, 1:-1, 1:-1, :]
-mask = mask[:, 1:-1, 1:-1, :]
-seg = seg[:, 1:-1, 1:-1, :]
-im = im[:, 1:-1, 1:-1, :]
+# # remove a 1-pixel thick border so that images are 999x999 and we can split them into 3x3 tiles
+# dmap = dmap[:, 1:-1, 1:-1, :]
+# mask = mask[:, 1:-1, 1:-1, :]
+# seg = seg[:, 1:-1, 1:-1, :]
+# im = im[:, 1:-1, 1:-1, :]
+
+# remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
+dmap = dmap[:, 0:-1, 0:-1, :]
+mask = mask[:, 0:-1, 0:-1, :]
+seg = seg[:, 0:-1, 0:-1, :]
+im = im[:, 0:-1, 0:-1, :]
 
 # split images into smaller blocks to avoid GPU memory overflows in training
-dmap_slices, dmap_blocks, _ = pystoim.block_split(dmap, nblocks=(1, 3, 3, 1))
-im_slices, im_blocks, _ = pystoim.block_split(im, nblocks=(1, 3, 3, 1))
-mask_slices, mask_blocks, _ = pystoim.block_split(mask, nblocks=(1, 3, 3, 1))
+dmap_slices, dmap_blocks, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
+im_slices, im_blocks, _ = pystoim.block_split(im, nblocks=(1, 2, 2, 1))
+mask_slices, mask_blocks, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
 
 dmap_split = np.concatenate(dmap_blocks, axis=0)
 im_split = np.concatenate(im_blocks, axis=0)
@@ -72,7 +80,6 @@ im_split = im_split[idx_to_keep, :, :, :]
 mask_split = mask_split[idx_to_keep, :, :, :]
 
 
-
 '''CNN
 
 Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -80,7 +87,8 @@ function
 '''
 
 # declare network model
-model = models.fcn_sherrah2016_modified(input_shape=im_split.shape[1:])
+with tf.device('/cpu:0'):
+    model = models.fcn_sherrah2016_modified(input_shape=im_split.shape[1:])
 #model.load_weights(os.path.join(saved_models_dir, 'foo.h5'))
 
 # list all CPUs and GPUs
@@ -92,7 +100,7 @@ gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 if gpu_number > 1:  # compile and train model: Multiple GPUs
 
     # compile model
-    parallel_model = multi_gpu_model(model, gpus=2)
+    parallel_model = multi_gpu_model(model, gpus=gpu_number)
     parallel_model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'], sample_weight_mode='element')
 
     # train model
@@ -110,7 +118,7 @@ else:  # compile and train model: One GPU
 
     # train model
     tic = datetime.datetime.now()
-    model.fit(im_split, mask_split, batch_size=10, epochs=10, validation_split=.1)
+    model.fit(im_split, mask_split, batch_size=1, epochs=10, validation_split=.1)
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
@@ -119,27 +127,27 @@ saved_model_filename = os.path.join(saved_models_dir, datetime.datetime.utcnow()
 saved_model_filename = saved_model_filename.replace(':', '_')
 model.save(saved_model_filename)
 
-# visualise results
-if DEBUG:
-    for i in range(im_split.shape[0]):
-
-        # run image through network
-        dmap_pred = model.predict(im_split[i, :, :, :].reshape((1,) + im_split.shape[1:]))
-
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im_split[i, :, :, :])
-        plt.subplot(222)
-        plt.imshow(dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3]))
-        plt.subplot(223)
-        plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
-        plt.subplot(224)
-        a = dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3])
-        b = dmap_pred.reshape(dmap_split.shape[1:3])
-        imax = np.max((np.max(a), np.max(b)))
-        a /= imax
-        b /= imax
-        plt.imshow(pystoim.imfuse(a, b))
+# # visualise results
+# if DEBUG:
+#     for i in range(im_split.shape[0]):
+#
+#         # run image through network
+#         dmap_pred = model.predict(im_split[i, :, :, :].reshape((1,) + im_split.shape[1:]))
+#
+#         plt.clf()
+#         plt.subplot(221)
+#         plt.imshow(im_split[i, :, :, :])
+#         plt.subplot(222)
+#         plt.imshow(dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3]))
+#         plt.subplot(223)
+#         plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
+#         plt.subplot(224)
+#         a = dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3])
+#         b = dmap_pred.reshape(dmap_split.shape[1:3])
+#         imax = np.max((np.max(a), np.max(b)))
+#         a /= imax
+#         b /= imax
+#         plt.imshow(pystoim.imfuse(a, b))
 
 
 '''==================================================================================================================
