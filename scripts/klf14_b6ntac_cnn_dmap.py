@@ -1,3 +1,5 @@
+import sys
+sys.path.extend(['/users/rittscher/rcasero/Software/cytometer', '/users/rittscher/rcasero/Software/cytometer'])
 import os
 import glob
 import datetime
