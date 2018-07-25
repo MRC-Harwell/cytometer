@@ -2,6 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="9c98dda4-2c3b-4359-b501-2c9e67aabe45" name="Default" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/cytometer.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/cytometer.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -34,11 +39,20 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="klf14_b6ntac_cnn_dmap.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="klf14_b6ntac_cnn_dmap.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="36">
-              <caret line="2" selection-start-line="2" selection-end-line="2" />
+            <state relative-caret-position="288">
+              <caret line="16" lean-forward="true" selection-start-line="15" selection-end-line="16" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="klf14_b6ntac_inspect_model.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="608">
+              <caret line="79" lean-forward="true" selection-start-line="79" selection-end-line="79" />
             </state>
           </provider>
         </entry>
@@ -46,7 +60,7 @@
       <file leaf-file-name="klf14_b6ntac_no_overlap_distance_map.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_no_overlap_distance_map.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="694">
+            <state relative-caret-position="918">
               <caret line="56" column="23" selection-start-line="56" selection-start-column="23" selection-end-line="56" selection-end-column="23" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
@@ -188,6 +202,7 @@
         <option value="$PROJECT_DIR$/cytometer/data.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_receptive_field.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py" />
+        <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py" />
       </list>
     </option>
   </component>
@@ -211,7 +226,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -238,6 +252,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -249,7 +264,7 @@
     <property name="WebServerToolWindowPanel.toolwindow.show.size" value="false" />
     <property name="com.intellij.ide.scratch.LRUPopupBuilder$2/Languages" value="Python" />
     <property name="last_opened_file_path" value="$USER_HOME$/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/receptivefield/keras.py" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PythonContentEntriesConfigurable" />
+    <property name="settings.editor.selected.configurable" value="PyScientificConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -412,11 +427,10 @@
       <window_info active="true" anchor="bottom" id="Python Console" order="12" visible="true" weight="0.3890625" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.3296875" />
       <window_info anchor="bottom" id="Terminal" order="14" weight="0.328125" />
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.33942717" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.34369287" />
       <window_info anchor="bottom" id="Docker" order="9" show_stripe_button="false" />
       <window_info anchor="right" id="Database" order="3" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.32839313" />
-      <window_info anchor="right" id="SciView" order="3" />
+      <window_info anchor="right" auto_hide="true" id="SciView" order="3" show_stripe_button="false" type="FLOATING" weight="0.32967702" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4469579" />
@@ -428,6 +442,7 @@
       <window_info anchor="bottom" id="Inspection Results" order="13" weight="0.329718" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32839313" />
     </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -571,13 +586,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_lorna_training_cnn.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="936">
-          <caret line="52" column="25" lean-forward="true" selection-start-line="52" selection-start-column="25" selection-end-line="52" selection-end-column="25" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_lorna_training_cnn.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="540">
@@ -862,7 +870,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_no_overlap_distance_map.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="694">
+        <state relative-caret-position="918">
           <caret line="56" column="23" selection-start-line="56" selection-start-column="23" selection-end-line="56" selection-end-column="23" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
@@ -872,8 +880,15 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="36">
-          <caret line="2" selection-start-line="2" selection-end-line="2" />
+        <state relative-caret-position="288">
+          <caret line="16" lean-forward="true" selection-start-line="15" selection-end-line="16" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="608">
+          <caret line="79" lean-forward="true" selection-start-line="79" selection-end-line="79" />
         </state>
       </provider>
     </entry>
