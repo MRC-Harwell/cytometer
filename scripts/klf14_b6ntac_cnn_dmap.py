@@ -14,7 +14,6 @@ import glob
 import datetime
 import numpy as np
 import pysto.imgproc as pystoim
-import cytometer.data
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -22,8 +21,8 @@ import cytometer.data
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
+import cytometer.data
 import cytometer.models as models
-import matplotlib.pyplot as plt
 
 # limit GPU memory used
 import tensorflow as tf
@@ -38,13 +37,15 @@ from keras.utils import multi_gpu_model
 
 DEBUG = False
 
+
+'''Load data
+'''
+
+# data paths
 root_data_dir = os.path.join(home, 'Dropbox/klf14')
 training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
-
-'''Load data
-'''
 
 # list of segmented files
 seg_file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
