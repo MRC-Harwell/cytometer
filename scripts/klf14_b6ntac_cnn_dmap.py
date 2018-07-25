@@ -1,6 +1,15 @@
-import sys
-sys.path.extend(['/users/rittscher/rcasero/Software/cytometer', '/users/rittscher/rcasero/Software/cytometer'])
+# cross-platform home directory
+from pathlib import Path
+home = str(Path.home())
+
+# PyCharm automatically adds cytometer to the python path, but this doesn't happen if the script is run
+# with "python scriptname.py"
 import os
+import sys
+sys.path.extend([os.path.join(home, 'Software/cytometer'),
+                 os.path.join(home, 'Software/cytometer')])
+
+# other imports
 import glob
 import datetime
 import numpy as np
@@ -26,12 +35,9 @@ set_session(tf.Session(config=config))
 # allow data parallelism
 from keras.utils import multi_gpu_model
 
-# cross-platform home directory
-from pathlib import Path
 
 DEBUG = False
 
-home = str(Path.home())
 root_data_dir = os.path.join(home, 'Dropbox/klf14')
 training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
@@ -128,28 +134,6 @@ else:  # compile and train model: One GPU
 saved_model_filename = os.path.join(saved_models_dir, datetime.datetime.utcnow().isoformat() + '_fcn_sherrah2016_modified.h5')
 saved_model_filename = saved_model_filename.replace(':', '_')
 model.save(saved_model_filename)
-
-# # visualise results
-# if DEBUG:
-#     for i in range(im_split.shape[0]):
-#
-#         # run image through network
-#         dmap_pred = model.predict(im_split[i, :, :, :].reshape((1,) + im_split.shape[1:]))
-#
-#         plt.clf()
-#         plt.subplot(221)
-#         plt.imshow(im_split[i, :, :, :])
-#         plt.subplot(222)
-#         plt.imshow(dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3]))
-#         plt.subplot(223)
-#         plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
-#         plt.subplot(224)
-#         a = dmap_split[i, :, :, :].reshape(dmap_split.shape[1:3])
-#         b = dmap_pred.reshape(dmap_split.shape[1:3])
-#         imax = np.max((np.max(a), np.max(b)))
-#         a /= imax
-#         b /= imax
-#         plt.imshow(pystoim.imfuse(a, b))
 
 
 '''==================================================================================================================
