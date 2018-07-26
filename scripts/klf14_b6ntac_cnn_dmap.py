@@ -14,17 +14,20 @@ import glob
 import datetime
 import numpy as np
 import pysto.imgproc as pystoim
+import matplotlib.pyplot as plt
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+# limit number of GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,3"
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 import cytometer.data
 import cytometer.models as models
-import matplotlib.pyplot as plt
 
 # limit GPU memory used
 import tensorflow as tf
@@ -33,7 +36,7 @@ config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.9
 set_session(tf.Session(config=config))
 
-# allow data parallelism
+# for data parallelism in keras models
 from keras.utils import multi_gpu_model
 
 
@@ -74,9 +77,6 @@ n_im = im.shape[0]
 # data augmentation factor (e.g. "10" means that we generate 10 augmented images per input image)
 augment_factor = 10
 
-# combine dmap and weights into an output
-out = np.concatenate((dmap, mask), axis=3)
-
 # we create two instances with the same arguments
 data_gen_args = dict(
     rotation_range=90,     # randomly rotate images up to 90 degrees
@@ -96,19 +96,12 @@ mask_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 dmap_augmented = dmap
 im_augmented = im
 mask_augmented = mask
+
+# this is a hack so that we have a different seed for each batch of augmented data
 for seed in range(augment_factor - 1):
-    dmap_augmented = np.append(
-        dmap_augmented,
-        dmap_datagen.flow(dmap, seed=seed, shuffle=True, batch_size=n_im).next(),
-        axis=0)
-    im_augmented = np.append(
-        im_augmented,
-        im_datagen.flow(im, seed=seed, shuffle=True, batch_size=n_im).next(),
-        axis=0)
-    mask_augmented = np.append(
-        mask_augmented,
-        np.round(mask_datagen.flow(mask, seed=seed, shuffle=True, batch_size=n_im).next()),
-        axis=0)
+    dmap_augmented = dmap_datagen.flow(dmap, seed=seed, shuffle=True, batch_size=n_im).next()
+    im_augmented = im_datagen.flow(im, seed=seed, shuffle=True, batch_size=n_im).next()
+    mask_augmented = np.round(mask_datagen.flow(mask, seed=seed, shuffle=True, batch_size=n_im).next())
 
 
 
@@ -121,6 +114,7 @@ if DEBUG:
         plt.imshow(dmap_augmented[i, :, :, :].reshape(dmap_augmented.shape[1:3]))
         plt.subplot(223)
         plt.imshow(mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3]))
+        plt.show()
 
 
 # provide the same seed to all generators, so that images, distance maps and masks undergo the same
