@@ -61,8 +61,6 @@ def extract_cell_contours_from_file(file, x_res=1.0, y_res=1.0):
 # we are interested only in .tif files for which we created hand segmented contours
 file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 
-# TODO https://github.com/luispedro/python-image-tutorial/blob/master/Segmenting%20cell%20images%20(fluorescent%20microscopy).ipynb
-
 for n, file_svg in enumerate(file_list):
 
     print('file ' + str(n) + '/' + str(len(file_list)-1))
@@ -86,6 +84,10 @@ for n, file_svg in enumerate(file_list):
 
     # extract contours
     polygon = extract_cell_contours_from_file(file_svg)
+
+    # if there are no cells, we skip to the next file
+    if len(polygon) == 0:
+        continue
 
     # loop cells
     for i, pg in enumerate(polygon):
