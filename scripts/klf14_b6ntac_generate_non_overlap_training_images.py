@@ -1,3 +1,7 @@
+# cross-platform home directory
+from pathlib import Path
+home = str(Path.home())
+
 import os
 
 import glob
@@ -13,7 +17,7 @@ from cv2 import watershed
 
 DEBUG = True
 
-root_data_dir = '/home/rcasero/Dropbox/klf14'
+root_data_dir = os.path.join(home, 'Dropbox/klf14')
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_nooverlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 
