@@ -9,6 +9,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="rcasero@localhost:5001">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/pycharm_project_445" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
     </serverData>
     <option name="myAutoUpload" value="ALWAYS" />
   </component>
