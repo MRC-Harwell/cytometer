@@ -57,7 +57,6 @@ def fcn_sherrah2016(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
-    # fully connected layer
     x = Conv2D(filters=1024, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
@@ -115,8 +114,7 @@ def fcn_sherrah2016_modified(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(33, 33), strides=1, padding='same')(x)
 
-    # fully connected layer
-    x = Conv2D(filters=1024, kernel_size=(3, 3), strides=1, dilation_rate=32, padding='same')(x)
+    x = Conv2D(filters=512, kernel_size=(3, 3), strides=1, dilation_rate=32, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
