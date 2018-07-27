@@ -128,15 +128,16 @@ dmap = dmap[idx, ...]
 im = im[idx, ...]
 mask = mask[idx, ...]
 
-'''CNN
+# make sure that inputs are float32
+dmap = dmap.astype(np.float32)
+im = im.astype(np.float32)
+mask = mask.astype(np.float32)
+
+'''Convolutional neural network training
 
 Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
 function
 '''
-
-# declare network model
-with tf.device('/cpu:0'):
-    model = models.fcn_sherrah2016(input_shape=im.shape[1:])
 
 # list all CPUs and GPUs
 device_list = K.get_session().list_devices()
@@ -146,24 +147,31 @@ gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
 if gpu_number > 1:  # compile and train model: Multiple GPUs
 
+    # instantiate model
+    with tf.device('/cpu:0'):
+        model = models.fcn_sherrah2016(input_shape=im.shape[1:])
+
     # compile model
     parallel_model = multi_gpu_model(model, gpus=gpu_number)
     parallel_model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'], sample_weight_mode='element')
 
     # train model
     tic = datetime.datetime.now()
-    parallel_model.fit(im, dmap, batch_size=1, epochs=10, validation_split=.1, sample_weight=mask)
+    parallel_model.fit(im, dmap, batch_size=1, epochs=5, validation_split=.1, sample_weight=mask)
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
 else:  # compile and train model: One GPU
+
+    # instantiate model
+    model = models.fcn_sherrah2016(input_shape=im.shape[1:])
 
     # compile model
     model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'], sample_weight_mode='element')
 
     # train model
     tic = datetime.datetime.now()
-    model.fit(im, mask, batch_size=1, epochs=10, validation_split=.1, sample_weight=mask)
+    model.fit(im, mask, batch_size=1, epochs=5, validation_split=.1, sample_weight=mask)
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
