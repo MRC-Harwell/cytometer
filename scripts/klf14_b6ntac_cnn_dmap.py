@@ -22,9 +22,6 @@ import matplotlib.pyplot as plt
 # limit number of GPUs
 #os.environ['CUDA_VISIBLE_DEVICES'] = '0,3'
 
-# set display for the server
-#os.environ['DISPLAY'] = 'localhost:11.0'
-
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
@@ -40,7 +37,6 @@ set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
-
 
 DEBUG = False
 batch_size = 1
@@ -131,6 +127,7 @@ mask = mask[idx, ...]
 # make sure that inputs are float32
 dmap = dmap.astype(np.float32)
 im = im.astype(np.float32)
+im /= 255.0
 mask = mask.astype(np.float32)
 
 '''Convolutional neural network training
