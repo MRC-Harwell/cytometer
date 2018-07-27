@@ -6,8 +6,7 @@ home = str(Path.home())
 # with "python scriptname.py"
 import os
 import sys
-sys.path.extend([os.path.join(home, 'Software/cytometer'),
-                 os.path.join(home, 'Software/cytometer')])
+sys.path.extend([os.path.join(home, 'Software/cytometer')])
 
 # other imports
 import glob
@@ -147,8 +146,8 @@ for seed in range(augment_factor - 1):
             plt.imshow(mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3]))
             plt.show()
 
-        # create filenames based on the original foo.tif, so that we have im_00_foo.tif, dmap_00_foo.tif, mask_00_foo.tif,
-        # where 00 refers to the original data without augmentation variations
+        # create filenames based on the original foo.tif, so that we have im_seed_001_foo.tif, dmap_seed_001_foo.tif,
+        # mask_seed_001_foo.tif, where seed_001 means data augmented using seed=1
         base_file = im_file_list[i]
         base_path, base_name = os.path.split(base_file)
         im_file = os.path.join(training_augmented_dir, 'im_seed_' + str(seed).zfill(3) + '_' + base_name)
@@ -156,48 +155,19 @@ for seed in range(augment_factor - 1):
         mask_file = os.path.join(training_augmented_dir, 'mask_seed_' + str(seed).zfill(3) + '_' + base_name)
 
         # save transformed image
-        im_out = im_augmented[i, :, :, :].reshape(im.shape[1:4])
+        im_out = im_augmented[i, :, :, :].reshape(im_augmented.shape[1:4])
         im_out *= 255
         im_out = im_out.astype(np.uint8)
         im_out = Image.fromarray(im_out, mode='RGB')
         im_out.save(im_file)
 
         # save distance transforms (note: we have to save as float mode)
-        im_out = dmap[i, :, :, :].reshape(dmap.shape[1:3])
+        im_out = dmap_augmented[i, :, :, :].reshape(dmap_augmented.shape[1:3])
         im_out = Image.fromarray(im_out, mode='F')
         im_out.save(dmap_file)
 
         # save mask (note: we can save as black and white 1 byte)
-        im_out = mask[i, :, :, :].reshape(mask.shape[1:3])
+        im_out = mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3])
         im_out = im_out.astype(np.uint8)
         im_out = Image.fromarray(im_out, mode='L')
         im_out.save(mask_file)
-
-# # # remove a 1-pixel thick border so that images are 999x999 and we can split them into 3x3 tiles
-# # dmap = dmap[:, 1:-1, 1:-1, :]
-# # mask = mask[:, 1:-1, 1:-1, :]
-# # seg = seg[:, 1:-1, 1:-1, :]
-# # im = im[:, 1:-1, 1:-1, :]
-#
-# # remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
-# dmap = dmap[:, 0:-1, 0:-1, :]
-# mask = mask[:, 0:-1, 0:-1, :]
-# seg = seg[:, 0:-1, 0:-1, :]
-# im = im[:, 0:-1, 0:-1, :]
-#
-# # split images into smaller blocks to avoid GPU memory overflows in training
-# dmap_slices, dmap_blocks, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
-# im_slices, im_blocks, _ = pystoim.block_split(im, nblocks=(1, 2, 2, 1))
-# mask_slices, mask_blocks, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
-#
-# dmap_split = np.concatenate(dmap_blocks, axis=0)
-# im_split = np.concatenate(im_blocks, axis=0)
-# mask_split = np.concatenate(mask_blocks, axis=0)
-#
-# # find images that have no valid pixels, to remove them from the dataset
-# idx_to_keep = np.sum(np.sum(np.sum(mask_split, axis=3), axis=2), axis=1)
-# idx_to_keep = idx_to_keep != 0
-#
-# dmap_split = dmap_split[idx_to_keep, :, :, :]
-# im_split = im_split[idx_to_keep, :, :, :]
-# mask_split = mask_split[idx_to_keep, :, :, :]
