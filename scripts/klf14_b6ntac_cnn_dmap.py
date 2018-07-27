@@ -14,7 +14,6 @@ import datetime
 import numpy as np
 import pysto.imgproc as pystoim
 import matplotlib.pyplot as plt
-from PIL import Image
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -121,6 +120,13 @@ dmap = dmap[idx_to_keep, :, :, :]
 im = im[idx_to_keep, :, :, :]
 mask = mask[idx_to_keep, :, :, :]
 
+# shuffle data
+np.random.seed(0)
+idx = np.arange(im.shape[0])
+np.random.shuffle(idx)
+dmap = dmap[idx, ...]
+im = im[idx, ...]
+mask = mask[idx, ...]
 
 '''CNN
 
@@ -162,6 +168,6 @@ else:  # compile and train model: One GPU
     print('Training duration: ' + str(toc - tic))
 
 # save result (note, we save the template model, not the multiparallel object)
-saved_model_filename = os.path.join(saved_models_dir, datetime.datetime.utcnow().isoformat() + '_fcn_sherrah2016_modified.h5')
+saved_model_filename = os.path.join(saved_models_dir, datetime.datetime.utcnow().isoformat() + '_fcn_sherrah2016.h5')
 saved_model_filename = saved_model_filename.replace(':', '_')
 model.save(saved_model_filename)
