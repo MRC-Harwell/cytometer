@@ -15,6 +15,7 @@ import numpy as np
 import pysto.imgproc as pystoim
 import matplotlib.pyplot as plt
 from PIL import Image
+import cv2
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -28,23 +29,17 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
-import keras.backend as K
 import cytometer.data
-import cytometer.models as models
 
 # limit GPU memory used
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
 set_session(tf.Session(config=config))
-
-# for data parallelism in keras models
-from keras.utils import multi_gpu_model
 
 
 DEBUG = False
-batch_size = 1
 
 
 '''Load data
@@ -135,6 +130,23 @@ for seed in range(augment_factor - 1):
     for i in range(n_im):
 
         print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
+
+        # the generator creates an artifact in the masks (the rotated bounding box, for some reason, presents
+        # intermitent points, instead of being all zeros). Here we compute connected components and remove the really
+        # small ones as noise
+        mask_aux = mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3]).astype(np.uint8)
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask_aux)
+        lblareas = stats[:, cv2.CC_STAT_AREA]
+
+        # labels of small components, that we assume are edge artifacts
+        labels_artifact = np.where(lblareas < 10)[0]
+        labels_artifact = list(labels_artifact)
+
+        # clear the artifact objects from the image
+        mask_aux[np.isin(labels, labels_artifact)] = 0
+
+        # transfer result to mask array
+        mask_augmented[i, :, :, :] = mask_aux.reshape(mask_aux.shape + (1,))
 
         if DEBUG:
             plt.clf()
