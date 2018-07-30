@@ -11,7 +11,17 @@ sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import glob
 import numpy as np
 import pysto.imgproc as pystoim
+
+# limit number of GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
+# limit GPU memory used
 import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.9
+set_session(tf.Session(config=config))
+
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
 # function
 import cytometer.data
@@ -52,11 +62,27 @@ im = im.astype(np.float32)
 im /= 255
 mask = mask.astype(np.float32)
 
+# remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
+dmap = dmap[:, 0:-1, 0:-1, :]
+mask = mask[:, 0:-1, 0:-1, :]
+im = im[:, 0:-1, 0:-1, :]
+
+# split images into smaller blocks to avoid GPU memory overflows in training
+_, dmap, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
+_, im, _ = pystoim.block_split(im, nblocks=(1, 2, 2, 1))
+_, mask, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
+
+dmap = np.concatenate(dmap, axis=0)
+im = np.concatenate(im, axis=0)
+mask = np.concatenate(mask, axis=0)
+
 '''Receptive field
 
 '''
 
-model_file = os.path.join(saved_models_dir, '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5')
+#model_file = os.path.join(saved_models_dir, '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5')
+model_file = os.path.join(saved_models_dir, '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5')
+
 
 # estimate receptive field of the model
 def model_build_func(input_shape):
@@ -82,10 +108,7 @@ print('Receptive field size: ' + str(rf._rf_params[0].size))
 # model = keras.models.load_model(model_file)
 
 # load model
-model = models.fcn_sherrah2016(input_shape=im.shape[1:])
-
-# load model weights
-model.load_weights(model_file)
+model = model_build_func(input_shape=im.shape[1:])
 
 # visualise results
 if DEBUG:
@@ -102,11 +125,14 @@ if DEBUG:
         plt.subplot(223)
         plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
         plt.subplot(224)
-        a = dmap[i, :, :, :].reshape(dmap.shape[1:3])
-        b = dmap_pred.reshape(dmap.shape[1:3])
-        imax = np.max((np.max(a), np.max(b)))
-        a /= imax
-        b /= imax
+        # plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        # a = dmap[i, :, :, :].reshape(dmap.shape[1:3])
+        # b = dmap_pred.reshape(dmap.shape[1:3])
+        a = im[i, :, :, :]
+        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        # imax = np.max((np.max(a), np.max(b)))
+        # a /= imax
+        # b /= imax
         plt.imshow(pystoim.imfuse(a, b))
         plt.show()
 
