@@ -5,9 +5,9 @@
       <change beforePath="$PROJECT_DIR$/.idea/cytometer.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/cytometer.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/remote-mappings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/remote-mappings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -22,34 +22,34 @@
     <session id="-560854602">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="12" />
+          <entry key="project.closed" value="21" />
           <entry key="project.open.time.0" value="1" />
-          <entry key="project.open.time.5" value="4" />
-          <entry key="project.open.time.6" value="5" />
+          <entry key="project.open.time.5" value="8" />
+          <entry key="project.open.time.6" value="7" />
           <entry key="project.open.time.7" value="2" />
-          <entry key="project.open.time.8" value="2" />
-          <entry key="project.opened" value="14" />
+          <entry key="project.open.time.8" value="4" />
+          <entry key="project.opened" value="22" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="Python Console" value="2562" />
-          <entry key="py" value="4764" />
+          <entry key="Python Console" value="2673" />
+          <entry key="py" value="4880" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="Python" value="7326" />
+          <entry key="Python" value="7553" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
-          <entry key="py" value="6" />
+          <entry key="py" value="7" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
-          <entry key="Python" value="6" />
+          <entry key="Python" value="7" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.js.language.service.starts" />
@@ -60,7 +60,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="486">
+            <state relative-caret-position="396">
               <caret line="27" selection-start-line="27" selection-end-line="27" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
@@ -69,20 +69,29 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="457">
-              <caret line="40" selection-start-line="40" selection-end-line="40" />
+            <state relative-caret-position="-666">
+              <caret line="11" column="11" lean-forward="true" selection-start-line="11" selection-start-column="11" selection-end-line="11" selection-end-column="11" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cytometer/data.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="310">
+              <caret line="68" column="24" lean-forward="true" selection-start-line="68" selection-start-column="24" selection-end-line="68" selection-end-column="24" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1890">
-              <caret line="105" column="46" selection-start-line="105" selection-start-column="46" selection-end-line="105" selection-end-column="46" />
+            <state relative-caret-position="342">
+              <caret line="136" column="18" lean-forward="true" selection-start-line="126" selection-start-column="7" selection-end-line="136" selection-end-column="18" />
             </state>
           </provider>
         </entry>
@@ -90,7 +99,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cytometer/models.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="396">
+            <state relative-caret-position="288">
               <caret line="22" selection-start-line="22" selection-end-line="22" />
               <folding>
                 <element signature="e#110#152#0" expanded="true" />
@@ -186,9 +195,9 @@
         <option value="$PROJECT_DIR$/cytometer/data.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_generate_non_overlap_training_images.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_generate_augmented_training_images.py" />
-        <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py" />
         <option value="$PROJECT_DIR$/cytometer/models.py" />
         <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py" />
+        <option value="$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py" />
       </list>
     </option>
   </component>
@@ -208,7 +217,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -235,6 +243,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -441,9 +450,9 @@
       <item itemvalue="Python.keras_branch_sample_weights" />
       <item itemvalue="Python.klf14_b6ntac_cnn" />
       <item itemvalue="Python.klf14_b6ntac_cnn_receptive_field" />
+      <item itemvalue="Python.klf14_b6ntac_cnn_dmap" />
       <item itemvalue="Python.keras_bug_batchnormalization" />
       <item itemvalue="Python.cytometer_cnn" />
-      <item itemvalue="Python.klf14_b6ntac_cnn_dmap" />
     </list>
     <recent_temporary>
       <list>
@@ -474,15 +483,15 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="-2" width="1920" height="1202" extended-state="6" />
+    <frame x="0" y="-2" width="1920" height="1082" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.33191034" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.3778015" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32839313" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.3296875" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32929105" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4469579" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -492,7 +501,7 @@
       <window_info anchor="bottom" id="Docker" order="9" show_stripe_button="false" />
       <window_info anchor="bottom" id="Version Control" order="10" sideWeight="0.49777213" weight="0.32897195" />
       <window_info anchor="bottom" id="File Transfer" order="11" sideWeight="0.49778622" weight="0.32649255" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="12" sideWeight="0.49252936" visible="true" weight="0.3908582" />
+      <window_info active="true" anchor="bottom" id="Python Console" order="12" sideWeight="0.49252936" visible="true" weight="0.5105042" />
       <window_info anchor="bottom" id="Inspection Results" order="13" weight="0.329718" />
       <window_info anchor="bottom" id="Terminal" order="14" sideWeight="0.49905124" weight="0.32803738" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
@@ -877,13 +886,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cytometer/data.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="54">
-          <caret line="9" column="30" selection-start-line="9" selection-start-column="4" selection-end-line="9" selection-end-column="30" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_generate_augmented_training_images.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="306">
@@ -912,7 +914,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="486">
+        <state relative-caret-position="396">
           <caret line="27" selection-start-line="27" selection-end-line="27" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
@@ -920,16 +922,9 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1890">
-          <caret line="105" column="46" selection-start-line="105" selection-start-column="46" selection-end-line="105" selection-end-column="46" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/cytometer/models.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="396">
+        <state relative-caret-position="288">
           <caret line="22" selection-start-line="22" selection-end-line="22" />
           <folding>
             <element signature="e#110#152#0" expanded="true" />
@@ -937,10 +932,24 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/cytometer/data.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="310">
+          <caret line="68" column="24" lean-forward="true" selection-start-line="68" selection-start-column="24" selection-end-line="68" selection-end-column="24" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_cnn_dmap.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="457">
-          <caret line="40" selection-start-line="40" selection-end-line="40" />
+        <state relative-caret-position="-666">
+          <caret line="11" column="11" lean-forward="true" selection-start-line="11" selection-start-column="11" selection-end-line="11" selection-end-column="11" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/scripts/klf14_b6ntac_inspect_model.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="342">
+          <caret line="136" column="18" lean-forward="true" selection-start-line="126" selection-start-column="7" selection-end-line="136" selection-end-column="18" />
         </state>
       </provider>
     </entry>

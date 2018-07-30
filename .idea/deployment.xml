@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="rcasero@10.101.10.178:22">
+  <component name="PublishConfigData" autoUpload="Always" serverName="rcasero@localhost:5000">
     <serverData>
       <paths name="rcasero@10.101.10.178:22">
         <serverdata>
@@ -9,27 +9,10 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="rcasero@10.101.10.178:22 (1)">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/home/rcasero/Software/cytometer_laptop" local="$PROJECT_DIR$" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/data" />
-          </excludedPaths>
-        </serverdata>
-      </paths>
       <paths name="rcasero@localhost:5000">
         <serverdata>
           <mappings>
             <mapping deploy="/users/rittscher/rcasero/Software/cytometer" local="$PROJECT_DIR$" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="rcasero@localhost:5001">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/tmp/pycharm_project_445" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
