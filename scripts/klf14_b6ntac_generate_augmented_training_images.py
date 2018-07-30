@@ -21,7 +21,7 @@ from PIL import Image
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # set display for the server
 #os.environ['DISPLAY'] = 'localhost:11.0'
@@ -144,6 +144,10 @@ for seed in range(augment_factor - 1):
             plt.imshow(dmap_augmented[i, :, :, :].reshape(dmap_augmented.shape[1:3]))
             plt.subplot(223)
             plt.imshow(mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3]))
+            plt.subplot(224)
+            a = im_augmented[i, :, :, :]
+            b = mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3])
+            plt.imshow(pystoim.imfuse(a, b))
             plt.show()
 
         # create filenames based on the original foo.tif, so that we have im_seed_001_foo.tif, dmap_seed_001_foo.tif,
