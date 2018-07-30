@@ -62,6 +62,22 @@ im = im.astype(np.float32)
 im /= 255
 mask = mask.astype(np.float32)
 
+if DEBUG:
+    for i in range(n_im):
+        print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im[i, :, :, :])
+        plt.subplot(222)
+        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+        plt.subplot(223)
+        plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        plt.subplot(224)
+        a = im[i, :, :, :]
+        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        plt.imshow(pystoim.imfuse(a, b))
+        plt.show()
+
 # remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
 dmap = dmap[:, 0:-1, 0:-1, :]
 mask = mask[:, 0:-1, 0:-1, :]
@@ -75,6 +91,22 @@ _, mask, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
 dmap = np.concatenate(dmap, axis=0)
 im = np.concatenate(im, axis=0)
 mask = np.concatenate(mask, axis=0)
+
+if DEBUG:
+    for i in range(n_im):
+        print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im[i, :, :, :])
+        plt.subplot(222)
+        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+        plt.subplot(223)
+        plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        plt.subplot(224)
+        a = im[i, :, :, :]
+        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        plt.imshow(pystoim.imfuse(a, b))
+        plt.show()
 
 '''Receptive field
 
