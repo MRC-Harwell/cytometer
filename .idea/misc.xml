@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.6.3 (sftp://rcasero@10.101.10.178:22/home/rcasero/.conda/envs/cytometer_tensorflow/bin/python)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.6.6 (sftp://rcasero@localhost:5000/users/rittscher/rcasero/.conda/envs/cytometer_tensorflow/bin/python)" project-jdk-type="Python SDK" />
   <component name="PythonCompatibilityInspectionAdvertiser">
     <option name="version" value="3" />
   </component>
