@@ -16,6 +16,7 @@ import pysto.imgproc as pystoim
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # limit GPU memory used
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
@@ -24,6 +25,7 @@ set_session(tf.Session(config=config))
 
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
 # function
+import keras.models
 import cytometer.data
 import cytometer.models as models
 import matplotlib.pyplot as plt
@@ -113,8 +115,8 @@ if DEBUG:
 '''
 
 #model_file = os.path.join(saved_models_dir, '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5')
-model_file = os.path.join(saved_models_dir, '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5')
-
+#model_file = os.path.join(saved_models_dir, '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5')
+model_file = os.path.join(saved_models_dir, '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5')
 
 # estimate receptive field of the model
 def model_build_func(input_shape):
@@ -137,10 +139,8 @@ print('Receptive field size: ' + str(rf._rf_params[0].size))
 '''
 
 # # load model
-# model = keras.models.load_model(model_file)
+model = keras.models.load_model(model_file)
 
-# load model
-model = model_build_func(input_shape=im.shape[1:])
 
 # visualise results
 if DEBUG:
