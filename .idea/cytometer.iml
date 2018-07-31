@@ -2,7 +2,7 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$" />
-    <orderEntry type="jdk" jdkName="Remote Python 3.6.3 (sftp://rcasero@10.101.10.178:22/home/rcasero/.conda/envs/cytometer_tensorflow/bin/python)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Remote Python 3.6.6 (sftp://rcasero@localhost:5000/users/rittscher/rcasero/.conda/envs/cytometer_tensorflow/bin/python)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">

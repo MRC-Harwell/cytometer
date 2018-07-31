@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -38,6 +38,9 @@ import tensorflow as tf
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
+
+# specify data format as (n, row, col, channel)
+K.set_image_data_format('channels_last')
 
 DEBUG = False
 batch_size = 1
@@ -159,7 +162,7 @@ if gpu_number > 1:  # compile and train model: Multiple GPUs
 
     # compile model
     parallel_model = multi_gpu_model(model, gpus=gpu_number)
-    parallel_model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'], sample_weight_mode='element')
+    parallel_model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
 
     # train model
     tic = datetime.datetime.now()
@@ -174,7 +177,7 @@ else:  # compile and train model: One GPU
         model = models.fcn_sherrah2016(input_shape=im.shape[1:])
 
     # compile model
-    model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'], sample_weight_mode='element')
+    model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
 
     # train model
     tic = datetime.datetime.now()
