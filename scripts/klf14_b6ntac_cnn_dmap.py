@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -28,12 +28,13 @@ import keras.backend as K
 import cytometer.data
 import cytometer.models as models
 
-# limit GPU memory used
 import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
-set_session(tf.Session(config=config))
+
+# limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.9
+# set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -67,6 +68,11 @@ dmap = dmap.reshape(dmap.shape + (1,))
 mask = cytometer.data.load_im_file_list_to_array(mask_file_list)
 mask = mask.reshape(mask.shape + (1,))
 
+# convert to float
+im = im.astype(np.float32)
+im /= 255
+mask = mask.astype(np.float32)
+
 if DEBUG:
     for i in range(im.shape[0]):
         plt.clf()
@@ -76,6 +82,10 @@ if DEBUG:
         plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
         plt.subplot(223)
         plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        plt.subplot(224)
+        a = im[i, :, :, :]
+        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        plt.imshow(pystoim.imfuse(b, a))
         plt.show()
 
 # # remove a 1-pixel thick border so that images are 999x999 and we can split them into 3x3 tiles
@@ -98,6 +108,14 @@ dmap = np.concatenate(dmap, axis=0)
 im = np.concatenate(im, axis=0)
 mask = np.concatenate(mask, axis=0)
 
+# find images that have no valid pixels, to remove them from the dataset
+idx_to_keep = np.sum(np.sum(np.sum(mask, axis=3), axis=2), axis=1)
+idx_to_keep = idx_to_keep != 0
+
+dmap = dmap[idx_to_keep, :, :, :]
+im = im[idx_to_keep, :, :, :]
+mask = mask[idx_to_keep, :, :, :]
+
 if DEBUG:
     for i in range(dmap.shape[0]):
         plt.clf()
@@ -107,14 +125,11 @@ if DEBUG:
         plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
         plt.subplot(223)
         plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
-
-# find images that have no valid pixels, to remove them from the dataset
-idx_to_keep = np.sum(np.sum(np.sum(mask, axis=3), axis=2), axis=1)
-idx_to_keep = idx_to_keep != 0
-
-dmap = dmap[idx_to_keep, :, :, :]
-im = im[idx_to_keep, :, :, :]
-mask = mask[idx_to_keep, :, :, :]
+        plt.subplot(224)
+        a = im[i, :, :, :]
+        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        plt.imshow(pystoim.imfuse(a, b))
+        plt.show()
 
 # shuffle data
 np.random.seed(0)
@@ -123,12 +138,6 @@ np.random.shuffle(idx)
 dmap = dmap[idx, ...]
 im = im[idx, ...]
 mask = mask[idx, ...]
-
-# make sure that inputs are float32
-dmap = dmap.astype(np.float32)
-im = im.astype(np.float32)
-im /= 255.0
-mask = mask.astype(np.float32)
 
 '''Convolutional neural network training
 
@@ -154,21 +163,22 @@ if gpu_number > 1:  # compile and train model: Multiple GPUs
 
     # train model
     tic = datetime.datetime.now()
-    parallel_model.fit(im, dmap, batch_size=1, epochs=5, validation_split=.1, sample_weight=mask)
+    parallel_model.fit(im, dmap, batch_size=1, epochs=10, validation_split=.1, sample_weight=mask)
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
 else:  # compile and train model: One GPU
 
     # instantiate model
-    model = models.fcn_sherrah2016(input_shape=im.shape[1:])
+    with tf.device('/cpu:0'):
+        model = models.fcn_sherrah2016(input_shape=im.shape[1:])
 
     # compile model
     model.compile(loss='mse', optimizer='adam', metrics=['mse', 'mae'], sample_weight_mode='element')
 
     # train model
     tic = datetime.datetime.now()
-    model.fit(im, mask, batch_size=1, epochs=5, validation_split=.1, sample_weight=mask)
+    model.fit(im, dmap, batch_size=1, epochs=5, validation_split=.1, sample_weight=mask)
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
