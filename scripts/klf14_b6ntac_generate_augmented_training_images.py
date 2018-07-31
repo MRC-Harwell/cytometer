@@ -139,7 +139,7 @@ for seed in range(augment_factor - 1):
         lblareas = stats[:, cv2.CC_STAT_AREA]
 
         # labels of small components, that we assume are edge artifacts
-        labels_artifact = np.where(lblareas < 10)[0]
+        labels_artifact = np.where(lblareas < 50)[0]
         labels_artifact = list(labels_artifact)
 
         # clear the artifact objects from the image
