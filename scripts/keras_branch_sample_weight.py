@@ -40,6 +40,7 @@ elif image_data_format == 'channels_last':
     out = 2 * np.ones(shape=(10, 64, 64, 1), dtype='float32')
     aux_out = 5 * np.ones(shape=(10, 22, 22, 1), dtype='float32')
     # simulate training weights for network output
+    # weight = np.ones(shape=(10, 64, 64, 1), dtype='float32')
     weight = np.ones(shape=(10, 64, 64, 1), dtype='float32')
     aux_weight = np.ones(shape=(10, 22, 22, 1), dtype='float32')
 
@@ -102,7 +103,7 @@ if gpu_number > 1:  # compile and train model: Multiple GPUs
     parallel_model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'], sample_weight_mode='element')
 
     # train model
-    parallel_model.fit(im, out, sample_weight=weight, validation_data=validation_data, batch_size=3, epochs=3)
+    parallel_model.fit(im, out, sample_weight=weight, validation_data=validation_data, batch_size=gpu_number, epochs=3)
 
 else:
     raise Warning('Cannot test parallel GPU processing, because I could not find 2 or more GPUs')
