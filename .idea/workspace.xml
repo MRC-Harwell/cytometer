@@ -15,11 +15,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-<<<<<<< HEAD
-    <SUITE FILE_PATH="coverage/cytometer$keras_branch_sample_weight.coverage" NAME="keras_branch_sample_weight Coverage Results" MODIFIED="1533499057050" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
-=======
     <SUITE FILE_PATH="coverage/cytometer$keras_branch_sample_weight.coverage" NAME="keras_branch_sample_weight Coverage Results" MODIFIED="1533489484752" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
->>>>>>> 6d60602aa4a07be9043ff7bd570d4ece29d61923
     <SUITE FILE_PATH="coverage/cytometer$klf14_b6ntac_cnn_receptive_field.coverage" NAME="klf14_b6ntac_cnn_receptive_field Coverage Results" MODIFIED="1532718271581" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/scripts" />
   </component>
   <component name="FUSProjectUsageTrigger">
@@ -39,20 +35,12 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="Python Console" value="4845" />
-<<<<<<< HEAD
-          <entry key="py" value="7290" />
-=======
           <entry key="py" value="7288" />
->>>>>>> 6d60602aa4a07be9043ff7bd570d4ece29d61923
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-<<<<<<< HEAD
-          <entry key="Python" value="12135" />
-=======
           <entry key="Python" value="12133" />
->>>>>>> 6d60602aa4a07be9043ff7bd570d4ece29d61923
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
@@ -73,13 +61,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
           <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-            <state relative-caret-position="414">
-              <caret line="68" column="26" selection-start-line="68" selection-start-column="26" selection-end-line="68" selection-end-column="26" />
-=======
             <state relative-caret-position="-301">
               <caret selection-end-line="68" selection-end-column="75" />
->>>>>>> 6d60602aa4a07be9043ff7bd570d4ece29d61923
             </state>
           </provider>
         </entry>
@@ -518,13 +501,8 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32839313" />
-<<<<<<< HEAD
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.3286517" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.44662923" />
-=======
       <window_info anchor="bottom" id="Run" order="2" weight="0.32897195" />
       <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.4457944" />
->>>>>>> 6d60602aa4a07be9043ff7bd570d4ece29d61923
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" sideWeight="0.49840865" weight="0.3289166" />
@@ -973,13 +951,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/scripts/keras_branch_sample_weight.py">
       <provider selected="true" editor-type-id="text-editor">
-<<<<<<< HEAD
-        <state relative-caret-position="414">
-          <caret line="68" column="26" selection-start-line="68" selection-start-column="26" selection-end-line="68" selection-end-column="26" />
-=======
         <state relative-caret-position="-301">
           <caret selection-end-line="68" selection-end-column="75" />
->>>>>>> 6d60602aa4a07be9043ff7bd570d4ece29d61923
         </state>
       </provider>
     </entry>
