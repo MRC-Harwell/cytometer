@@ -43,7 +43,6 @@ from keras.utils import multi_gpu_model
 K.set_image_data_format('channels_last')
 
 DEBUG = False
-batch_size = 1
 
 
 '''Load data
@@ -166,7 +165,7 @@ if gpu_number > 1:  # compile and train model: Multiple GPUs
 
     # train model
     tic = datetime.datetime.now()
-    parallel_model.fit(im, dmap, batch_size=1, epochs=10, validation_split=.1, sample_weight=mask)
+    parallel_model.fit(im, dmap, batch_size=4, epochs=10, validation_split=.1, sample_weight=mask)
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
