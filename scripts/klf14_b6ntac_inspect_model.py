@@ -114,9 +114,10 @@ if DEBUG:
 
 '''
 
-#model_file = os.path.join(saved_models_dir, '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5')
-#model_file = os.path.join(saved_models_dir, '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5')
-model_file = os.path.join(saved_models_dir, '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5')
+# model_file = os.path.join(saved_models_dir, '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5')
+# model_file = os.path.join(saved_models_dir, '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5')
+# model_file = os.path.join(saved_models_dir, '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5')
+model_file = os.path.join(saved_models_dir, '2018-08-06T18_02_55.864612_fcn_sherrah2016.h5')
 
 # estimate receptive field of the model
 def model_build_func(input_shape):
@@ -152,20 +153,25 @@ if DEBUG:
         plt.clf()
         plt.subplot(221)
         plt.imshow(im[i, :, :, :])
+        plt.title('histology')
         plt.subplot(222)
         plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+        plt.title('ground truth dmap')
         plt.subplot(223)
         plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
+        plt.title('estimated dmap')
         plt.subplot(224)
-        # plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
-        # a = dmap[i, :, :, :].reshape(dmap.shape[1:3])
-        # b = dmap_pred.reshape(dmap.shape[1:3])
-        a = im[i, :, :, :]
-        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        a = dmap[i, :, :, :].reshape(dmap.shape[1:3])
+        b = dmap_pred.reshape(dmap.shape[1:3])
+        plt.imshow(b - a)
+        plt.colorbar()
+        plt.title('error (est - gt)')
+        # a = im[i, :, :, :]
+        # b = mask[i, :, :, :].reshape(mask.shape[1:3])
         # imax = np.max((np.max(a), np.max(b)))
         # a /= imax
         # b /= imax
-        plt.imshow(pystoim.imfuse(a, b))
+        # plt.imshow(pystoim.imfuse(a, b).astype('uint8'))
         plt.show()
 
 # extract and visualise weights
