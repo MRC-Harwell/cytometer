@@ -66,7 +66,7 @@ model.add(Conv2D(input_shape=im.shape[1:],
                  filters=32, kernel_size=(3, 3), strides=1, padding='same'))
 model.add(BatchNormalization(axis=3))
 model.add(Activation('relu'))
-model.add(Conv2D(filters=2, kernel_size=(1, 1), strides=1, padding='same'))
+model.add(Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same'))
 
 '''string format (sample_weights_mode='element')
 '''
