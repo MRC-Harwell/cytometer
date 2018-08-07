@@ -2,18 +2,18 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
+import pandas as pd
 import ast
-from datetime import datetime
 
 DEBUG = False
 
 
 def load_im_file_list_to_array(file_list):
-    '''
+    """
     Loads a list of images, all with the same size, into a numpy array (file, row, col, channel)
     :param file_list:
     :return:
-    '''
+    """
     if not isinstance(file_list, list):
         raise ValueError('file_list must be a list')
     if len(file_list) == 0:
@@ -37,7 +37,7 @@ def load_im_file_list_to_array(file_list):
 
 
 def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
-    '''
+    """
     Loads a list of segmentation files and computes distance maps to the objects boundaries/background.
 
     The segmentation file is assumed to have one integer label (2, 3, 4, ...) per object. The background has label 1.
@@ -54,7 +54,7 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
               to the closest background/boundary pixel.
         mask: np.array with one segmentation mask per file. Background pixels = 0. Foreground/boundary pixels = 1.
         seg: np.array with one segmentation per file. The segmentation labels in the input files.
-    '''
+    """
 
     if not isinstance(seg_file_list, list):
         raise ValueError('seg_file_list must be a list')
@@ -112,8 +112,49 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
 
     return dmap, mask, seg
 
-filename = '/home/rcasero/Dropbox/klf14/saved_models/2018-08-06T18_02_55.864612_fcn_sherrah2016.log'
+
 def read_keras_training_output(filename):
+    """
+    Read a text file with the output produced by keras when training a network. The file is
+    expected to look like this:
+
+    <FILE>
+    2018-08-06 17:02:50.067524: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+    2018-08-06 17:02:51.812456: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1392] Found device 0 with properties:
+    name: GeForce GTX 1080 Ti major: 6 minor: 1 memoryClockRate(GHz): 1.582
+    ...
+    Train on 1846 samples, validate on 206 samples
+    Epoch 1/10
+
+       1/1846 [..............................] - ETA: 1:33:38 - loss: 1611.5088 - mean_squared_error: 933.6124 - mean_absolute_error: 17.6664
+       2/1846 [..............................] - ETA: 53:17 - loss: 1128.0714 - mean_squared_error: 593.7890 - mean_absolute_error: 13.8204
+    ...
+       1846/1846 [==============================] - 734s 398ms/step - loss: 273.1249 - mean_squared_error: 385.5759 - mean_absolute_error: 14.7488 - val_loss: 544.2305 - val_mean_squared_error: 285.2719 - val_mean_absolute_error: 11.1605
+    Epoch 2/10
+
+       1/1846 [..............................] - ETA: 11:22 - loss: 638.7009 - mean_squared_error: 241.0196 - mean_absolute_error: 10.6583
+    ...
+       1846/1846 [==============================] - 734s 398ms/step - loss: 273.1249 - mean_squared_error: 385.5759 - mean_absolute_error: 14.7488 - val_loss: 544.2305 - val_mean_squared_error: 285.2719 - val_mean_absolute_error: 11.1605
+    Epoch 2/10
+
+       1/1846 [..............................] - ETA: 11:22 - loss: 638.7009 - mean_squared_error: 241.0196 - mean_absolute_error: 10.6583
+    </FILE>
+
+    The lines until the first "Epoch" are ignored. Then, the rest of the data is put into a pandas.DataFrame
+    like this:
+
+               epoch   ETA       loss  mean_absolute_error  mean_squared_error
+    0              1  5618  1611.5088              17.6664            933.6124
+    1              1  3197  1128.0714              13.8204            593.7890
+    ...
+    18448         10     0    88.1862              13.6856            453.2228
+    18449         10     0    88.2152              13.6862            453.2333
+
+    [18450 rows x 5 columns]
+
+    :param filename: string with the path and filename of a text file with the training output from keras
+    :return: pandas.DataFrame
+    """
 
     # ignore all lines until we get to the first "Epoch"
     file = open(filename, 'r')
@@ -121,35 +162,71 @@ def read_keras_training_output(filename):
         if line[0:5] == 'Epoch':
             break
 
+    epoch = 1
+    data = []
+
     # loop until the end of the file
     for line in file:
-        if 'ETA:' in line:
-            break
 
-    # remove whitespaces: '1/1846[..............................]-ETA:1:33:38-loss:1611.5088-mean_squared_error:933.6124-mean_absolute_error:17.6664'
-    line = line.strip()
-    line = line.replace(' ', '')
+        if 'Epoch' in line:
 
-    # split line into elements: ['1/1846[..............................]', 'ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
-    line = line.split('-')
+            epoch += 1
 
-    # remove first element: ['ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
-    line = line[1:]
+        elif 'ETA:' in line:
 
-    # add "" around the first :, and at the beginning and end of the element
-    # ['"ETA":"1:33:38"', '"loss":"1611.5088"', '"mean_squared_error":"933.6124"', '"mean_absolute_error":"17.6664"']
-    line = [x.replace(':', '":"', 1) for x in line]
-    line = ['"' + x + '"' for x in line]
+            # remove whitespaces: '1/1846[..............................]-ETA:1:33:38-loss:1611.5088-mean_squared_error:933.6124-mean_absolute_error:17.6664'
+            line = line.strip()
+            line = line.replace(' ', '')
 
-    # collate elements and surround by {}
-    # '{"ETA":"1:33:38", "loss":"1611.5088", "mean_squared_error":"933.6124", "mean_absolute_error":"17.6664"}'
-    line = '{' + ', '.join(line) + '}'
+            # split line into elements: ['1/1846[..............................]', 'ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
+            line = line.split('-')
 
-    # convert string to dict
-    # {'ETA': '1:33:38', 'loss': '1611.5088', 'mean_squared_error': '933.6124', 'mean_absolute_error': '17.6664'}
-    line = ast.literal_eval(line)
+            # remove first element: ['ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
+            line = line[1:]
 
-    # convert ETA to time object
-    if 'ETA' in line:
-        datetime.strptime(line['ETA'], '%H:%M:%S')
-        datetime.strptime('01:33:38', '%H:%M:%S')
+            # add "" around the first :, and at the beginning and end of the element
+            # ['"ETA":"1:33:38"', '"loss":"1611.5088"', '"mean_squared_error":"933.6124"', '"mean_absolute_error":"17.6664"']
+            line = [x.replace(':', '":"', 1) for x in line]
+            line = ['"' + x + '"' for x in line]
+
+            # add epoch to collated elements and surround by {}
+            # '{"ETA":"1:33:38", "loss":"1611.5088", "mean_squared_error":"933.6124", "mean_absolute_error":"17.6664"}'
+            line = '{"epoch":' + str(epoch) + ', ' + ', '.join(line) + '}'
+
+            # convert string to dict
+            # {'ETA': '1:33:38', 'loss': '1611.5088', 'mean_squared_error': '933.6124', 'mean_absolute_error': '17.6664'}
+            line = ast.literal_eval(line)
+
+            # convert string values to numeric values
+            for key in line.keys():
+                if key == 'ETA':
+                    eta_str = line['ETA'].split(':')
+                    if len(eta_str) == 1:  # ETA: 45s
+                        eta = int(eta_str[-1].replace('s', ''))
+                    else:
+                        eta = int(eta_str[-1])
+                    if len(eta_str) > 1:  # ETA: 1:08
+                        eta += 60 * int(eta_str[-2])
+                    if len(eta_str) > 2:  # ETA: 1:1:08
+                        eta += 3600 * int(eta_str[-3])
+                    if len(eta_str) > 3:
+                        raise ValueError('ETA format not implemented')
+                    line['ETA'] = eta
+                elif key == 'epoch':
+                    pass
+                else:
+                    line[key] = float(line[key])
+
+            # add the dictionary to the output list
+            data.append(line)
+
+    # close the file
+    file.close()
+
+    # convert list of dictionaries to dataframe
+    df = pd.DataFrame(data)
+
+    # reorder columns so that epochs go first
+    df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
+
+    return df
