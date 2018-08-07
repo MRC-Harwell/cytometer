@@ -47,7 +47,6 @@ source activate cytometer
 # install other python packages
 conda install -y matplotlib pillow 
 conda install -y scikit-image scikit-learn h5py 
-#conda install -y -c conda-forge mahotas
 conda install -y nose pytest
 pip install opencv-python pysto openslide-python
 pip install tifffile
