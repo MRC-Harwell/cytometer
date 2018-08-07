@@ -2,7 +2,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
-
+import ast
+from datetime import datetime
 
 DEBUG = False
 
@@ -110,3 +111,45 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     dmap = dmap.reshape((dmap.shape + (1,)))
 
     return dmap, mask, seg
+
+filename = '/home/rcasero/Dropbox/klf14/saved_models/2018-08-06T18_02_55.864612_fcn_sherrah2016.log'
+def read_keras_training_output(filename):
+
+    # ignore all lines until we get to the first "Epoch"
+    file = open(filename, 'r')
+    for line in file:
+        if line[0:5] == 'Epoch':
+            break
+
+    # loop until the end of the file
+    for line in file:
+        if 'ETA:' in line:
+            break
+
+    # remove whitespaces: '1/1846[..............................]-ETA:1:33:38-loss:1611.5088-mean_squared_error:933.6124-mean_absolute_error:17.6664'
+    line = line.strip()
+    line = line.replace(' ', '')
+
+    # split line into elements: ['1/1846[..............................]', 'ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
+    line = line.split('-')
+
+    # remove first element: ['ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
+    line = line[1:]
+
+    # add "" around the first :, and at the beginning and end of the element
+    # ['"ETA":"1:33:38"', '"loss":"1611.5088"', '"mean_squared_error":"933.6124"', '"mean_absolute_error":"17.6664"']
+    line = [x.replace(':', '":"', 1) for x in line]
+    line = ['"' + x + '"' for x in line]
+
+    # collate elements and surround by {}
+    # '{"ETA":"1:33:38", "loss":"1611.5088", "mean_squared_error":"933.6124", "mean_absolute_error":"17.6664"}'
+    line = '{' + ', '.join(line) + '}'
+
+    # convert string to dict
+    # {'ETA': '1:33:38', 'loss': '1611.5088', 'mean_squared_error': '933.6124', 'mean_absolute_error': '17.6664'}
+    line = ast.literal_eval(line)
+
+    # convert ETA to time object
+    if 'ETA' in line:
+        datetime.strptime(line['ETA'], '%H:%M:%S')
+        datetime.strptime('01:33:38', '%H:%M:%S')
