@@ -142,6 +142,9 @@ print('Receptive field size: ' + str(rf._rf_params[0].size))
 # # load model
 model = keras.models.load_model(model_file)
 
+from keras.utils import plot_model
+plot_model(model, to_file='/home/rcasero/Dropbox/klf14/saved_models/2018-08-06T18_02_55.864612_fcn_sherrah2016.png')
+
 
 # visualise results
 if DEBUG:
