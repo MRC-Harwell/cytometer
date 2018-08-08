@@ -44,6 +44,11 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
+# model_name = '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5'
+# model_name = '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5'
+# model_name = '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5'
+model_name = '2018-08-06T18_02_55.864612_fcn_sherrah2016.h5'
+
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*.tif'))
 dmap_file_list = [x.replace('im_', 'dmap_') for x in im_file_list]
@@ -114,10 +119,7 @@ if DEBUG:
 
 '''
 
-# model_file = os.path.join(saved_models_dir, '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5')
-# model_file = os.path.join(saved_models_dir, '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5')
-# model_file = os.path.join(saved_models_dir, '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5')
-model_file = os.path.join(saved_models_dir, '2018-08-06T18_02_55.864612_fcn_sherrah2016.h5')
+model_file = os.path.join(saved_models_dir, model_name)
 
 # estimate receptive field of the model
 def model_build_func(input_shape):
@@ -194,3 +196,27 @@ if DEBUG:
         frame1.axes.get_xaxis().set_visible(False)
         frame1.axes.get_yaxis().set_visible(False)
 
+'''Plot metrics and convergence
+'''
+
+log_filename = os.path.join(saved_models_dir, model_name.replace('.h5', '.log'))
+if os.path.isfile(log_filename):
+    # read Keras output
+    df = cytometer.data.read_keras_training_output(log_filename)
+
+    # plot metrics
+    plt.clf()
+    plt.subplot(311)
+    loss_plot, = plt.plot(df.index, df.loss, label='loss')
+    #epoch_starts = np.where(np.diff(np.concatenate(([0, ], df.epoch))))[0]
+    epoch_ends = np.where(np.diff(df.epoch))[0]
+    epoch_starts_plot1, = plt.plot(epoch_ends, df.loss[epoch_ends], 'ro-', label='epoch ends')
+    plt.legend(handles=[loss_plot, epoch_starts_plot1])
+    plt.subplot(312)
+    mae_plot, = plt.plot(df.index, df.mean_absolute_error, label='mae')
+    epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro-', label='epoch ends')
+    plt.legend(handles=[mae_plot, epoch_ends_plot2])
+    plt.subplot(313)
+    mse_plot, = plt.plot(df.index, df.mean_squared_error, label='mse')
+    epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_squared_error[epoch_ends], 'ro-', label='epoch ends')
+    plt.legend(handles=[mse_plot, epoch_ends_plot2])
