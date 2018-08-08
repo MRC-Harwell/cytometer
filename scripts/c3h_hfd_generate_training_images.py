@@ -11,16 +11,16 @@ import glob
 
 DEBUG = False
 
-data_dir = '/home/rcasero/data/roger_data'
-training_dir = '/home/rcasero/Dropbox/klf14/klf14_b6ntac_training'
-seg_dir = '/home/rcasero/Software/cytometer/data/klf14_b6ntac_seg'
+data_dir = '/home/gcientanni/scan_srv2_cox/Maz Yon'
+training_dir = '/home/gcientanni/Dropbox/c3h/c3h_hfd_training'
+seg_dir = '/home/gcientanni/Dropbox/c3h/c3h_hfd_seg'
 downsample_factor = 8.0
 
 box_size = 1001
 box_half_size = int((box_size - 1) / 2)
 n_samples = 5
 
-files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
+files_list = glob.glob(os.path.join(data_dir, 'C3H*.ndpi'))
 
 seed(0)
 for file_i, file in enumerate(files_list):
@@ -73,7 +73,7 @@ for file_i, file in enumerate(files_list):
     lblareas = stats[:, cv2.CC_STAT_AREA]
 
     # labels of large components, that we assume correspond to tissue areas
-    labels_large = np.where(lblareas > 1e5)[0]
+    labels_large = np.where(lblareas > 5e5)[0]
     labels_large = list(labels_large)
 
     # label=0 is the background, so we remove it
