@@ -23,18 +23,17 @@ import matplotlib.pyplot as plt
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
-import keras
 import keras.backend as K
 import cytometer.data
 import cytometer.models as models
-from sklearn.model_selection import StratifiedKFold
+import random
 import tensorflow as tf
 
 # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.9
-# set_session(tf.Session(config=config))
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
+set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -44,6 +43,8 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
+# number of folds for k-fold cross validation
+n_folds = 11
 
 '''Load data
 '''
@@ -54,6 +55,18 @@ training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
+
+# list of original training images, pre-augmentation
+orig_im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
+
+# number of original training images
+n_orig_im = len(orig_im_file_list)
+
+# create k-fold splitting of data
+seed = 0
+random.seed(seed)
+idx = random.sample(range(n_orig_im), n_orig_im)
+idx_train = np.array_split(idx, n_folds)
 
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*.tif'))
