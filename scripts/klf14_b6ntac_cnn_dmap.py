@@ -27,7 +27,7 @@ import keras
 import keras.backend as K
 import cytometer.data
 import cytometer.models as models
-
+from sklearn.model_selection import StratifiedKFold
 import tensorflow as tf
 
 # limit GPU memory used
