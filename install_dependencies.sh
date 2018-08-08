@@ -50,6 +50,7 @@ conda install -y scikit-image scikit-learn h5py
 conda install -y nose pytest
 pip install opencv-python pysto openslide-python
 pip install tifffile
+conda install -y pandas
 
 ########################################################################
 ## python environment for DeepCell
