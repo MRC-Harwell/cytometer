@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
@@ -57,21 +57,40 @@ training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_trai
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
 # list of original training images, pre-augmentation
-orig_im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
+im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
 
 # number of original training images
-n_orig_im = len(orig_im_file_list)
+n_orig_im = len(im_orig_file_list)
 
 # create k-fold splitting of data
 seed = 0
 random.seed(seed)
 idx = random.sample(range(n_orig_im), n_orig_im)
-idx_train = np.array_split(idx, n_folds)
+idx_test_all = np.array_split(idx, n_folds)
 
-# list of training images
-im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*.tif'))
-dmap_file_list = [x.replace('im_', 'dmap_') for x in im_file_list]
-mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
+# loop each fold: we split the data into train vs test, train a model, and compute errors with the
+# test data. In each fold, the test data is different
+for idx_test in idx_test_all:
+
+    # the training dataset is all images minus the test ones
+    idx_train = list(set(range(n_orig_im)) - set(idx_test))
+
+    # list of original training and test files
+    im_train_file_list = list(np.array(im_orig_file_list)[idx_train])
+    im_test_file_list = list(np.array(im_orig_file_list)[idx_test])
+
+    # add the augmented image files
+    im_train_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_train_file_list]
+    im_train_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_train_file_list]
+    im_train_file_list = [item for sublist in im_train_file_list for item in sublist]
+
+    im_test_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_test_file_list]
+    im_test_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_test_file_list]
+    im_test_file_list = [item for sublist in im_test_file_list for item in sublist]
+
+    # list of distance transformation and mask files
+    dmap_train_file_list = [x.replace('im_', 'dmap_') for x in im_train_file_list]
+    mask_train_file_list = [x.replace('im_', 'mask_') for x in im_train_file_list]
 
 # number of training images
 n_im = len(im_file_list)
