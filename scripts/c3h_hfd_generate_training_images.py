@@ -12,8 +12,8 @@ import glob
 DEBUG = False
 
 data_dir = '/home/gcientanni/scan_srv2_cox/Maz Yon'
-training_dir = '/home/gcientanni/Dropbox/c3h/test_2_training'
-seg_dir = '/home/gcientanni/Dropbox/c3h/test_2_seg'
+training_dir = '/home/gcientanni/Dropbox/c3h/c3h_hfd_training'
+seg_dir = '/home/gcientanni/Dropbox/c3h/c3h_hfd_seg'
 downsample_factor = 8.0
 
 box_size = 1001
@@ -23,7 +23,6 @@ n_samples = 5
 files_list = glob.glob(os.path.join(data_dir, 'C3H*.ndpi'))
 
 for file_i, file in enumerate(files_list):
-
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
