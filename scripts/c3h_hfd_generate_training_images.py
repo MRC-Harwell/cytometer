@@ -12,8 +12,8 @@ import glob
 DEBUG = False
 
 data_dir = '/home/gcientanni/scan_srv2_cox/Maz Yon'
-training_dir = '/home/gcientanni/Dropbox/c3h/c3h_hfd_training'
-seg_dir = '/home/gcientanni/Dropbox/c3h/c3h_hfd_seg'
+training_dir = '/home/gcientanni/Dropbox/c3h/test_2_training'
+seg_dir = '/home/gcientanni/Dropbox/c3h/test_2_seg'
 downsample_factor = 8.0
 
 box_size = 1001
@@ -22,8 +22,8 @@ n_samples = 5
 
 files_list = glob.glob(os.path.join(data_dir, 'C3H*.ndpi'))
 
-seed(0)
 for file_i, file in enumerate(files_list):
+
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
@@ -104,9 +104,12 @@ for file_i, file in enumerate(files_list):
     # pick random centroids that belong to one of the set pixels
     sample_centroid = []
     sample_centroid_upsampled = []
+    seed(file_i)
     while len(sample_centroid) < n_samples:
-        row = randint(0, seg.shape[0])
-        col = randint(0, seg.shape[1])
+
+        row = randint(0, seg.shape[0]-1)
+        col = randint(0, seg.shape[1]-1)
+
         # if the centroid is a pixel that belongs to tissue...
         if seg[row, col] != 0:
             # ... add it to the list of random samples
