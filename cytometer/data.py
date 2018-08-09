@@ -33,6 +33,10 @@ def load_im_file_list_to_array(file_list):
             plt.clf()
             plt.imshow(im_out[i, ...])
 
+    # one channel data gets loaded as im_out.shape=(n, rows, cols), but keras requires (n, rows, cols, 1)
+    if im_out.ndim == 3:
+        im_out = im_out.reshape(im_out.shape + (1,))
+
     return im_out
 
 
