@@ -290,6 +290,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
     saved_model_filename = saved_model_filename.replace(':', '_')
     model.save(saved_model_filename)
 
-    # if we ran the script with nohup in linux, the output is in file nohup.out. Save it to saved_models directory
-    if os.path.isfile('nohup.out'):
-        shutil.copy2('nohup.out', saved_model_filename.replace('.h5', '.log'))
+# if we ran the script with nohup in linux, the output is in file nohup.out.
+# Save it to saved_models directory (
+log_filename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016.h5')
+if os.path.isfile('nohup.out'):
+    shutil.copy2('nohup.out', log_filename)
