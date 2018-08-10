@@ -119,15 +119,10 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
 
 def read_keras_training_output(filename):
     """
-    Read a text file with the output produced by keras when training a network. The file is
-    expected to look like this:
+    Read a text file with the keras output of one or multiple trainings. The output from
+    each training is expected to look like this:
 
     <FILE>
-    2018-08-06 17:02:50.067524: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
-    2018-08-06 17:02:51.812456: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1392] Found device 0 with properties:
-    name: GeForce GTX 1080 Ti major: 6 minor: 1 memoryClockRate(GHz): 1.582
-    ...
-    Train on 1846 samples, validate on 206 samples
     Epoch 1/10
 
        1/1846 [..............................] - ETA: 1:33:38 - loss: 1611.5088 - mean_squared_error: 933.6124 - mean_absolute_error: 17.6664
@@ -144,7 +139,7 @@ def read_keras_training_output(filename):
        1/1846 [..............................] - ETA: 11:22 - loss: 638.7009 - mean_squared_error: 241.0196 - mean_absolute_error: 10.6583
     </FILE>
 
-    The lines until the first "Epoch" are ignored. Then, the rest of the data is put into a pandas.DataFrame
+    Any lines until the first "Epoch" are ignored. Then, the rest of the training output is put into a pandas.DataFrame
     like this:
 
                epoch   ETA       loss  mean_absolute_error  mean_squared_error
@@ -157,22 +152,37 @@ def read_keras_training_output(filename):
     [18450 rows x 5 columns]
 
     :param filename: string with the path and filename of a text file with the training output from keras
-    :return: pandas.DataFrame
+    :return: list of pandas.DataFrame
     """
 
     # ignore all lines until we get to the first "Epoch"
+    data_all = []
     file = open(filename, 'r')
     for line in file:
         if line[0:5] == 'Epoch':
+            data = []
+            epoch = 1
             break
-
-    epoch = 1
-    data = []
 
     # loop until the end of the file
     for line in file:
 
-        if 'Epoch' in line:
+        if 'Epoch 1/' in line:  # start of new training
+
+            # convert list of dictionaries to dataframe
+            df = pd.DataFrame(data)
+
+            # reorder columns so that epochs go first
+            df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
+
+            # add dataframe to output list of dataframes
+            data_all.append(data)
+
+            # reset the variables for the next training
+            data = []
+            epoch = 1
+
+        elif 'Epoch' in line:  # new epoch of current training
 
             epoch += 1
 
@@ -224,8 +234,7 @@ def read_keras_training_output(filename):
             # add the dictionary to the output list
             data.append(line)
 
-    # close the file
-    file.close()
+    # save the last training block output
 
     # convert list of dictionaries to dataframe
     df = pd.DataFrame(data)
@@ -233,4 +242,10 @@ def read_keras_training_output(filename):
     # reorder columns so that epochs go first
     df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
 
-    return df
+    # add dataframe to output list of dataframes
+    data_all.append(data)
+
+    # close the file
+    file.close()
+
+    return data_all
