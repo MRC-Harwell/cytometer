@@ -8,6 +8,7 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 
+import gc
 import glob
 import numpy as np
 import pysto.imgproc as pystoim
@@ -47,7 +48,8 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 # model_name = '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5'
 # model_name = '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5'
 # model_name = '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5'
-model_name = '2018-08-06T18_02_55.864612_fcn_sherrah2016.h5'
+# model_name = '2018-08-06T18_02_55.864612_fcn_sherrah2016.h5'
+model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'
 
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*.tif'))
@@ -60,9 +62,7 @@ n_im = len(im_file_list)
 # load images
 im = cytometer.data.load_im_file_list_to_array(im_file_list)
 dmap = cytometer.data.load_im_file_list_to_array(dmap_file_list)
-dmap = dmap.reshape(dmap.shape + (1,))
 mask = cytometer.data.load_im_file_list_to_array(mask_file_list)
-mask = mask.reshape(mask.shape + (1,))
 
 # convert to float
 im = im.astype(np.float32)
@@ -90,14 +90,16 @@ dmap = dmap[:, 0:-1, 0:-1, :]
 mask = mask[:, 0:-1, 0:-1, :]
 im = im[:, 0:-1, 0:-1, :]
 
-# split images into smaller blocks to avoid GPU memory overflows in training
-_, dmap, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
+# split images into smaller blocks to avoid GPU memory overflows
 _, im, _ = pystoim.block_split(im, nblocks=(1, 2, 2, 1))
-_, mask, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
-
-dmap = np.concatenate(dmap, axis=0)
 im = np.concatenate(im, axis=0)
+gc.collect()
+_, dmap, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
+dmap = np.concatenate(dmap, axis=0)
+gc.collect()
+_, mask, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
 mask = np.concatenate(mask, axis=0)
+gc.collect()
 
 if DEBUG:
     for i in range(n_im):
@@ -119,90 +121,77 @@ if DEBUG:
 
 '''
 
-model_file = os.path.join(saved_models_dir, model_name)
+# list of model files to inspect
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 
-# estimate receptive field of the model
-def model_build_func(input_shape):
-    model = models.fcn_sherrah2016(input_shape=input_shape, for_receptive_field=True)
-    model.load_weights(model_file)
-    return model
+receptive_field_size = []
+for model_file in model_files:
+
+    print(model_file)
+
+    # estimate receptive field of the model
+    def model_build_func(input_shape):
+        model = models.fcn_sherrah2016(input_shape=input_shape, for_receptive_field=True)
+        model.load_weights(model_file)
+        return model
 
 
-rf = KerasReceptiveField(model_build_func, init_weights=False)
+    rf = KerasReceptiveField(model_build_func, init_weights=False)
 
-rf_params = rf.compute(
-    input_shape=(500, 500, 3),
-    input_layer='input_image',
-    output_layers=['main_output'])
-print(rf_params)
+    rf_params = rf.compute(
+        input_shape=(500, 500, 3),
+        input_layer='input_image',
+        output_layers=['main_output'])
+    print(rf_params)
 
-print('Receptive field size: ' + str(rf._rf_params[0].size))
+    receptive_field_size. append(rf._rf_params[0].size)
+
+for i, model_file in enumerate(model_files):
+    print(model_file)
+    print('Receptive field size: ' + str(receptive_field_size[i]))
 
 '''Load model and visualise results
 '''
 
-# # load model
-model = keras.models.load_model(model_file)
+for model_file in model_files:
 
-from keras.utils import plot_model
-plot_model(model, to_file='/home/rcasero/Dropbox/klf14/saved_models/2018-08-06T18_02_55.864612_fcn_sherrah2016.png')
+    # load model
+    model = keras.models.load_model(model_file)
 
+    # visualise results
+    if DEBUG:
+        for i in range(im.shape[0]):
 
-# visualise results
-if DEBUG:
-    for i in range(im.shape[0]):
+            # run image through network
+            dmap_pred = model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
 
-        # run image through network
-        dmap_pred = model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im[i, :, :, :])
+            plt.title('histology')
+            plt.subplot(222)
+            plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+            plt.title('ground truth dmap')
+            plt.subplot(223)
+            plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
+            plt.title('estimated dmap')
+            plt.subplot(224)
+            a = dmap[i, :, :, :].reshape(dmap.shape[1:3])
+            b = dmap_pred.reshape(dmap.shape[1:3])
+            plt.imshow(b - a)
+            plt.colorbar()
+            plt.title('error (est - gt)')
+            plt.show()
 
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im[i, :, :, :])
-        plt.title('histology')
-        plt.subplot(222)
-        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
-        plt.title('ground truth dmap')
-        plt.subplot(223)
-        plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
-        plt.title('estimated dmap')
-        plt.subplot(224)
-        a = dmap[i, :, :, :].reshape(dmap.shape[1:3])
-        b = dmap_pred.reshape(dmap.shape[1:3])
-        plt.imshow(b - a)
-        plt.colorbar()
-        plt.title('error (est - gt)')
-        # a = im[i, :, :, :]
-        # b = mask[i, :, :, :].reshape(mask.shape[1:3])
-        # imax = np.max((np.max(a), np.max(b)))
-        # a /= imax
-        # b /= imax
-        # plt.imshow(pystoim.imfuse(a, b).astype('uint8'))
-        plt.show()
-
-# extract and visualise weights
-
-layer_1 = model.layers[1]
-weights_1 = layer_1.get_weights()[0]
-
-if DEBUG:
-
-    plt.clf()
-    norm_max = np.max(np.linalg.norm(weights_1, axis=2))
-    for i in range(32):
-        plt.subplot(8, 4, i + 1)
-        plt.imshow(np.linalg.norm(weights_1[:, :, :, i], axis=2) / norm_max)
-
-        frame1 = plt.gca()
-        frame1.axes.get_xaxis().set_visible(False)
-        frame1.axes.get_yaxis().set_visible(False)
 
 '''Plot metrics and convergence
 '''
 
-log_filename = os.path.join(saved_models_dir, model_name.replace('.h5', '.log'))
+log_filename = os.path.join(saved_models_dir, model_name.replace('*.h5', '.log'))
+
 if os.path.isfile(log_filename):
     # read Keras output
-    df = cytometer.data.read_keras_training_output(log_filename)
+    df_list = cytometer.data.read_keras_training_output(log_filename)
 
     # plot metrics
     plt.clf()
