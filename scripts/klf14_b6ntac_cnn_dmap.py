@@ -21,9 +21,10 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
+import keras
 import keras.backend as K
 import cytometer.data
 import cytometer.models as models
@@ -46,6 +47,9 @@ DEBUG = False
 
 # number of folds for k-fold cross validation
 n_folds = 11
+
+# number of epochs for training
+epochs = 15
 
 # timestamp at the beginning of loading data and processing so that all folds have a common name
 timestamp = datetime.datetime.now()
@@ -251,9 +255,16 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
-        # instantiate model
-        with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016(input_shape=im_train.shape[1:])
+        # # instantiate model
+        # with tf.device('/cpu:0'):
+        #     model = models.fcn_sherrah2016(input_shape=im_train.shape[1:])
+
+        # load pre-trained model
+        # model = cytometer.models.fcn_sherrah2016(input_shape=im_train.shape[1:])
+        weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
+                                                                                          str(i_fold) + '.h5')
+        weights_filename = os.path.join(saved_models_dir, weights_filename)
+        model = keras.models.load_model(weights_filename)
 
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
@@ -263,7 +274,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
         tic = datetime.datetime.now()
         parallel_model.fit(im_train, dmap_train, sample_weight=mask_train,
                            validation_data=(im_test, dmap_test, mask_test),
-                           batch_size=4, epochs=6)
+                           batch_size=4, epochs=epochs, initial_epoch=6)
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
@@ -280,7 +291,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
         tic = datetime.datetime.now()
         model.fit(im_train, dmap_train, sample_weight=mask_train,
                   validation_data=(im_test, dmap_test, mask_test),
-                  batch_size=4, epochs=6)
+                  batch_size=4, epochs=epochs)
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
