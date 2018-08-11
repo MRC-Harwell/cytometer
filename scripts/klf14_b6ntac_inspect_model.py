@@ -15,7 +15,7 @@ import pysto.imgproc as pystoim
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -209,22 +209,24 @@ for fold_i, model_file in enumerate(model_files):
 log_filename = os.path.join(saved_models_dir, model_name.replace('*.h5', '.log'))
 
 if os.path.isfile(log_filename):
+
     # read Keras output
     df_list = cytometer.data.read_keras_training_output(log_filename)
 
-    # plot metrics
+    # plot metrics with every iteration
     plt.clf()
-    plt.subplot(311)
-    loss_plot, = plt.plot(df.index, df.loss, label='loss')
-    #epoch_starts = np.where(np.diff(np.concatenate(([0, ], df.epoch))))[0]
-    epoch_ends = np.where(np.diff(df.epoch))[0]
-    epoch_starts_plot1, = plt.plot(epoch_ends, df.loss[epoch_ends], 'ro-', label='epoch ends')
-    plt.legend(handles=[loss_plot, epoch_starts_plot1])
-    plt.subplot(312)
-    mae_plot, = plt.plot(df.index, df.mean_absolute_error, label='mae')
-    epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro-', label='epoch ends')
-    plt.legend(handles=[mae_plot, epoch_ends_plot2])
-    plt.subplot(313)
-    mse_plot, = plt.plot(df.index, df.mean_squared_error, label='mse')
-    epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_squared_error[epoch_ends], 'ro-', label='epoch ends')
-    plt.legend(handles=[mse_plot, epoch_ends_plot2])
+    for df in df_list:
+        plt.subplot(311)
+        loss_plot, = plt.semilogy(df.index, df.loss, label='loss')
+        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
+        epoch_starts_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
+        plt.legend(handles=[loss_plot, epoch_starts_plot1])
+        plt.subplot(312)
+        mae_plot, = plt.semilogy(df.index, df.mean_absolute_error, label='mae')
+        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
+        plt.legend(handles=[mae_plot, epoch_ends_plot2])
+        plt.subplot(313)
+        mse_plot, = plt.semilogy(df.index, df.mean_squared_error, label='mse')
+        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.mean_squared_error[epoch_ends], 'ro', label='end of epoch')
+        plt.legend(handles=[mse_plot, epoch_ends_plot2])
+
