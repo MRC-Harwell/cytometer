@@ -12,9 +12,10 @@ import gc
 import glob
 import numpy as np
 import pysto.imgproc as pystoim
+import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -33,7 +34,7 @@ import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
 
 
-DEBUG = True
+DEBUG = False
 
 '''Load data
 '''
@@ -52,12 +53,22 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'
 
 # list of training images
-im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*.tif'))
+im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
 dmap_file_list = [x.replace('im_', 'dmap_') for x in im_file_list]
 mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
 
 # number of training images
 n_im = len(im_file_list)
+
+# load k-folds of the model
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+n_folds = len(model_files)
+
+# create k-fold splitting of data
+seed = 0
+random.seed(seed)
+idx = random.sample(range(n_im), n_im)
+idx_test_all = np.array_split(idx, n_folds)
 
 # load images
 im = cytometer.data.load_im_file_list_to_array(im_file_list)
@@ -85,37 +96,37 @@ if DEBUG:
         plt.imshow(pystoim.imfuse(a, b))
         plt.show()
 
-# remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
-dmap = dmap[:, 0:-1, 0:-1, :]
-mask = mask[:, 0:-1, 0:-1, :]
-im = im[:, 0:-1, 0:-1, :]
-
-# split images into smaller blocks to avoid GPU memory overflows
-_, im, _ = pystoim.block_split(im, nblocks=(1, 2, 2, 1))
-im = np.concatenate(im, axis=0)
-gc.collect()
-_, dmap, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
-dmap = np.concatenate(dmap, axis=0)
-gc.collect()
-_, mask, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
-mask = np.concatenate(mask, axis=0)
-gc.collect()
-
-if DEBUG:
-    for i in range(n_im):
-        print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im[i, :, :, :])
-        plt.subplot(222)
-        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
-        plt.subplot(223)
-        plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
-        plt.subplot(224)
-        a = im[i, :, :, :]
-        b = mask[i, :, :, :].reshape(mask.shape[1:3])
-        plt.imshow(pystoim.imfuse(a, b))
-        plt.show()
+# # remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
+# dmap = dmap[:, 0:-1, 0:-1, :]
+# mask = mask[:, 0:-1, 0:-1, :]
+# im = im[:, 0:-1, 0:-1, :]
+#
+# # split images into smaller blocks to avoid GPU memory overflows
+# _, im, _ = pystoim.block_split(im, nblocks=(1, 2, 2, 1))
+# im = np.concatenate(im, axis=0)
+# gc.collect()
+# _, dmap, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
+# dmap = np.concatenate(dmap, axis=0)
+# gc.collect()
+# _, mask, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
+# mask = np.concatenate(mask, axis=0)
+# gc.collect()
+#
+# if DEBUG:
+#     for i in range(n_im):
+#         print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
+#         plt.clf()
+#         plt.subplot(221)
+#         plt.imshow(im[i, :, :, :])
+#         plt.subplot(222)
+#         plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+#         plt.subplot(223)
+#         plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+#         plt.subplot(224)
+#         a = im[i, :, :, :]
+#         b = mask[i, :, :, :].reshape(mask.shape[1:3])
+#         plt.imshow(pystoim.imfuse(a, b))
+#         plt.show()
 
 '''Receptive field
 
@@ -153,34 +164,42 @@ for i, model_file in enumerate(model_files):
 '''Load model and visualise results
 '''
 
-for model_file in model_files:
+for fold_i, model_file in enumerate(model_files):
 
     # load model
-    model = keras.models.load_model(model_file)
+    model = cytometer.models.fcn_sherrah2016(input_shape=im.shape[1:])
+    model.load_weights(model_file)
+
+    # select test data (data not used for training)
+    idx_test = idx_test_all[fold_i]
+    im_test = im[idx_test, ...]
+    dmap_test = dmap[idx_test, ...]
+    mask_test = mask[idx_test, ...]
 
     # visualise results
     if DEBUG:
-        for i in range(im.shape[0]):
+        for i in range(im_test.shape[0]):
 
             # run image through network
-            dmap_pred = model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
+            dmap_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
             plt.clf()
             plt.subplot(221)
-            plt.imshow(im[i, :, :, :])
+            plt.imshow(im_test[i, :, :, :])
             plt.title('histology')
             plt.subplot(222)
-            plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+            plt.imshow(dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3]))
             plt.title('ground truth dmap')
             plt.subplot(223)
-            plt.imshow(dmap_pred.reshape(dmap_pred.shape[1:3]))
+            plt.imshow(dmap_test_pred.reshape(dmap_test_pred.shape[1:3]))
             plt.title('estimated dmap')
             plt.subplot(224)
-            a = dmap[i, :, :, :].reshape(dmap.shape[1:3])
-            b = dmap_pred.reshape(dmap.shape[1:3])
-            plt.imshow(b - a)
+            a = dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3])
+            b = dmap_test_pred.reshape(dmap_test.shape[1:3])
+            c = mask_test[i, :, :, 0]
+            plt.imshow(np.abs((b - a)) * c)
             plt.colorbar()
-            plt.title('error (est - gt)')
+            plt.title('error |est - gt| * mask')
             plt.show()
 
 
