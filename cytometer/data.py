@@ -156,7 +156,7 @@ def read_keras_training_output(filename):
     """
 
     # ignore all lines until we get to the first "Epoch"
-    data_all = []
+    df_all = []
     file = open(filename, 'r')
     for line in file:
         if line[0:5] == 'Epoch':
@@ -165,22 +165,27 @@ def read_keras_training_output(filename):
             break
 
     # loop until the end of the file
-    for line in file:
+    while True:
 
-        if 'Epoch 1/' in line:  # start of new training
+        if ('Epoch 1/' in line) or not line:  # start of new training or end of file
 
-            # convert list of dictionaries to dataframe
-            df = pd.DataFrame(data)
+            if len(data) > 0:
+                # convert list of dictionaries to dataframe
+                df = pd.DataFrame(data)
 
-            # reorder columns so that epochs go first
-            df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
+                # reorder columns so that epochs go first
+                df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
 
-            # add dataframe to output list of dataframes
-            data_all.append(data)
+                # add dataframe to output list of dataframes
+                df_all.append(df)
 
-            # reset the variables for the next training
-            data = []
-            epoch = 1
+                if not line:
+                    # if we are at the end of the file, we stop reading
+                    break
+                else:
+                    # reset the variables for the next training
+                    data = []
+                    epoch = 1
 
         elif 'Epoch' in line:  # new epoch of current training
 
@@ -234,18 +239,12 @@ def read_keras_training_output(filename):
             # add the dictionary to the output list
             data.append(line)
 
-    # save the last training block output
+        # read the next line
+        line = file.readline()
 
-    # convert list of dictionaries to dataframe
-    df = pd.DataFrame(data)
-
-    # reorder columns so that epochs go first
-    df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
-
-    # add dataframe to output list of dataframes
-    data_all.append(data)
+    # we have finished reading the log file
 
     # close the file
     file.close()
 
-    return data_all
+    return df_all
