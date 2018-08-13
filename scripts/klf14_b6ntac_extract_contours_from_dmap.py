@@ -22,17 +22,18 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 0.8
 set_session(tf.Session(config=config))
 
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
 # function
-import keras.models
+import keras.backend as K
 import cytometer.data
 import cytometer.models as models
 import matplotlib.pyplot as plt
-from receptivefield.keras import KerasReceptiveField
 
+# specify data format as (n, row, col, channel)
+K.set_image_data_format('channels_last')
 
 DEBUG = False
 
@@ -62,7 +63,7 @@ mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
 n_im = len(im_file_list)
 
 # load k-folds of the model
-model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+model_files = np.sort(glob.glob(os.path.join(saved_models_dir, model_name)))
 n_folds = len(model_files)
 
 # create k-fold splitting of data
@@ -163,10 +164,21 @@ for fold_i, model_file in enumerate(model_files):
                 input("Press Enter to continue...")
 
 
-            # threshold image to extract contours
-            kernel = np.ones((5, 5), np.uint8)
-            contours = cv2.morphologyEx(dmap_test_pred[0, :, :, 0], cv2.MORPH_BLACKHAT, kernel)
-            #contours = np.array(dmap_test_pred[0, :, :, 0] < 20, dtype=np.float)
+            from skimage.segmentation import morphological_geodesic_active_contour
+            contours = morphological_geodesic_active_contour(dmap_test_pred[0, :, :, 0],
+                                                             iterations=10000,
+                                                             init_level_set='checkerboard',
+                                                             smoothing=4,
+                                                             balloon=0.0)
+
+            contours = cv2.Laplacian(dmap_test_pred[0, :, :, 0], cv2.CV_32F)
+
+            plt.clf()
+            plt.subplot(211)
+            plt.imshow(dmap_test_pred.reshape(dmap_test_pred.shape[1:3]))
+            plt.subplot(212)
+            plt.imshow(contours)
+
 
             if DEBUG:
                 plt.clf()
