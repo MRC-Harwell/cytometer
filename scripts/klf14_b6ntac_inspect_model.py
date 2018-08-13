@@ -50,7 +50,8 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 # model_name = '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5'
 # model_name = '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5'
 # model_name = '2018-08-06T18_02_55.864612_fcn_sherrah2016.h5'
-model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'
+# model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'
+model_name = '2018-08-11T23_10_03.296260_fcn_sherrah2016*.h5'
 
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
@@ -96,38 +97,6 @@ if DEBUG:
         plt.imshow(pystoim.imfuse(a, b))
         plt.show()
 
-# # remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
-# dmap = dmap[:, 0:-1, 0:-1, :]
-# mask = mask[:, 0:-1, 0:-1, :]
-# im = im[:, 0:-1, 0:-1, :]
-#
-# # split images into smaller blocks to avoid GPU memory overflows
-# _, im, _ = pystoim.block_split(im, nblocks=(1, 2, 2, 1))
-# im = np.concatenate(im, axis=0)
-# gc.collect()
-# _, dmap, _ = pystoim.block_split(dmap, nblocks=(1, 2, 2, 1))
-# dmap = np.concatenate(dmap, axis=0)
-# gc.collect()
-# _, mask, _ = pystoim.block_split(mask, nblocks=(1, 2, 2, 1))
-# mask = np.concatenate(mask, axis=0)
-# gc.collect()
-#
-# if DEBUG:
-#     for i in range(n_im):
-#         print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
-#         plt.clf()
-#         plt.subplot(221)
-#         plt.imshow(im[i, :, :, :])
-#         plt.subplot(222)
-#         plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
-#         plt.subplot(223)
-#         plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
-#         plt.subplot(224)
-#         a = im[i, :, :, :]
-#         b = mask[i, :, :, :].reshape(mask.shape[1:3])
-#         plt.imshow(pystoim.imfuse(a, b))
-#         plt.show()
-
 '''Receptive field
 
 '''
@@ -166,15 +135,28 @@ for i, model_file in enumerate(model_files):
 
 for fold_i, model_file in enumerate(model_files):
 
-    # load model
-    model = cytometer.models.fcn_sherrah2016(input_shape=im.shape[1:])
-    model.load_weights(model_file)
-
     # select test data (data not used for training)
     idx_test = idx_test_all[fold_i]
     im_test = im[idx_test, ...]
     dmap_test = dmap[idx_test, ...]
     mask_test = mask[idx_test, ...]
+
+    # split data into blocks
+    dmap_test = dmap_test[:, 0:-1, 0:-1, :]
+    mask_test = mask_test[:, 0:-1, 0:-1, :]
+    im_test = im_test[:, 0:-1, 0:-1, :]
+
+    _, dmap_test, _ = pystoim.block_split(dmap_test, nblocks=(1, 2, 2, 1))
+    _, im_test, _ = pystoim.block_split(im_test, nblocks=(1, 2, 2, 1))
+    _, mask_test, _ = pystoim.block_split(mask_test, nblocks=(1, 2, 2, 1))
+
+    dmap_test = np.concatenate(dmap_test, axis=0)
+    im_test = np.concatenate(im_test, axis=0)
+    mask_test = np.concatenate(mask_test, axis=0)
+
+    # load model
+    model = cytometer.models.fcn_sherrah2016(input_shape=im_test.shape[1:])
+    model.load_weights(model_file)
 
     # visualise results
     if DEBUG:
@@ -186,7 +168,7 @@ for fold_i, model_file in enumerate(model_files):
             plt.clf()
             plt.subplot(221)
             plt.imshow(im_test[i, :, :, :])
-            plt.title('histology')
+            plt.title('histology, i = ' + str(i))
             plt.subplot(222)
             plt.imshow(dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3]))
             plt.title('ground truth dmap')
@@ -201,6 +183,8 @@ for fold_i, model_file in enumerate(model_files):
             plt.colorbar()
             plt.title('error |est - gt| * mask')
             plt.show()
+
+            input("Press Enter to continue...")
 
 
 '''Plot metrics and convergence
@@ -222,11 +206,76 @@ if os.path.isfile(log_filename):
         epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
         plt.legend(handles=[loss_plot, epoch_ends_plot1])
         plt.subplot(312)
-        mae_plot, = plt.semilogy(df.index, df.mean_absolute_error, label='mae')
-        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
+        mae_plot, = plt.plot(df.index, df.mean_absolute_error, label='mae')
+        epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
         plt.legend(handles=[mae_plot, epoch_ends_plot2])
         plt.subplot(313)
         mse_plot, = plt.semilogy(df.index, df.mean_squared_error, label='mse')
         epoch_ends_plot2, = plt.semilogy(epoch_ends, df.mean_squared_error[epoch_ends], 'ro', label='end of epoch')
         plt.legend(handles=[mse_plot, epoch_ends_plot2])
+
+
+    # plot metrics at end of each epoch
+    plt.clf()
+    for df in df_list:
+        plt.subplot(311)
+        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
+        epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], '-', label='loss')
+        plt.subplot(312)
+        epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], '-', label='mae')
+        plt.subplot(313)
+        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.mean_squared_error[epoch_ends], '-', label='mse')
+
+    # concatenate metrics from all folds
+    epoch_ends_all = np.empty((0,))
+    loss_all = np.empty((0,))
+    mae_all = np.empty((0,))
+    mse_all = np.empty((0,))
+    for df in df_list:
+        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch) - 1, ]))
+        epoch_ends_all = np.concatenate((epoch_ends_all, epoch_ends))
+        loss_all = np.concatenate((loss_all, df.loss[epoch_ends]))
+        mae_all = np.concatenate((mae_all, df.mean_absolute_error[epoch_ends]))
+        mse_all = np.concatenate((mse_all, df.mean_squared_error[epoch_ends]))
+        print(str(len(df.mean_squared_error[epoch_ends])))
+
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import Matern
+
+    # Instanciate a Gaussian Process model
+    kernel = Matern(nu=1.5)
+    gp_loss = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=1,
+                                       normalize_y=True)
+    gp_mae = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=1,
+                                      normalize_y=True)
+    gp_mse = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=10,
+                                      normalize_y=True)
+
+    # Fit to data using Maximum Likelihood Estimation of the parameters
+    gp_loss.fit(epoch_ends_all.reshape(-1, 1), loss_all.reshape(-1, 1))
+    gp_mae.fit(epoch_ends_all.reshape(-1, 1), mae_all.reshape(-1, 1))
+    gp_mse.fit(epoch_ends_all.reshape(-1, 1), mse_all.reshape(-1, 1))
+
+    # Make the prediction on the meshed x-axis (ask for MSE as well)
+    xx = np.array(range(460, int(np.max(epoch_ends_all)))).reshape(-1, 1)
+    loss_pred, loss_sigma = gp_loss.predict(xx, return_std=True)
+    mae_pred, mae_sigma = gp_mae.predict(xx, return_std=True)
+    mse_pred, mse_sigma = gp_mse.predict(xx, return_std=True)
+
+    # Plot the function, the prediction and the 95% confidence interval based on
+    # the MSE
+    plt.clf()
+    plt.subplot(311)
+    plt.plot(xx, loss_pred, 'k', label='loss')
+    plt.plot(epoch_ends_all, loss_all, 'k.', markersize=10, label=u'Observations')
+    plt.ylabel('loss')
+    plt.subplot(312)
+    plt.plot(xx, mae_pred, 'k', label='mae')
+    plt.plot(epoch_ends_all, mae_all, 'k.', markersize=10, label=u'Observations')
+    plt.ylabel('mae')
+    plt.subplot(313)
+    plt.plot(xx, mse_pred, 'k', label='mse')
+    plt.plot(epoch_ends_all, mse_all, 'k.', markersize=10, label=u'Observations')
+    plt.ylabel('mse')
+    plt.xlabel('iteration')
 
