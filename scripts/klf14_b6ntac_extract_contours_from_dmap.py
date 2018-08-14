@@ -13,6 +13,7 @@ import numpy as np
 import pysto.imgproc as pystoim
 import random
 import cv2
+import pymesh
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -126,6 +127,11 @@ for fold_i, model_file in enumerate(model_files):
     im_test = np.concatenate(im_test, axis=0)
     mask_test = np.concatenate(mask_test, axis=0)
 
+    # create mesh of the images
+    box = pymesh.meshutils.generate_box_mesh(box_min=[1, 1], box_max=[5, 5], num_samples=5,
+                                             keep_symmetry=True, subdiv_order=0,
+                                             using_simplex=True)
+
     # load model
     model = cytometer.models.fcn_sherrah2016(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
@@ -159,7 +165,6 @@ for fold_i, model_file in enumerate(model_files):
                 plt.imshow(np.abs((b - a)) * c)
                 plt.colorbar()
                 plt.title('error |est - gt| * mask')
-                plt.show()
 
                 input("Press Enter to continue...")
 
@@ -172,6 +177,9 @@ for fold_i, model_file in enumerate(model_files):
                                                              balloon=0.0)
 
             contours = cv2.Laplacian(dmap_test_pred[0, :, :, 0], cv2.CV_32F)
+
+            import CGAL
+            from CGAL.CGAL_Point_set_processing_3 import jet_estimate_normals
 
             plt.clf()
             plt.subplot(211)
