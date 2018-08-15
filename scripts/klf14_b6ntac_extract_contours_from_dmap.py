@@ -13,7 +13,7 @@ import numpy as np
 import pysto.imgproc as pystoim
 import random
 import cv2
-import pymesh
+from scipy.ndimage.morphology import binary_dilation
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -102,6 +102,64 @@ if DEBUG:
 '''Load model and estimate dmap
 '''
 
+def inverse_dmap(dmap):
+
+    inv_dmap = np.zeros(shape=dmap.shape, dtype=np.float32)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(dmap)
+
+    # loop pixels in dmap
+    for ij in range(dmap.size):
+
+        # row, column indices
+        i, j = np.unravel_index(ij, dmap.shape)
+
+        # skip pixels where the distance estimate is saturated
+        if dmap[i, j] >= 72:
+            continue
+
+        # circle radius is the distance value in the dmap
+        radius = dmap[i, j]
+
+        # circle's centre point is the middle of the pixel (Note: i,j -> y,x)
+        center = (j, i)
+
+        aux = np.zeros(shape=dmap.shape, dtype=np.float32)
+        inv_dmap += cv2.circle(aux, center=center, radius=radius, color=1.0)
+
+        if DEBUG:
+            plt.subplot(222)
+            plt.imshow(aux)
+
+    # plot result
+    if DEBUG:
+        plt.subplot(222)
+        plt.imshow(inv_dmap)
+
+        foo = plt.hist(inv_dmap.flatten())
+        d = foo[0]
+        bins = (foo[1][1:] + foo[1][:-1])/2
+        plt.cla()
+        plt.semilogy(bins, d)
+
+    # threshold the inverse dmap
+    inv_max = np.max(inv_dmap)
+    bgdModel = np.zeros((1, 65), np.float64)
+    fgdModel = np.zeros((1, 65), np.float64)
+    foo = inv_dmap / np.max(inv_dmap)
+    # foo = foo.astype(np.uint8)
+    # dst = cv2.adaptiveThreshold(foo, maxValue=1, adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,
+    #                             thresholdType=cv2.THRESH_BINARY,
+    #                             blockSize=67, C=0)
+    plt.subplot(224)
+    plt.cla()
+    plt.imshow(foo > .2)
+
+
+
 # debug
 fold_i = 0
 model_file = model_files[fold_i]
@@ -136,6 +194,7 @@ for fold_i, model_file in enumerate(model_files):
     model = cytometer.models.fcn_sherrah2016(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
 
+
     # visualise results
     if DEBUG:
 
@@ -146,6 +205,7 @@ for fold_i, model_file in enumerate(model_files):
 
             # run image through network
             dmap_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
+            dmap_test_pred = dmap_test_pred.reshape(dmap_test_pred.shape[1:3])
 
             if DEBUG:
                 plt.clf()
@@ -156,17 +216,19 @@ for fold_i, model_file in enumerate(model_files):
                 plt.imshow(dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3]))
                 plt.title('ground truth dmap')
                 plt.subplot(223)
-                plt.imshow(dmap_test_pred.reshape(dmap_test_pred.shape[1:3]))
+                plt.imshow(dmap_test_pred)
                 plt.title('estimated dmap')
                 plt.subplot(224)
                 a = dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3])
-                b = dmap_test_pred.reshape(dmap_test.shape[1:3])
+                b = dmap_test_pred
                 c = mask_test[i, :, :, 0]
                 plt.imshow(np.abs((b - a)) * c)
                 plt.colorbar()
                 plt.title('error |est - gt| * mask')
 
                 input("Press Enter to continue...")
+
+            mask = np.zeros(shape=)
 
 
             from skimage.segmentation import morphological_geodesic_active_contour
