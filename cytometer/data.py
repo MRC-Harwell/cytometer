@@ -80,15 +80,15 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
         # load segmentation
         seg_aux = np.array(Image.open(seg_file))
 
+        # copy segmentation slice to output
+        seg[i, :, :] = seg_aux
+
         # the mask is 0 where we have background pixels, and 1 everywhere else (foreground)
         mask[i, :, :] = seg_aux != background_label
 
         # the watershed algorithm sets the background pixels to 1, but in order to compute distance maps, we want them
         # to be 0, so that they become boundaries
         seg_aux[seg_aux == background_label] = 0
-
-        # copy segmentation slice to segmentation array
-        seg[i, :, :] = seg_aux
 
         # plot image
         if DEBUG:
