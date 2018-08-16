@@ -1,3 +1,15 @@
+"""
+scripts/klf14_b6ntac_generate_augmented_training_images.py
+
+Script to generate augmented training data for the klf14_b6ntac experiments.
+
+This script loads histology windows, masks, distance transformations and labels, and generates
+random rotations and scale changes (consistent between corresponding data), and saves them to
+file for later use in training.
+
+Masks:
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
@@ -69,6 +81,12 @@ im /= 255
 # number of training images
 n_im = im.shape[0]
 
+# set all inside pixels of segmentation to same value
+seg = (seg < 2).astype(np.uint8)
+
+# dilate contours
+for i in range(n_im):
+    seg[i, :, :, 0] = cv2.dilate(seg[i, :, :, 0], kernel=np.ones(shape=(3, 3)))
 
 '''Data augmentation
 '''
@@ -93,20 +111,19 @@ for i, base_file in enumerate(im_file_list):
     shutil.copy2(base_file, im_file)
 
     # save distance transforms (note: we have to save as float mode)
-    im_out = dmap[i, :, :, :].reshape(dmap.shape[1:3])
+    im_out = dmap[i, :, :, 0]
     im_out = Image.fromarray(im_out, mode='F')
     im_out.save(dmap_file)
 
     # save mask (note: we can save as black and white 1 byte)
-    im_out = mask[i, :, :, :].reshape(mask.shape[1:3])
+    im_out = mask[i, :, :, 0]
     im_out = im_out.astype(np.uint8)
     im_out = Image.fromarray(im_out, mode='L')
     im_out.save(mask_file)
 
-    # save labels (note: we can save as uint32)
-    im_out = seg[i, :, :, :].reshape(seg.shape[1:3])
-    im_out = im_out.astype(np.uint32)
-    im_out = Image.fromarray(im_out, mode='I')
+    # set all inside pixels of segmentation to same value and save labels (note: we can save as uint32)
+    im_out = seg[i, :, :, 0]
+    im_out = Image.fromarray(im_out.astype(np.uint32), mode='I')
     im_out.save(seg_file)
 
 
@@ -140,7 +157,7 @@ for seed in range(augment_factor - 1):
     im_augmented = im_datagen.flow(im, seed=seed, shuffle=False, batch_size=n_im).next()
     mask_augmented = np.round(mask_datagen.flow(mask, seed=seed, shuffle=False, batch_size=n_im).next())
     seg_augmented = np.round(seg_datagen.flow(seg, seed=seed, shuffle=False, batch_size=n_im).next())
-    seg_augmented = seg_augmented.astype(np.uint32)
+    seg_augmented = seg_augmented.astype(np.uint8)
 
     for i in range(n_im):
 
@@ -163,24 +180,25 @@ for seed in range(augment_factor - 1):
         # transfer result to mask array
         mask_augmented[i, :, :, :] = mask_aux.reshape(mask_aux.shape + (1,))
 
-        # the only thing we need from the labels is to set contour pixels to 1
-        seg_augmented[i, :, :, :] = seg_augmented[i, :, :, :] == 0
+        # we don't need to clear the border artifact from seg, because the mask will make it ignored anyway
 
         if DEBUG:
             plt.clf()
             plt.subplot(321)
             plt.imshow(im_augmented[i, :, :, :])
             plt.subplot(322)
-            plt.imshow(dmap_augmented[i, :, :, :].reshape(dmap_augmented.shape[1:3]))
+            plt.imshow(dmap_augmented[i, :, :, 0])
             plt.subplot(323)
-            plt.imshow(mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3]))
+            plt.imshow(mask_augmented[i, :, :, 0])
             plt.subplot(324)
             a = im_augmented[i, :, :, :]
-            b = mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3])
+            b = mask_augmented[i, :, :, 0]
             plt.imshow(pystoim.imfuse(a, b))
             plt.subplot(325)
             plt.imshow(seg_augmented[i, :, :, 0])
-            plt.show()
+            plt.subplot(326)
+            plt.imshow(pystoim.imfuse(mask_augmented[i, :, :, 0],
+                                      seg_augmented[i, :, :, 0]))
 
         # create filenames based on the original foo.tif, so that we have im_seed_001_foo.tif, dmap_seed_001_foo.tif,
         # mask_seed_001_foo.tif, where seed_001 means data augmented using seed=1
@@ -192,25 +210,25 @@ for seed in range(augment_factor - 1):
         seg_file = os.path.join(training_augmented_dir, 'seg_seed_' + str(seed).zfill(3) + '_' + base_name)
 
         # save transformed image
-        im_out = im_augmented[i, :, :, :].reshape(im_augmented.shape[1:4])
+        im_out = im_augmented[i, :, :, :]
         im_out *= 255
         im_out = im_out.astype(np.uint8)
         im_out = Image.fromarray(im_out, mode='RGB')
         im_out.save(im_file)
 
         # save distance transforms (note: we have to save as float mode)
-        im_out = dmap_augmented[i, :, :, :].reshape(dmap_augmented.shape[1:3])
+        im_out = dmap_augmented[i, :, :, 0]
         im_out = Image.fromarray(im_out, mode='F')
         im_out.save(dmap_file)
 
         # save mask (note: we can save as black and white 1 byte)
-        im_out = mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3])
+        im_out = mask_augmented[i, :, :, 0]
         im_out = im_out.astype(np.uint8)
         im_out = Image.fromarray(im_out, mode='L')
         im_out.save(mask_file)
 
         # save labels (note: we can save as uint32)
-        im_out = seg_augmented[i, :, :, :].reshape(seg_augmented.shape[1:3])
+        im_out = seg_augmented[i, :, :, 0]
         im_out = im_out.astype(np.uint32)
         im_out = Image.fromarray(im_out, mode='I')
         im_out.save(seg_file)
