@@ -1,9 +1,16 @@
+"""
+cytometer/data.py
+
+Functions to load, save and pre-process data related to the cytometer project.
+"""
+
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 import pandas as pd
 import ast
+from mahotas import bwperim
 
 DEBUG = False
 
@@ -80,14 +87,24 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
         # load segmentation
         seg_aux = np.array(Image.open(seg_file))
 
+        # watershed only labels contours between pairs of cells, not where the cell touches the background.
+        # Thus, we compute the missing part of the contours between cells and background
+        im_background = seg_aux == 1  # background points in the labels
+        im_background = bwperim(im_background, n=8, mode='ignore')  # perimeter of background areas
+        im_background[0:2, :] = 0  # remove perimeter artifact on the borders of the image
+        im_background[-2:, :] = 0
+        im_background[:, 0:2] = 0
+        im_background[:, -2:] = 0
+
+        seg_aux[im_background.astype(np.bool)] = 0  # add background contours to segmentation
+
         # copy segmentation slice to output
         seg[i, :, :] = seg_aux
 
         # the mask is 0 where we have background pixels, and 1 everywhere else (foreground)
         mask[i, :, :] = seg_aux != background_label
 
-        # the watershed algorithm sets the background pixels to 1, but in order to compute distance maps, we want them
-        # to be 0, so that they become boundaries
+        # add the background pixels to the boundaries
         seg_aux[seg_aux == background_label] = 0
 
         # plot image
