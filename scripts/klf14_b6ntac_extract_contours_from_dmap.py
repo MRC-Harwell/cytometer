@@ -185,11 +185,6 @@ for fold_i, model_file in enumerate(model_files):
     im_test = np.concatenate(im_test, axis=0)
     mask_test = np.concatenate(mask_test, axis=0)
 
-    # create mesh of the images
-    box = pymesh.meshutils.generate_box_mesh(box_min=[1, 1], box_max=[5, 5], num_samples=5,
-                                             keep_symmetry=True, subdiv_order=0,
-                                             using_simplex=True)
-
     # load model
     model = cytometer.models.fcn_sherrah2016(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
