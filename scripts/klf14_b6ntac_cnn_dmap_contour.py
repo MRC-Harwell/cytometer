@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -263,7 +263,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # instantiate model
         with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016(input_shape=im_train.shape[1:])
+            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=im_train.shape[1:])
 
         # # load pre-trained model
         # # model = cytometer.models.fcn_sherrah2016(input_shape=im_train.shape[1:])
@@ -274,7 +274,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
+        parallel_model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'],
+                               sample_weight_mode='element')
 
         # checkpoint to save model after each epoch
         checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
@@ -282,8 +283,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(im_train, dmap_train, sample_weight=mask_train,
-                           validation_data=(im_test, dmap_test, mask_test),
+        parallel_model.fit(im_train, [dmap_train, seg_train], sample_weight=[mask_train, mask_train],
+                           validation_data=(im_test, [dmap_test, seg_test], [mask_test, mask_test]),
                            batch_size=4, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
