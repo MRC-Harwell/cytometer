@@ -11,6 +11,8 @@ from scipy import ndimage
 import pandas as pd
 import ast
 from mahotas import bwperim
+import pysto.imgproc as pystoim
+
 
 DEBUG = False
 
@@ -45,6 +47,31 @@ def load_im_file_list_to_array(file_list):
         im_out = im_out.reshape(im_out.shape + (1,))
 
     return im_out
+
+
+def split_images(x, nblocks):
+    """
+    Splits (images, rows, cols, channels) array along nrows and ncols into blocks.
+
+    If necessary, the array is trimmed off so that all blocks have the same size.
+    :param x: numpy.ndarray (images, rows, cols, channels)
+    :param nblocks: scalar with the number of blocks to split the data into.
+    :return: numpy.ndarray with x split into blocks
+    """
+
+    # compute how many whole blocks fit in the data, and what length of the image they cover
+    _, nrows, ncols, _ = x.shape
+    nrows = int(np.floor(nrows / nblocks) * nblocks)
+    ncols = int(np.floor(ncols / nblocks) * nblocks)
+
+    # remove the extra bit of the images so that we can split them into equal blocks
+    x = x[:, 0:nrows, 0:ncols, :]
+
+    # split images into smaller blocks to avoid GPU memory overflows in training
+    _, x, _ = pystoim.block_split(x, nblocks=(1, nblocks, nblocks, 1))
+    x = np.concatenate(x, axis=0)
+
+    return x
 
 
 def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
