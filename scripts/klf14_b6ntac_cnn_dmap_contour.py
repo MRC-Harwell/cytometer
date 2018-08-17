@@ -248,6 +248,11 @@ for i_fold, idx_test in enumerate(idx_test_all):
     function
     '''
 
+    # filename to save model to
+    saved_model_filename = os.path.join(saved_models_dir, timestamp.isoformat() +
+                                        '_fcn_sherrah2016_fold_' + str(i_fold) + '.h5')
+    saved_model_filename = saved_model_filename.replace(':', '_')
+
     # list all CPUs and GPUs
     device_list = K.get_session().list_devices()
 
@@ -271,11 +276,16 @@ for i_fold, idx_test in enumerate(idx_test_all):
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
         parallel_model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
 
+        # checkpoint to save model after each epoch
+        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                       verbose=1, save_best_only=True)
+
         # train model
         tic = datetime.datetime.now()
         parallel_model.fit(im_train, dmap_train, sample_weight=mask_train,
                            validation_data=(im_test, dmap_test, mask_test),
-                           batch_size=4, epochs=epochs, initial_epoch=0)
+                           batch_size=4, epochs=epochs, initial_epoch=0,
+                           callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
@@ -297,9 +307,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
         print('Training duration: ' + str(toc - tic))
 
     # save result (note, we save the template model, not the multiparallel object)
-    saved_model_filename = os.path.join(saved_models_dir, timestamp.isoformat() +
-                                        '_fcn_sherrah2016_fold_' + str(i_fold) + '.h5')
-    saved_model_filename = saved_model_filename.replace(':', '_')
     model.save(saved_model_filename)
 
 # if we ran the script with nohup in linux, the output is in file nohup.out.
