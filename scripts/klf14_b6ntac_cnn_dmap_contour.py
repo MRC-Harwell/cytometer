@@ -52,7 +52,7 @@ nblocks = 2
 n_folds = 11
 
 # number of epochs for training
-epochs = 15
+epochs = 10
 
 # timestamp at the beginning of loading data and processing so that all folds have a common name
 timestamp = datetime.datetime.now()
