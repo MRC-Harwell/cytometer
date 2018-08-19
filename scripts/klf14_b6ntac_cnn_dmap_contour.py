@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -34,7 +34,7 @@ import tensorflow as tf
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
 set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
@@ -274,7 +274,9 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'],
+        parallel_model.compile(loss={'regression_output': 'mse',
+                                     'classification_output': 'binary_crossentropy'},
+                               optimizer='Adadelta', metrics=['mse', 'mae'],
                                sample_weight_mode='element')
 
         # checkpoint to save model after each epoch
