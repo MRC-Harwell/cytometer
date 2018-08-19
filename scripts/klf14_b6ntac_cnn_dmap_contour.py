@@ -82,7 +82,7 @@ idx_test_all = np.array_split(idx, n_folds)
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate(idx_test_all[0]):
+for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # the training dataset is all images minus the test ones
     idx_train = list(set(range(n_orig_im)) - set(idx_test))
