@@ -81,7 +81,8 @@ idx_test_all = np.array_split(idx, n_folds)
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
-for i_fold, idx_test in enumerate(idx_test_all):
+# for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate(idx_test_all[0]):
 
     # the training dataset is all images minus the test ones
     idx_train = list(set(range(n_orig_im)) - set(idx_test))
@@ -276,6 +277,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
         parallel_model.compile(loss={'regression_output': 'mse',
                                      'classification_output': 'binary_crossentropy'},
+                               loss_weights={'regression_output': 40.0,
+                                             'classification_output': 1.0},
                                optimizer='Adadelta', metrics=['mse', 'mae'],
                                sample_weight_mode='element')
 
