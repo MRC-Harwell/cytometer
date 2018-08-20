@@ -88,7 +88,7 @@ mask_split = np.concatenate(mask_blocks, axis=0)
 '''
 
 # declare network model
-model = models.fcn_sherrah2016(input_shape=im_split.shape[1:])
+model = models.fcn_sherrah2016_regression(input_shape=im_split.shape[1:])
 #model = models.fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape=im_split.shape[1:])
 #model.load_weights(os.path.join(saved_models_dir, '2018-07-13T12:53:06.071299_basic_9_conv_8_bnorm_3_maxpool_binary_classifier.h5'))
 

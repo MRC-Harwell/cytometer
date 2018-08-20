@@ -257,10 +257,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # # instantiate model
         # with tf.device('/cpu:0'):
-        #     model = models.fcn_sherrah2016(input_shape=im_train.shape[1:])
+        #     model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
 
         # load pre-trained model
-        # model = cytometer.models.fcn_sherrah2016(input_shape=im_train.shape[1:])
+        # model = cytometer.models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
         weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
                                                                                           str(i_fold) + '.h5')
         weights_filename = os.path.join(saved_models_dir, weights_filename)
@@ -282,7 +282,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # instantiate model
         with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016(input_shape=im_train.shape[1:])
+            model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
 
         # compile model
         model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')

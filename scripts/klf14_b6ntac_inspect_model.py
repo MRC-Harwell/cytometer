@@ -111,7 +111,7 @@ for model_file in model_files:
 
     # estimate receptive field of the model
     def model_build_func(input_shape):
-        model = models.fcn_sherrah2016(input_shape=input_shape, for_receptive_field=True)
+        model = models.fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
         model.load_weights(model_file)
         return model
 
@@ -155,7 +155,7 @@ for fold_i, model_file in enumerate(model_files):
     mask_test = np.concatenate(mask_test, axis=0)
 
     # load model
-    model = cytometer.models.fcn_sherrah2016(input_shape=im_test.shape[1:])
+    model = cytometer.models.fcn_sherrah2016_regression(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
 
     # visualise results
