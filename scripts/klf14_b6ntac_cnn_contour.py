@@ -255,7 +255,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
         parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
-                               optimizer='Adadelta', metrics=['mse', 'mae'],
+                               optimizer='Adadelta', metrics=['binary_accuracy'],
                                sample_weight_mode='element')
 
         # checkpoint to save model after each epoch
@@ -266,7 +266,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         tic = datetime.datetime.now()
         parallel_model.fit(im_train, seg_train, sample_weight=mask_train,
                            validation_data=(im_test, seg_test, mask_test),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
+                           batch_size=4, epochs=epochs,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -275,16 +275,19 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
         # instantiate model
         with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
+            model = models.fcn_sherrah2016_contour(input_shape=im_train.shape[1:])
 
         # compile model
-        model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
+        model.compile(loss={'classification_output': 'binary_crossentropy'},
+                      optimizer='Adadelta', metrics=['binary_accuracy'],
+                      sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(im_train, dmap_train, sample_weight=mask_train,
-                  validation_data=(im_test, dmap_test, mask_test),
-                  batch_size=4, epochs=epochs)
+        model.fit(im_train, seg_train, sample_weight=mask_train,
+                  validation_data=(im_test, seg_test, mask_test),
+                  batch_size=4, epochs=epochs,
+                  callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
@@ -293,7 +296,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
 # if we ran the script with nohup in linux, the output is in file nohup.out.
 # Save it to saved_models directory (
-log_filename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016.log')
+log_filename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016_contour.log')
 log_filename = log_filename.replace(':', '_')
 nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
 if os.path.isfile(nohup_filename):
