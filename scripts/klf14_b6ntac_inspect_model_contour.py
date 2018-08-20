@@ -48,11 +48,12 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
 # model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'  # dmap regression trained with 6 epochs
 # model_name = '2018-08-11T23_10_03.296260_fcn_sherrah2016*.h5'  # dmap regression trained with 15 epochs
-model_name = '2018-08-20T12_15_24.854266_fcn_sherrah2016*.h5'  # First working network with dmap regression + contour classification
+# model_name = '2018-08-20T12_15_24.854266_fcn_sherrah2016*.h5'  # First working network with dmap regression + contour classification
+model_name = '2018-08-20T16_47_04.292112_fcn_sherrah2016_contour_fold_0.h5'
 
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
-dmap_file_list = [x.replace('im_', 'dmap_') for x in im_file_list]
+seg_file_list = [x.replace('im_', 'seg_') for x in im_file_list]
 mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
 
 # number of training images
@@ -70,13 +71,14 @@ idx_test_all = np.array_split(idx, n_folds)
 
 # load images
 im = cytometer.data.load_im_file_list_to_array(im_file_list)
-dmap = cytometer.data.load_im_file_list_to_array(dmap_file_list)
+seg = cytometer.data.load_im_file_list_to_array(seg_file_list)
 mask = cytometer.data.load_im_file_list_to_array(mask_file_list)
 
 # convert to float
 im = im.astype(np.float32)
 im /= 255
 mask = mask.astype(np.float32)
+seg = seg.astype(np.float32)
 
 if DEBUG:
     for i in range(n_im):
@@ -84,13 +86,15 @@ if DEBUG:
         plt.clf()
         plt.subplot(221)
         plt.imshow(im[i, :, :, :])
+        plt.title('Histology: ' + str(i))
         plt.subplot(222)
-        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+        plt.imshow(seg[i, :, :, 0] * mask[i, :, :, 0])
+        plt.title('Contour')
         plt.subplot(223)
-        plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        plt.imshow(mask[i, :, :, 0])
         plt.subplot(224)
         a = im[i, :, :, :]
-        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        b = mask[i, :, :, 0]
         plt.imshow(pystoim.imfuse(a, b))
 
 '''Receptive field
@@ -107,7 +111,7 @@ for model_file in model_files:
 
     # estimate receptive field of the model
     def model_build_func(input_shape):
-        model = models.fcn_sherrah2016_regression_and_classifier(input_shape=input_shape, for_receptive_field=True)
+        model = models.fcn_sherrah2016_contour(input_shape=input_shape, for_receptive_field=True)
         model.load_weights(model_file)
         return model
 
@@ -117,7 +121,7 @@ for model_file in model_files:
     rf_params = rf.compute(
         input_shape=(500, 500, 3),
         input_layer='input_image',
-        output_layers=['regression_output', 'classification_output'])
+        output_layers=['classification_output'])
     print(rf_params)
 
     receptive_field_size.append(rf._rf_params[0].size)
@@ -134,24 +138,24 @@ for fold_i, model_file in enumerate(model_files):
     # select test data (data not used for training)
     idx_test = idx_test_all[fold_i]
     im_test = im[idx_test, ...]
-    dmap_test = dmap[idx_test, ...]
+    seg_test = seg[idx_test, ...]
     mask_test = mask[idx_test, ...]
 
     # split data into blocks
-    dmap_test = dmap_test[:, 0:-1, 0:-1, :]
+    seg_test = seg_test[:, 0:-1, 0:-1, :]
     mask_test = mask_test[:, 0:-1, 0:-1, :]
     im_test = im_test[:, 0:-1, 0:-1, :]
 
-    _, dmap_test, _ = pystoim.block_split(dmap_test, nblocks=(1, 2, 2, 1))
+    _, seg_test, _ = pystoim.block_split(seg_test, nblocks=(1, 2, 2, 1))
     _, im_test, _ = pystoim.block_split(im_test, nblocks=(1, 2, 2, 1))
     _, mask_test, _ = pystoim.block_split(mask_test, nblocks=(1, 2, 2, 1))
 
-    dmap_test = np.concatenate(dmap_test, axis=0)
+    seg_test = np.concatenate(seg_test, axis=0)
     im_test = np.concatenate(im_test, axis=0)
     mask_test = np.concatenate(mask_test, axis=0)
 
     # load model
-    model = cytometer.models.fcn_sherrah2016_regression_and_classifier(input_shape=im_test.shape[1:])
+    model = cytometer.models.fcn_sherrah2016_contour(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
 
     # visualise results
@@ -159,27 +163,18 @@ for fold_i, model_file in enumerate(model_files):
         for i in range(im_test.shape[0]):
 
             # run image through network
-            dmap_test_pred, contour_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
+            seg_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
             plt.clf()
             plt.subplot(221)
             plt.imshow(im_test[i, :, :, :])
             plt.title('histology, i = ' + str(i))
             plt.subplot(222)
-            plt.imshow(dmap_test[i, :, :, 0])
-            plt.title('ground truth dmap')
+            plt.imshow(seg_test[i, :, :, 0] * mask_test[i, :, :, 0])
+            plt.title('ground truth contours')
             plt.subplot(223)
-            plt.imshow(contour_test_pred[0, :, :, 0])
+            plt.imshow(seg_test_pred[0, :, :, 0])
             plt.title('estimated contours')
-            plt.subplot(224)
-            plt.imshow(dmap_test_pred[0, :, :, 0])
-            plt.title('estimated dmap')
-            # a = dmap_test[i, :, :, 0]
-            # b = dmap_test_pred[0, :, :, 0]
-            # c = mask_test[i, :, :, 0]
-            # plt.imshow(np.abs((b - a)) * c)
-            # plt.colorbar()
-            # plt.title('error |est - gt| * mask')
 
             input("Press Enter to continue...")
 
