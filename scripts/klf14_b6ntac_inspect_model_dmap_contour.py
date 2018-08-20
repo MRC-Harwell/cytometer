@@ -46,14 +46,9 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
-# model_name = '2018-07-27T10_00_57.382521_fcn_sherrah2016.h5'
-# model_name = '2018-07-28T00_40_03.181899_fcn_sherrah2016.h5'
-# model_name = '2018-07-31T12_48_02.977755_fcn_sherrah2016.h5'
-# model_name = '2018-08-06T18_02_55.864612_fcn_sherrah2016.h5'
-# model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'
-# model_name = '2018-08-11T23_10_03.296260_fcn_sherrah2016*.h5'
-# model_name = '2018-08-17T02_41_05.613280_fcn_sherrah2016*.h5'
-model_name = '2018-08-18T17_31_19.886054_fcn_sherrah2016*.h5'
+# model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'  # dmap regression trained with 6 epochs
+# model_name = '2018-08-11T23_10_03.296260_fcn_sherrah2016*.h5'  # dmap regression trained with 15 epochs
+model_name = '2018-08-20T12_15_24.854266_fcn_sherrah2016*.h5'  # First working network with dmap regression + contour classification
 
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
@@ -208,13 +203,17 @@ if os.path.isfile(log_filename):
         epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
         plt.legend(handles=[loss_plot, epoch_ends_plot1])
         plt.subplot(312)
-        mae_plot, = plt.plot(df.index, df.mean_absolute_error, label='mae')
-        epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
-        plt.legend(handles=[mae_plot, epoch_ends_plot2])
+        regr_mae_plot, = plt.plot(df.index, df.regression_output_mean_absolute_error, label='regr mae')
+        clas_mae_plot, = plt.plot(df.index, df.classification_output_mean_absolute_error, label='clas mae')
+        regr_epoch_ends_plot2, = plt.plot(epoch_ends, df.regression_output_mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
+        clas_epoch_ends_plot2, = plt.plot(epoch_ends, df.classification_output_mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
+        plt.legend(handles=[regr_mae_plot, clas_mae_plot, epoch_ends_plot2])
         plt.subplot(313)
-        mse_plot, = plt.semilogy(df.index, df.mean_squared_error, label='mse')
-        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.mean_squared_error[epoch_ends], 'ro', label='end of epoch')
-        plt.legend(handles=[mse_plot, epoch_ends_plot2])
+        regr_mse_plot, = plt.semilogy(df.index, df.regression_output_mean_squared_error, label='regr mse')
+        clas_mse_plot, = plt.semilogy(df.index, df.classification_output_mean_squared_error, label='clas mse')
+        regr_epoch_ends_plot2, = plt.semilogy(epoch_ends, df.regression_output_mean_squared_error[epoch_ends], 'ro', label='end of epoch')
+        clas_epoch_ends_plot2, = plt.semilogy(epoch_ends, df.classification_output_mean_squared_error[epoch_ends], 'ro', label='end of epoch')
+        plt.legend(handles=[regr_mse_plot, clas_mse_plot, regr_epoch_ends_plot2])
 
 
     # plot metrics at end of each epoch
