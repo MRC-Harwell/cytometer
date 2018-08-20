@@ -53,6 +53,7 @@ model_name = '2018-08-20T12_15_24.854266_fcn_sherrah2016*.h5'  # First working n
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
 dmap_file_list = [x.replace('im_', 'dmap_') for x in im_file_list]
+seg_file_list = [x.replace('im_', 'seg_') for x in im_file_list]
 mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
 
 # number of training images
@@ -71,12 +72,14 @@ idx_test_all = np.array_split(idx, n_folds)
 # load images
 im = cytometer.data.load_im_file_list_to_array(im_file_list)
 dmap = cytometer.data.load_im_file_list_to_array(dmap_file_list)
+seg = cytometer.data.load_im_file_list_to_array(seg_file_list)
 mask = cytometer.data.load_im_file_list_to_array(mask_file_list)
 
 # convert to float
 im = im.astype(np.float32)
 im /= 255
 mask = mask.astype(np.float32)
+seg = seg.astype(np.float32)
 
 if DEBUG:
     for i in range(n_im):
@@ -84,14 +87,19 @@ if DEBUG:
         plt.clf()
         plt.subplot(221)
         plt.imshow(im[i, :, :, :])
+        plt.title('Histology: ' + str(i))
         plt.subplot(222)
-        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+        plt.imshow(seg[i, :, :, 0] * mask[i, :, :, 0])
+        plt.title('Labels')
         plt.subplot(223)
-        plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        plt.imshow(dmap[i, :, :, 0])
+        plt.title('Distance transformation')
         plt.subplot(224)
-        a = im[i, :, :, :]
-        b = mask[i, :, :, :].reshape(mask.shape[1:3])
-        plt.imshow(pystoim.imfuse(a, b))
+        plt.imshow(mask[i, :, :, 0])
+        plt.title('Mask')
+        # a = im[i, :, :, :]
+        # b = mask[i, :, :, 0]
+        # plt.imshow(pystoim.imfuse(a, b))
 
 '''Receptive field
 

@@ -88,12 +88,12 @@ if DEBUG:
         plt.subplot(221)
         plt.imshow(im[i, :, :, :])
         plt.subplot(222)
-        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+        plt.imshow(dmap[i, :, :, 0])
         plt.subplot(223)
-        plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        plt.imshow(mask[i, :, :, 0])
         plt.subplot(224)
         a = im[i, :, :, :]
-        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        b = mask[i, :, :, 0]
         plt.imshow(pystoim.imfuse(a, b))
         plt.show()
 
@@ -170,14 +170,14 @@ for fold_i, model_file in enumerate(model_files):
             plt.imshow(im_test[i, :, :, :])
             plt.title('histology, i = ' + str(i))
             plt.subplot(222)
-            plt.imshow(dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3]))
+            plt.imshow(dmap_test[i, :, :, 0])
             plt.title('ground truth dmap')
             plt.subplot(223)
-            plt.imshow(dmap_test_pred.reshape(dmap_test_pred.shape[1:3]))
+            plt.imshow(dmap_test_pred[0, :, :, 0])
             plt.title('estimated dmap')
             plt.subplot(224)
-            a = dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3])
-            b = dmap_test_pred.reshape(dmap_test.shape[1:3])
+            a = dmap_test[i, :, :, 0]
+            b = dmap_test_pred[0, :, :, 0]
             c = mask_test[i, :, :, 0]
             plt.imshow(np.abs((b - a)) * c)
             plt.colorbar()
