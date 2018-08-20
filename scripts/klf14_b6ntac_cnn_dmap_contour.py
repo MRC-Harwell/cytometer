@@ -209,7 +209,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
             b = mask_train[i, :, :, 0]
             plt.imshow(pystoim.imfuse(a, b))
             plt.subplot(325)
-            plt.imshow(seg_train[i, :, :, 0])
+            plt.imshow(seg_train[i, :, :, 0] * mask_train[i, :, :, 0])
 
         for i in range(n_im_test):
             plt.clf()
@@ -224,7 +224,8 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
             b = mask_test[i, :, :, 0]
             plt.imshow(pystoim.imfuse(a, b))
             plt.subplot(325)
-            plt.imshow(seg_test[i, :, :, 0])
+            plt.imshow(seg_test[i, :, :, 0] * mask_test[i, :, :, 0])
+
 
     # shuffle data
     np.random.seed(i_fold)
@@ -277,8 +278,8 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
         parallel_model.compile(loss={'regression_output': 'mse',
                                      'classification_output': 'binary_crossentropy'},
-                               loss_weights={'regression_output': 40.0,
-                                             'classification_output': 1.0},
+                               loss_weights={'regression_output': 1.0,
+                                             'classification_output': 100.0},
                                optimizer='Adadelta', metrics=['mse', 'mae'],
                                sample_weight_mode='element')
 
@@ -319,5 +320,6 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 # Save it to saved_models directory (
 log_filename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016.log')
 log_filename = log_filename.replace(':', '_')
-if os.path.isfile('nohup.out'):
-    shutil.copy2('nohup.out', log_filename)
+nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+if os.path.isfile(nohup_filename):
+    shutil.copy2(nohup_filename, log_filename)
