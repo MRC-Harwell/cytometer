@@ -21,7 +21,7 @@ elif K.image_data_format() == 'channels_last':
     default_input_shape = (None, None, 3)
 
 
-def fcn_sherrah2016(input_shape, for_receptive_field=False):
+def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
@@ -121,63 +121,6 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     classification_output = Activation('sigmoid', name='classification_output')(x)
 
     return Model(inputs=input, outputs=[regression_output, classification_output])
-
-
-def fcn_sherrah2016_modified(input_shape, for_receptive_field=False):
-
-    input = Input(shape=input_shape, dtype='float32', name='input_image')
-
-    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=96, kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=128, kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=196, kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=264, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(33, 33), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(33, 33), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=512, kernel_size=(3, 3), strides=1, dilation_rate=32, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-    else:
-        x = Activation('relu')(x)
-
-    # dimensionality reduction layer
-    main_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
-                         name='main_output')(x)
-
-    return Model(inputs=input, outputs=main_output)
 
 
 def fcn_9_conv_8_bnorm_3_maxpool_binary_classifier(input_shape, for_receptive_field=False, dilation_rate=1):
