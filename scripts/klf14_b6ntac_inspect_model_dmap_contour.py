@@ -8,7 +8,6 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 
-import gc
 import glob
 import numpy as np
 import pysto.imgproc as pystoim
@@ -27,12 +26,14 @@ set_session(tf.Session(config=config))
 
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
 # function
-import keras.models
+import keras.backend as K
 import cytometer.data
 import cytometer.models as models
 import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
 
+# specify data format as (n, row, col, channel)
+K.set_image_data_format('channels_last')
 
 DEBUG = False
 
