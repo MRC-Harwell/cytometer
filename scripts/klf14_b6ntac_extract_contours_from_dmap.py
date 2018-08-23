@@ -90,12 +90,12 @@ if DEBUG:
         plt.subplot(221)
         plt.imshow(im[i, :, :, :])
         plt.subplot(222)
-        plt.imshow(dmap[i, :, :, :].reshape(dmap.shape[1:3]))
+        plt.imshow(dmap[i, :, :, 0])
         plt.subplot(223)
-        plt.imshow(mask[i, :, :, :].reshape(mask.shape[1:3]))
+        plt.imshow(mask[i, :, :, 0])
         plt.subplot(224)
         a = im[i, :, :, :]
-        b = mask[i, :, :, :].reshape(mask.shape[1:3])
+        b = mask[i, :, :, 0]
         plt.imshow(pystoim.imfuse(a, b))
         plt.show()
 
