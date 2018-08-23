@@ -8,6 +8,11 @@ img = dmap_test_pred[0, :, :, 0]
 
 def principal_curvatures_range_image(img, ksize=3):
 
+    # normalize image intensities to interval [0.0, 1.0]
+    imax = np.max(img)
+    imin = np.min(img)
+    img = (img - imin) / (imax - imin)
+
     # image gradients
     hx = cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=ksize)
     hy = cv2.Sobel(img, cv2.CV_32F, 0, 1, ksize=ksize)
@@ -91,6 +96,26 @@ def principal_curvatures_range_image(img, ksize=3):
         plt.subplot(326)
         plt.imshow(np.sqrt(np.abs(k2)) * np.sign(k2))
         plt.title('Principal curvature k2')
+
+        plt.clf()
+        plt.subplot(321)
+        plt.imshow(img)
+        plt.title('h')
+        plt.subplot(323)
+        plt.imshow(K)
+        plt.title('Gaussian curvature (K)')
+        plt.subplot(324)
+        plt.imshow(H)
+        plt.title('Mean curvature (H)')
+        plt.subplot(325)
+        plt.imshow(k1)
+        plt.title('Principal curvature k1')
+        plt.subplot(326)
+        plt.imshow(k2)
+        plt.title('Principal curvature k2')
+
+        np.min(K)
+        np.max(K)
 
 
 
