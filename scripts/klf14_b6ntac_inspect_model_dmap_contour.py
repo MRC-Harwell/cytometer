@@ -29,8 +29,12 @@ set_session(tf.Session(config=config))
 import keras.backend as K
 import cytometer.data
 import cytometer.models as models
+from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
+
+import cv2
+from skimage.morphology import skeletonize
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -145,19 +149,23 @@ for fold_i, model_file in enumerate(model_files):
     im_test = im[idx_test, ...]
     dmap_test = dmap[idx_test, ...]
     mask_test = mask[idx_test, ...]
+    # seg_test = seg[idx_test, ...]
 
     # split data into blocks
     dmap_test = dmap_test[:, 0:-1, 0:-1, :]
     mask_test = mask_test[:, 0:-1, 0:-1, :]
     im_test = im_test[:, 0:-1, 0:-1, :]
+    # seg_test = seg_test[:, 0:-1, 0:-1, :]
 
     _, dmap_test, _ = pystoim.block_split(dmap_test, nblocks=(1, 2, 2, 1))
     _, im_test, _ = pystoim.block_split(im_test, nblocks=(1, 2, 2, 1))
     _, mask_test, _ = pystoim.block_split(mask_test, nblocks=(1, 2, 2, 1))
+    # _, seg_test, _ = pystoim.block_split(seg_test, nblocks=(1, 2, 2, 1))
 
     dmap_test = np.concatenate(dmap_test, axis=0)
     im_test = np.concatenate(im_test, axis=0)
     mask_test = np.concatenate(mask_test, axis=0)
+    # seg_test = np.concatenate(seg_test, axis=0)
 
     # load model
     model = cytometer.models.fcn_sherrah2016_regression_and_classifier(input_shape=im_test.shape[1:])
@@ -171,16 +179,16 @@ for fold_i, model_file in enumerate(model_files):
             dmap_test_pred, contour_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
             plt.clf()
-            plt.subplot(221)
+            plt.subplot(331)
             plt.imshow(im_test[i, :, :, :])
             plt.title('histology, i = ' + str(i))
-            plt.subplot(222)
+            plt.subplot(332)
             plt.imshow(dmap_test[i, :, :, 0])
             plt.title('ground truth dmap')
-            plt.subplot(223)
+            plt.subplot(333)
             plt.imshow(contour_test_pred[0, :, :, 0])
             plt.title('estimated contours')
-            plt.subplot(224)
+            plt.subplot(334)
             plt.imshow(dmap_test_pred[0, :, :, 0])
             plt.title('estimated dmap')
             # a = dmap_test[i, :, :, 0]
@@ -191,6 +199,30 @@ for fold_i, model_file in enumerate(model_files):
             # plt.title('error |est - gt| * mask')
 
             input("Press Enter to continue...")
+
+        # compute mean curvature from dmap
+        _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
+
+        # erode mean curvature
+        kernel = np.ones((3, 3))
+        mean_curvature_erode = cv2.erode(mean_curvature, kernel, iterations=5)
+
+        # erode estimated contours
+        contour_test_pred_erode = cv2.erode(contour_test_pred[0, :, :, 0], kernel, iterations=5)
+
+        if DEBUG:
+            plt.subplot(335)
+            plt.imshow(mean_curvature)
+            plt.title('mean curvature(dmap)')
+            plt.subplot(336)
+            plt.imshow(mean_curvature_erode)
+            plt.title('erode(mean curvature)')
+            plt.subplot(337)
+            plt.imshow(mean_curvature_erode <= -0.002)
+            plt.title('erode(mean curvature) <= -0.002')
+            plt.subplot(338)
+            plt.imshow(contour_test_pred_erode)
+            plt.title('erode(estimated contours)')
 
 
 '''Plot metrics and convergence
