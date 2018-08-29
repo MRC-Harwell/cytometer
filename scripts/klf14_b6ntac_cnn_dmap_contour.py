@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -82,7 +82,7 @@ idx_test_all = np.array_split(idx, n_folds)
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate([idx_test_all[0]]):
+for i_fold, idx_test in enumerate(idx_test_all):
 
     # the training dataset is all images minus the test ones
     idx_train = list(set(range(n_orig_im)) - set(idx_test))
@@ -166,14 +166,14 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # split image into smaller blocks so that the training fits into GPU memory
     if nblocks > 1:
+        im_train = cytometer.data.split_images(im_train, nblocks=nblocks)
         dmap_train = cytometer.data.split_images(dmap_train, nblocks=nblocks)
         mask_train = cytometer.data.split_images(mask_train, nblocks=nblocks)
-        im_train = cytometer.data.split_images(im_train, nblocks=nblocks)
         seg_train = cytometer.data.split_images(seg_train, nblocks=nblocks)
 
+        im_test = cytometer.data.split_images(im_test, nblocks=nblocks)
         dmap_test = cytometer.data.split_images(dmap_test, nblocks=nblocks)
         mask_test = cytometer.data.split_images(mask_test, nblocks=nblocks)
-        im_test = cytometer.data.split_images(im_test, nblocks=nblocks)
         seg_test = cytometer.data.split_images(seg_test, nblocks=nblocks)
 
     # find images that have few valid pixels, to remove them from the dataset
@@ -300,16 +300,26 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
         # instantiate model
         with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
+            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=im_train.shape[1:])
 
         # compile model
-        model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
+        model.compile(loss={'regression_output': 'mse',
+                            'classification_output': 'binary_crossentropy'},
+                      loss_weights={'regression_output': 1.0,
+                                    'classification_output': 100.0},
+                      optimizer='Adadelta', metrics=['mse', 'mae'],
+                      sample_weight_mode='element')
+
+        # checkpoint to save model after each epoch
+        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                       verbose=1, save_best_only=True)
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(im_train, dmap_train, sample_weight=mask_train,
-                  validation_data=(im_test, dmap_test, mask_test),
-                  batch_size=4, epochs=epochs)
+        model.fit(im_train, [dmap_train, seg_train], sample_weight=[mask_train, mask_train],
+                  validation_data=(im_test, [dmap_test, seg_test], [mask_test, mask_test]),
+                  batch_size=4, epochs=epochs, initial_epoch=0,
+                  callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
