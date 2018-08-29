@@ -167,7 +167,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
 
     # classification output
     x = Conv2D(filters=1, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
-    classification_output = Activation('sigmoid', name='classification_output')(x)
+    classification_output = Activation('relu', name='classification_output')(x)
 
     return Model(inputs=input, outputs=[regression_output, classification_output])
 
