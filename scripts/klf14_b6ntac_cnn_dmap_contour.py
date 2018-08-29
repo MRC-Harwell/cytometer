@@ -31,11 +31,11 @@ import cytometer.models as models
 import random
 import tensorflow as tf
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 1.0
+# set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -46,7 +46,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of blocks to split each image into so that training fits into GPU memory
-nblocks = 2
+nblocks = 3
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -82,7 +82,7 @@ idx_test_all = np.array_split(idx, n_folds)
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # the training dataset is all images minus the test ones
     idx_train = list(set(range(n_orig_im)) - set(idx_test))
