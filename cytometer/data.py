@@ -68,7 +68,7 @@ def split_images(x, nblocks):
     x = x[:, 0:nrows, 0:ncols, :]
 
     # split images into smaller blocks to avoid GPU memory overflows in training
-    _, x, _ = pystoim.block_split(x, nblocks=(1, nblocks, nblocks, 1))
+    _, x, _ = pystoim.block_split(x, nblocks=(1, nblocks, nblocks, 1), by_reference=True)
     x = np.concatenate(x, axis=0)
 
     return x
