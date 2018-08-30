@@ -68,7 +68,7 @@ n_im = len(im_file_list)
 model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 n_folds = len(model_files)
 
-# create k-fold splitting of data
+# create k-fold sets to split the data into training vs. testing
 seed = 0
 random.seed(seed)
 idx = random.sample(range(n_im), n_im)

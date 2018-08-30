@@ -73,7 +73,7 @@ im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.t
 # number of original training images
 n_orig_im = len(im_orig_file_list)
 
-# create k-fold splitting of data
+# create k-fold sets to split the data into training vs. testing
 seed = 0
 random.seed(seed)
 idx = random.sample(range(n_orig_im), n_orig_im)
