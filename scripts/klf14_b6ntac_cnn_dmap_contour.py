@@ -7,6 +7,7 @@ home = str(Path.home())
 import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
+import pickle
 
 # other imports
 import glob
@@ -67,6 +68,9 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
+saved_model_basename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016_dmap_contour')
+saved_model_basename = saved_model_basename.replace(':', '_')
+
 # list of original training images, pre-augmentation
 im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
 
@@ -78,6 +82,12 @@ seed = 0
 random.seed(seed)
 idx = random.sample(range(n_orig_im), n_orig_im)
 idx_test_all = np.array_split(idx, n_folds)
+
+# save the k-fold description for future reference
+saved_model_kfold_filename = saved_model_basename + '_kfold.pickle'
+with open(saved_model_kfold_filename, 'wb') as f:
+    x = {'file_list': im_orig_file_list, 'idx_test_all': idx_test_all, 'seed': seed}
+    pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
@@ -251,9 +261,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     '''
 
     # filename to save model to
-    saved_model_filename = os.path.join(saved_models_dir, timestamp.isoformat() +
-                                        '_fcn_sherrah2016_fold_' + str(i_fold) + '.h5')
-    saved_model_filename = saved_model_filename.replace(':', '_')
+    saved_model_filename = saved_model_basename + '_fold_' + str(i_fold) + '.h5'
 
     # list all CPUs and GPUs
     device_list = K.get_session().list_devices()
