@@ -14,7 +14,7 @@ import pysto.imgproc as pystoim
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -53,7 +53,8 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
 # model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'  # dmap regression trained with 6 epochs
 # model_name = '2018-08-11T23_10_03.296260_fcn_sherrah2016*.h5'  # dmap regression trained with 15 epochs
-model_name = '2018-08-20T12_15_24.854266_fcn_sherrah2016*.h5'  # First working network with dmap regression + contour classification
+# model_name = '2018-08-20T12_15_24.854266_fcn_sherrah2016*.h5'  # First working network with dmap regression + contour classification
+model_name = '2018-08-31T12_15_50.751490_fcn_sherrah2016_fold_*.h5'  # dmap + contour classification (ReLU instead of sigmoid)
 
 # list of training images
 im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
