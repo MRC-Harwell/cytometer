@@ -7,6 +7,7 @@ home = str(Path.home())
 import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
+import pickle
 
 import glob
 import numpy as np
@@ -14,7 +15,7 @@ import pysto.imgproc as pystoim
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -51,29 +52,33 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
-# model_name = '2018-08-09T18_59_10.294550_fcn_sherrah2016*.h5'  # dmap regression trained with 6 epochs
-# model_name = '2018-08-11T23_10_03.296260_fcn_sherrah2016*.h5'  # dmap regression trained with 15 epochs
-# model_name = '2018-08-20T12_15_24.854266_fcn_sherrah2016*.h5'  # First working network with dmap regression + contour classification
-model_name = '2018-08-31T12_15_50.751490_fcn_sherrah2016_fold_*.h5'  # dmap + contour classification (ReLU instead of sigmoid)
+# saved_model_basename = '2018-08-09T18_59_10.294550_fcn_sherrah2016'  # dmap regression trained with 6 epochs
+# saved_model_basename = '2018-08-11T23_10_03.296260_fcn_sherrah2016'  # dmap regression trained with 15 epochs
+# saved_model_basename = '2018-08-20T12_15_24.854266_fcn_sherrah2016'  # First working network with dmap regression + contour classification
+# saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016'  # dmap + contour classification (ReLU instead of sigmoid)
+saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016_dmap_contour'  # dmap + contour classification (ReLU instead of sigmoid)
 
-# list of training images
-im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
+model_name = saved_model_basename + '*.h5'
+
+# load model weights for each fold
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+n_folds = len(model_files)
+
+# load k-fold sets that were used to train the models
+saved_model_kfold_filename = os.path.join(saved_models_dir, saved_model_basename + '_kfold.pickle')
+with open(saved_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+im_file_list = aux['file_list']
+im_file_list = [x.replace('/home/rcasero', home) for x in im_file_list]
+idx_test_all = aux['idx_test_all']
+
+# the other images used for training
 dmap_file_list = [x.replace('im_', 'dmap_') for x in im_file_list]
 seg_file_list = [x.replace('im_', 'seg_') for x in im_file_list]
 mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
 
 # number of training images
 n_im = len(im_file_list)
-
-# load k-folds of the model
-model_files = glob.glob(os.path.join(saved_models_dir, model_name))
-n_folds = len(model_files)
-
-# create k-fold sets to split the data into training vs. testing
-seed = 0
-random.seed(seed)
-idx = random.sample(range(n_im), n_im)
-idx_test_all = np.array_split(idx, n_folds)
 
 # load images
 im = cytometer.data.load_im_file_list_to_array(im_file_list)
