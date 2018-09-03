@@ -22,7 +22,8 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -97,7 +98,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     # the training dataset is all images minus the test ones
     idx_train = list(set(range(n_orig_im)) - set(idx_test))
 
-    # list of original training and test files
+    # list of original (without augmentation) training and test files
     im_train_file_list = list(np.array(im_orig_file_list)[idx_train])
     im_test_file_list = list(np.array(im_orig_file_list)[idx_test])
 
