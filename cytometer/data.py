@@ -4,6 +4,8 @@ cytometer/data.py
 Functions to load, save and pre-process data related to the cytometer project.
 """
 
+import os
+import glob
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
@@ -159,6 +161,160 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     dmap = dmap.reshape((dmap.shape + (1,)))
 
     return dmap, mask, seg
+
+im_file_list = im_train_file_list
+def load_im_dmap_mask_seg_for_training(im_file_list, add_augmented=False, nblocks=1,
+                                       npixels_threshold=0, shuffle=False):
+
+    # add the augmented image files
+    if add_augmented:
+        im_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_file_list]
+        im_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_file_list]
+        im_file_list = [item for sublist in im_file_list for item in sublist]
+
+    # list of distance transformation and mask_train files
+    dmap_train_file_list = [x.replace('im_', 'dmap_') for x in im_train_file_list]
+    mask_train_file_list = [x.replace('im_', 'mask_') for x in im_train_file_list]
+    seg_train_file_list = [x.replace('im_', 'seg_') for x in im_train_file_list]
+
+    dmap_test_file_list = [x.replace('im_', 'dmap_') for x in im_test_file_list]
+    mask_test_file_list = [x.replace('im_', 'mask_') for x in im_test_file_list]
+    seg_test_file_list = [x.replace('im_', 'seg_') for x in im_test_file_list]
+
+    # number of training images
+    n_im_train = len(im_train_file_list)
+    n_im_test = len(im_test_file_list)
+
+    # load images
+    im_train = cytometer.data.load_im_file_list_to_array(im_train_file_list)
+    dmap_train = cytometer.data.load_im_file_list_to_array(dmap_train_file_list)
+    mask_train = cytometer.data.load_im_file_list_to_array(mask_train_file_list)
+    seg_train = cytometer.data.load_im_file_list_to_array(seg_train_file_list)
+
+    im_test = cytometer.data.load_im_file_list_to_array(im_test_file_list)
+    dmap_test = cytometer.data.load_im_file_list_to_array(dmap_test_file_list)
+    mask_test = cytometer.data.load_im_file_list_to_array(mask_test_file_list)
+    seg_test = cytometer.data.load_im_file_list_to_array(seg_test_file_list)
+
+    # convert uint8 images to float, and rescale RBG values to [0.0, 1.0]
+    im_train = im_train.astype(np.float32)
+    im_train /= 255
+    mask_train = mask_train.astype(np.float32)
+    seg_train = seg_train.astype(np.uint8)
+
+    im_test = im_test.astype(np.float32)
+    im_test /= 255
+    mask_test = mask_test.astype(np.float32)
+    seg_test = seg_test.astype(np.uint8)
+
+    if DEBUG:
+        for i in range(n_im_train):
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im_train[i, :, :, :])
+            plt.subplot(222)
+            plt.imshow(dmap_train[i, :, :, 0])
+            plt.subplot(223)
+            plt.imshow(mask_train[i, :, :, 0])
+            plt.subplot(224)
+            # plt.imshow(seg_train[i, :, :, 0])
+            a = im_train[i, :, :, :]
+            b = mask_train[i, :, :, 0]
+            plt.imshow(pystoim.imfuse(b, a))
+
+        for i in range(n_im_test):
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im_test[i, :, :, :])
+            plt.subplot(222)
+            plt.imshow(dmap_test[i, :, :, 0])
+            plt.subplot(223)
+            plt.imshow(mask_test[i, :, :, 0])
+            plt.subplot(224)
+            plt.imshow(seg_test[i, :, :, 0])
+            a = im_test[i, :, :, :]
+            b = mask_test[i, :, :, 0]
+            plt.imshow(pystoim.imfuse(b, a))
+
+    # split image into smaller blocks so that the training fits into GPU memory
+    if nblocks > 1:
+        im_train = cytometer.data.split_images(im_train, nblocks=nblocks)
+        dmap_train = cytometer.data.split_images(dmap_train, nblocks=nblocks)
+        mask_train = cytometer.data.split_images(mask_train, nblocks=nblocks)
+        seg_train = cytometer.data.split_images(seg_train, nblocks=nblocks)
+
+        im_test = cytometer.data.split_images(im_test, nblocks=nblocks)
+        dmap_test = cytometer.data.split_images(dmap_test, nblocks=nblocks)
+        mask_test = cytometer.data.split_images(mask_test, nblocks=nblocks)
+        seg_test = cytometer.data.split_images(seg_test, nblocks=nblocks)
+
+    # find images that have few valid pixels, to remove them from the dataset
+    idx_to_keep = np.sum(np.sum(np.sum(mask_train, axis=3), axis=2), axis=1)
+    idx_to_keep = idx_to_keep > 100
+    dmap_train = dmap_train[idx_to_keep, :, :, :]
+    im_train = im_train[idx_to_keep, :, :, :]
+    mask_train = mask_train[idx_to_keep, :, :, :]
+    seg_train = seg_train[idx_to_keep, :, :, :]
+
+    idx_to_keep = np.sum(np.sum(np.sum(mask_test, axis=3), axis=2), axis=1)
+    idx_to_keep = idx_to_keep > 100
+    dmap_test = dmap_test[idx_to_keep, :, :, :]
+    im_test = im_test[idx_to_keep, :, :, :]
+    mask_test = mask_test[idx_to_keep, :, :, :]
+    seg_test = seg_test[idx_to_keep, :, :, :]
+
+    # update number of training images with number of tiles
+    n_im_train = im_train.shape[0]
+    n_im_test = im_test.shape[0]
+
+    if DEBUG:
+        for i in range(n_im_train):
+            plt.clf()
+            plt.subplot(321)
+            plt.imshow(im_train[i, :, :, :])
+            plt.subplot(322)
+            plt.imshow(dmap_train[i, :, :, 0])
+            plt.subplot(323)
+            plt.imshow(mask_train[i, :, :, 0])
+            plt.subplot(324)
+            a = im_train[i, :, :, :]
+            b = mask_train[i, :, :, 0]
+            plt.imshow(pystoim.imfuse(a, b))
+            plt.subplot(325)
+            plt.imshow(seg_train[i, :, :, 0] * mask_train[i, :, :, 0])
+
+        for i in range(n_im_test):
+            plt.clf()
+            plt.subplot(321)
+            plt.imshow(im_test[i, :, :, :])
+            plt.subplot(322)
+            plt.imshow(dmap_test[i, :, :, 0])
+            plt.subplot(323)
+            plt.imshow(mask_test[i, :, :, 0])
+            plt.subplot(324)
+            a = im_test[i, :, :, :]
+            b = mask_test[i, :, :, 0]
+            plt.imshow(pystoim.imfuse(a, b))
+            plt.subplot(325)
+            plt.imshow(seg_test[i, :, :, 0] * mask_test[i, :, :, 0])
+
+
+    # shuffle data
+    np.random.seed(i_fold)
+
+    idx = np.arange(n_im_train)
+    np.random.shuffle(idx)
+    dmap_train = dmap_train[idx, ...]
+    im_train = im_train[idx, ...]
+    mask_train = mask_train[idx, ...]
+    seg_train = seg_train[idx, ...]
+
+    idx = np.arange(n_im_test)
+    np.random.shuffle(idx)
+    dmap_test = dmap_test[idx, ...]
+    im_test = im_test[idx, ...]
+    mask_test = mask_test[idx, ...]
+    seg_test = seg_test[idx, ...]
 
 
 def read_keras_training_output(filename):
