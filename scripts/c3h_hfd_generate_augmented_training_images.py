@@ -50,7 +50,6 @@ root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training'
 training_non_overlap_data_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training_non_overlap'
 training_augmented_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training_augmented'
-saved_models_dir = '/home/gcientanni/OneDrive/c3h/saved_models'
 
 # list of segmented files
 seg_file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
