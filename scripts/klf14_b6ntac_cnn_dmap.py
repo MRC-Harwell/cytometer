@@ -108,13 +108,13 @@ for i_fold, idx_test in enumerate(idx_test_all):
     n_im_test = len(im_test_file_list)
 
     # load images
-    im_train = cytometer.data.load_im_file_list_to_array(im_train_file_list)
-    dmap_train = cytometer.data.load_im_file_list_to_array(dmap_train_file_list)
-    mask_train = cytometer.data.load_im_file_list_to_array(mask_train_file_list)
+    im_train = cytometer.data.load_file_list_to_array(im_train_file_list)
+    dmap_train = cytometer.data.load_file_list_to_array(dmap_train_file_list)
+    mask_train = cytometer.data.load_file_list_to_array(mask_train_file_list)
 
-    im_test = cytometer.data.load_im_file_list_to_array(im_test_file_list)
-    dmap_test = cytometer.data.load_im_file_list_to_array(dmap_test_file_list)
-    mask_test = cytometer.data.load_im_file_list_to_array(mask_test_file_list)
+    im_test = cytometer.data.load_file_list_to_array(im_test_file_list)
+    dmap_test = cytometer.data.load_file_list_to_array(dmap_test_file_list)
+    mask_test = cytometer.data.load_file_list_to_array(mask_test_file_list)
 
     # convert uint8 images to float, and rescale RBG values to [0.0, 1.0]
     im_train = im_train.astype(np.float32)

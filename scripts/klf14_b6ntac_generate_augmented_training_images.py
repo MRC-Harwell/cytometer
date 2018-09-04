@@ -74,7 +74,7 @@ im_file_list = [seg_file.replace(training_non_overlap_data_dir, training_dir) fo
 dmap, mask, seg = cytometer.data.load_watershed_seg_and_compute_dmap(seg_file_list)
 
 # load corresponding images and convert to float format
-im = cytometer.data.load_im_file_list_to_array(im_file_list)
+im = cytometer.data.load_file_list_to_array(im_file_list)
 im = im.astype('float32', casting='safe')
 im /= 255
 
