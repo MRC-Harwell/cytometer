@@ -70,9 +70,9 @@ idx = random.sample(range(n_im), n_im)
 idx_test_all = np.array_split(idx, n_folds)
 
 # load images
-im = cytometer.data.load_im_file_list_to_array(im_file_list)
-seg = cytometer.data.load_im_file_list_to_array(seg_file_list)
-mask = cytometer.data.load_im_file_list_to_array(mask_file_list)
+im = cytometer.data.load_file_list_to_array(im_file_list)
+seg = cytometer.data.load_file_list_to_array(seg_file_list)
+mask = cytometer.data.load_file_list_to_array(mask_file_list)
 
 # convert to float
 im = im.astype(np.float32)

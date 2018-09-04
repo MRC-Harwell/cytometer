@@ -19,7 +19,32 @@ import pysto.imgproc as pystoim
 DEBUG = False
 
 
-def load_im_file_list_to_array(file_list):
+def split_images(x, nblocks):
+    """
+    Splits (images, rows, cols, channels) array along nrows and ncols into blocks.
+
+    If necessary, the array is trimmed off so that all blocks have the same size.
+    :param x: numpy.ndarray (images, rows, cols, channels)
+    :param nblocks: scalar with the number of blocks to split the data into.
+    :return: numpy.ndarray with x split into blocks
+    """
+
+    # compute how many whole blocks fit in the data, and what length of the image they cover
+    _, nrows, ncols, _ = x.shape
+    nrows = int(np.floor(nrows / nblocks) * nblocks)
+    ncols = int(np.floor(ncols / nblocks) * nblocks)
+
+    # remove the extra bit of the images so that we can split them into equal blocks
+    x = x[:, 0:nrows, 0:ncols, :]
+
+    # split images into smaller blocks to avoid GPU memory overflows in training
+    _, x, _ = pystoim.block_split(x, nblocks=(1, nblocks, nblocks, 1), by_reference=True)
+    x = np.concatenate(x, axis=0)
+
+    return x
+
+
+def load_file_list_to_array(file_list):
     """
     Loads a list of images, all with the same size, into a numpy array (file, row, col, channel)
     :param file_list:
@@ -51,29 +76,121 @@ def load_im_file_list_to_array(file_list):
     return im_out
 
 
-def split_images(x, nblocks):
+def load_training_data(im_file_list, data_prefixes=None, augment=False,
+                       nblocks=1, shuffle_seed=None):
     """
-    Splits (images, rows, cols, channels) array along nrows and ncols into blocks.
+    Loads images and other types of training data. Images are given as a list of filenames,
+    expecting an 'im_' prefix, e.g. [path/im_file_1.tif, path/im_file_2.tif].
 
-    If necessary, the array is trimmed off so that all blocks have the same size.
-    :param x: numpy.ndarray (images, rows, cols, channels)
-    :param nblocks: scalar with the number of blocks to split the data into.
-    :return: numpy.ndarray with x split into blocks
+    The other data types are given as a list of prefixes. For example, ['seg', 'mask'] means
+    that there are other two datasets, given by files [path/seg_file_1.tif, path/seg_file_2.tif]
+    and [path/mask_file_1.tif, path/mask_file_2.tif]. This ensures that the data in the different
+    sets corresponds to each other.
+
+    This function also provides the following optional functionality:
+        * images can be split into equally-sized blocks (this is useful when full images are too
+        large for training).
+        * images can be shuffled randomly.
+    :param im_file_list: list of paths and filenames. Each file contains a training image. If the
+    images are uint8, they are converted to float32 and scaled by 1/255.
+    :param data_prefixes: (def None) list of strings with the prefixes in the filenames for the
+    extra datasets.
+    :param augment: flag (def False) Input filenames are assumed to contain the string
+    '_seed_nan_'. If augment==True, the list of filenames gets extended with files that contain
+    '_seed_*_' instead.
+    :param nblocks: (def 1) Number of row/column blocks images are split into. The last rows and
+    columns may have to be removed so that all blocks have the same size.
+    :param shuffle_seed:
+    :return: im, shuffle_idx, outs
+        * im is a numpy.ndarray with training images (n, row, col, channel).
+        * shuffle_idx is a list with the indices used to shuffle the images.
+        * outs: dictionary. Each key corresponds to one of the extra datasets, e.g. outs['seg']
+          and outs['mask'].
     """
 
-    # compute how many whole blocks fit in the data, and what length of the image they cover
-    _, nrows, ncols, _ = x.shape
-    nrows = int(np.floor(nrows / nblocks) * nblocks)
-    ncols = int(np.floor(ncols / nblocks) * nblocks)
+    if data_prefixes is not None and not isinstance(data_prefixes, list):
+        raise TypeError('data_prefixes must be None or a list of strings')
 
-    # remove the extra bit of the images so that we can split them into equal blocks
-    x = x[:, 0:nrows, 0:ncols, :]
+    # add the augmented image files
+    if augment:
+        im_file_list_aug = []
+        for x in im_file_list:
+            x_path, x_basename = os.path.split(x)
+            x_basename = x_basename.replace('_seed_nan_', '_seed_*_')
+            im_file_list_aug += glob.glob(os.path.join(x_path, x_basename))
+        im_file_list = im_file_list_aug
 
-    # split images into smaller blocks to avoid GPU memory overflows in training
-    _, x, _ = pystoim.block_split(x, nblocks=(1, nblocks, nblocks, 1), by_reference=True)
-    x = np.concatenate(x, axis=0)
+    # check that there's a file for each data prefix (e.g. 'seg_foo.tif') for each image file
+    # (e.g. im_foo.tif)
+    out_file_list = {}
+    for prefix in data_prefixes:
+        out_file_list[prefix] = []
+        for x in im_file_list:
+            x_path, x_basename = os.path.split(x)
+            prefix_file = os.path.join(x_path,
+                                       x_basename.replace('im_', prefix + '_'))
+            if not os.path.isfile(prefix_file):
+                raise FileExistsError(prefix_file)
+            out_file_list[prefix].append(prefix_file)
 
-    return x
+    # load image data
+    im = load_file_list_to_array(im_file_list)
+    if im.dtype == 'uint8':
+        im = im.astype(np.float32)
+        im /= 255
+
+    # split image into smaller blocks, if requested
+    if nblocks > 1:
+        im = split_images(im, nblocks=nblocks)
+
+    # number of images
+    n_im = im.shape[0]
+
+    # shuffle data
+    shuffle_idx = np.arange(n_im)
+    if shuffle_seed is not None:
+        np.random.seed(shuffle_seed)
+        np.random.shuffle(shuffle_idx)
+        im = im[shuffle_idx, ...]
+
+    # load the other data volumes
+    outs = {}
+    for prefix in data_prefixes:
+        outs[prefix] = load_file_list_to_array(out_file_list[prefix])
+        if prefix in {'mask', 'dmap'}:
+            outs[prefix] = outs[prefix].astype(np.float32)
+        elif prefix == 'seg':
+            outs[prefix] = outs[prefix].astype(np.uint8)
+
+        # split image into smaller blocks, if requested
+        if nblocks > 1:
+            outs[prefix] = split_images(outs[prefix], nblocks=nblocks)
+
+        # shuffle the data if requested
+        if shuffle_seed is not None:
+            outs[prefix] = outs[prefix][shuffle_idx, ...]
+
+        if DEBUG:
+            for i in range(n_im):
+                plt.clf()
+                plt.subplot(121)
+                if im.shape[-1] == 1:
+                    plt.imshow(im[i, :, :, 0])
+                else:
+                    plt.imshow(im[i, :, :, :])
+                plt.title('im')
+                plt.subplot(122)
+                if outs[prefix].shape[-1] == 1:
+                    plt.imshow(outs[prefix][i, :, :, 0])
+                else:
+                    plt.imshow(outs[prefix][i, :, :, :])
+                plt.title(prefix)
+
+    # outputs
+    if len(outs) == 0:
+        return im, shuffle_idx
+    else:
+        return im, shuffle_idx, outs
 
 
 def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
@@ -161,160 +278,6 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     dmap = dmap.reshape((dmap.shape + (1,)))
 
     return dmap, mask, seg
-
-im_file_list = im_train_file_list
-def load_im_dmap_mask_seg_for_training(im_file_list, add_augmented=False, nblocks=1,
-                                       npixels_threshold=0, shuffle=False):
-
-    # add the augmented image files
-    if add_augmented:
-        im_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_file_list]
-        im_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_file_list]
-        im_file_list = [item for sublist in im_file_list for item in sublist]
-
-    # list of distance transformation and mask_train files
-    dmap_train_file_list = [x.replace('im_', 'dmap_') for x in im_train_file_list]
-    mask_train_file_list = [x.replace('im_', 'mask_') for x in im_train_file_list]
-    seg_train_file_list = [x.replace('im_', 'seg_') for x in im_train_file_list]
-
-    dmap_test_file_list = [x.replace('im_', 'dmap_') for x in im_test_file_list]
-    mask_test_file_list = [x.replace('im_', 'mask_') for x in im_test_file_list]
-    seg_test_file_list = [x.replace('im_', 'seg_') for x in im_test_file_list]
-
-    # number of training images
-    n_im_train = len(im_train_file_list)
-    n_im_test = len(im_test_file_list)
-
-    # load images
-    im_train = cytometer.data.load_im_file_list_to_array(im_train_file_list)
-    dmap_train = cytometer.data.load_im_file_list_to_array(dmap_train_file_list)
-    mask_train = cytometer.data.load_im_file_list_to_array(mask_train_file_list)
-    seg_train = cytometer.data.load_im_file_list_to_array(seg_train_file_list)
-
-    im_test = cytometer.data.load_im_file_list_to_array(im_test_file_list)
-    dmap_test = cytometer.data.load_im_file_list_to_array(dmap_test_file_list)
-    mask_test = cytometer.data.load_im_file_list_to_array(mask_test_file_list)
-    seg_test = cytometer.data.load_im_file_list_to_array(seg_test_file_list)
-
-    # convert uint8 images to float, and rescale RBG values to [0.0, 1.0]
-    im_train = im_train.astype(np.float32)
-    im_train /= 255
-    mask_train = mask_train.astype(np.float32)
-    seg_train = seg_train.astype(np.uint8)
-
-    im_test = im_test.astype(np.float32)
-    im_test /= 255
-    mask_test = mask_test.astype(np.float32)
-    seg_test = seg_test.astype(np.uint8)
-
-    if DEBUG:
-        for i in range(n_im_train):
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(im_train[i, :, :, :])
-            plt.subplot(222)
-            plt.imshow(dmap_train[i, :, :, 0])
-            plt.subplot(223)
-            plt.imshow(mask_train[i, :, :, 0])
-            plt.subplot(224)
-            # plt.imshow(seg_train[i, :, :, 0])
-            a = im_train[i, :, :, :]
-            b = mask_train[i, :, :, 0]
-            plt.imshow(pystoim.imfuse(b, a))
-
-        for i in range(n_im_test):
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(im_test[i, :, :, :])
-            plt.subplot(222)
-            plt.imshow(dmap_test[i, :, :, 0])
-            plt.subplot(223)
-            plt.imshow(mask_test[i, :, :, 0])
-            plt.subplot(224)
-            plt.imshow(seg_test[i, :, :, 0])
-            a = im_test[i, :, :, :]
-            b = mask_test[i, :, :, 0]
-            plt.imshow(pystoim.imfuse(b, a))
-
-    # split image into smaller blocks so that the training fits into GPU memory
-    if nblocks > 1:
-        im_train = cytometer.data.split_images(im_train, nblocks=nblocks)
-        dmap_train = cytometer.data.split_images(dmap_train, nblocks=nblocks)
-        mask_train = cytometer.data.split_images(mask_train, nblocks=nblocks)
-        seg_train = cytometer.data.split_images(seg_train, nblocks=nblocks)
-
-        im_test = cytometer.data.split_images(im_test, nblocks=nblocks)
-        dmap_test = cytometer.data.split_images(dmap_test, nblocks=nblocks)
-        mask_test = cytometer.data.split_images(mask_test, nblocks=nblocks)
-        seg_test = cytometer.data.split_images(seg_test, nblocks=nblocks)
-
-    # find images that have few valid pixels, to remove them from the dataset
-    idx_to_keep = np.sum(np.sum(np.sum(mask_train, axis=3), axis=2), axis=1)
-    idx_to_keep = idx_to_keep > 100
-    dmap_train = dmap_train[idx_to_keep, :, :, :]
-    im_train = im_train[idx_to_keep, :, :, :]
-    mask_train = mask_train[idx_to_keep, :, :, :]
-    seg_train = seg_train[idx_to_keep, :, :, :]
-
-    idx_to_keep = np.sum(np.sum(np.sum(mask_test, axis=3), axis=2), axis=1)
-    idx_to_keep = idx_to_keep > 100
-    dmap_test = dmap_test[idx_to_keep, :, :, :]
-    im_test = im_test[idx_to_keep, :, :, :]
-    mask_test = mask_test[idx_to_keep, :, :, :]
-    seg_test = seg_test[idx_to_keep, :, :, :]
-
-    # update number of training images with number of tiles
-    n_im_train = im_train.shape[0]
-    n_im_test = im_test.shape[0]
-
-    if DEBUG:
-        for i in range(n_im_train):
-            plt.clf()
-            plt.subplot(321)
-            plt.imshow(im_train[i, :, :, :])
-            plt.subplot(322)
-            plt.imshow(dmap_train[i, :, :, 0])
-            plt.subplot(323)
-            plt.imshow(mask_train[i, :, :, 0])
-            plt.subplot(324)
-            a = im_train[i, :, :, :]
-            b = mask_train[i, :, :, 0]
-            plt.imshow(pystoim.imfuse(a, b))
-            plt.subplot(325)
-            plt.imshow(seg_train[i, :, :, 0] * mask_train[i, :, :, 0])
-
-        for i in range(n_im_test):
-            plt.clf()
-            plt.subplot(321)
-            plt.imshow(im_test[i, :, :, :])
-            plt.subplot(322)
-            plt.imshow(dmap_test[i, :, :, 0])
-            plt.subplot(323)
-            plt.imshow(mask_test[i, :, :, 0])
-            plt.subplot(324)
-            a = im_test[i, :, :, :]
-            b = mask_test[i, :, :, 0]
-            plt.imshow(pystoim.imfuse(a, b))
-            plt.subplot(325)
-            plt.imshow(seg_test[i, :, :, 0] * mask_test[i, :, :, 0])
-
-
-    # shuffle data
-    np.random.seed(i_fold)
-
-    idx = np.arange(n_im_train)
-    np.random.shuffle(idx)
-    dmap_train = dmap_train[idx, ...]
-    im_train = im_train[idx, ...]
-    mask_train = mask_train[idx, ...]
-    seg_train = seg_train[idx, ...]
-
-    idx = np.arange(n_im_test)
-    np.random.shuffle(idx)
-    dmap_test = dmap_test[idx, ...]
-    im_test = im_test[idx, ...]
-    mask_test = mask_test[idx, ...]
-    seg_test = seg_test[idx, ...]
 
 
 def read_keras_training_output(filename):

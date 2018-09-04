@@ -15,14 +15,14 @@ import pysto.imgproc as pystoim
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
 set_session(tf.Session(config=config))
 
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -81,10 +81,10 @@ mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
 n_im = len(im_file_list)
 
 # load images
-im = cytometer.data.load_im_file_list_to_array(im_file_list)
-dmap = cytometer.data.load_im_file_list_to_array(dmap_file_list)
-seg = cytometer.data.load_im_file_list_to_array(seg_file_list)
-mask = cytometer.data.load_im_file_list_to_array(mask_file_list)
+im = cytometer.data.load_file_list_to_array(im_file_list)
+dmap = cytometer.data.load_file_list_to_array(dmap_file_list)
+seg = cytometer.data.load_file_list_to_array(seg_file_list)
+mask = cytometer.data.load_file_list_to_array(mask_file_list)
 
 # convert to float
 im = im.astype(np.float32)
