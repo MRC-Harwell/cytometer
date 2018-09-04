@@ -26,7 +26,7 @@ def principal_curvatures_range_image(img, sigma=10):
     Note that these formulas are very sensitive to noise. Thus, we smooth the input image before fitting
     the spline.
 
-    :param img: 2D numpy.ndarray with the distance/depth/range values. The 2D image correponds to a Monge
+    :param img: 2D numpy.ndarray with the distance/depth/range values. The 2D image corresponds to a Monge
     patch, or 2D surface embedded in 3D space of the form (x, y, img(x, y))
     :param sigma: (def sigma=10) Standard deviation in pixels of Gaussian low-pass filtering of the image.
     For sigma=0, no smoothing is performed.
