@@ -22,12 +22,13 @@ DEBUG = False
 
 def split_images(x, nblocks):
     """
-    Splits (images, rows, cols, channels) array along nrows and ncols into blocks.
+    Splits the rows and columns of a data array with shape (n, rows, cols, channels) into blocks.
 
     If necessary, the array is trimmed off so that all blocks have the same size.
-    :param x: numpy.ndarray (images, rows, cols, channels)
-    :param nblocks: scalar with the number of blocks to split the data into.
-    :return: numpy.ndarray with x split into blocks
+
+    :param x: numpy.ndarray (images, rows, cols, channels).
+    :param nblocks: scalar with the number of blocks to split the rows and columns into.
+    :return: numpy.ndarray with x split into blocks.
     """
 
     # compute how many whole blocks fit in the data, and what length of the image they cover
@@ -38,18 +39,38 @@ def split_images(x, nblocks):
     # remove the extra bit of the images so that we can split them into equal blocks
     x = x[:, 0:nrows, 0:ncols, :]
 
-    # split images into smaller blocks to avoid GPU memory overflows in training
+    # split images into smaller blocks
     _, x, _ = pystoim.block_split(x, nblocks=(1, nblocks, nblocks, 1), by_reference=True)
     x = np.concatenate(x, axis=0)
 
     return x
 
 
+def split_list(x, idx):
+    """
+    Split a list into two sublists.
+    :param x: list to be split.
+    :param idx: list of indices. Repeated indices are ignored.
+    :return: x[idx], x[~idx]. Here ~idx stands for the indices not in idx.
+    """
+
+    # ignore repeated indices
+    idx = set(idx)
+
+    # indices for the second sublist
+    idx_2 = list(set(range(len(x))) - idx)
+
+    idx = list(idx)
+
+    return list(np.array(x)[idx]), list(np.array(x)[idx_2])
+
+
 def load_file_list_to_array(file_list):
     """
-    Loads a list of images, all with the same size, into a numpy array (file, row, col, channel)
-    :param file_list:
-    :return:
+    Loads a list of images, all with the same size, into a numpy array (file, row, col, channel).
+
+    :param file_list: list of strings with filenames.
+    :return: numpy.ndarray.
     """
     if not isinstance(file_list, list):
         raise ValueError('file_list must be a list')
@@ -124,8 +145,7 @@ def expand_file_list_with_prefixes(file_list, prefix_from='im', prefix_to=[], ch
     return out_file_list
 
 
-def load_training_data(file_list, data_prefixes=None, augment=False,
-                       nblocks=1, shuffle_seed=None):
+def load_training_data(file_list, augment=False, nblocks=1, shuffle_seed=None):
     """
     Loads image files and prepare them for training or testing, returning numpy.ndarrays.
     Image files can be of any type loadable by the PIL module, but they must have the same size.
