@@ -23,7 +23,6 @@ import matplotlib.pyplot as plt
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -95,12 +94,9 @@ with open(saved_model_kfold_filename, 'wb') as f:
 # for i_fold, idx_test in enumerate(idx_test_all):
 for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
-    # the training dataset is all images minus the test ones
-    idx_train = list(set(range(n_orig_im)) - set(idx_test))
-
-    # list of original (without augmentation) training and test files
-    im_train_file_list = list(np.array(im_orig_file_list)[idx_train])
-    im_test_file_list = list(np.array(im_orig_file_list)[idx_test])
+    # split the data into training and testing datasets
+    im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list,
+                                                                      idx_test)
 
     # add the augmented image files
     im_train_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_train_file_list]
