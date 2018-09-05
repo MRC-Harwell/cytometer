@@ -14,6 +14,7 @@ import pandas as pd
 import ast
 from mahotas import bwperim
 import pysto.imgproc as pystoim
+import re
 
 
 DEBUG = False
@@ -76,11 +77,73 @@ def load_file_list_to_array(file_list):
     return im_out
 
 
-def load_training_data(im_file_list, data_prefixes=None, augment=False,
+def expand_file_list_with_prefixes(file_list, prefix_from='im', prefix_to=[], check_isfile=False):
+    """
+    Return a dictionary, where each key contains a list of filenames. The filenames are created
+    by substituting a prefix in an input list of filenames by other prefixes.
+
+    For example, for input list
+
+    [path/im_file_1.tif, path/im_file_2.tif]
+
+    prefix_from='im', and prefix_to=['seg', 'mask'], it returns
+
+    {
+        'im': [path/im_file_1.tif, path/im_file_2.tif],
+        'seg': [path/seg_file_1.tif, path/seg_file_2.tif],
+        'mask': [path/mask_file_1.tif, path/mask_file_2.tif],
+    }
+
+    :param file_list: list of filenames with paths.
+    :param prefix_from: (def 'im') substring that will be substituted in the filenames.
+    :param prefix_to: (def []) new substrings for the filenames.
+    :param check_isfile: (def False) check that files in the filename lists exist.
+    :return: dictionary with one filename list per prefix.
+    """
+
+    if check_isfile:
+        for x in file_list:
+            raise FileExistsError(x)
+
+    out_file_list = {}
+
+    # add the input filenames to the output
+    out_file_list[prefix_from] = file_list
+
+    # add filenames replacing the prefix
+    for prefix in prefix_to:
+        out_file_list[prefix] = []
+        for x in file_list:
+            x_path, x_basename = os.path.split(x)
+            prefix_file = os.path.join(x_path,
+                                       re.sub('^' + prefix_from, prefix, x_basename, count=1))
+            if check_isfile and not os.path.isfile(prefix_file):
+                raise FileExistsError(prefix_file)
+            out_file_list[prefix].append(prefix_file)
+
+    return out_file_list
+
+
+def load_training_data(file_list, data_prefixes=None, augment=False,
                        nblocks=1, shuffle_seed=None):
     """
-    Loads images and other types of training data. Images are given as a list of filenames,
-    expecting an 'im_' prefix, e.g. [path/im_file_1.tif, path/im_file_2.tif].
+    Loads image files and prepare them for training or testing, returning numpy.ndarrays.
+    Image files can be of any type loadable by the PIL module, but they must have the same size.
+
+    Multiple sets of corresponding images can be loaded. For instance,
+
+
+    im_file_1.tif          seg_file_1.tif          mask_file_1.tif
+    im_file_2.tif          seg_file_2.tif          mask_file_2.tif
+    im_file_3.tif          seg_file_3.tif          mask_file_3.tif
+
+    will return
+
+    outs['im']   --> numpy.ndarray (3, rows, cols, channels)
+    outs['seg']  --> numpy.ndarray (3, rows, cols, channels)
+    outs['mask'] --> numpy.ndarray (3, rows, cols, channels)
+
+
 
     The other data types are given as a list of prefixes. For example, ['seg', 'mask'] means
     that there are other two datasets, given by files [path/seg_file_1.tif, path/seg_file_2.tif]
@@ -91,7 +154,7 @@ def load_training_data(im_file_list, data_prefixes=None, augment=False,
         * images can be split into equally-sized blocks (this is useful when full images are too
         large for training).
         * images can be shuffled randomly.
-    :param im_file_list: list of paths and filenames. Each file contains a training image. If the
+    :param file_list: list of paths and filenames. Each file contains a training image. If the
     images are uint8, they are converted to float32 and scaled by 1/255.
     :param data_prefixes: (def None) list of strings with the prefixes in the filenames for the
     extra datasets.
@@ -114,18 +177,18 @@ def load_training_data(im_file_list, data_prefixes=None, augment=False,
     # add the augmented image files
     if augment:
         im_file_list_aug = []
-        for x in im_file_list:
+        for x in file_list:
             x_path, x_basename = os.path.split(x)
             x_basename = x_basename.replace('_seed_nan_', '_seed_*_')
             im_file_list_aug += glob.glob(os.path.join(x_path, x_basename))
-        im_file_list = im_file_list_aug
+        file_list = im_file_list_aug
 
     # check that there's a file for each data prefix (e.g. 'seg_foo.tif') for each image file
     # (e.g. im_foo.tif)
     out_file_list = {}
     for prefix in data_prefixes:
         out_file_list[prefix] = []
-        for x in im_file_list:
+        for x in file_list:
             x_path, x_basename = os.path.split(x)
             prefix_file = os.path.join(x_path,
                                        x_basename.replace('im_', prefix + '_'))
@@ -134,7 +197,7 @@ def load_training_data(im_file_list, data_prefixes=None, augment=False,
             out_file_list[prefix].append(prefix_file)
 
     # load image data
-    im = load_file_list_to_array(im_file_list)
+    im = load_file_list_to_array(file_list)
     if im.dtype == 'uint8':
         im = im.astype(np.float32)
         im /= 255
