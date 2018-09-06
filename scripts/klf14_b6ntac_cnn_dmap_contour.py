@@ -101,18 +101,23 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     im_train_file_list = cytometer.data.augment_file_list(im_train_file_list, '_nan_', '_*_')
     im_test_file_list = cytometer.data.augment_file_list(im_test_file_list, '_nan_', '_*_')
 
-    # list of distance transformation and mask_train files
-    dmap_train_file_list = [x.replace('im_', 'dmap_') for x in im_train_file_list]
-    mask_train_file_list = [x.replace('im_', 'mask_') for x in im_train_file_list]
-    seg_train_file_list = [x.replace('im_', 'seg_') for x in im_train_file_list]
+    # generate list of filenames for im, seg, dmap and mask data
+    train_file_list = cytometer.data.expand_file_list_with_prefixes(im_train_file_list,
+                                                                    prefix_from='im',
+                                                                    prefix_to=['seg', 'dmap', 'mask'],
+                                                                    check_isfile=True)
+    test_file_list = cytometer.data.expand_file_list_with_prefixes(im_test_file_list,
+                                                                   prefix_from='im',
+                                                                   prefix_to=['seg', 'dmap', 'mask'],
+                                                                   check_isfile=True)
 
-    dmap_test_file_list = [x.replace('im_', 'dmap_') for x in im_test_file_list]
-    mask_test_file_list = [x.replace('im_', 'mask_') for x in im_test_file_list]
-    seg_test_file_list = [x.replace('im_', 'seg_') for x in im_test_file_list]
+    # delete variables no longer necessary
+    del im_train_file_list
+    del im_test_file_list
 
     # number of training images
-    n_im_train = len(im_train_file_list)
-    n_im_test = len(im_test_file_list)
+    n_im_train = len(train_file_list['im'])
+    n_im_test = len(test_file_list['im'])
 
     # load images
     im_train = cytometer.data.load_file_list_to_array(im_train_file_list)
