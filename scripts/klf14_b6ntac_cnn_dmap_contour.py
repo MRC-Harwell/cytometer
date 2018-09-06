@@ -95,17 +95,11 @@ with open(saved_model_kfold_filename, 'wb') as f:
 for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # split the data into training and testing datasets
-    im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list,
-                                                                      idx_test)
+    im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
 
     # add the augmented image files
-    im_train_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_train_file_list]
-    im_train_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_train_file_list]
-    im_train_file_list = [item for sublist in im_train_file_list for item in sublist]
-
-    im_test_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_test_file_list]
-    im_test_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_test_file_list]
-    im_test_file_list = [item for sublist in im_test_file_list for item in sublist]
+    im_train_file_list = cytometer.data.augment_file_list(im_train_file_list, '_nan_', '_*_')
+    im_test_file_list = cytometer.data.augment_file_list(im_test_file_list, '_nan_', '_*_')
 
     # list of distance transformation and mask_train files
     dmap_train_file_list = [x.replace('im_', 'dmap_') for x in im_train_file_list]

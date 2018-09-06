@@ -65,6 +65,44 @@ def split_list(x, idx):
     return list(np.array(x)[idx]), list(np.array(x)[idx_2])
 
 
+def augment_file_list(file_list, tag_from, tag_to):
+    """
+    Replace a tag in the filenames of a list, with another tag, and search for files with the new names.
+    This is useful to add filenames of augmented data. For example, if you start with
+
+        im_file_1_nan.tif
+        im_file_2_nan.tif
+        im_file_3_nan.tif
+
+    and run augment_file_list(file_list, '_nan_', '_*_'), the new file list will contain filenames
+    of exisiting files that correspond to
+
+        im_file_1_*.tif
+        im_file_2_*.tif
+        im_file_3_*.tif
+
+    :param file_list: list of filenames.
+    :param tag_from: The tag that will be replaced for the file search. The tag will only be replaced
+    in file names, not in file paths.
+    :param tag_to: The tag that will replace tag_from in the file search.
+    :return: a new file list that includes the files that match the filenames with the new tags.
+    """
+
+    file_list_out = []
+    for file in file_list:
+
+        # split the filename into the path and the file name itself
+        file_path, file_basename = os.path.split(file)
+
+        # replace the tag by the other tag, presumably with
+        file_basename = file_basename.replace(tag_from, tag_to)
+
+        # search for files with the new tag
+        file_list_out += glob.glob(os.path.join(file_path, file_basename))
+
+    return file_list_out
+
+
 def load_file_list_to_array(file_list):
     """
     Loads a list of images, all with the same size, into a numpy array (file, row, col, channel).
