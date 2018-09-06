@@ -94,11 +94,12 @@ def augment_file_list(file_list, tag_from, tag_to):
         # split the filename into the path and the file name itself
         file_path, file_basename = os.path.split(file)
 
-        # replace the tag by the other tag, presumably with
+        # replace the tag by the other tag, e.g. '_*_'
         file_basename = file_basename.replace(tag_from, tag_to)
 
         # search for files with the new tag
         file_list_out += glob.glob(os.path.join(file_path, file_basename))
+        print(len(glob.glob(os.path.join(file_path, file_basename))))
 
     return file_list_out
 
@@ -162,7 +163,8 @@ def expand_file_list_with_prefixes(file_list, prefix_from='im', prefix_to=[], ch
 
     if check_isfile:
         for x in file_list:
-            raise FileExistsError(x)
+            if not os.path.isfile(x):
+                raise FileExistsError(x)
 
     out_file_list = {}
 
