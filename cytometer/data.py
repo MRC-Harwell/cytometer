@@ -99,7 +99,6 @@ def augment_file_list(file_list, tag_from, tag_to):
 
         # search for files with the new tag
         file_list_out += glob.glob(os.path.join(file_path, file_basename))
-        print(len(glob.glob(os.path.join(file_path, file_basename))))
 
     return file_list_out
 
@@ -137,61 +136,12 @@ def load_file_list_to_array(file_list):
     return im_out
 
 
-def expand_file_list_with_prefixes(file_list, prefix_from='im', prefix_to=[], check_isfile=False):
-    """
-    Return a dictionary, where each key contains a list of filenames. The filenames are created
-    by substituting a prefix in an input list of filenames by other prefixes.
-
-    For example, for input list
-
-    [path/im_file_1.tif, path/im_file_2.tif]
-
-    prefix_from='im', and prefix_to=['seg', 'mask'], it returns
-
-    {
-        'im': [path/im_file_1.tif, path/im_file_2.tif],
-        'seg': [path/seg_file_1.tif, path/seg_file_2.tif],
-        'mask': [path/mask_file_1.tif, path/mask_file_2.tif],
-    }
-
-    :param file_list: list of filenames with paths.
-    :param prefix_from: (def 'im') substring that will be substituted in the filenames.
-    :param prefix_to: (def []) new substrings for the filenames.
-    :param check_isfile: (def False) check that files in the filename lists exist.
-    :return: dictionary with one filename list per prefix.
-    """
-
-    if check_isfile:
-        for x in file_list:
-            if not os.path.isfile(x):
-                raise FileExistsError(x)
-
-    out_file_list = {}
-
-    # add the input filenames to the output
-    out_file_list[prefix_from] = file_list
-
-    # add filenames replacing the prefix
-    for prefix in prefix_to:
-        out_file_list[prefix] = []
-        for x in file_list:
-            x_path, x_basename = os.path.split(x)
-            prefix_file = os.path.join(x_path,
-                                       re.sub('^' + prefix_from, prefix, x_basename, count=1))
-            if check_isfile and not os.path.isfile(prefix_file):
-                raise FileExistsError(prefix_file)
-            out_file_list[prefix].append(prefix_file)
-
-    return out_file_list
-
-
-def load_training_data(file_list, augment=False, nblocks=1, shuffle_seed=None):
+def load_training_data(file_list, prefix_from='im', prefix_to=[], nblocks=1, shuffle_seed=None):
     """
     Loads image files and prepare them for training or testing, returning numpy.ndarrays.
     Image files can be of any type loadable by the PIL module, but they must have the same size.
 
-    Multiple sets of corresponding images can be loaded. For instance,
-
+    Multiple sets of corresponding images can be loaded using prefix_to. For instance,
 
     im_file_1.tif          seg_file_1.tif          mask_file_1.tif
     im_file_2.tif          seg_file_2.tif          mask_file_2.tif
@@ -203,117 +153,83 @@ def load_training_data(file_list, augment=False, nblocks=1, shuffle_seed=None):
     outs['seg']  --> numpy.ndarray (3, rows, cols, channels)
     outs['mask'] --> numpy.ndarray (3, rows, cols, channels)
 
-
-
-    The other data types are given as a list of prefixes. For example, ['seg', 'mask'] means
-    that there are other two datasets, given by files [path/seg_file_1.tif, path/seg_file_2.tif]
-    and [path/mask_file_1.tif, path/mask_file_2.tif]. This ensures that the data in the different
-    sets corresponds to each other.
-
     This function also provides the following optional functionality:
         * images can be split into equally-sized blocks (this is useful when full images are too
         large for training).
         * images can be shuffled randomly.
-    :param file_list: list of paths and filenames. Each file contains a training image. If the
-    images are uint8, they are converted to float32 and scaled by 1/255.
-    :param data_prefixes: (def None) list of strings with the prefixes in the filenames for the
-    extra datasets.
-    :param augment: flag (def False) Input filenames are assumed to contain the string
-    '_seed_nan_'. If augment==True, the list of filenames gets extended with files that contain
-    '_seed_*_' instead.
-    :param nblocks: (def 1) Number of row/column blocks images are split into. The last rows and
-    columns may have to be removed so that all blocks have the same size.
-    :param shuffle_seed:
-    :return: im, shuffle_idx, outs
-        * im is a numpy.ndarray with training images (n, row, col, channel).
-        * shuffle_idx is a list with the indices used to shuffle the images.
-        * outs: dictionary. Each key corresponds to one of the extra datasets, e.g. outs['seg']
-          and outs['mask'].
+
+    :param file_list: list of paths and filenames (for one of the datasets).
+    :param prefix_from: (def 'im') string with the prefix (e.g. 'im') in file_list that when changed gives the other
+    datasets. Note that the prefix refers to the name of the file, not its path.
+    :param prefix_to: (def []) list of strings with the prefixes of the datasets that will be loaded. E.g.
+    ['im', 'mask'] will load the datasets from the filenames that start with 'im' and 'mask'.
+    :param nblocks: (def 1) number of equi-sized blocks to split the images into. Note that the edges of the images may
+    need to be trimmed so that splitting creates blocks with the same size.
+    :param shuffle_seed: (def None) If provided, images are shuffled after splitting.
+    :return: out, out_file_list, shuffle_idx:
+       * out: dictionary where out[prefix] contains a numpy.ndarray with the data corresponding to the "prefix" dataset.
+       * out_file_list: list of the filenames for the out[prefix] dataset.
+       * shuffle_idx: list of indices used to shuffle the images after splitting.
     """
 
-    if data_prefixes is not None and not isinstance(data_prefixes, list):
-        raise TypeError('data_prefixes must be None or a list of strings')
+    if not isinstance(prefix_to, list):
+        raise TypeError('data_prefixes must be a list of strings')
 
-    # add the augmented image files
-    if augment:
-        im_file_list_aug = []
-        for x in file_list:
-            x_path, x_basename = os.path.split(x)
-            x_basename = x_basename.replace('_seed_nan_', '_seed_*_')
-            im_file_list_aug += glob.glob(os.path.join(x_path, x_basename))
-        file_list = im_file_list_aug
-
-    # check that there's a file for each data prefix (e.g. 'seg_foo.tif') for each image file
-    # (e.g. im_foo.tif)
+    # using prefixes, get list of filenames for the different datasets
     out_file_list = {}
-    for prefix in data_prefixes:
+    for prefix in prefix_to:
         out_file_list[prefix] = []
         for x in file_list:
             x_path, x_basename = os.path.split(x)
             prefix_file = os.path.join(x_path,
-                                       x_basename.replace('im_', prefix + '_'))
+                                       re.sub('^' + prefix_from, prefix, x_basename, count=1))
             if not os.path.isfile(prefix_file):
                 raise FileExistsError(prefix_file)
             out_file_list[prefix].append(prefix_file)
 
-    # load image data
-    im = load_file_list_to_array(file_list)
-    if im.dtype == 'uint8':
-        im = im.astype(np.float32)
-        im /= 255
+    # load all datasets
+    out = {}
+    shuffle_idx = {}
+    for prefix in prefix_to:
+        # load dataset
+        out[prefix] = load_file_list_to_array(out_file_list[prefix])
 
-    # split image into smaller blocks, if requested
-    if nblocks > 1:
-        im = split_images(im, nblocks=nblocks)
-
-    # number of images
-    n_im = im.shape[0]
-
-    # shuffle data
-    shuffle_idx = np.arange(n_im)
-    if shuffle_seed is not None:
-        np.random.seed(shuffle_seed)
-        np.random.shuffle(shuffle_idx)
-        im = im[shuffle_idx, ...]
-
-    # load the other data volumes
-    outs = {}
-    for prefix in data_prefixes:
-        outs[prefix] = load_file_list_to_array(out_file_list[prefix])
-        if prefix in {'mask', 'dmap'}:
-            outs[prefix] = outs[prefix].astype(np.float32)
+        # data type conversions
+        if prefix == 'im' and out[prefix].dtype == 'uint8':
+            out[prefix] = out[prefix].astype(np.float32)
+            out[prefix] /= 255
+        elif prefix in {'mask', 'dmap'}:
+            out[prefix] = out[prefix].astype(np.float32)
         elif prefix == 'seg':
-            outs[prefix] = outs[prefix].astype(np.uint8)
+            out[prefix] = out[prefix].astype(np.uint8)
 
         # split image into smaller blocks, if requested
         if nblocks > 1:
-            outs[prefix] = split_images(outs[prefix], nblocks=nblocks)
+            out[prefix] = split_images(out[prefix], nblocks=nblocks)
 
-        # shuffle the data if requested
+        # create shuffling indices if required
+        if prefix == prefix_to[0] and shuffle_seed is not None:
+            n = out[prefix].shape[0]  # number of images
+            shuffle_idx = np.arange(n)
+            np.random.seed(shuffle_seed)
+            np.random.shuffle(shuffle_idx)
+
+        # shuffle data
         if shuffle_seed is not None:
-            outs[prefix] = outs[prefix][shuffle_idx, ...]
+            out[prefix] = out[prefix][shuffle_idx, ...]
 
-        if DEBUG:
-            for i in range(n_im):
-                plt.clf()
-                plt.subplot(121)
-                if im.shape[-1] == 1:
-                    plt.imshow(im[i, :, :, 0])
-                else:
-                    plt.imshow(im[i, :, :, :])
-                plt.title('im')
-                plt.subplot(122)
-                if outs[prefix].shape[-1] == 1:
-                    plt.imshow(outs[prefix][i, :, :, 0])
-                else:
-                    plt.imshow(outs[prefix][i, :, :, :])
-                plt.title(prefix)
+    if DEBUG:
+        i = 5
+        plt.clf()
+        for pi, prefix in enumerate(prefix_to):
+            plt.subplot(1, len(prefix_to), pi+1)
+            if out[prefix].shape[-1] == 1:
+                plt.imshow(out[prefix][i, :, :, 0])
+            else:
+                plt.imshow(out[prefix][i, :, :, :])
+            plt.title('out[' + prefix + ']')
 
-    # outputs
-    if len(outs) == 0:
-        return im, shuffle_idx
-    else:
-        return im, shuffle_idx, outs
+    return out, out_file_list, shuffle_idx
 
 
 def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
