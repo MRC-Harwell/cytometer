@@ -131,7 +131,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=48, kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
+    x = Conv2D(filters=96, kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
@@ -139,7 +139,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
+    x = Conv2D(filters=128, kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
@@ -147,7 +147,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=98, kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
+    x = Conv2D(filters=196, kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
@@ -155,7 +155,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=256, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
+    x = Conv2D(filters=512, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
