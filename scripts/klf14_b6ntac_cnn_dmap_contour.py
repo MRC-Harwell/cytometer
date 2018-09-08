@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -35,7 +35,7 @@ import tensorflow as tf
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
 set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
@@ -58,7 +58,7 @@ epochs = 10
 # timestamp at the beginning of loading data and processing so that all folds have a common name
 timestamp = datetime.datetime.now()
 
-'''Load data
+'''Directories and filenames
 '''
 
 # data paths
@@ -70,6 +70,9 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
 saved_model_basename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016_dmap_contour')
 saved_model_basename = saved_model_basename.replace(':', '_')
+
+'''Prepare folds
+'''
 
 # list of original training images, pre-augmentation
 im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
@@ -94,6 +97,9 @@ with open(saved_model_kfold_filename, 'wb') as f:
 # for i_fold, idx_test in enumerate(idx_test_all):
 for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
+    '''Load data
+    '''
+
     # split the data into training and testing datasets
     im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
 
@@ -110,7 +116,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                                           nblocks=nblocks, shuffle_seed=i_fold)
 
     if DEBUG:
-        i = 250
+        i = 100
         plt.clf()
         for pi, prefix in enumerate(train_out.keys()):
             plt.subplot(1, len(train_out.keys()), pi + 1)
@@ -120,7 +126,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                 plt.imshow(train_out[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
-        i = 5
+        i = 4
         plt.clf()
         for pi, prefix in enumerate(test_out.keys()):
             plt.subplot(1, len(test_out.keys()), pi + 1)
