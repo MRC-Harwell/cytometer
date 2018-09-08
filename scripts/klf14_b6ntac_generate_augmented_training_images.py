@@ -6,8 +6,6 @@ Script to generate augmented training data for the klf14_b6ntac experiments.
 This script loads histology windows, masks, distance transformations and labels, and generates
 random rotations and scale changes (consistent between corresponding data), and saves them to
 file for later use in training.
-
-Masks:
 """
 
 # cross-platform home directory
@@ -34,7 +32,7 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 # set display for the server
 #os.environ['DISPLAY'] = 'localhost:11.0'
@@ -47,7 +45,7 @@ import cytometer.data
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
 set_session(tf.Session(config=config))
 
 
@@ -121,8 +119,8 @@ for i, base_file in enumerate(im_file_list):
     im_out = Image.fromarray(im_out, mode='L')
     im_out.save(mask_file)
 
-    # set all inside pixels of segmentation to same value and save labels (note: we can save as uint32)
-    im_out = seg[i, :, :, 0]
+    # set all contour pixels
+    im_out = seg[i, :, :, 0] * mask[i, :, :, 0]
     im_out = Image.fromarray(im_out.astype(np.uint32), mode='I')
     im_out.save(seg_file)
 
@@ -181,6 +179,9 @@ for seed in range(augment_factor - 1):
         mask_augmented[i, :, :, :] = mask_aux.reshape(mask_aux.shape + (1,))
 
         # we don't need to clear the border artifact from seg, because the mask will make it ignored anyway
+
+        # keep only contours in the segmentation array
+        seg_augmented[i, :, :, 0] *= mask_augmented[i, :, :, 0].astype('uint8')
 
         if DEBUG:
             plt.clf()
