@@ -93,6 +93,15 @@ for i in range(n_im):
 # method to read all the augmented data, and we don't need to recompute the distance transformations
 for i, base_file in enumerate(im_file_list):
 
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(dmap[i, :, :, 0])
+        plt.subplot(222)
+        plt.imshow(mask[i, :, :, 0])
+        plt.subplot(223)
+        plt.imshow(seg[i, :, :, 0] * mask[i, :, :, 0])
+
     # create filenames based on the original foo.tif, so that we have
     # * im_seed_nan_foo.tif
     # * dmap_seed_nan_foo.tif
@@ -141,7 +150,6 @@ data_gen_args = dict(
 dmap_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 im_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 mask_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
-data_gen_args['cval'] = 1
 seg_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 
 # augment data, using the same seed so that all corresponding images, dmaps and masks undergo
