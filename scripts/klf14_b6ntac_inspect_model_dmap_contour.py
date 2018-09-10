@@ -56,7 +56,8 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 # saved_model_basename = '2018-08-11T23_10_03.296260_fcn_sherrah2016'  # dmap regression trained with 15 epochs
 # saved_model_basename = '2018-08-20T12_15_24.854266_fcn_sherrah2016'  # First working network with dmap regression + contour classification
 # saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016'  # dmap + contour classification (ReLU instead of sigmoid)
-saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016_dmap_contour'  # dmap + contour classification (ReLU instead of sigmoid)
+# saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016_dmap_contour'  # dmap + contour classification (ReLU instead of sigmoid)
+saved_model_basename = '2018-09-08T21_59_01.547660_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours
 
 model_name = saved_model_basename + '*.h5'
 
