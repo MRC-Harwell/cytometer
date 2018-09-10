@@ -18,7 +18,7 @@ nblocks_vec = list(range(2, 6))
 kernel_len_vec = list(range(2, 5))
 dilation_rate_vec = list(range(1, 3))
 rf_size = []
-output = dict('nblocks': [], 'kernel_len': [], 'dilation_rate': [], 'rf_size': [])
+output = {'nblocks': [], 'kernel_len': [], 'dilation_rate': [], 'rf_size': []}
 for nblocks in nblocks_vec:
     for kernel_len in kernel_len_vec:
         for dilation_rate in dilation_rate_vec:
