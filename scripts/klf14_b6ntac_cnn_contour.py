@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -45,11 +45,14 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
+# number of blocks to split each image into so that training fits into GPU memory
+nblocks = 2
+
 # number of folds for k-fold cross validation
 n_folds = 11
 
 # number of epochs for training
-epochs = 15
+epochs = 10
 
 # timestamp at the beginning of loading data and processing so that all folds have a common name
 timestamp = datetime.datetime.now()
@@ -78,7 +81,8 @@ idx_test_all = np.array_split(idx, n_folds)
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
-for i_fold, idx_test in enumerate(idx_test_all):
+# for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # the training dataset is all images minus the test ones
     idx_train = list(set(range(n_orig_im)) - set(idx_test))
@@ -96,12 +100,12 @@ for i_fold, idx_test in enumerate(idx_test_all):
     im_test_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_test_file_list]
     im_test_file_list = [item for sublist in im_test_file_list for item in sublist]
 
-    # list of distance transformation and mask_train files
-    dmap_train_file_list = [x.replace('im_', 'dmap_') for x in im_train_file_list]
+    # list of contours and mask_train files
     mask_train_file_list = [x.replace('im_', 'mask_') for x in im_train_file_list]
+    seg_train_file_list = [x.replace('im_', 'seg_') for x in im_train_file_list]
 
-    dmap_test_file_list = [x.replace('im_', 'dmap_') for x in im_test_file_list]
     mask_test_file_list = [x.replace('im_', 'mask_') for x in im_test_file_list]
+    seg_test_file_list = [x.replace('im_', 'seg_') for x in im_test_file_list]
 
     # number of training images
     n_im_train = len(im_train_file_list)
@@ -109,21 +113,23 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # load images
     im_train = cytometer.data.load_file_list_to_array(im_train_file_list)
-    dmap_train = cytometer.data.load_file_list_to_array(dmap_train_file_list)
     mask_train = cytometer.data.load_file_list_to_array(mask_train_file_list)
+    seg_train = cytometer.data.load_file_list_to_array(seg_train_file_list)
 
     im_test = cytometer.data.load_file_list_to_array(im_test_file_list)
-    dmap_test = cytometer.data.load_file_list_to_array(dmap_test_file_list)
     mask_test = cytometer.data.load_file_list_to_array(mask_test_file_list)
+    seg_test = cytometer.data.load_file_list_to_array(seg_test_file_list)
 
     # convert uint8 images to float, and rescale RBG values to [0.0, 1.0]
     im_train = im_train.astype(np.float32)
     im_train /= 255
     mask_train = mask_train.astype(np.float32)
+    seg_train = seg_train.astype(np.uint8)
 
     im_test = im_test.astype(np.float32)
     im_test /= 255
     mask_test = mask_test.astype(np.float32)
+    seg_test = seg_test.astype(np.uint8)
 
     if DEBUG:
         for i in range(n_im_train):
@@ -131,67 +137,50 @@ for i_fold, idx_test in enumerate(idx_test_all):
             plt.subplot(221)
             plt.imshow(im_train[i, :, :, :])
             plt.subplot(222)
-            plt.imshow(dmap_train[i, :, :, :].reshape(dmap_train.shape[1:3]))
+            plt.imshow(seg_train[i, :, :, 0] * mask_train[i, :, :, 0])
             plt.subplot(223)
-            plt.imshow(mask_train[i, :, :, :].reshape(mask_train.shape[1:3]))
+            plt.imshow(mask_train[i, :, :, 0])
             plt.subplot(224)
+            # plt.imshow(seg_train[i, :, :, 0])
             a = im_train[i, :, :, :]
-            b = mask_train[i, :, :, :].reshape(mask_train.shape[1:3])
+            b = mask_train[i, :, :, 0]
             plt.imshow(pystoim.imfuse(b, a))
-            plt.show()
 
         for i in range(n_im_test):
             plt.clf()
             plt.subplot(221)
             plt.imshow(im_test[i, :, :, :])
             plt.subplot(222)
-            plt.imshow(dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3]))
+            plt.imshow(seg_test[i, :, :, 0] * mask_test[i, :, :, 0])
             plt.subplot(223)
-            plt.imshow(mask_test[i, :, :, :].reshape(mask_test.shape[1:3]))
+            plt.imshow(mask_test[i, :, :, 0])
             plt.subplot(224)
             a = im_test[i, :, :, :]
-            b = mask_test[i, :, :, :].reshape(mask_test.shape[1:3])
+            b = mask_test[i, :, :, 0]
             plt.imshow(pystoim.imfuse(b, a))
-            plt.show()
 
-    # remove a 1-pixel so that images are 1000x1000 and we can split them into 2x2 tiles
-    dmap_train = dmap_train[:, 0:-1, 0:-1, :]
-    mask_train = mask_train[:, 0:-1, 0:-1, :]
-    im_train = im_train[:, 0:-1, 0:-1, :]
+    # split image into smaller blocks so that the training fits into GPU memory
+    if nblocks > 1:
+        mask_train = cytometer.data.split_images(mask_train, nblocks=nblocks)
+        im_train = cytometer.data.split_images(im_train, nblocks=nblocks)
+        seg_train = cytometer.data.split_images(seg_train, nblocks=nblocks)
 
-    dmap_test = dmap_test[:, 0:-1, 0:-1, :]
-    mask_test = mask_test[:, 0:-1, 0:-1, :]
-    im_test = im_test[:, 0:-1, 0:-1, :]
+        mask_test = cytometer.data.split_images(mask_test, nblocks=nblocks)
+        im_test = cytometer.data.split_images(im_test, nblocks=nblocks)
+        seg_test = cytometer.data.split_images(seg_test, nblocks=nblocks)
 
-    # split images into smaller blocks to avoid GPU memory overflows in training
-    _, dmap_train, _ = pystoim.block_split(dmap_train, nblocks=(1, 2, 2, 1))
-    _, im_train, _ = pystoim.block_split(im_train, nblocks=(1, 2, 2, 1))
-    _, mask_train, _ = pystoim.block_split(mask_train, nblocks=(1, 2, 2, 1))
-
-    _, dmap_test, _ = pystoim.block_split(dmap_test, nblocks=(1, 2, 2, 1))
-    _, im_test, _ = pystoim.block_split(im_test, nblocks=(1, 2, 2, 1))
-    _, mask_test, _ = pystoim.block_split(mask_test, nblocks=(1, 2, 2, 1))
-
-    dmap_train = np.concatenate(dmap_train, axis=0)
-    im_train = np.concatenate(im_train, axis=0)
-    mask_train = np.concatenate(mask_train, axis=0)
-
-    dmap_test = np.concatenate(dmap_test, axis=0)
-    im_test = np.concatenate(im_test, axis=0)
-    mask_test = np.concatenate(mask_test, axis=0)
-
-    # find images that have no valid pixels, to remove them from the dataset
+    # find images that have few valid pixels, to remove them from the dataset
     idx_to_keep = np.sum(np.sum(np.sum(mask_train, axis=3), axis=2), axis=1)
-    idx_to_keep = idx_to_keep != 0
-    dmap_train = dmap_train[idx_to_keep, :, :, :]
+    idx_to_keep = idx_to_keep > 100
     im_train = im_train[idx_to_keep, :, :, :]
     mask_train = mask_train[idx_to_keep, :, :, :]
+    seg_train = seg_train[idx_to_keep, :, :, :]
 
     idx_to_keep = np.sum(np.sum(np.sum(mask_test, axis=3), axis=2), axis=1)
-    idx_to_keep = idx_to_keep != 0
-    dmap_test = dmap_test[idx_to_keep, :, :, :]
+    idx_to_keep = idx_to_keep > 100
     im_test = im_test[idx_to_keep, :, :, :]
     mask_test = mask_test[idx_to_keep, :, :, :]
+    seg_test = seg_test[idx_to_keep, :, :, :]
 
     # update number of training images with number of tiles
     n_im_train = im_train.shape[0]
@@ -203,49 +192,53 @@ for i_fold, idx_test in enumerate(idx_test_all):
             plt.subplot(221)
             plt.imshow(im_train[i, :, :, :])
             plt.subplot(222)
-            plt.imshow(dmap_train[i, :, :, :].reshape(dmap_train.shape[1:3]))
+            plt.imshow(seg_train[i, :, :, 0] * mask_train[i, :, :, 0])
             plt.subplot(223)
-            plt.imshow(mask_train[i, :, :, :].reshape(mask_train.shape[1:3]))
+            plt.imshow(mask_train[i, :, :, 0])
             plt.subplot(224)
             a = im_train[i, :, :, :]
-            b = mask_train[i, :, :, :].reshape(mask_train.shape[1:3])
+            b = mask_train[i, :, :, 0]
             plt.imshow(pystoim.imfuse(a, b))
-            plt.show()
 
         for i in range(n_im_test):
             plt.clf()
             plt.subplot(221)
             plt.imshow(im_test[i, :, :, :])
             plt.subplot(222)
-            plt.imshow(dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3]))
+            plt.imshow(seg_test[i, :, :, 0] * mask_test[i, :, :, 0])
             plt.subplot(223)
-            plt.imshow(mask_test[i, :, :, :].reshape(mask_test.shape[1:3]))
+            plt.imshow(mask_test[i, :, :, 0])
             plt.subplot(224)
             a = im_test[i, :, :, :]
-            b = mask_test[i, :, :, :].reshape(mask_test.shape[1:3])
+            b = mask_test[i, :, :, 0]
             plt.imshow(pystoim.imfuse(a, b))
-            plt.show()
+
 
     # shuffle data
     np.random.seed(i_fold)
 
     idx = np.arange(n_im_train)
     np.random.shuffle(idx)
-    dmap_train = dmap_train[idx, ...]
     im_train = im_train[idx, ...]
     mask_train = mask_train[idx, ...]
+    seg_train = seg_train[idx, ...]
 
     idx = np.arange(n_im_test)
     np.random.shuffle(idx)
-    dmap_test = dmap_test[idx, ...]
     im_test = im_test[idx, ...]
     mask_test = mask_test[idx, ...]
+    seg_test = seg_test[idx, ...]
 
     '''Convolutional neural network training
     
     Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
     function
     '''
+
+    # filename to save model to
+    saved_model_filename = os.path.join(saved_models_dir, timestamp.isoformat() +
+                                        '_fcn_sherrah2016_contour_fold_' + str(i_fold) + '.h5')
+    saved_model_filename = saved_model_filename.replace(':', '_')
 
     # list all CPUs and GPUs
     device_list = K.get_session().list_devices()
@@ -255,26 +248,26 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
-        # # instantiate model
-        # with tf.device('/cpu:0'):
-        #     model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
-
-        # load pre-trained model
-        # model = cytometer.models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
-        weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
-                                                                                          str(i_fold) + '.h5')
-        weights_filename = os.path.join(saved_models_dir, weights_filename)
-        model = keras.models.load_model(weights_filename)
+        # instantiate model
+        with tf.device('/cpu:0'):
+            model = models.fcn_sherrah2016_contour(input_shape=im_train.shape[1:])
 
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
+        parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
+                               optimizer='Adadelta', metrics=['binary_accuracy'],
+                               sample_weight_mode='element')
+
+        # checkpoint to save model after each epoch
+        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                       verbose=1, save_best_only=True)
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(im_train, dmap_train, sample_weight=mask_train,
-                           validation_data=(im_test, dmap_test, mask_test),
-                           batch_size=4, epochs=epochs, initial_epoch=6)
+        parallel_model.fit(im_train, seg_train, sample_weight=mask_train,
+                           validation_data=(im_test, seg_test, mask_test),
+                           batch_size=4, epochs=epochs,
+                           callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
@@ -282,27 +275,29 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # instantiate model
         with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
+            model = models.fcn_sherrah2016_contour(input_shape=im_train.shape[1:])
 
         # compile model
-        model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
+        model.compile(loss={'classification_output': 'binary_crossentropy'},
+                      optimizer='Adadelta', metrics=['binary_accuracy'],
+                      sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(im_train, dmap_train, sample_weight=mask_train,
-                  validation_data=(im_test, dmap_test, mask_test),
-                  batch_size=4, epochs=epochs)
+        model.fit(im_train, seg_train, sample_weight=mask_train,
+                  validation_data=(im_test, seg_test, mask_test),
+                  batch_size=4, epochs=epochs,
+                  callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
     # save result (note, we save the template model, not the multiparallel object)
-    saved_model_filename = os.path.join(saved_models_dir, timestamp.isoformat() +
-                                        '_fcn_sherrah2016_fold_' + str(i_fold) + '.h5')
-    saved_model_filename = saved_model_filename.replace(':', '_')
     model.save(saved_model_filename)
 
 # if we ran the script with nohup in linux, the output is in file nohup.out.
 # Save it to saved_models directory (
-log_filename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016.h5')
-if os.path.isfile('nohup.out'):
-    shutil.copy2('nohup.out', log_filename)
+log_filename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016_contour.log')
+log_filename = log_filename.replace(':', '_')
+nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+if os.path.isfile(nohup_filename):
+    shutil.copy2(nohup_filename, log_filename)
