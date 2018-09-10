@@ -57,7 +57,7 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 # saved_model_basename = '2018-08-20T12_15_24.854266_fcn_sherrah2016'  # First working network with dmap regression + contour classification
 # saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016'  # dmap + contour classification (ReLU instead of sigmoid)
 # saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016_dmap_contour'  # dmap + contour classification (ReLU instead of sigmoid)
-saved_model_basename = '2018-09-08T21_59_01.547660_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours
+saved_model_basename = '2018-09-10T01_14_11.152311_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours
 
 model_name = saved_model_basename + '*.h5'
 
@@ -70,28 +70,23 @@ saved_model_kfold_filename = os.path.join(saved_models_dir, saved_model_basename
 with open(saved_model_kfold_filename, 'rb') as f:
     aux = pickle.load(f)
 im_file_list = aux['file_list']
-im_file_list = [x.replace('/home/rcasero', home) for x in im_file_list]
 idx_test_all = aux['idx_test_all']
 
-# the other images used for training
-dmap_file_list = [x.replace('im_', 'dmap_') for x in im_file_list]
-seg_file_list = [x.replace('im_', 'seg_') for x in im_file_list]
-mask_file_list = [x.replace('im_', 'mask_') for x in im_file_list]
+# correct home directory if we are in a different system than what was used to train the models
+im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
+
+'''Load example data to display'''
+
+# load im, seg and mask datasets
+datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'seg', 'mask', 'dmap'])
+im = datasets['im']
+seg = datasets['seg']
+mask = datasets['mask']
+dmap = datasets['dmap']
+del datasets
 
 # number of training images
-n_im = len(im_file_list)
-
-# load images
-im = cytometer.data.load_file_list_to_array(im_file_list)
-dmap = cytometer.data.load_file_list_to_array(dmap_file_list)
-seg = cytometer.data.load_file_list_to_array(seg_file_list)
-mask = cytometer.data.load_file_list_to_array(mask_file_list)
-
-# convert to float
-im = im.astype(np.float32)
-im /= 255
-mask = mask.astype(np.float32)
-seg = seg.astype(np.float32)
+n_im = im.shape[0]
 
 if DEBUG:
     for i in range(n_im):
@@ -101,7 +96,7 @@ if DEBUG:
         plt.imshow(im[i, :, :, :])
         plt.title('Histology: ' + str(i))
         plt.subplot(222)
-        plt.imshow(seg[i, :, :, 0] * mask[i, :, :, 0])
+        plt.imshow(seg[i, :, :, 0])
         plt.title('Labels')
         plt.subplot(223)
         plt.imshow(dmap[i, :, :, 0])
@@ -151,28 +146,17 @@ for i, model_file in enumerate(model_files):
 
 for fold_i, model_file in enumerate(model_files):
 
-    # select test data (data not used for training)
-    idx_test = idx_test_all[fold_i]
-    im_test = im[idx_test, ...]
-    dmap_test = dmap[idx_test, ...]
-    mask_test = mask[idx_test, ...]
-    # seg_test = seg[idx_test, ...]
+    # split the data into training and testing datasets
+    im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
 
-    # split data into blocks
-    dmap_test = dmap_test[:, 0:-1, 0:-1, :]
-    mask_test = mask_test[:, 0:-1, 0:-1, :]
-    im_test = im_test[:, 0:-1, 0:-1, :]
-    # seg_test = seg_test[:, 0:-1, 0:-1, :]
-
-    _, dmap_test, _ = pystoim.block_split(dmap_test, nblocks=(1, 2, 2, 1))
-    _, im_test, _ = pystoim.block_split(im_test, nblocks=(1, 2, 2, 1))
-    _, mask_test, _ = pystoim.block_split(mask_test, nblocks=(1, 2, 2, 1))
-    # _, seg_test, _ = pystoim.block_split(seg_test, nblocks=(1, 2, 2, 1))
-
-    dmap_test = np.concatenate(dmap_test, axis=0)
-    im_test = np.concatenate(im_test, axis=0)
-    mask_test = np.concatenate(mask_test, axis=0)
-    # seg_test = np.concatenate(seg_test, axis=0)
+    # load im, seg and mask datasets
+    test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
+                                                       prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=2)
+    im_test = test_datasets['im']
+    seg_test = test_datasets['seg']
+    mask_test = test_datasets['mask']
+    dmap_test = test_datasets['dmap']
+    del test_datasets
 
     # load model
     model = cytometer.models.fcn_sherrah2016_regression_and_classifier(input_shape=im_test.shape[1:])
@@ -255,7 +239,7 @@ if os.path.isfile(log_filename):
         clas_mae_plot, = plt.plot(df.index, df.classification_output_mean_absolute_error, label='clas mae')
         regr_epoch_ends_plot2, = plt.plot(epoch_ends, df.regression_output_mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
         clas_epoch_ends_plot2, = plt.plot(epoch_ends, df.classification_output_mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
-        plt.legend(handles=[regr_mae_plot, clas_mae_plot, epoch_ends_plot2])
+        plt.legend(handles=[regr_mae_plot, clas_mae_plot, clas_epoch_ends_plot2])
         plt.subplot(313)
         regr_mse_plot, = plt.semilogy(df.index, df.regression_output_mean_squared_error, label='regr mse')
         clas_mse_plot, = plt.semilogy(df.index, df.classification_output_mean_squared_error, label='clas mse')
@@ -271,9 +255,9 @@ if os.path.isfile(log_filename):
         epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
         epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], '-', label='loss')
         plt.subplot(312)
-        epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], '-', label='mae')
+        epoch_ends_plot2, = plt.plot(epoch_ends, df.regression_output_mean_absolute_error[epoch_ends], '-', label='mae')
         plt.subplot(313)
-        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.mean_squared_error[epoch_ends], '-', label='mse')
+        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.regression_output_mean_squared_error[epoch_ends], '-', label='mse')
 
     # concatenate metrics from all folds
     epoch_ends_all = np.empty((0,))

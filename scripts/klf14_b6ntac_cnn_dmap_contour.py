@@ -109,11 +109,11 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # load the train and test data: im, seg, dmap and mask data
     train_out, train_file_list, train_shuffle_idx = \
-        cytometer.data.load_training_data(im_train_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
-                                          nblocks=nblocks, shuffle_seed=i_fold)
+        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
+                                     nblocks=nblocks, shuffle_seed=i_fold)
     test_out, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_training_data(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
-                                          nblocks=nblocks, shuffle_seed=i_fold)
+        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
+                                     nblocks=nblocks, shuffle_seed=i_fold)
 
     if DEBUG:
         i = 100
