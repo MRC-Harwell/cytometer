@@ -174,7 +174,7 @@ def load_file_list_to_array(file_list):
     return im_out
 
 
-def load_training_data(file_list, prefix_from='im', prefix_to=[], nblocks=1, shuffle_seed=None):
+def load_datasets(file_list, prefix_from='im', prefix_to=[], nblocks=1, shuffle_seed=None):
     """
     Loads image files and prepare them for training or testing, returning numpy.ndarrays.
     Image files can be of any type loadable by the PIL module, but they must have the same size.
