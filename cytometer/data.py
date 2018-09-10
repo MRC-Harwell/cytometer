@@ -65,6 +65,44 @@ def split_list(x, idx):
     return list(np.array(x)[idx]), list(np.array(x)[idx_2])
 
 
+def change_home_directory(file_list, home_path_from, home_path_to, check_isfile=False):
+    """
+    Change the home directory in a list of file paths and names. Optionally, it checks that the new paths exist in the
+    system.
+
+    For example,
+
+    change_home_directory(file_list, '/home/foo', '/users/project/jsmith')
+
+    converts the list
+
+    file_list =
+    ['/home/foo/data/file1.txt',
+     '/home/foo/results/file2.txt']
+
+    to
+
+    ['/users/project/jsmith/data/file1.txt',
+     '/users/project/jsmith/results/file2.txt']
+
+
+    :param file_list: list of strings with file paths and names, all with the same path directory.
+    :param home_path_from: string at the beginning of each path that will be replaced.
+    :param home_path_to: string with the new home directory.
+    :param check_isfile: (def False) check whether files with the new home directory exist.
+    :return:
+    """
+    if not isinstance(file_list, list):
+        file_list = [file_list]
+    p = re.compile('^' + home_path_from + '[' + os.path.sep + ']')
+    for i, file in enumerate(file_list):
+        file_without_home = p.sub('', file)
+        file_list[i] = os.path.join(home_path_to, file_without_home)
+        if check_isfile and not os.path.isfile(file_list[i]):
+            raise FileExistsError(os.path.isfile(file_list[i]))
+    return file_list
+
+
 def augment_file_list(file_list, tag_from, tag_to):
     """
     Replace a tag in the filenames of a list, with another tag, and search for files with the new names.
