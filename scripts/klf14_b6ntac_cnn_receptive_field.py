@@ -96,7 +96,7 @@ Sherrah 2016 fully convolutional network'''
 
 # estimate receptive field of the model
 def model_build_func(input_shape):
-    return models.fcn_sherrah2016(input_shape=input_shape, for_receptive_field=True)
+    return models.fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
 
 
 rf = KerasReceptiveField(model_build_func, init_weights=True)
@@ -117,7 +117,7 @@ rf.plot_rf_grid(custom_image=im)
 plt.show()
 
 # show model
-model = models.fcn_sherrah2016(input_shape=(600, 600, 3))
+model = models.fcn_sherrah2016_regression(input_shape=(600, 600, 3))
 model.summary()
 
 '''
@@ -146,7 +146,7 @@ rf.plot_rf_grids(custom_image=im, figsize=(6, 6))
 plt.show()
 
 # show model
-model = models.fcn_sherrah2016(input_shape=(600, 600, 3))
+model = models.fcn_sherrah2016_regression(input_shape=(600, 600, 3))
 model.summary()
 
 '''
@@ -178,6 +178,6 @@ rf.plot_rf_grid(custom_image=im)
 plt.show()
 
 # show model
-model = models.fcn_sherrah2016(input_shape=(600, 600, 3))
+model = models.fcn_sherrah2016_regression(input_shape=(600, 600, 3))
 model.summary()
 

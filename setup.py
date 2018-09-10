@@ -15,10 +15,11 @@ setup(name='cytometer',
       data_files=[('data', ['data/*'])],
       install_requires=['python>=3.6', 'keras>=2.2.0', 'pillow>=5',
                         'numpy>=1.14.2', 'pandas>=0.22.0',
-                        'matplotlib>=2.1.2', 'scikit-image>=0.13.1',
+                        'matplotlib>=2.1.2', 'scikit-image>=0.14.0',
                         'scikit-learn>=0.19.1', 'scipy>=1.0.0',
                         'openslide-python>=1.1.1', 'tifffile>=0.14.0',
                         'svgpathtools>=1.3.2', 'statsmodels>=0.9.0',
                         'rpy2>=2.9.3', 'tzlocal>=1.5.1',
-                        'receptivefield>=0.19', 'pysto>=1.4.1']
+                        'receptivefield>=0.19', 'pysto>=1.4.1',
+                        'mahotas>=1.4.4']
      )
