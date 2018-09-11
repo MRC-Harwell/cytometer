@@ -270,6 +270,25 @@ def load_datasets(file_list, prefix_from='im', prefix_to=[], nblocks=1, shuffle_
     return out, out_file_list, shuffle_idx
 
 
+def remove_poor_data(datasets, prefix='mask', threshold=1000):
+    """
+    Find images where the mask has very few pixels, and remove them from the datasets. Training
+    with them can decrease the performance of the model.
+    :param datasets: dictionary with numpy.ndarray datasets loaded with load_datasets().
+    :param prefix: (def 'mask') string. The number of pixels will be assessed in datasets[prefix].
+    :param threshold: (def 1000) integer. Masks
+    :return:
+    """
+
+    # indices of masks with a large enough number of pixels==1
+    idx = np.count_nonzero(datasets[prefix], axis=(1, 2, 3)) > threshold
+    # remove corresponding images from all datasets
+    for prefix in datasets.keys():
+        datasets[prefix] = datasets[prefix][idx, ...]
+
+    return datasets
+
+
 def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     """
     Loads a list of segmentation files and computes distance maps to the objects boundaries/background.
