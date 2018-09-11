@@ -115,6 +115,10 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
+    # remove training data where the mask has very few valid pixels
+    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
+    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
+
     if DEBUG:
         i = 150
         plt.clf()
@@ -126,7 +130,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                 plt.imshow(train_dataset[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
-        i = 4
+        i = 25
         plt.clf()
         for pi, prefix in enumerate(test_dataset.keys()):
             plt.subplot(1, len(test_dataset.keys()), pi + 1)
