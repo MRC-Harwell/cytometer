@@ -57,7 +57,8 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 # saved_model_basename = '2018-08-20T12_15_24.854266_fcn_sherrah2016'  # First working network with dmap regression + contour classification
 # saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016'  # dmap + contour classification (ReLU instead of sigmoid)
 # saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016_dmap_contour'  # dmap + contour classification (ReLU instead of sigmoid)
-saved_model_basename = '2018-09-10T01_14_11.152311_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours
+# saved_model_basename = '2018-09-10T01_14_11.152311_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours, but not working for contours
+saved_model_basename = '2018-09-11T01_42_42.576734_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours, and throwing away poor data
 
 model_name = saved_model_basename + '*.h5'
 
@@ -253,62 +254,11 @@ if os.path.isfile(log_filename):
     for df in df_list:
         plt.subplot(311)
         epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
-        epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], '-', label='loss')
+        epoch_ends_plot1, = plt.plot(epoch_ends, df.loss[epoch_ends], '-', label='loss')
+        plt.ylabel('loss')
         plt.subplot(312)
         epoch_ends_plot2, = plt.plot(epoch_ends, df.regression_output_mean_absolute_error[epoch_ends], '-', label='mae')
+        plt.ylabel('MAE')
         plt.subplot(313)
-        epoch_ends_plot2, = plt.semilogy(epoch_ends, df.regression_output_mean_squared_error[epoch_ends], '-', label='mse')
-
-    # concatenate metrics from all folds
-    epoch_ends_all = np.empty((0,))
-    loss_all = np.empty((0,))
-    mae_all = np.empty((0,))
-    mse_all = np.empty((0,))
-    for df in df_list:
-        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch) - 1, ]))
-        epoch_ends_all = np.concatenate((epoch_ends_all, epoch_ends))
-        loss_all = np.concatenate((loss_all, df.loss[epoch_ends]))
-        mae_all = np.concatenate((mae_all, df.mean_absolute_error[epoch_ends]))
-        mse_all = np.concatenate((mse_all, df.mean_squared_error[epoch_ends]))
-        print(str(len(df.mean_squared_error[epoch_ends])))
-
-    from sklearn.gaussian_process import GaussianProcessRegressor
-    from sklearn.gaussian_process.kernels import Matern
-
-    # Instanciate a Gaussian Process model
-    kernel = Matern(nu=1.5)
-    gp_loss = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=1,
-                                       normalize_y=True)
-    gp_mae = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=1,
-                                      normalize_y=True)
-    gp_mse = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=10,
-                                      normalize_y=True)
-
-    # Fit to data using Maximum Likelihood Estimation of the parameters
-    gp_loss.fit(epoch_ends_all.reshape(-1, 1), loss_all.reshape(-1, 1))
-    gp_mae.fit(epoch_ends_all.reshape(-1, 1), mae_all.reshape(-1, 1))
-    gp_mse.fit(epoch_ends_all.reshape(-1, 1), mse_all.reshape(-1, 1))
-
-    # Make the prediction on the meshed x-axis (ask for MSE as well)
-    xx = np.array(range(460, int(np.max(epoch_ends_all)))).reshape(-1, 1)
-    loss_pred, loss_sigma = gp_loss.predict(xx, return_std=True)
-    mae_pred, mae_sigma = gp_mae.predict(xx, return_std=True)
-    mse_pred, mse_sigma = gp_mse.predict(xx, return_std=True)
-
-    # Plot the function, the prediction and the 95% confidence interval based on
-    # the MSE
-    plt.clf()
-    plt.subplot(311)
-    plt.plot(xx, loss_pred, 'k', label='loss')
-    plt.plot(epoch_ends_all, loss_all, 'k.', markersize=10, label=u'Observations')
-    plt.ylabel('loss')
-    plt.subplot(312)
-    plt.plot(xx, mae_pred, 'k', label='mae')
-    plt.plot(epoch_ends_all, mae_all, 'k.', markersize=10, label=u'Observations')
-    plt.ylabel('mae')
-    plt.subplot(313)
-    plt.plot(xx, mse_pred, 'k', label='mse')
-    plt.plot(epoch_ends_all, mse_all, 'k.', markersize=10, label=u'Observations')
-    plt.ylabel('mse')
-    plt.xlabel('iteration')
-
+        epoch_ends_plot2, = plt.plot(epoch_ends, df.regression_output_mean_squared_error[epoch_ends], '-', label='mse')
+        plt.ylabel('MSE')
