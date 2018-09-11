@@ -173,7 +173,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         parallel_model.compile(loss={'regression_output': 'mse',
                                      'classification_output': 'binary_crossentropy'},
                                loss_weights={'regression_output': 1.0,
-                                             'classification_output': 100.0},
+                                             'classification_output': 1000.0},
                                optimizer='Adadelta', metrics=['mse', 'mae'],
                                sample_weight_mode='element')
 
@@ -203,7 +203,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         model.compile(loss={'regression_output': 'mse',
                             'classification_output': 'binary_crossentropy'},
                       loss_weights={'regression_output': 1.0,
-                                    'classification_output': 100.0},
+                                    'classification_output': 1000.0},
                       optimizer='Adadelta', metrics=['mse', 'mae'],
                       sample_weight_mode='element')
 
