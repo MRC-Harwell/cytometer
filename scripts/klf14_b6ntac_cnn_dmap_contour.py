@@ -108,32 +108,36 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     im_test_file_list = cytometer.data.augment_file_list(im_test_file_list, '_nan_', '_*_')
 
     # load the train and test data: im, seg, dmap and mask data
-    train_out, train_file_list, train_shuffle_idx = \
-        cytometer.data.load_training_data(im_train_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
-                                          nblocks=nblocks, shuffle_seed=i_fold)
-    test_out, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_training_data(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
-                                          nblocks=nblocks, shuffle_seed=i_fold)
+    train_dataset, train_file_list, train_shuffle_idx = \
+        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
+                                     nblocks=nblocks, shuffle_seed=i_fold)
+    test_dataset, test_file_list, test_shuffle_idx = \
+        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
+                                     nblocks=nblocks, shuffle_seed=i_fold)
+
+    # remove training data where the mask has very few valid pixels
+    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
+    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
 
     if DEBUG:
-        i = 100
+        i = 150
         plt.clf()
-        for pi, prefix in enumerate(train_out.keys()):
-            plt.subplot(1, len(train_out.keys()), pi + 1)
-            if train_out[prefix].shape[-1] == 1:
-                plt.imshow(train_out[prefix][i, :, :, 0])
+        for pi, prefix in enumerate(train_dataset.keys()):
+            plt.subplot(1, len(train_dataset.keys()), pi + 1)
+            if train_dataset[prefix].shape[-1] == 1:
+                plt.imshow(train_dataset[prefix][i, :, :, 0])
             else:
-                plt.imshow(train_out[prefix][i, :, :, :])
+                plt.imshow(train_dataset[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
-        i = 4
+        i = 25
         plt.clf()
-        for pi, prefix in enumerate(test_out.keys()):
-            plt.subplot(1, len(test_out.keys()), pi + 1)
-            if test_out[prefix].shape[-1] == 1:
-                plt.imshow(test_out[prefix][i, :, :, 0])
+        for pi, prefix in enumerate(test_dataset.keys()):
+            plt.subplot(1, len(test_dataset.keys()), pi + 1)
+            if test_dataset[prefix].shape[-1] == 1:
+                plt.imshow(test_dataset[prefix][i, :, :, 0])
             else:
-                plt.imshow(test_out[prefix][i, :, :, :])
+                plt.imshow(test_dataset[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
     '''Convolutional neural network training
@@ -155,7 +159,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
         # instantiate model
         with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=train_out['im'].shape[1:])
+            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
 
         # # load pre-trained model
         # # model = cytometer.models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
@@ -179,11 +183,11 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_out['im'], [train_out['dmap'], train_out['seg']],
-                           sample_weight=[train_out['mask'], train_out['mask']],
-                           validation_data=(test_out['im'],
-                                            [test_out['dmap'], test_out['seg']],
-                                            [test_out['mask'], test_out['mask']]),
+        parallel_model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
+                           sample_weight=[train_dataset['mask'], train_dataset['mask']],
+                           validation_data=(test_dataset['im'],
+                                            [test_dataset['dmap'], test_dataset['seg']],
+                                            [test_dataset['mask'], test_dataset['mask']]),
                            batch_size=4, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -193,7 +197,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
         # instantiate model
         with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=train_out['im'].shape[1:])
+            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
 
         # compile model
         model.compile(loss={'regression_output': 'mse',
@@ -209,11 +213,11 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_out['im'], [train_out['dmap'], train_out['seg']],
-                  sample_weight=[train_out['mask'], train_out['mask']],
-                  validation_data=(test_out['im'],
-                                   [test_out['dmap'], test_out['seg']],
-                                   [test_out['mask'], test_out['mask']]),
+        model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
+                  sample_weight=[train_dataset['mask'], train_dataset['mask']],
+                  validation_data=(test_dataset['im'],
+                                   [test_dataset['dmap'], test_dataset['seg']],
+                                   [test_dataset['mask'], test_dataset['mask']]),
                   batch_size=4, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
