@@ -15,7 +15,7 @@ import pysto.imgproc as pystoim
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -63,6 +63,7 @@ saved_model_basename = '2018-09-12T02_43_34.188778_fcn_sherrah2016_dmap_contour'
 saved_model_basename = '2018-09-12T03_22_34.764758_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=10
 saved_model_basename = '2018-09-12T04_01_35.282612_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=100
 saved_model_basename = '2018-09-12T04_40_36.308438_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=1
+saved_model_basename = '2018-09-13T02_22_02.372209_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=10, with axis=-1 for BatchNormalization
 
 
 model_name = saved_model_basename + '*.h5'
