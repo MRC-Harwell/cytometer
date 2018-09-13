@@ -8,6 +8,7 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
+import inspect
 
 # other imports
 import glob
@@ -22,7 +23,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -68,8 +69,13 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
-saved_model_basename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016_dmap_contour')
-saved_model_basename = saved_model_basename.replace(':', '_')
+# timestamp and script name to identify this experiment
+experiment_id = inspect.getfile(inspect.currentframe())
+if experiment_id == '<input>':
+    experiment_id = 'unknownscript'
+else:
+    experiment_id = os.path.splitext(experiment_id)[0]
+
 
 '''Prepare folds
 '''
@@ -81,15 +87,15 @@ im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.t
 n_orig_im = len(im_orig_file_list)
 
 # create k-fold sets to split the data into training vs. testing
-seed = 0
-random.seed(seed)
+kfold_seed = 0
+random.seed(kfold_seed)
 idx = random.sample(range(n_orig_im), n_orig_im)
 idx_test_all = np.array_split(idx, n_folds)
 
 # save the k-fold description for future reference
-saved_model_kfold_filename = saved_model_basename + '_kfold.pickle'
-with open(saved_model_kfold_filename, 'wb') as f:
-    x = {'file_list': im_orig_file_list, 'idx_test_all': idx_test_all, 'seed': seed}
+saved_model_datainfo_filename = os.path.join(saved_models_dir, experiment_id + '_info.pickle')
+with open(saved_model_datainfo_filename, 'wb') as f:
+    x = {'file_list': im_orig_file_list, 'idx_test_all': idx_test_all, 'kfold_seed': kfold_seed}
     pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
