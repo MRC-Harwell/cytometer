@@ -20,7 +20,7 @@ if K.image_data_format() == 'channels_first':
     norm_axis = 1
 elif K.image_data_format() == 'channels_last':
     default_input_shape = (None, None, 3)
-    norm_axis = 3
+    norm_axis = -1
 
 
 def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
