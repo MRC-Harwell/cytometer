@@ -15,14 +15,14 @@ import pysto.imgproc as pystoim
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
+config.gpu_options.per_process_gpu_memory_fraction = 0.9
 set_session(tf.Session(config=config))
 
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -59,6 +59,11 @@ saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 # saved_model_basename = '2018-08-31T12_15_50.751490_fcn_sherrah2016_dmap_contour'  # dmap + contour classification (ReLU instead of sigmoid)
 # saved_model_basename = '2018-09-10T01_14_11.152311_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours, but not working for contours
 saved_model_basename = '2018-09-11T01_42_42.576734_fcn_sherrah2016_dmap_contour'  # retrained with corrected contours, and throwing away poor data
+saved_model_basename = '2018-09-12T02_43_34.188778_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=1000
+saved_model_basename = '2018-09-12T03_22_34.764758_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=10
+saved_model_basename = '2018-09-12T04_01_35.282612_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=100
+saved_model_basename = '2018-09-12T04_40_36.308438_fcn_sherrah2016_dmap_contour'  # classifier loss_weights=1
+
 
 model_name = saved_model_basename + '*.h5'
 
