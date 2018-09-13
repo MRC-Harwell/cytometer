@@ -32,11 +32,11 @@ import cytometer.models as models
 import random
 import tensorflow as tf
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 1.0
+# set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
