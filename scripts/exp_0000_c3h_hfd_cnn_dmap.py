@@ -71,7 +71,7 @@ timestamp = datetime.datetime.now()
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training'
 training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_non_overlap'
-training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented'
+training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented_reduced'
 saved_models_dir = '/home/gcientanni/OneDrive/c3h_backup/saved_models'
 
 # timestamp and script name to identify this experiment
@@ -174,7 +174,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
     # remove training data where the mask has very few valid pixels
-    # train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
+    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
     test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
 
     if DEBUG:
