@@ -38,7 +38,7 @@ import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
+config.gpu_options.per_process_gpu_memory_fraction = 0.8
 set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
@@ -48,6 +48,9 @@ from keras.utils import multi_gpu_model
 K.set_image_data_format('channels_last')
 
 DEBUG = False
+
+# number of blocks to split each image into so that training fits into GPU memory
+nblocks = 2
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -61,12 +64,12 @@ timestamp = datetime.datetime.now()
 '''Load data
 '''
 
-# data paths
+# data paths, using c3h_backup which has 33% of original augmented data
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training'
-training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training_non_overlap'
-training_augmented_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training_augmented'
-saved_models_dir = '/home/gcientanni/OneDrive/c3h/saved_models'
+training_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training'
+training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_non_overlap'
+training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented'
+saved_models_dir = '/home/gcientanni/OneDrive/c3h_backup/saved_models'
 
 # list of original training images, pre-augmentation
 im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
@@ -91,15 +94,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
     im_train_file_list = list(np.array(im_orig_file_list)[idx_train])
     im_test_file_list = list(np.array(im_orig_file_list)[idx_test])
 
-    # reduce size of training and test files
-    im_train_file_list = np.random.permutation(im_train_file_list)
-    reduction_factor = int(len(im_train_file_list)*0.99)
-    im_train_file_list = im_train_file_list[reduction_factor:]
-
-    im_test_file_list = np.random.permutation(im_test_file_list)
-    reduction_factor = int(len(im_test_file_list)*0.99)
-    im_test_file_list = im_test_file_list[reduction_factor:]
-
     # add the augmented image files
     im_train_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_train_file_list]
     im_train_file_list = [glob.glob(os.path.join(training_augmented_dir, x)) for x in im_train_file_list]
@@ -116,50 +110,41 @@ for i_fold, idx_test in enumerate(idx_test_all):
     dmap_test_file_list = [x.replace('im_', 'dmap_') for x in im_test_file_list]
     mask_test_file_list = [x.replace('im_', 'mask_') for x in im_test_file_list]
 
-    # load images
-    im_train = cytometer.data.load_file_list_to_array(im_train_file_list)
-    dmap_train = cytometer.data.load_file_list_to_array(dmap_train_file_list)
-    mask_train = cytometer.data.load_file_list_to_array(mask_train_file_list)
+    # load images as numpy arrays ready for training, converts data to type float.32,
+    train_dataset, train_file_list, train_shuffle_idx = \
+        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
+                                     nblocks=nblocks, shuffle_seed=i_fold)
 
-    im_test = cytometer.data.load_file_list_to_array(im_test_file_list)
-    dmap_test = cytometer.data.load_file_list_to_array(dmap_test_file_list)
-    mask_test = cytometer.data.load_file_list_to_array(mask_test_file_list)
-
-    # convert uint8 images to float, and rescale RBG values to [0.0, 1.0]
-    im_train = im_train.astype(np.float32)
-    im_train /= 255
-    mask_train = mask_train.astype(np.float32)
-
-    im_test = im_test.astype(np.float32)
-    im_test /= 255
-    mask_test = mask_test.astype(np.float32)
+    test_dataset, test_file_list, test_shuffle_idx = \
+        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
+                                     nblocks=nblocks, shuffle_seed=i_fold)
 
     if DEBUG:
-        for i in range(n_im_train):
+        for i in range(len(train_file_list)):
             plt.clf()
             plt.subplot(221)
-            plt.imshow(im_train[i, :, :, :])
+            plt.imshow(im_train_file_list[i, :, :, :])
             plt.subplot(222)
-            plt.imshow(dmap_train[i, :, :, :].reshape(dmap_train.shape[1:3]))
+            plt.imshow(train_file_list['dmap'][i, :, :, :].reshape(train_file_list['dmap'].shape[1:3]))
             plt.subplot(223)
-            plt.imshow(mask_train[i, :, :, :].reshape(mask_train.shape[1:3]))
+            plt.imshow(train_file_list['mask'][i, :, :, :].reshape(train_file_list['mask'].shape[1:3]))
             plt.subplot(224)
-            a = im_train[i, :, :, :]
-            b = mask_train[i, :, :, :].reshape(mask_train.shape[1:3])
+            a = train_file_list[i, :, :, :]
+            b = train_file_list['mask'][i, :, :, :].reshape(train_file_list['mask'].shape[1:3])
             plt.imshow(pystoim.imfuse(b, a))
             plt.show()
 
-        for i in range(n_im_test):
+        for i in range(len(test_file_list)):
             plt.clf()
             plt.subplot(221)
-            plt.imshow(im_test[i, :, :, :])
+            plt.imshow(im_test_file_list[i, :, :, :])
             plt.subplot(222)
-            plt.imshow(dmap_test[i, :, :, :].reshape(dmap_test.shape[1:3]))
+            plt.imshow(test_file_list['dmap'][i, :, :, :].reshape(test_file_list['dmap'].shape[1:3]))
             plt.subplot(223)
-            plt.imshow(mask_test[i, :, :, :].reshape(mask_test.shape[1:3]))
+            plt.imshow(test_file_list['mask'][i, :, :, :].reshape(test_file_list['mask'].shape[1:3]))
             plt.subplot(224)
-            a = im_test[i, :, :, :]
-            b = mask_test[i, :, :, :].reshape(mask_test.shape[1:3])
+            a = test_file_list[i, :, :, :]
+            b = test_file_list['mask'][i, :, :, :].reshape(test_file_list['mask'].shape[1:3])
             plt.imshow(pystoim.imfuse(b, a))
             plt.show()
 
@@ -269,16 +254,16 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
-        # # instantiate model
-        # with tf.device('/cpu:0'):
-        #     model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
+        # instantiate model
+        with tf.device('/cpu:0'):
+            model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
 
         # load pre-trained model
         # model = cytometer.models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
-        weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
-                                                                                          str(i_fold) + '.h5')
-        weights_filename = os.path.join(saved_models_dir, weights_filename)
-        model = keras.models.load_model(weights_filename)
+        # weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
+        #                                                                                   str(i_fold) + '.h5')
+        # weights_filename = os.path.join(saved_models_dir, weights_filename)
+        # model = keras.models.load_model(weights_filename)
 
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)

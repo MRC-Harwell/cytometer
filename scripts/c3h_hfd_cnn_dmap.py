@@ -37,7 +37,7 @@ import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
+config.gpu_options.per_process_gpu_memory_fraction = 0.9
 set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
@@ -89,6 +89,15 @@ for i_fold, idx_test in enumerate(idx_test_all):
     # list of original training and test files
     im_train_file_list = list(np.array(im_orig_file_list)[idx_train])
     im_test_file_list = list(np.array(im_orig_file_list)[idx_test])
+
+    # reduce size of training and test files
+    im_train_file_list = np.random.permutation(im_train_file_list)
+    reduction_factor = int(len(im_train_file_list)*0.99)
+    im_train_file_list = im_train_file_list[reduction_factor:]
+
+    im_test_file_list = np.random.permutation(im_test_file_list)
+    reduction_factor = int(len(im_test_file_list)*0.99)
+    im_test_file_list = im_test_file_list[reduction_factor:]
 
     # add the augmented image files
     im_train_file_list = [os.path.basename(x).replace('_nan_', '_*_') for x in im_train_file_list]
@@ -259,15 +268,15 @@ for i_fold, idx_test in enumerate(idx_test_all):
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
         # # instantiate model
-        # with tf.device('/cpu:0'):
-        #     model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
+        with tf.device('/cpu:0'):
+            model = models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
 
         # load pre-trained model
         # model = cytometer.models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
-        weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
-                                                                                          str(i_fold) + '.h5')
-        weights_filename = os.path.join(saved_models_dir, weights_filename)
-        model = keras.models.load_model(weights_filename)
+        # weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
+        #                                                                                   str(i_fold) + '.h5')
+        # weights_filename = os.path.join(saved_models_dir, weights_filename)
+        # model = keras.models.load_model(weights_filename)
 
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
