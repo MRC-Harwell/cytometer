@@ -58,7 +58,7 @@ nblocks = 3
 n_folds = 11
 
 # number of epochs for training
-epochs = 10
+epochs = 20
 
 # timestamp at the beginning of loading data and processing so that all folds have a common name
 timestamp = datetime.datetime.now()
@@ -285,9 +285,6 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
-
-    # save result (note, we save the template model, not the multiparallel object)
-    model.save(saved_model_filename)
 
 # if we ran the script with nohup in linux, the output is in file nohup.out.
 # Save it to saved_models directory (
