@@ -1,14 +1,14 @@
 # cross-platform home directory
 from pathlib import Path
-
 home = str(Path.home())
 
 # PyCharm automatically adds cytometer to the python path, but this doesn't happen if the script is run
 # with "python scriptname.py"
 import os
 import sys
-
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
+import pickle
+import inspect
 
 # other imports
 import glob
@@ -29,6 +29,10 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
+from keras.models import Model
+from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
+from keras.layers.normalization import BatchNormalization
+
 import cytometer.data
 import cytometer.models as models
 import random
@@ -70,6 +74,82 @@ training_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training'
 training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_non_overlap'
 training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented'
 saved_models_dir = '/home/gcientanni/OneDrive/c3h_backup/saved_models'
+
+# timestamp and script name to identify this experiment
+experiment_id = inspect.getfile(inspect.currentframe())
+if experiment_id == '<input>':
+    experiment_id = 'unknownscript'
+else:
+    experiment_id = os.path.splitext(experiment_id)[0]
+
+'''CNN Model
+'''
+
+
+def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=False):
+
+    if K.image_data_format() == 'channels_first':
+        norm_axis = 1
+    elif K.image_data_format() == 'channels_last':
+        norm_axis = -1
+
+    input = Input(shape=input_shape, dtype='float32', name='input_image')
+
+    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
+
+    # regression output
+    regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same', name='regression_output')(x)
+
+    # classification output
+    x = Conv2D(filters=1, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
+    x = BatchNormalization(axis=norm_axis)(x)
+    classification_output = Activation('hard_sigmoid', name='classification_output')(x)
+
+    return Model(inputs=input, outputs=[regression_output, classification_output])
+
+'''Prepare folds
+'''
 
 # list of original training images, pre-augmentation
 im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.tif'))
