@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -52,7 +52,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of blocks to split each image into so that training fits into GPU memory
-nblocks = 2
+nblocks = 3
 
 # number of folds for k-fold cross validation
 n_folds = 11
