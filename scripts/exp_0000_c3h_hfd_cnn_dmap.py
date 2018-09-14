@@ -119,11 +119,15 @@ for i_fold, idx_test in enumerate(idx_test_all):
         cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
+    # remove training data where the mask has very few valid pixels
+    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
+    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
+
     if DEBUG:
-        for i in range(len(train_file_list)):
+        for i in range(len(im_train_file_list)):
             plt.clf()
             plt.subplot(221)
-            plt.imshow(im_train_file_list[i, :, :, :])
+            plt.imshow(train_file_list[i, :, :, :])
             plt.subplot(222)
             plt.imshow(train_file_list['dmap'][i, :, :, :].reshape(train_file_list['dmap'].shape[1:3]))
             plt.subplot(223)
@@ -134,10 +138,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
             plt.imshow(pystoim.imfuse(b, a))
             plt.show()
 
-        for i in range(len(test_file_list)):
+        for i in range(len(im_test_file_list)):
             plt.clf()
             plt.subplot(221)
-            plt.imshow(im_test_file_list[i, :, :, :])
+            plt.imshow(test_file_list[i, :, :, :])
             plt.subplot(222)
             plt.imshow(test_file_list['dmap'][i, :, :, :].reshape(test_file_list['dmap'].shape[1:3]))
             plt.subplot(223)
