@@ -8,13 +8,13 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
+import inspect
 
 # other imports
 import glob
 import shutil
 import datetime
 import numpy as np
-import pysto.imgproc as pystoim
 import matplotlib.pyplot as plt
 
 # use CPU for testing on laptop
@@ -27,19 +27,24 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
-import cytometer.data
-import cytometer.models as models
-import random
-import tensorflow as tf
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
-set_session(tf.Session(config=config))
+from keras.models import Model
+from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
+from keras.layers.normalization import BatchNormalization
+# from keras.callbacks import CSVLogger
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
+
+import cytometer.data
+import random
+import tensorflow as tf
+
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 1.0
+# set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -68,8 +73,79 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
-saved_model_basename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016_dmap_contour')
-saved_model_basename = saved_model_basename.replace(':', '_')
+# timestamp and script name to identify this experiment
+experiment_id = inspect.getfile(inspect.currentframe())
+if experiment_id == '<input>':
+    experiment_id = 'unknownscript'
+else:
+    experiment_id = os.path.splitext(experiment_id)[0]
+
+'''CNN Model
+'''
+
+
+def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=False):
+
+    if K.image_data_format() == 'channels_first':
+        norm_axis = 1
+    elif K.image_data_format() == 'channels_last':
+        norm_axis = -1
+
+    input = Input(shape=input_shape, dtype='float32', name='input_image')
+
+    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
+    x = BatchNormalization(axis=norm_axis)(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
+
+    # regression output
+    regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same', name='regression_output')(x)
+
+    # classification output
+    x = Conv2D(filters=1, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
+    x = BatchNormalization(axis=norm_axis)(x)
+    classification_output = Activation('hard_sigmoid', name='classification_output')(x)
+
+    return Model(inputs=input, outputs=[regression_output, classification_output])
+
 
 '''Prepare folds
 '''
@@ -81,15 +157,15 @@ im_orig_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_*_nan_*.t
 n_orig_im = len(im_orig_file_list)
 
 # create k-fold sets to split the data into training vs. testing
-seed = 0
-random.seed(seed)
+kfold_seed = 0
+random.seed(kfold_seed)
 idx = random.sample(range(n_orig_im), n_orig_im)
 idx_test_all = np.array_split(idx, n_folds)
 
 # save the k-fold description for future reference
-saved_model_kfold_filename = saved_model_basename + '_kfold.pickle'
-with open(saved_model_kfold_filename, 'wb') as f:
-    x = {'file_list': im_orig_file_list, 'idx_test_all': idx_test_all, 'seed': seed}
+saved_model_datainfo_filename = os.path.join(saved_models_dir, experiment_id + '_info.pickle')
+with open(saved_model_datainfo_filename, 'wb') as f:
+    x = {'file_list': im_orig_file_list, 'idx_test_all': idx_test_all, 'kfold_seed': kfold_seed}
     pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
@@ -146,40 +222,35 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     function
     '''
 
-    # filename to save model to
-    saved_model_filename = saved_model_basename + '_fold_' + str(i_fold) + '.h5'
-
     # list all CPUs and GPUs
     device_list = K.get_session().list_devices()
 
     # number of GPUs
     gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
+    # instantiate model
+    with tf.device('/cpu:0'):
+        model = fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
+
+    # checkpoint to save model after each epoch
+    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
+    checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                   verbose=1, save_best_only=True)
+
+    # # checkpoint to save metrics every epoch
+    # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
+    # csv_logger = CSVLogger(save_history_filename, append=True, separator=',')
+
     if gpu_number > 1:  # compile and train model: Multiple GPUs
-
-        # instantiate model
-        with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
-
-        # # load pre-trained model
-        # # model = cytometer.models.fcn_sherrah2016_regression(input_shape=im_train.shape[1:])
-        # weights_filename = '2018-08-09T18_59_10.294550_fcn_sherrah2016_fold_0.h5'.replace('_0.h5', '_' +
-        #                                                                                   str(i_fold) + '.h5')
-        # weights_filename = os.path.join(saved_models_dir, weights_filename)
-        # model = keras.models.load_model(weights_filename)
 
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
         parallel_model.compile(loss={'regression_output': 'mse',
                                      'classification_output': 'binary_crossentropy'},
                                loss_weights={'regression_output': 1.0,
-                                             'classification_output': 100.0},
+                                             'classification_output': 1000.0},
                                optimizer='Adadelta', metrics=['mse', 'mae'],
                                sample_weight_mode='element')
-
-        # checkpoint to save model after each epoch
-        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                       verbose=1, save_best_only=True)
 
         # train model
         tic = datetime.datetime.now()
@@ -195,21 +266,13 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     else:  # compile and train model: One GPU
 
-        # instantiate model
-        with tf.device('/cpu:0'):
-            model = models.fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
-
         # compile model
         model.compile(loss={'regression_output': 'mse',
                             'classification_output': 'binary_crossentropy'},
                       loss_weights={'regression_output': 1.0,
-                                    'classification_output': 100.0},
+                                    'classification_output': 1000.0},
                       optimizer='Adadelta', metrics=['mse', 'mae'],
                       sample_weight_mode='element')
-
-        # checkpoint to save model after each epoch
-        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                       verbose=1, save_best_only=True)
 
         # train model
         tic = datetime.datetime.now()
@@ -228,8 +291,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
 # if we ran the script with nohup in linux, the output is in file nohup.out.
 # Save it to saved_models directory (
-log_filename = os.path.join(saved_models_dir, timestamp.isoformat() + '_fcn_sherrah2016_dmap_contour.log')
-log_filename = log_filename.replace(':', '_')
+log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
 nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
 if os.path.isfile(nohup_filename):
     shutil.copy2(nohup_filename, log_filename)
