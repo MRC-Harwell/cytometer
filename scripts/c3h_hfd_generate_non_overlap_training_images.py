@@ -13,9 +13,10 @@ import PIL.ImageDraw
 from PIL.TiffTags import TAGS
 import tifffile
 from cv2 import watershed
+import mahotas
 
 
-DEBUG = True
+DEBUG = False
 
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_data_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training'
@@ -130,6 +131,13 @@ for n, file_svg in enumerate(file_list):
 
     # set background pixels back to zero
     labels[labels == background_label] = 0
+
+    # compute borders between labels, because in some cases, adjacent cells have intermittent overlaps
+    # that produce interrupted 0 boundaries
+    borders = mahotas.labeled.borders(labels, mode='ignore')
+
+    #add borders to the labels
+    labels[borders] = 0
 
     if DEBUG:
         plt.subplot(224)
