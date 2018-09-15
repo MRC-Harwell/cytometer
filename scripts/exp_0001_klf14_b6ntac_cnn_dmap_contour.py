@@ -37,6 +37,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.utils import multi_gpu_model
 
 import cytometer.data
+import cytometer.model_checkpoint_parallel
 import random
 import tensorflow as tf
 
@@ -234,8 +235,8 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # checkpoint to save model after each epoch
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-    checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                   verbose=1, save_best_only=True)
+    checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
+                                                                       verbose=1, save_best_only=True)
 
     # # checkpoint to save metrics every epoch
     # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
