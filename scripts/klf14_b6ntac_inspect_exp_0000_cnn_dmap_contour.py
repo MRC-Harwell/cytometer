@@ -204,81 +204,82 @@ for i, model_file in enumerate(model_files):
 '''Load model and visualise results
 '''
 
-for fold_i, model_file in enumerate(model_files):
+fold_i = 0
+model_file = model_files[fold_i]
 
-    # split the data into training and testing datasets
-    im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
+# split the data into training and testing datasets
+im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
 
-    # load im, seg and mask datasets
-    test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                       prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=2)
-    im_test = test_datasets['im']
-    seg_test = test_datasets['seg']
-    mask_test = test_datasets['mask']
-    dmap_test = test_datasets['dmap']
-    del test_datasets
+# load im, seg and mask datasets
+test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
+                                                   prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=2)
+im_test = test_datasets['im']
+seg_test = test_datasets['seg']
+mask_test = test_datasets['mask']
+dmap_test = test_datasets['dmap']
+del test_datasets
 
-    # load model
-    model = fcn_sherrah2016_regression_and_classifier(input_shape=im_test.shape[1:])
-    model.load_weights(model_file)
+# load model
+model = fcn_sherrah2016_regression_and_classifier(input_shape=im_test.shape[1:])
+model.load_weights(model_file)
 
-    # visualise results
-    i = 0
-    # run image through network
-    dmap_test_pred, contour_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
+# visualise results
+i = 0
+# run image through network
+dmap_test_pred, contour_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
-    # compute mean curvature from dmap
-    _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
+# compute mean curvature from dmap
+_, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
 
-    # plot results
-    plt.clf()
-    plt.subplot(321)
-    plt.imshow(im_test[i, :, :, :])
-    plt.title('histology, i = ' + str(i))
-    plt.subplot(322)
-    plt.imshow(dmap_test[i, :, :, 0])
-    plt.title('ground truth dmap')
-    plt.subplot(323)
-    plt.imshow(contour_test_pred[0, :, :, 0])
-    plt.title('predicted contours')
-    plt.subplot(324)
-    plt.imshow(dmap_test_pred[0, :, :, 0])
-    plt.title('predicted dmap')
-    plt.subplot(325)
-    plt.imshow(mean_curvature)
-    plt.title('mean curvature of dmap')
-    plt.subplot(326)
-    plt.imshow(mean_curvature * contour_test_pred[0, :, :, 0])
-    plt.title('predicted contours * mean curvature')
+# plot results
+plt.clf()
+plt.subplot(321)
+plt.imshow(im_test[i, :, :, :])
+plt.title('histology, i = ' + str(i))
+plt.subplot(322)
+plt.imshow(dmap_test[i, :, :, 0])
+plt.title('ground truth dmap')
+plt.subplot(323)
+plt.imshow(contour_test_pred[0, :, :, 0])
+plt.title('predicted contours')
+plt.subplot(324)
+plt.imshow(dmap_test_pred[0, :, :, 0])
+plt.title('predicted dmap')
+plt.subplot(325)
+plt.imshow(mean_curvature)
+plt.title('mean curvature of dmap')
+plt.subplot(326)
+plt.imshow(mean_curvature * contour_test_pred[0, :, :, 0])
+plt.title('predicted contours * mean curvature')
 
-    # visualise results
-    i = 18
-    # run image through network
-    dmap_test_pred, contour_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
+# visualise results
+i = 18
+# run image through network
+dmap_test_pred, contour_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
-    # compute mean curvature from dmap
-    _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
+# compute mean curvature from dmap
+_, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
 
-    # plot results
-    plt.clf()
-    plt.subplot(321)
-    plt.imshow(im_test[i, :, :, :])
-    plt.title('histology, i = ' + str(i))
-    plt.subplot(322)
-    plt.imshow(dmap_test[i, :, :, 0])
-    plt.title('ground truth dmap')
-    plt.subplot(323)
-    plt.imshow(contour_test_pred[0, :, :, 0])
-    plt.title('predicted contours')
-    plt.subplot(324)
-    plt.imshow(dmap_test_pred[0, :, :, 0])
-    plt.title('predicted dmap')
-    plt.subplot(325)
-    plt.imshow(mean_curvature)
-    plt.title('mean curvature of dmap')
-    plt.subplot(326)
-    plt.imshow(mean_curvature * contour_test_pred[0, :, :, 0])
-    plt.title('predicted contours * mean curvature')
+# plot results
+plt.clf()
+plt.subplot(321)
+plt.imshow(im_test[i, :, :, :])
+plt.title('histology, i = ' + str(i))
+plt.subplot(322)
+plt.imshow(dmap_test[i, :, :, 0])
+plt.title('ground truth dmap')
+plt.subplot(323)
+plt.imshow(contour_test_pred[0, :, :, 0])
+plt.title('predicted contours')
+plt.subplot(324)
+plt.imshow(dmap_test_pred[0, :, :, 0])
+plt.title('predicted dmap')
+plt.subplot(325)
+plt.imshow(mean_curvature)
+plt.title('mean curvature of dmap')
+plt.subplot(326)
+plt.imshow(mean_curvature * contour_test_pred[0, :, :, 0])
+plt.title('predicted contours * mean curvature')
 
 
 '''Plot metrics and convergence

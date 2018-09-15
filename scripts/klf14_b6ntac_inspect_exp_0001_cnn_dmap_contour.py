@@ -142,7 +142,7 @@ im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold
 
 # load im, seg and mask datasets
 test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                   prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=2)
+                                                   prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=3)
 im_test = test_datasets['im']
 seg_test = test_datasets['seg']
 mask_test = test_datasets['mask']
