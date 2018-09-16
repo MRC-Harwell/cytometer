@@ -207,7 +207,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                 plt.imshow(train_dataset[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
-        i = 25
+        i = 22
         plt.clf()
         for pi, prefix in enumerate(test_dataset.keys()):
             plt.subplot(1, len(test_dataset.keys()), pi + 1)
@@ -264,6 +264,9 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+
+        # FOO
+        model.save('/users/rittscher/rcasero/Dropbox/klf14/saved_models/foo.h5')
 
     else:  # compile and train model: One GPU
 
