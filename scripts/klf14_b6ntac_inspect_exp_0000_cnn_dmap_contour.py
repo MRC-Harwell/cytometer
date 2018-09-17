@@ -41,7 +41,7 @@ from skimage.morphology import skeletonize
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
 
-DEBUG = False
+DEBUG = True
 
 '''Load data
 '''
@@ -53,7 +53,7 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
-saved_model_basename = 'exp_0000_klf14_b6ntac_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+saved_model_basename = 'klf14_b6ntac_exp_0000_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
 
 model_name = saved_model_basename + '*.h5'
 
