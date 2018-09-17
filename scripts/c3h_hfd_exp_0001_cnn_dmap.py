@@ -54,7 +54,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of blocks to split each image into so that training fits into GPU memory
-nblocks = 2
+nblocks = 4
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -263,7 +263,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
                                             test_dataset['mask']),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
+                           batch_size=3, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
