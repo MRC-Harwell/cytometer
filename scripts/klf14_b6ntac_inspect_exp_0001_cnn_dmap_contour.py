@@ -13,7 +13,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -38,7 +38,7 @@ from receptivefield.keras import KerasReceptiveField
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
 
-DEBUG = False
+DEBUG = True
 
 '''Load data
 '''
@@ -151,6 +151,7 @@ del test_datasets
 
 # load model
 model = keras.models.load_model(model_file)
+model = keras.models.load_model('/users/rittscher/rcasero/Dropbox/klf14/saved_models/foo.h5')
 
 # set input layer to size of test images
 model.layers.pop(0)

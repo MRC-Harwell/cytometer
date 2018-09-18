@@ -15,6 +15,7 @@ import ast
 from mahotas import bwperim
 import pysto.imgproc as pystoim
 import re
+import keras
 
 
 DEBUG = False
@@ -239,7 +240,7 @@ def load_datasets(file_list, prefix_from='im', prefix_to=[], nblocks=1, shuffle_
         elif prefix in {'mask', 'dmap'}:
             out[prefix] = out[prefix].astype(np.float32)
         elif prefix == 'seg':
-            out[prefix] = out[prefix].astype(np.uint8)
+            out[prefix] = keras.utils.to_categorical(out[prefix].astype(np.uint8))
 
         # split image into smaller blocks, if requested
         if nblocks > 1:
