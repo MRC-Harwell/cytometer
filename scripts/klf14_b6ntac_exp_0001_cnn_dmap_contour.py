@@ -141,7 +141,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same', name='regression_output')(x)
 
     # classification output
-    x = Conv2D(filters=1, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
+    x = Conv2D(filters=2, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
     x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
@@ -201,7 +201,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         plt.clf()
         for pi, prefix in enumerate(train_dataset.keys()):
             plt.subplot(1, len(train_dataset.keys()), pi + 1)
-            if train_dataset[prefix].shape[-1] == 1:
+            if train_dataset[prefix].shape[-1] < 3:
                 plt.imshow(train_dataset[prefix][i, :, :, 0])
             else:
                 plt.imshow(train_dataset[prefix][i, :, :, :])
@@ -211,7 +211,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         plt.clf()
         for pi, prefix in enumerate(test_dataset.keys()):
             plt.subplot(1, len(test_dataset.keys()), pi + 1)
-            if test_dataset[prefix].shape[-1] == 1:
+            if test_dataset[prefix].shape[-1] < 3:
                 plt.imshow(test_dataset[prefix][i, :, :, 0])
             else:
                 plt.imshow(test_dataset[prefix][i, :, :, :])
@@ -233,10 +233,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
 
-    # checkpoint to save model after each epoch
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-    checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                       verbose=1, save_best_only=True)
 
     # # checkpoint to save metrics every epoch
     # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
@@ -244,22 +241,34 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
+        # checkpoint to save model after each epoch
+        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
+                                                                           verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
         parallel_model.compile(loss={'regression_output': 'mse',
                                      'classification_output': 'binary_crossentropy'},
                                loss_weights={'regression_output': 1.0,
                                              'classification_output': 1000.0},
-                               optimizer='Adadelta', metrics=['mse', 'mae'],
+                               optimizer='Adadelta',
+                               metrics={'regression_output': ['mse', 'mae'],
+                                        'classification_output': 'accuracy'},
                                sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-                           sample_weight=[train_dataset['mask'], train_dataset['mask']],
+        parallel_model.fit(train_dataset['im'],
+                           {'regression_output': train_dataset['dmap'],
+                            'classification_output': train_dataset['seg']},
+                           sample_weight={'regression_output': train_dataset['mask'],
+                                          'classification_output': np.repeat(train_dataset['mask'],
+                                                                             repeats=2, axis=-1)},
                            validation_data=(test_dataset['im'],
-                                            [test_dataset['dmap'], test_dataset['seg']],
-                                            [test_dataset['mask'], test_dataset['mask']]),
+                                            {'regression_output': test_dataset['dmap'],
+                                             'classification_output': test_dataset['seg']},
+                                            {'regression_output': test_dataset['mask'],
+                                             'classification_output': np.repeat(test_dataset['mask'],
+                                                                                repeats=2, axis=-1)}),
                            batch_size=4, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -270,21 +279,34 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     else:  # compile and train model: One GPU
 
+        # checkpoint to save model after each epoch
+        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                       verbose=1, save_best_only=True)
+
         # compile model
         model.compile(loss={'regression_output': 'mse',
                             'classification_output': 'binary_crossentropy'},
                       loss_weights={'regression_output': 1.0,
                                     'classification_output': 1000.0},
-                      optimizer='Adadelta', metrics=['mse', 'mae'],
+                      optimizer='Adadelta',
+                      metrics={'regression_output': ['mse', 'mae'],
+                               'classification_output': 'accuracy'},
                       sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-                  sample_weight=[train_dataset['mask'], train_dataset['mask']],
+        model.fit(train_dataset['im'],
+                  {'regression_output': train_dataset['dmap'],
+                   'classification_output': train_dataset['seg']},
+                  sample_weight={'regression_output': train_dataset['mask'],
+                                 'classification_output': np.repeat(train_dataset['mask'],
+                                                                    repeats=2, axis=-1)},
                   validation_data=(test_dataset['im'],
-                                   [test_dataset['dmap'], test_dataset['seg']],
-                                   [test_dataset['mask'], test_dataset['mask']]),
+                                   {'regression_output': test_dataset['dmap'],
+                                    'classification_output': test_dataset['seg']},
+                                   {'regression_output': test_dataset['mask'],
+                                    'classification_output': np.repeat(test_dataset['mask'],
+                                                                       repeats=2, axis=-1)}),
                   batch_size=4, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
