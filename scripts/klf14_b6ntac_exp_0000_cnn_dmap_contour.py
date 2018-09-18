@@ -58,7 +58,7 @@ nblocks = 3
 n_folds = 11
 
 # number of epochs for training
-epochs = 10
+epochs = 5
 
 # timestamp at the beginning of loading data and processing so that all folds have a common name
 timestamp = datetime.datetime.now()
@@ -206,7 +206,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                 plt.imshow(train_dataset[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
-        i = 25
+        i = 32
         plt.clf()
         for pi, prefix in enumerate(test_dataset.keys()):
             plt.subplot(1, len(test_dataset.keys()), pi + 1)
