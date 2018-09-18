@@ -70,10 +70,10 @@ timestamp = datetime.datetime.now()
 
 # data paths, using c3h_backup which has 33% of original augmented data
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training'
-training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_non_overlap'
-training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented_reduced'
-saved_models_dir = '/home/gcientanni/OneDrive/c3h_backup/saved_models'
+training_data_dir = os.path.join(home, 'OneDrive/c3h_backup/c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(home, 'OneDrive/c3h_backup/c3h_hfd_training_non_overlap')
+training_augmented_dir = os.path.join(home, 'OneDrive/c3h_backup/c3h_hfd_training_augmented_reduced')
+saved_models_dir = os.path.join(home, 'OneDrive/c3h_backup/saved_models')
 
 # timestamp and script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
@@ -245,7 +245,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
                                             test_dataset['mask']),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
+                           batch_size=3, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -267,6 +267,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+
 
 
 

@@ -48,12 +48,12 @@ DEBUG = False
 
 # data paths
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training'
-training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_non_overlap'
-training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented_reduced'
-saved_models_dir = '/home/gcientanni/OneDrive/c3h_backup/saved_models'
+training_data_dir = os.path.join(home, 'OneDrive/c3h_backup/c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(home, 'OneDrive/c3h_backup/c3h_hfd_training_non_overlap')
+training_augmented_dir = os.path.join(home, 'OneDrive/c3h_backup/c3h_hfd_training_augmented_reduced')
+saved_models_dir = os.path.join(home, 'OneDrive/c3h_backup/saved_models')
 
-saved_model_basename = 'c3h_hfd_exp_0000_cnn_dmap'  # dmap
+saved_model_basename = 'c3h_hfd_exp_0001_cnn_dmap'  # dmap
 
 model_name = saved_model_basename + '*.h5'
 
@@ -62,7 +62,7 @@ model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 n_folds = len(model_files)
 
 # load k-fold sets that were used to train the models
-saved_model_kfold_filename = os.path.join(saved_models_dir, saved_model_basename + '_info.pickle')
+saved_model_kfold_filename = '/home/gcientanni/Software/cytometer/scripts/c3h_hfd_exp_0001_cnn_dmap_info.pickle'
 with open(saved_model_kfold_filename, 'rb') as f:
     aux = pickle.load(f)
 im_file_list = aux['file_list']
