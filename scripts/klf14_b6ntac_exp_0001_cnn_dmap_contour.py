@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -261,14 +261,12 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                            {'regression_output': train_dataset['dmap'],
                             'classification_output': train_dataset['seg']},
                            sample_weight={'regression_output': train_dataset['mask'],
-                                          'classification_output': np.repeat(train_dataset['mask'],
-                                                                             repeats=2, axis=-1)},
+                                          'classification_output': train_dataset['mask']},
                            validation_data=(test_dataset['im'],
                                             {'regression_output': test_dataset['dmap'],
                                              'classification_output': test_dataset['seg']},
                                             {'regression_output': test_dataset['mask'],
-                                             'classification_output': np.repeat(test_dataset['mask'],
-                                                                                repeats=2, axis=-1)}),
+                                             'classification_output': test_dataset['mask']}),
                            batch_size=4, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -299,14 +297,12 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                   {'regression_output': train_dataset['dmap'],
                    'classification_output': train_dataset['seg']},
                   sample_weight={'regression_output': train_dataset['mask'],
-                                 'classification_output': np.repeat(train_dataset['mask'],
-                                                                    repeats=2, axis=-1)},
+                                 'classification_output': train_dataset['mask']},
                   validation_data=(test_dataset['im'],
                                    {'regression_output': test_dataset['dmap'],
                                     'classification_output': test_dataset['seg']},
                                    {'regression_output': test_dataset['mask'],
-                                    'classification_output': np.repeat(test_dataset['mask'],
-                                                                       repeats=2, axis=-1)}),
+                                    'classification_output': test_dataset['mask']}),
                   batch_size=4, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
