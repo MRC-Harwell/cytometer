@@ -26,8 +26,8 @@ if image_data_format == 'channels_first':
     out = 2 * np.ones(shape=(10, 1, 64, 64), dtype='float32')
     aux_out = 5 * np.ones(shape=(10, 1, 22, 22), dtype='float32')
     # simulate training weights for network output
-    weight = np.ones(shape=(10, 1, 64, 64), dtype='float32')
-    aux_weight = np.ones(shape=(10, 1, 22, 22), dtype='float32')
+    weight = np.ones(shape=(10, 64, 64), dtype='float32')
+    aux_weight = np.ones(shape=(10, 22, 22), dtype='float32')
 
     # simulate validation data
     im_validation = 3 * np.ones(shape=(5, 3, 64, 64), dtype='uint8')
@@ -41,8 +41,8 @@ elif image_data_format == 'channels_last':
     aux_out = 5 * np.ones(shape=(10, 22, 22, 1), dtype='float32')
     # simulate training weights for network output
     # weight = np.ones(shape=(10, 64, 64, 1), dtype='float32')
-    weight = np.ones(shape=(10, 64, 64, 1), dtype='float32')
-    aux_weight = np.ones(shape=(10, 22, 22, 1), dtype='float32')
+    weight = np.ones(shape=(10, 64, 64), dtype='float32')
+    aux_weight = np.ones(shape=(10, 22, 22), dtype='float32')
 
     # simulate validation data
     im_validation = 3 * np.ones(shape=(5, 64, 64, 3), dtype='uint8')
@@ -55,35 +55,6 @@ validation_data = (im_validation, out_validation)
 
 # optimizer
 optimizer = keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-
-'''Multi-output CNN with outputs of different number of features
-'''
-
-# create network model
-input = Input(shape=im.shape[1:], dtype='float32')
-x = Conv2D(filters=32, kernel_size=(3, 3), strides=1, padding='same')(input)
-x = BatchNormalization(axis=3)(x)
-x = Activation('relu')(x)
-
-main_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same', name='main_output')(x)
-aux_output = Conv2D(filters=2, kernel_size=(1, 1), strides=3, padding='same', name='aux_output')(x)
-
-model = Model(inputs=input, outputs=[main_output, aux_output])
-
-'''list format (sample_weight_mode=['element', 'element'])
-'''
-
-model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'],
-              sample_weight_mode=['element', 'element'])
-
-model.fit(im, [out, np.repeat(aux_out, repeats=2, axis=3)],
-          sample_weight=[weight, np.repeat(aux_weight, repeats=2, axis=3)],
-          batch_size=3, epochs=3)
-
-
-
-
-
 
 '''simple CNN with one output
 '''
@@ -167,4 +138,28 @@ model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'],
 
 model.fit(im, {'main_output': out, 'aux_output': aux_out},
           sample_weight={'main_output': weight, 'aux_output': aux_weight},
+          batch_size=3, epochs=3)
+
+'''Multi-output CNN with outputs of different number of features
+'''
+
+# create network model
+input = Input(shape=im.shape[1:], dtype='float32')
+x = Conv2D(filters=32, kernel_size=(3, 3), strides=1, padding='same')(input)
+x = BatchNormalization(axis=3)(x)
+x = Activation('relu')(x)
+
+main_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same', name='main_output')(x)
+aux_output = Conv2D(filters=2, kernel_size=(1, 1), strides=3, padding='same', name='aux_output')(x)
+
+model = Model(inputs=input, outputs=[main_output, aux_output])
+
+'''list format (sample_weight_mode=['element', 'element'])
+'''
+
+model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'],
+              sample_weight_mode=['element', 'element'])
+
+model.fit(im, [out, np.repeat(aux_out, repeats=2, axis=3)],
+          sample_weight=[weight, aux_weight],
           batch_size=3, epochs=3)
