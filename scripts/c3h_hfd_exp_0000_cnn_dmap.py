@@ -34,6 +34,7 @@ from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
 from keras.layers.normalization import BatchNormalization
 
 import cytometer.data
+import cytometer.model_checkpoint_parallel
 import random
 import tensorflow as tf
 
@@ -41,7 +42,7 @@ import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.8
+config.gpu_options.per_process_gpu_memory_fraction = 0.9
 set_session(tf.Session(config=config))
 
 # for data parallelism in keras models
@@ -67,19 +68,19 @@ timestamp = datetime.datetime.now()
 '''Directories and filepaths
 '''
 
-# data paths, using c3h_backup which has 33% of original augmented data
+# data paths
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training'
-training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_non_overlap'
-training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented_reduced'
-saved_models_dir = '/home/gcientanni/OneDrive/c3h_backup/saved_models'
+training_data_dir = os.path.join(home, 'OneDrive/backup/c3h/c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(home, 'OneDrive/backup/c3h/c3h_hfd_training_non_overlap')
+training_augmented_dir = os.path.join(home, 'OneDrive/backup/c3h/c3h_hfd_training_augmented')
+saved_models_dir = os.path.join(home, 'OneDrive/backup/c3h/saved_models')
 
 # timestamp and script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
-    experiment_id = os.path.splitext(experiment_id)[0]
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 '''CNN Model
 '''
@@ -164,6 +165,23 @@ for i_fold, idx_test in enumerate(idx_test_all):
     im_train_file_list = cytometer.data.augment_file_list(im_train_file_list, '_nan_', '_*_')
     im_test_file_list = cytometer.data.augment_file_list(im_test_file_list, '_nan_', '_*_')
 
+
+    # reduce dataset size to 15% of original if too large to load on RAM
+
+    # im_train_file_list = np.random.permutation(im_train_file_list)
+    # reduction_factor = int(len(im_train_file_list) * 0.85)
+    # im_train_file_list = im_train_file_list[reduction_factor:]
+    #
+    # im_test_file_list = np.random.permutation(im_test_file_list)
+    # reduction_factor = int(len(im_test_file_list) * 0.85)
+    # im_test_file_list = im_test_file_list[reduction_factor:]
+
+    # test on single batch
+
+    # im_train_file_list = im_train_file_list[int(len(im_train_file_list)-1):]
+    # im_test_file_list = im_test_file_list[int(len(im_test_file_list) -1):]
+
+
     # load images as numpy arrays ready for training, converts data to type float.32,
     train_dataset, train_file_list, train_shuffle_idx = \
         cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
@@ -224,8 +242,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # checkpoint to save model after each epoch
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-    checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                   verbose=1, save_best_only=True)
+
 
     # # checkpoint to save metrics every epoch
     # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
@@ -233,6 +250,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
+        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
+                                                                           verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
         parallel_model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
@@ -244,12 +263,13 @@ for i_fold, idx_test in enumerate(idx_test_all):
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
                                             test_dataset['mask']),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
-                           callbacks=[checkpointer])
+                           batch_size=4, epochs=epochs, initial_epoch=0, callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
     else:  # compile and train model: One GPU
+
+        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename, verbose=1, save_best_only=True)
 
         # compile model
         model.compile(loss='mse', optimizer='Adadelta', metrics=['mse', 'mae'], sample_weight_mode='element')
@@ -262,13 +282,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
                                             test_dataset['mask']),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
-                           callbacks=[checkpointer])
+                           batch_size=4, epochs=epochs, initial_epoch=0, callbacks=[checkpointer], verbose=1)
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
-    # save result (note, we save the template model, not the multiparallel object)
-    model.save(saved_model_filename)
 
 # if we ran the script with nohup in linux, the output is in file nohup.out.
 # Save it to saved_models directory (
