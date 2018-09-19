@@ -54,7 +54,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of blocks to split each image into so that training fits into GPU memory
-nblocks = 3
+nblocks = 2
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -97,7 +97,7 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
+    x = Conv2D(filters=96, kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
@@ -105,7 +105,7 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
+    x = Conv2D(filters=128, kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
@@ -113,7 +113,7 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
+    x = Conv2D(filters=196, kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
@@ -121,7 +121,7 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
-    x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
+    x = Conv2D(filters=512, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
@@ -263,7 +263,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
                                             test_dataset['mask']),
-                           batch_size=3, epochs=epochs, initial_epoch=0, callbacks=[checkpointer])
+                           batch_size=4, epochs=epochs, initial_epoch=0, callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
@@ -282,7 +282,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
                                             test_dataset['mask']),
-                           batch_size=3, epochs=epochs, initial_epoch=0, callbacks=[checkpointer], verbose=1)
+                           batch_size=4, epochs=epochs, initial_epoch=0, callbacks=[checkpointer], verbose=1)
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
