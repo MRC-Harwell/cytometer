@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -260,13 +260,13 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         parallel_model.fit(train_dataset['im'],
                            {'regression_output': train_dataset['dmap'],
                             'classification_output': train_dataset['seg']},
-                           sample_weight={'regression_output': train_dataset['mask'],
-                                          'classification_output': train_dataset['mask']},
+                           sample_weight={'regression_output': train_dataset['mask'][..., 0],
+                                          'classification_output': train_dataset['mask'][..., 0]},
                            validation_data=(test_dataset['im'],
                                             {'regression_output': test_dataset['dmap'],
                                              'classification_output': test_dataset['seg']},
-                                            {'regression_output': test_dataset['mask'],
-                                             'classification_output': test_dataset['mask']}),
+                                            {'regression_output': test_dataset['mask'][..., 0],
+                                             'classification_output': test_dataset['mask'][..., 0]}),
                            batch_size=4, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
