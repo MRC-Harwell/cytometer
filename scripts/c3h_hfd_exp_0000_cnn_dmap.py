@@ -17,13 +17,14 @@ import datetime
 import numpy as np
 import pysto.imgproc as pystoim
 import matplotlib.pyplot as plt
+import datetime
 
 # use CPU for testing on laptop
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2, 3'
 
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -31,7 +32,6 @@ import keras
 import keras.backend as K
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
-from keras.layers.normalization import BatchNormalization
 
 import cytometer.data
 import cytometer.model_checkpoint_parallel
@@ -62,20 +62,16 @@ n_folds = 11
 # number of epochs for training
 epochs = 15
 
-# timestamp at the beginning of loading data and processing so that all folds have a common name
-timestamp = datetime.datetime.now()
-
 '''Directories and filepaths
 '''
 
 # data paths
-root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = os.path.join(home, 'OneDrive/backup/c3h/c3h_hfd_training')
-training_nooverlap_data_dir = os.path.join(home, 'OneDrive/backup/c3h/c3h_hfd_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'OneDrive/backup/c3h/c3h_hfd_training_augmented')
-saved_models_dir = os.path.join(home, 'OneDrive/backup/c3h/saved_models')
+training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
+training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
+saved_models_dir = os.path.join(home, 'Dropbox/c3h/saved_models')
 
-# timestamp and script name to identify this experiment
+# script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
@@ -196,33 +192,25 @@ for i_fold, idx_test in enumerate(idx_test_all):
     test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
 
     if DEBUG:
-        for i in range(len(im_train_file_list)):
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(train_file_list[i, :, :, :])
-            plt.subplot(222)
-            plt.imshow(train_file_list['dmap'][i, :, :, :].reshape(train_file_list['dmap'].shape[1:3]))
-            plt.subplot(223)
-            plt.imshow(train_file_list['mask'][i, :, :, :].reshape(train_file_list['mask'].shape[1:3]))
-            plt.subplot(224)
-            a = train_file_list[i, :, :, :]
-            b = train_file_list['mask'][i, :, :, :].reshape(train_file_list['mask'].shape[1:3])
-            plt.imshow(pystoim.imfuse(b, a))
-            plt.show()
+        i = 5004
+        plt.clf()
+        for pi, prefix in enumerate(train_dataset.keys()):
+            plt.subplot(1, len(train_dataset.keys()), pi + 1)
+            if train_dataset[prefix].shape[-1] < 3:
+                plt.imshow(train_dataset[prefix][i, :, :, 0])
+            else:
+                plt.imshow(train_dataset[prefix][i, :, :, :])
+            plt.title('out[' + prefix + ']')
 
-        for i in range(len(im_test_file_list)):
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(test_file_list[i, :, :, :])
-            plt.subplot(222)
-            plt.imshow(test_file_list['dmap'][i, :, :, :].reshape(test_file_list['dmap'].shape[1:3]))
-            plt.subplot(223)
-            plt.imshow(test_file_list['mask'][i, :, :, :].reshape(test_file_list['mask'].shape[1:3]))
-            plt.subplot(224)
-            a = test_file_list[i, :, :, :]
-            b = test_file_list['mask'][i, :, :, :].reshape(test_file_list['mask'].shape[1:3])
-            plt.imshow(pystoim.imfuse(b, a))
-            plt.show()
+        i = 26
+        plt.clf()
+        for pi, prefix in enumerate(test_dataset.keys()):
+            plt.subplot(1, len(test_dataset.keys()), pi + 1)
+            if test_dataset[prefix].shape[-1] < 3:
+                plt.imshow(test_dataset[prefix][i, :, :, 0])
+            else:
+                plt.imshow(test_dataset[prefix][i, :, :, :])
+            plt.title('out[' + prefix + ']')
 
     '''Convolutional neural network training
 
@@ -240,13 +228,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_regression(input_shape=train_dataset['im'].shape[1:])
 
-    # checkpoint to save model after each epoch
+    # name of files to save models to
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-
-
-    # # checkpoint to save metrics every epoch
-    # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
-    # csv_logger = CSVLogger(save_history_filename, append=True, separator=',')
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
@@ -259,10 +242,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
         # train model
         tic = datetime.datetime.now()
         parallel_model.fit(train_dataset['im'], train_dataset['dmap'],
-                           sample_weight=train_dataset['mask'],
+                           sample_weight=train_dataset['mask'][..., 0],
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
-                                            test_dataset['mask']),
+                                            test_dataset['mask'][..., 0]),
                            batch_size=4, epochs=epochs, initial_epoch=0, callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -276,13 +259,12 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
         # train model
         tic = datetime.datetime.now()
-
         model.fit(train_dataset['im'], train_dataset['dmap'],
-                           sample_weight=train_dataset['mask'],
+                           sample_weight=train_dataset['mask'][..., 0],
                            validation_data=(test_dataset['im'],
                                             test_dataset['dmap'],
-                                            test_dataset['mask']),
-                           batch_size=4, epochs=epochs, initial_epoch=0, callbacks=[checkpointer], verbose=1)
+                                            test_dataset['mask'][..., 0]),
+                           batch_size=4, epochs=epochs, initial_epoch=0, callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
