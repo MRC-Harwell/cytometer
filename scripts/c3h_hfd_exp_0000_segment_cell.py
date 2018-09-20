@@ -17,36 +17,54 @@ DEBUG = False
 test_name = os.path.join(home, 'Downloads/dmap_test_pred.tif')
 test = Image.open(test_name)
 image = np.array(test)
+plt.clf()
+plt.subplot(211)
 plt.imshow(image)
-plt.show()
-
-
 
 # Now we want to separate the two objects in image
 # Generate the markers as local maxima of the distance to the background
-distance = ndi.distance_transform_edt(image, return_distances=True)    # Euclidean distance
-min_distance = 50
-local_maxi = peak_local_max(distance, min_distance=min_distance, indices=False)
+# distance = ndi.distance_transform_edt(image)
+local_maxi = peak_local_max(image=image, min_distance=15, indices=True, exclude_border=10)
+
+plt.plot(local_maxi[:, 1], local_maxi[:, 0], 'xr')
+
+local_maxi = peak_local_max(image=image, min_distance=15, indices=False, exclude_border=10)
+
 markers = ndi.label(local_maxi)[0]
-labels = watershed(-distance, markers, mask=image)
 
-if DEBUG:
-    plt.clf()
-    plt.imshow(image)
-    plt.show()
+plt.subplot(212)
+plt.imshow(markers)
 
-fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
-ax = axes.ravel()
+labels = watershed(-image, markers)
 
-ax[0].imshow(image, cmap=plt.cm.gray, interpolation='nearest')
-ax[0].set_title('Overlapping objects')
-ax[1].imshow(-distance, cmap=plt.cm.gray, interpolation='nearest')
-ax[1].set_title('Distances')
-ax[2].imshow(labels, cmap=plt.cm.nipy_spectral, interpolation='nearest')
-ax[2].set_title('Separated objects')
+plt.subplot(212)
+plt.cla()
+plt.imshow(labels.astype('uint32'))
 
-for a in ax:
-    a.set_axis_off()
+pixel_res = 1e-12
+unique_cells = np.unique(labels, return_counts=True)
+cell_number = len(unique_cells[0])
+x = unique_cells[0]
+area_list = unique_cells[1]*pixel_res
+bin_size = (max(area_list) - min(area_list))/cell_number
 
-fig.tight_layout()
-plt.show()
+plt.clf()
+plt.hist(area_list, bins=np.arange(min(area_list), max(area_list) + bin_size, bin_size))
+plt.title("Cell Areas")
+plt.ylabel("Frequency")
+plt.xlabel("Cell Area (m^2)")
+
+# pixel_res = 1e-12
+# unique_cells = np.unique(labels, return_counts=True)
+# cell_number = len(unique_cells[0])
+# x = unique_cells[0]
+# area_list = unique_cells[1]*pixel_res
+# scale = area_list*1e10
+# bin_size = (max(scale) - min(scale))/cell_number
+#
+# plt.clf()
+# plt.hist(scale, bins=12, range=(scale.min(), scale.max()))
+# plt.title("Cell Areas")
+# plt.ylabel("Frequency")
+# plt.xlabel("Cell Area (m^2)")
+# ax = plt.axes()
