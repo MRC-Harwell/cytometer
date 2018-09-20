@@ -34,6 +34,7 @@ import cytometer.models as models
 from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
+import inspect
 
 import cv2
 from skimage.morphology import skeletonize
@@ -48,12 +49,25 @@ DEBUG = False
 
 # data paths
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training'
-training_nooverlap_data_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_non_overlap'
-training_augmented_dir = '/home/gcientanni/OneDrive/c3h_backup/c3h_hfd_training_augmented_reduced'
-saved_models_dir = '/home/gcientanni/OneDrive/c3h_backup/saved_models'
+training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
+training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
+saved_models_dir = os.path.join(home, 'klf14_model')
 
-saved_model_basename = 'c3h_hfd_exp_0000_cnn_dmap'  # dmap
+experiment_id = inspect.getfile(inspect.currentframe())
+if experiment_id == '<input>':
+    experiment_id = 'unknownscript'
+else:
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
+
+saved_model_basename = 'exp_0000_klf14_b6ntac_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+
+model_name = saved_model_basename + '*.h5'
+
+# load model weights for each fold
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+n_folds = len(model_files)
+
 
 model_name = saved_model_basename + '*.h5'
 
