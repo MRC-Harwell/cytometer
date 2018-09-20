@@ -31,7 +31,6 @@ import keras.backend as K
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
 from keras.layers.normalization import BatchNormalization
-# from keras.callbacks import CSVLogger
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -61,9 +60,6 @@ n_folds = 11
 # number of epochs for training
 epochs = 20
 
-# timestamp at the beginning of loading data and processing so that all folds have a common name
-timestamp = datetime.datetime.now()
-
 '''Directories and filenames
 '''
 
@@ -74,7 +70,7 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
-# timestamp and script name to identify this experiment
+# script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
@@ -95,7 +91,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
     x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
@@ -104,7 +100,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
@@ -113,7 +109,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
@@ -122,7 +118,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
@@ -131,7 +127,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
@@ -142,7 +138,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
 
     # classification output
     x = Conv2D(filters=2, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
     return Model(inputs=input, outputs=[regression_output, classification_output])
@@ -267,7 +263,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                                              'classification_output': test_dataset['seg']},
                                             {'regression_output': test_dataset['mask'][..., 0],
                                              'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
+                           batch_size=10, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -296,14 +292,14 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         model.fit(train_dataset['im'],
                   {'regression_output': train_dataset['dmap'],
                    'classification_output': train_dataset['seg']},
-                  sample_weight={'regression_output': train_dataset['mask'],
-                                 'classification_output': train_dataset['mask']},
+                  sample_weight={'regression_output': train_dataset['mask'][..., 0],
+                                 'classification_output': train_dataset['mask'][..., 0]},
                   validation_data=(test_dataset['im'],
                                    {'regression_output': test_dataset['dmap'],
                                     'classification_output': test_dataset['seg']},
-                                   {'regression_output': test_dataset['mask'],
-                                    'classification_output': test_dataset['mask']}),
-                  batch_size=4, epochs=epochs, initial_epoch=0,
+                                   {'regression_output': test_dataset['mask'][..., 0],
+                                    'classification_output': test_dataset['mask'][..., 0]}),
+                  batch_size=10, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
