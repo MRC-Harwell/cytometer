@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -95,7 +95,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
     x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
@@ -104,7 +104,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
@@ -113,7 +113,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
@@ -122,7 +122,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
@@ -131,7 +131,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
@@ -142,7 +142,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
 
     # classification output
     x = Conv2D(filters=2, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
     return Model(inputs=input, outputs=[regression_output, classification_output])
@@ -260,15 +260,13 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         parallel_model.fit(train_dataset['im'],
                            {'regression_output': train_dataset['dmap'],
                             'classification_output': train_dataset['seg']},
-                           sample_weight={'regression_output': train_dataset['mask'],
-                                          'classification_output': np.repeat(train_dataset['mask'],
-                                                                             repeats=2, axis=-1)},
+                           sample_weight={'regression_output': train_dataset['mask'][..., 0],
+                                          'classification_output': train_dataset['mask'][..., 0]},
                            validation_data=(test_dataset['im'],
                                             {'regression_output': test_dataset['dmap'],
                                              'classification_output': test_dataset['seg']},
-                                            {'regression_output': test_dataset['mask'],
-                                             'classification_output': np.repeat(test_dataset['mask'],
-                                                                                repeats=2, axis=-1)}),
+                                            {'regression_output': test_dataset['mask'][..., 0],
+                                             'classification_output': test_dataset['mask'][..., 0]}),
                            batch_size=4, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -299,14 +297,12 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                   {'regression_output': train_dataset['dmap'],
                    'classification_output': train_dataset['seg']},
                   sample_weight={'regression_output': train_dataset['mask'],
-                                 'classification_output': np.repeat(train_dataset['mask'],
-                                                                    repeats=2, axis=-1)},
+                                 'classification_output': train_dataset['mask']},
                   validation_data=(test_dataset['im'],
                                    {'regression_output': test_dataset['dmap'],
                                     'classification_output': test_dataset['seg']},
                                    {'regression_output': test_dataset['mask'],
-                                    'classification_output': np.repeat(test_dataset['mask'],
-                                                                       repeats=2, axis=-1)}),
+                                    'classification_output': test_dataset['mask']}),
                   batch_size=4, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()

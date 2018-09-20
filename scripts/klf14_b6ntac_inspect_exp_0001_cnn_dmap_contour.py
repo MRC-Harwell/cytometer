@@ -51,6 +51,7 @@ training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_trai
 saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
 
 saved_model_basename = 'klf14_b6ntac_exp_0001_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+# saved_model_basename = 'unknownscript'
 
 model_name = saved_model_basename + '*.h5'
 
@@ -151,7 +152,6 @@ del test_datasets
 
 # load model
 model = keras.models.load_model(model_file)
-model = keras.models.load_model('/users/rittscher/rcasero/Dropbox/klf14/saved_models/foo.h5')
 
 # set input layer to size of test images
 model.layers.pop(0)
