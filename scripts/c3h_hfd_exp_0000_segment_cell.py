@@ -23,8 +23,8 @@ plt.imshow(image)
 
 # Now we want to separate the two objects in image
 # Generate the markers as local maxima of the distance to the background
-# distance = ndi.distance_transform_edt(image)
-local_maxi = peak_local_max(image=image, min_distance=15, indices=True, exclude_border=10)
+
+local_maxi = peak_local_max(image=image, min_distance=20, indices=True, exclude_border=10)
 
 plt.plot(local_maxi[:, 1], local_maxi[:, 0], 'xr')
 
@@ -53,18 +53,3 @@ plt.hist(area_list, bins=np.arange(min(area_list), max(area_list) + bin_size, bi
 plt.title("Cell Areas")
 plt.ylabel("Frequency")
 plt.xlabel("Cell Area (m^2)")
-
-# pixel_res = 1e-12
-# unique_cells = np.unique(labels, return_counts=True)
-# cell_number = len(unique_cells[0])
-# x = unique_cells[0]
-# area_list = unique_cells[1]*pixel_res
-# scale = area_list*1e10
-# bin_size = (max(scale) - min(scale))/cell_number
-#
-# plt.clf()
-# plt.hist(scale, bins=12, range=(scale.min(), scale.max()))
-# plt.title("Cell Areas")
-# plt.ylabel("Frequency")
-# plt.xlabel("Cell Area (m^2)")
-# ax = plt.axes()
