@@ -24,11 +24,11 @@ plt.imshow(image)
 # Now we want to separate the two objects in image
 # Generate the markers as local maxima of the distance to the background
 
-local_maxi = peak_local_max(image=image, min_distance=20, indices=True, exclude_border=10)
+local_maxi = peak_local_max(image=image, min_distance=20, indices=True)
 
 plt.plot(local_maxi[:, 1], local_maxi[:, 0], 'xr')
 
-local_maxi = peak_local_max(image=image, min_distance=15, indices=False, exclude_border=10)
+local_maxi = peak_local_max(image=image, min_distance=15, indices=False)
 
 markers = ndi.label(local_maxi)[0]
 
