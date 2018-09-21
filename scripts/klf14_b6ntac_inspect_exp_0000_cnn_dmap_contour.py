@@ -47,11 +47,11 @@ DEBUG = True
 '''
 
 # data paths
-root_data_dir = os.path.join(home, 'Dropbox/klf14')
-training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_model_basename = 'klf14_b6ntac_exp_0000_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
 
