@@ -13,7 +13,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -34,7 +34,6 @@ import cytometer.models as models
 from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
-import inspect
 
 import cv2
 from skimage.morphology import skeletonize
@@ -54,20 +53,7 @@ training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_n
 training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
 saved_models_dir = os.path.join(home, 'klf14_model')
 
-experiment_id = inspect.getfile(inspect.currentframe())
-if experiment_id == '<input>':
-    experiment_id = 'unknownscript'
-else:
-    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
-
 saved_model_basename = 'exp_0000_klf14_b6ntac_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
-
-model_name = saved_model_basename + '*.h5'
-
-# load model weights for each fold
-model_files = glob.glob(os.path.join(saved_models_dir, model_name))
-n_folds = len(model_files)
-
 
 model_name = saved_model_basename + '*.h5'
 
@@ -83,7 +69,7 @@ im_file_list = aux['file_list']
 idx_test_all = aux['idx_test_all']
 
 # correct home directory if we are in a different system than what was used to train the models
-# im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
+im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=False)
 
 '''CNN Model
 '''
