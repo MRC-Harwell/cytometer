@@ -79,7 +79,7 @@ experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
-    experiment_id = os.path.splitext(experiment_id)[0]
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 '''CNN Model
 '''
