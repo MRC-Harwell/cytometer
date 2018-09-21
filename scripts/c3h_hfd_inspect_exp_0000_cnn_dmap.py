@@ -48,16 +48,15 @@ DEBUG = False
 
 # data paths
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
-training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
-saved_models_dir = os.path.join(home, 'klf14_model')
-# training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
-# training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
-# training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
-# saved_models_dir = os.path.join(home, 'Dropbox/c3h/saved_models')
+training_data_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training_non_overlap')
+training_augmented_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training_augmented')
+saved_models_dir = os.path.join(home, 'Data/cytometer_data/c3h/saved_models')
 
-saved_model_basename = 'exp_0000_klf14_b6ntac_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+# Check softlink works
+test_softlink = os.listdir(saved_models_dir)
+
+saved_model_basename = 'c3h_hfd_exp_0000_cnn_dmap'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
 
 model_name = saved_model_basename + '*.h5'
 
@@ -73,7 +72,10 @@ im_file_list = aux['file_list']
 idx_test_all = aux['idx_test_all']
 
 # correct home directory if we are in a different system than what was used to train the models
-im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=False)
+im_file_list = cytometer.data.change_home_directory(im_file_list,
+                                                    '/users/rittscher/rcasero/Dropbox/c3h/c3h_hfd_training_augmented',
+                                                    training_augmented_dir,
+                                                    check_isfile=True)
 
 '''CNN Model
 '''
