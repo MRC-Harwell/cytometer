@@ -52,6 +52,10 @@ training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
 training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
 training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
 saved_models_dir = os.path.join(home, 'klf14_model')
+# training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
+# training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
+# training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
+# saved_models_dir = os.path.join(home, 'Dropbox/c3h/saved_models')
 
 saved_model_basename = 'exp_0000_klf14_b6ntac_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
 
