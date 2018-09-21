@@ -8,9 +8,10 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
-
 import glob
 import numpy as np
+import openslide
+import csv
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -56,7 +57,7 @@ saved_models_dir = os.path.join(home, 'Data/cytometer_data/c3h/saved_models')
 # Check softlink works
 test_softlink = os.listdir(saved_models_dir)
 
-saved_model_basename = 'c3h_hfd_exp_0000_cnn_dmap'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+saved_model_basename = 'c3h_hfd_exp_0000_cnn_dmap'
 
 model_name = saved_model_basename + '*.h5'
 
@@ -143,7 +144,7 @@ del datasets
 n_im = im.shape[0]
 
 if DEBUG:
-    i = 10
+    i = 5
     print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
     plt.clf()
     plt.subplot(221)
@@ -163,32 +164,34 @@ if DEBUG:
 # list of model files to inspect
 model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 
-receptive_field_size = []
-for model_file in model_files:
+# Method for calculating receptive field, not working properly.
 
-    print(model_file)
-
-    # estimate receptive field of the model
-    def model_build_func(input_shape):
-        model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
-        model.load_weights(model_file)
-        return model
-
-
-    rf = KerasReceptiveField(model_build_func, init_weights=False)
-
-    rf_params = rf.compute(
-        input_shape=(500, 500, 3),
-        input_layer='input_image',
-        output_layers=['regression_output'])
-    print(rf_params)
-
-    receptive_field_size.append(rf._rf_params[0].size)
-
-for i, model_file in enumerate(model_files):
-    print(model_file)
-    print('Receptive field size: ' + str(receptive_field_size[i]))
-
+# receptive_field_size = []
+# for model_file in model_files:
+#
+#     print(model_file)
+#
+#     # estimate receptive field of the model
+#     def model_build_func(input_shape):
+#         model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
+#         model.load_weights(model_file)
+#         return model
+#
+#
+#     rf = KerasReceptiveField(model_build_func, init_weights=False)
+#
+#     rf_params = rf.compute(
+#         input_shape=(500, 500, 3),
+#         input_layer='input_image',
+#         output_layers=['regression_output'])
+#     print(rf_params)
+#
+#     receptive_field_size.append(rf._rf_params[0].size)
+#
+# for i, model_file in enumerate(model_files):
+#     print(model_file)
+#     print('Receptive field size: ' + str(receptive_field_size[i]))
+#
 '''Load model and visualise results
 '''
 
@@ -255,6 +258,35 @@ for fold_i, model_file in enumerate(model_files):
     plt.imshow(mean_curvature)
     plt.title('mean curvature of dmap')
 
+
+'''Use Watershed to segment cells
+'''
+
+# check that all histology files have the same pixel size
+for file in glob.glob(os.path.join(root_data_dir, '*.ndpi')):
+    im = openslide.OpenSlide(file)
+    print("Xres = " + str(1e-2 / float(im.properties['tiff.XResolution'])) + ', ' +
+          "Yres = " + str(1e-2 / float(im.properties['tiff.YResolution'])))
+
+original_file = os.path.join(root_data_dir, 'C3HHM 3095.5a 353-16 C1 - 2016-04-15 11.54.24.ndpi')
+
+# open original image
+im = openslide.OpenSlide(original_file)
+
+# compute pixel size in the original image, where patches were taken from
+if im.properties['tiff.ResolutionUnit'].lower() == 'centimeter':
+    x_res = 1e-2 / float(im.properties['tiff.XResolution'])  # meters / pixel
+    y_res = 1e-2 / float(im.properties['tiff.YResolution'])  # meters / pixel
+else:
+    raise ValueError('Only centimeter units implemented')
+
+# read CSV file with female/male labels for mice
+with open(os.path.join(root_data_dir, 'c3h_hfd_meta_info.csv'), 'r') as f:
+    reader = csv.DictReader(f, skipinitialspace=True)
+    c3h_info = []
+    for row in reader:
+        c3h_info.append(row)
+f.close()
 
 '''Plot metrics and convergence
 '''
