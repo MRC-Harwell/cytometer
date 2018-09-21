@@ -79,7 +79,7 @@ experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
-    experiment_id = os.path.splitext(experiment_id)[0]
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 '''CNN Model
 '''
@@ -95,7 +95,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
     x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
@@ -104,7 +104,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
@@ -113,7 +113,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
@@ -122,7 +122,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
@@ -131,7 +131,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
@@ -142,7 +142,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
 
     # classification output
     x = Conv2D(filters=2, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
-    # x = BatchNormalization(axis=norm_axis)(x)
+    x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
     return Model(inputs=input, outputs=[regression_output, classification_output])
@@ -267,7 +267,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                                              'classification_output': test_dataset['seg']},
                                             {'regression_output': test_dataset['mask'][..., 0],
                                              'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
+                           batch_size=10, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -303,14 +303,23 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                                     'classification_output': test_dataset['seg']},
                                    {'regression_output': test_dataset['mask'],
                                     'classification_output': test_dataset['mask']}),
-                  batch_size=4, epochs=epochs, initial_epoch=0,
+                  batch_size=10, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
-# if we ran the script with nohup in linux, the output is in file nohup.out.
-# Save it to saved_models directory (
+# if we run the script with qsub on the cluster, the standard output is in file
+# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
+# Save it to saved_models directory
 log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
-if os.path.isfile(nohup_filename):
-    shutil.copy2(nohup_filename, log_filename)
+stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
+stdout_filename = glob.glob(stdout_filename)[0]
+if stdout_filename and os.path.isfile(stdout_filename):
+    shutil.copy2(stdout_filename, log_filename)
+else:
+    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
+    # Save it to saved_models directory
+    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+    if os.path.isfile(nohup_filename):
+        shutil.copy2(nohup_filename, log_filename)
