@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -43,7 +43,7 @@ import tensorflow as tf
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
 # config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 1.0
+# config.gpu_options.per_process_gpu_memory_fraction = 0.9
 # set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
@@ -222,92 +222,42 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     function
     '''
 
-    # list all CPUs and GPUs
-    device_list = K.get_session().list_devices()
-
-    # number of GPUs
-    gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
-
     # instantiate model
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
 
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
 
-    # # checkpoint to save metrics every epoch
-    # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
-    # csv_logger = CSVLogger(save_history_filename, append=True, separator=',')
+    # checkpoint to save model after each epoch
+    checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                   verbose=1, save_best_only=True)
 
-    if gpu_number > 1:  # compile and train model: Multiple GPUs
+    # compile model
+    model.compile(loss={'regression_output': 'mse',
+                        'classification_output': 'binary_crossentropy'},
+                  loss_weights={'regression_output': 1.0,
+                                'classification_output': 1000.0},
+                  optimizer='Adadelta',
+                  metrics={'regression_output': ['mse', 'mae'],
+                           'classification_output': 'accuracy'},
+                  sample_weight_mode='element')
 
-        raise ValueError('Due to some bug, training with BatchNormalization on multiple GPUs produces NaNs in the BatchNormalization layers')
-
-        # checkpoint to save model after each epoch
-        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                           verbose=1, save_best_only=True)
-        # compile model
-        parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'regression_output': 'mse',
-                                     'classification_output': 'binary_crossentropy'},
-                               loss_weights={'regression_output': 1.0,
-                                             'classification_output': 1000.0},
-                               optimizer='Adadelta',
-                               metrics={'regression_output': ['mse', 'mae'],
-                                        'classification_output': 'accuracy'},
-                               sample_weight_mode='element')
-
-        # train model
-        tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'],
-                           {'regression_output': train_dataset['dmap'],
-                            'classification_output': train_dataset['seg']},
-                           sample_weight={'regression_output': train_dataset['mask'][..., 0],
-                                          'classification_output': train_dataset['mask'][..., 0]},
-                           validation_data=(test_dataset['im'],
-                                            {'regression_output': test_dataset['dmap'],
-                                             'classification_output': test_dataset['seg']},
-                                            {'regression_output': test_dataset['mask'][..., 0],
-                                             'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=5, epochs=epochs, initial_epoch=0,
-                           callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
-
-        # FOO
-        model.save('/users/rittscher/rcasero/Dropbox/klf14/saved_models/foo.h5')
-
-    else:  # compile and train model: One GPU
-
-        # checkpoint to save model after each epoch
-        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                       verbose=1, save_best_only=True)
-
-        # compile model
-        model.compile(loss={'regression_output': 'mse',
-                            'classification_output': 'binary_crossentropy'},
-                      loss_weights={'regression_output': 1.0,
-                                    'classification_output': 1000.0},
-                      optimizer='Adadelta',
-                      metrics={'regression_output': ['mse', 'mae'],
-                               'classification_output': 'accuracy'},
-                      sample_weight_mode='element')
-
-        # train model
-        tic = datetime.datetime.now()
-        model.fit(train_dataset['im'],
-                           {'regression_output': train_dataset['dmap'],
-                            'classification_output': train_dataset['seg']},
-                           sample_weight={'regression_output': train_dataset['mask'][..., 0],
-                                          'classification_output': train_dataset['mask'][..., 0]},
-                           validation_data=(test_dataset['im'],
-                                            {'regression_output': test_dataset['dmap'],
-                                             'classification_output': test_dataset['seg']},
-                                            {'regression_output': test_dataset['mask'][..., 0],
-                                             'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=5, epochs=epochs, initial_epoch=0,
-                           callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
+    # train model
+    tic = datetime.datetime.now()
+    model.fit(train_dataset['im'],
+              {'regression_output': train_dataset['dmap'],
+               'classification_output': train_dataset['seg']},
+              sample_weight={'regression_output': train_dataset['mask'][..., 0],
+                             'classification_output': train_dataset['mask'][..., 0]},
+              validation_data=(test_dataset['im'],
+                               {'regression_output': test_dataset['dmap'],
+                                'classification_output': test_dataset['seg']},
+                               {'regression_output': test_dataset['mask'][..., 0],
+                                'classification_output': test_dataset['mask'][..., 0]}),
+              batch_size=4, epochs=epochs, initial_epoch=0,
+              callbacks=[checkpointer])
+    toc = datetime.datetime.now()
+    print('Training duration: ' + str(toc - tic))
 
 # if we run the script with qsub on the cluster, the standard output is in file
 # klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
