@@ -13,7 +13,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -44,11 +44,11 @@ DEBUG = True
 '''
 
 # data paths
-root_data_dir = os.path.join(home, 'Dropbox/klf14')
-training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_model_basename = 'klf14_b6ntac_exp_0001_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
 # saved_model_basename = 'unknownscript'
@@ -135,6 +135,9 @@ for i, model_file in enumerate(model_files):
 '''Load model and visualise results
 '''
 
+# list of model files to inspect
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+
 fold_i = 0
 model_file = model_files[fold_i]
 
@@ -143,7 +146,7 @@ im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold
 
 # load im, seg and mask datasets
 test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                   prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=3)
+                                                   prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=2)
 im_test = test_datasets['im']
 seg_test = test_datasets['seg']
 mask_test = test_datasets['mask']
