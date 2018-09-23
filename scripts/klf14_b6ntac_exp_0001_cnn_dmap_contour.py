@@ -30,7 +30,6 @@ import keras.backend as K
 
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
-from keras.layers.normalization import BatchNormalization
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -91,7 +90,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
     x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
@@ -100,7 +99,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
@@ -109,7 +108,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
@@ -118,7 +117,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
@@ -127,7 +126,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
@@ -138,7 +137,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
 
     # classification output
     x = Conv2D(filters=2, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
-    x = BatchNormalization(axis=norm_axis)(x)
+    # x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
     return Model(inputs=input, outputs=[regression_output, classification_output])
