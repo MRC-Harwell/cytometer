@@ -268,7 +268,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                                              'classification_output': test_dataset['seg']},
                                             {'regression_output': test_dataset['mask'][..., 0],
                                              'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=10, epochs=epochs, initial_epoch=0,
+                           batch_size=5, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -304,7 +304,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                                              'classification_output': test_dataset['seg']},
                                             {'regression_output': test_dataset['mask'][..., 0],
                                              'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=10, epochs=epochs, initial_epoch=0,
+                           batch_size=5, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
