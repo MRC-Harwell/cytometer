@@ -23,6 +23,23 @@ elif K.image_data_format() == 'channels_last':
     norm_axis = -1
 
 
+def change_input_size(model, batch_shape):
+    """
+    Replace input layer of model to suit inputs of a different size.
+
+    Note that after using this function model.summary() will display
+    the old model as a single layer.
+
+    :param model: Keras model.
+    :param batch_shape: New input shape, e.g. (None, 500, 500, 3).
+    :return: Keras model with modified input layer.
+    """
+    model.layers.pop(0)
+    newInput = Input(batch_shape=batch_shape)
+    newOutputs = model(newInput)
+    return Model(newInput, newOutputs)
+
+
 def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
     input = Input(shape=input_shape, dtype='float32', name='input_image')
