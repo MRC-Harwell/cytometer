@@ -26,11 +26,9 @@ set_session(tf.Session(config=config))
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
 # function
 import keras
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
-from keras.layers.normalization import BatchNormalization
 import keras.backend as K
 import cytometer.data
+import cytometer.models
 from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
@@ -157,10 +155,7 @@ del test_datasets
 model = keras.models.load_model(model_file)
 
 # set input layer to size of test images
-model.layers.pop(0)
-newInput = Input(batch_shape=(1,) + im_test.shape[1:])
-newOutputs = model(newInput)
-model = Model(newInput, newOutputs)
+model = cytometer.models.change_input_size(model, batch_shape=(None,) + im_test.shape[1:])
 
 # visualise results
 i = 0
@@ -179,7 +174,7 @@ plt.subplot(322)
 plt.imshow(dmap_test[i, :, :, 0])
 plt.title('ground truth dmap')
 plt.subplot(323)
-plt.imshow(contour_test_pred[0, :, :, 0])
+plt.imshow(contour_test_pred[0, :, :, 1])
 plt.title('predicted contours')
 plt.subplot(324)
 plt.imshow(dmap_test_pred[0, :, :, 0])
@@ -188,7 +183,7 @@ plt.subplot(325)
 plt.imshow(mean_curvature)
 plt.title('mean curvature of dmap')
 plt.subplot(326)
-plt.imshow(mean_curvature * contour_test_pred[0, :, :, 0])
+plt.imshow(mean_curvature * contour_test_pred[0, :, :, 1])
 plt.title('predicted contours * mean curvature')
 
 # visualise results
@@ -208,7 +203,7 @@ plt.subplot(322)
 plt.imshow(dmap_test[i, :, :, 0])
 plt.title('ground truth dmap')
 plt.subplot(323)
-plt.imshow(contour_test_pred[0, :, :, 0])
+plt.imshow(contour_test_pred[0, :, :, 1])
 plt.title('predicted contours')
 plt.subplot(324)
 plt.imshow(dmap_test_pred[0, :, :, 0])
@@ -217,7 +212,7 @@ plt.subplot(325)
 plt.imshow(mean_curvature)
 plt.title('mean curvature of dmap')
 plt.subplot(326)
-plt.imshow(mean_curvature * contour_test_pred[0, :, :, 0])
+plt.imshow(mean_curvature * contour_test_pred[0, :, :, 1])
 plt.title('predicted contours * mean curvature')
 
 
