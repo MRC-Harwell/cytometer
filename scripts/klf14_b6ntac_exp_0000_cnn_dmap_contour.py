@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -67,18 +67,18 @@ timestamp = datetime.datetime.now()
 '''
 
 # data paths
-root_data_dir = os.path.join(home, 'Dropbox/klf14')
-training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-# timestamp and script name to identify this experiment
+# script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
-    experiment_id = os.path.splitext(experiment_id)[0]
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 '''CNN Model
 '''
@@ -200,7 +200,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         plt.clf()
         for pi, prefix in enumerate(train_dataset.keys()):
             plt.subplot(1, len(train_dataset.keys()), pi + 1)
-            if train_dataset[prefix].shape[-1] == 1:
+            if train_dataset[prefix].shape[-1] < 3:
                 plt.imshow(train_dataset[prefix][i, :, :, 0])
             else:
                 plt.imshow(train_dataset[prefix][i, :, :, :])
@@ -210,7 +210,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         plt.clf()
         for pi, prefix in enumerate(test_dataset.keys()):
             plt.subplot(1, len(test_dataset.keys()), pi + 1)
-            if test_dataset[prefix].shape[-1] == 1:
+            if test_dataset[prefix].shape[-1] < 3:
                 plt.imshow(test_dataset[prefix][i, :, :, 0])
             else:
                 plt.imshow(test_dataset[prefix][i, :, :, :])
