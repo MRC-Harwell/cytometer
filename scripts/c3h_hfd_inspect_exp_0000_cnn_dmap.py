@@ -131,38 +131,35 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
     return Model(inputs=input, outputs=main_output)
 
 
-'''Load example data to display'''
-
-# load im, seg and mask datasets
-datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'mask', 'dmap'])
-im = datasets['im']
-mask = datasets['mask']
-dmap = datasets['dmap']
-del datasets
-
-# number of training images
-n_im = im.shape[0]
-
-if DEBUG:
-    i = 5
-    print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
-    plt.clf()
-    plt.subplot(221)
-    plt.imshow(im[i, :, :, :])
-    plt.title('Histology: ' + str(i))
-    plt.subplot(223)
-    plt.imshow(dmap[i, :, :, 0])
-    plt.title('Distance transformation')
-    plt.subplot(224)
-    plt.imshow(mask[i, :, :, 0])
-    plt.title('Mask')
-
-'''Receptive field
-
-'''
-
-# list of model files to inspect
-model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+# '''Load example data to display'''
+#
+# # load im, seg and mask datasets
+# datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'mask', 'dmap'])
+# im = datasets['im']
+# mask = datasets['mask']
+# dmap = datasets['dmap']
+# del datasets
+#
+# # number of training images
+# n_im = im.shape[0]
+#
+# if DEBUG:
+#     i = 5
+#     print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
+#     plt.clf()
+#     plt.subplot(221)
+#     plt.imshow(im[i, :, :, :])
+#     plt.title('Histology: ' + str(i))
+#     plt.subplot(223)
+#     plt.imshow(dmap[i, :, :, 0])
+#     plt.title('Distance transformation')
+#     plt.subplot(224)
+#     plt.imshow(mask[i, :, :, 0])
+#     plt.title('Mask')
+#
+# '''Receptive field
+#
+# '''
 
 # Method for calculating receptive field, not working properly.
 
@@ -195,6 +192,11 @@ model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 '''Load model and visualise results
 '''
 
+
+# list of model files to inspect
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+
+
 for fold_i, model_file in enumerate(model_files):
 
     # split the data into training and testing datasets
@@ -222,16 +224,16 @@ for fold_i, model_file in enumerate(model_files):
 
     # plot results
     plt.clf()
-    plt.subplot(321)
+    plt.subplot(221)
     plt.imshow(im_test[i, :, :, :])
     plt.title('histology, i = ' + str(i))
-    plt.subplot(322)
+    plt.subplot(222)
     plt.imshow(dmap_test[i, :, :, 0])
     plt.title('ground truth dmap')
-    plt.subplot(324)
+    plt.subplot(223)
     plt.imshow(dmap_test_pred[0, :, :, 0])
     plt.title('predicted dmap')
-    plt.subplot(325)
+    plt.subplot(224)
     plt.imshow(mean_curvature)
     plt.title('mean curvature of dmap')
 
@@ -245,53 +247,26 @@ for fold_i, model_file in enumerate(model_files):
 
     # plot results
     plt.clf()
-    plt.subplot(321)
+    plt.subplot(221)
     plt.imshow(im_test[i, :, :, :])
     plt.title('histology, i = ' + str(i))
-    plt.subplot(322)
+    plt.subplot(222)
     plt.imshow(dmap_test[i, :, :, 0])
     plt.title('ground truth dmap')
-    plt.subplot(324)
+    plt.subplot(223)
     plt.imshow(dmap_test_pred[0, :, :, 0])
     plt.title('predicted dmap')
-    plt.subplot(325)
+    plt.subplot(224)
     plt.imshow(mean_curvature)
     plt.title('mean curvature of dmap')
-
-
-'''Use Watershed to segment cells
-'''
-
-# check that all histology files have the same pixel size
-for file in glob.glob(os.path.join(root_data_dir, '*.ndpi')):
-    im = openslide.OpenSlide(file)
-    print("Xres = " + str(1e-2 / float(im.properties['tiff.XResolution'])) + ', ' +
-          "Yres = " + str(1e-2 / float(im.properties['tiff.YResolution'])))
-
-original_file = os.path.join(root_data_dir, 'C3HHM 3095.5a 353-16 C1 - 2016-04-15 11.54.24.ndpi')
-
-# open original image
-im = openslide.OpenSlide(original_file)
-
-# compute pixel size in the original image, where patches were taken from
-if im.properties['tiff.ResolutionUnit'].lower() == 'centimeter':
-    x_res = 1e-2 / float(im.properties['tiff.XResolution'])  # meters / pixel
-    y_res = 1e-2 / float(im.properties['tiff.YResolution'])  # meters / pixel
-else:
-    raise ValueError('Only centimeter units implemented')
-
-# read CSV file with female/male labels for mice
-with open(os.path.join(root_data_dir, 'c3h_hfd_meta_info.csv'), 'r') as f:
-    reader = csv.DictReader(f, skipinitialspace=True)
-    c3h_info = []
-    for row in reader:
-        c3h_info.append(row)
-f.close()
 
 '''Plot metrics and convergence
 '''
 
 log_filename = os.path.join(saved_models_dir, model_name.replace('*.h5', '.log'))
+
+# Compare to klf14 model
+# log_filename = '/home/gcientanni/Desktop/inspect_test/exp_0000_klf14_b6ntac_cnn_dmap_contour.log'
 
 if os.path.isfile(log_filename):
 
