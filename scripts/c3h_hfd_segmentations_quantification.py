@@ -50,19 +50,19 @@ DEBUG = False
 ========================================================================================================================
 '''
 
-def watershed_segmentation(pixels, x_res, y_res):
-
-    local_maxi = peak_local_max(image=pixels, min_distance=20, indices=False)
-
-    markers = ndi.label(local_maxi)[0]
-
-    labels = watershed(-pixels, markers)
-
-    pixel_res = x_res * y_res
-    unique_cells = np.unique(labels, return_counts=True)
-    area_list = unique_cells[1] * pixel_res
-
-    return np.array(area_list)
+# def watershed_segmentation(pixels, x_res, y_res):
+#
+#     local_maxi = peak_local_max(image=pixels, min_distance=20, indices=False)
+#
+#     markers = ndi.label(local_maxi)[0]
+#
+#     labels = watershed(-pixels, markers)
+#
+#     pixel_res = x_res * y_res
+#     unique_cells = np.unique(labels, return_counts=True)
+#     area_list = unique_cells[1] * pixel_res
+#
+#     return np.array(area_list)
 
 def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
@@ -260,8 +260,8 @@ for fold_i, model_file in enumerate(model_files):
     model = fcn_sherrah2016_regression(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
 
-    # visualise results
-    i = 0
+    i=1
+
     # run image through network
     dmap_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
@@ -283,31 +283,27 @@ for fold_i, model_file in enumerate(model_files):
     plt.imshow(mean_curvature)
     plt.title('mean curvature of dmap')
 
-    # visualise results
-    i = 18
-    # run image through network
-    dmap_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
+    # reshape for watershed
+    dmap_test_pred = dmap_test_pred[0, :, :, 0]
 
-    # compute mean curvature from dmap
-    _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
+    # from dmaps calculate area using watershed method
+    local_maxi = peak_local_max(image=dmap_test_pred, min_distance=15, indices=False)
+    markers = ndi.label(local_maxi)[0]
+    labels = watershed(-dmap_test_pred, markers)
 
-    # plot results
-    plt.clf()
-    plt.subplot(221)
-    plt.imshow(im_test[i, :, :, :])
-    plt.title('histology, i = ' + str(i))
-    plt.subplot(222)
-    plt.imshow(dmap_test[i, :, :, 0])
-    plt.title('ground truth dmap')
-    plt.subplot(223)
-    plt.imshow(dmap_test_pred[0, :, :, 0])
-    plt.title('predicted dmap')
-    plt.subplot(224)
-    plt.imshow(mean_curvature)
-    plt.title('mean curvature of dmap')
+    # get area of each individual cell
+    unique_cells = np.unique(labels, return_counts=True)
+    cell_number = len(unique_cells[0])
+    x = unique_cells[0]
+    area_list = unique_cells[1] * (x_res*y_res)
 
-    # From dmaps calculate area using watershed method
-    areas = watershed_segmentation(dmap_test_pred, x_res=1, y_res=1)
+    # plot segmentation
+    plt.subplot(212)
+    plt.cla()
+    plt.imshow(labels.astype('uint32'))
+
+    # save area list to dataframe
+
 
 # # file_list = glob.glob(os.path.join(training_data_dir, '*.tif'))
 #
