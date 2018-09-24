@@ -13,7 +13,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -29,7 +29,6 @@ import keras
 import keras.backend as K
 import cytometer.data
 import cytometer.models
-from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
 
@@ -68,30 +67,30 @@ idx_test_all = aux['idx_test_all']
 im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
 
 '''Load example data to display'''
-
-# load im, seg and mask datasets
-datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'seg', 'mask'])
-im = datasets['im']
-seg = datasets['seg']
-mask = datasets['mask']
-del datasets
-
-# number of training images
-n_im = im.shape[0]
-
-if DEBUG:
-    i = 10
-    print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
-    plt.clf()
-    plt.subplot(221)
-    plt.imshow(im[i, :, :, :])
-    plt.title('Histology: ' + str(i))
-    plt.subplot(222)
-    plt.imshow(seg[i, :, :, 0])
-    plt.title('Labels')
-    plt.subplot(223)
-    plt.imshow(mask[i, :, :, 0])
-    plt.title('Mask')
+#
+# # load im, seg and mask datasets
+# datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'seg', 'mask'])
+# im = datasets['im']
+# seg = datasets['seg']
+# mask = datasets['mask']
+# del datasets
+#
+# # number of training images
+# n_im = im.shape[0]
+#
+# if DEBUG:
+#     i = 10
+#     print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
+#     plt.clf()
+#     plt.subplot(221)
+#     plt.imshow(im[i, :, :, :])
+#     plt.title('Histology: ' + str(i))
+#     plt.subplot(222)
+#     plt.imshow(seg[i, :, :, 0])
+#     plt.title('Labels')
+#     plt.subplot(223)
+#     plt.imshow(mask[i, :, :, 0])
+#     plt.title('Mask')
 
 '''Load model and visualise results
 '''
