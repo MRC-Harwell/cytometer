@@ -1,3 +1,7 @@
+'''
+Contour segmentation
+'''
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
@@ -22,7 +26,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -30,13 +34,12 @@ import keras.backend as K
 
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
-from keras.layers.normalization import BatchNormalization
-# from keras.callbacks import CSVLogger
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
 
 import cytometer.data
+import cytometer.model_checkpoint_parallel
 import random
 import tensorflow as tf
 
@@ -58,10 +61,7 @@ nblocks = 3
 n_folds = 11
 
 # number of epochs for training
-epochs = 5
-
-# timestamp at the beginning of loading data and processing so that all folds have a common name
-timestamp = datetime.datetime.now()
+epochs = 20
 
 '''Directories and filenames
 '''
@@ -84,17 +84,11 @@ else:
 '''
 
 
-def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=False):
-
-    if K.image_data_format() == 'channels_first':
-        norm_axis = 1
-    elif K.image_data_format() == 'channels_last':
-        norm_axis = -1
+def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
 
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
     x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
@@ -103,7 +97,6 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
@@ -112,7 +105,6 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
@@ -121,7 +113,6 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
         x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
@@ -130,21 +121,18 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
         x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
 
     x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    x = BatchNormalization(axis=norm_axis)(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
         x = Activation('relu')(x)
 
-    # regression output
-    regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same', name='regression_output')(x)
+    # dimensionality reduction
+    x = Conv2D(filters=2, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
 
     # classification output
-    x = Conv2D(filters=1, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
-    x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
-    return Model(inputs=input, outputs=[regression_output, classification_output])
+    return Model(inputs=input, outputs=[classification_output])
 
 
 '''Prepare folds
@@ -185,10 +173,10 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # load the train and test data: im, seg, dmap and mask data
     train_dataset, train_file_list, train_shuffle_idx = \
-        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
+        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'seg', 'mask'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
     test_dataset, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'dmap', 'mask'],
+        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'mask'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
     # remove training data where the mask has very few valid pixels
@@ -206,7 +194,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                 plt.imshow(train_dataset[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
-        i = 32
+        i = 22
         plt.clf()
         for pi, prefix in enumerate(test_dataset.keys()):
             plt.subplot(1, len(test_dataset.keys()), pi + 1)
@@ -230,68 +218,72 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
 
     # instantiate model
     with tf.device('/cpu:0'):
-        model = fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
+        model = fcn_sherrah2016_classifier(input_shape=train_dataset['im'].shape[1:])
 
-    # checkpoint to save model after each epoch
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-    checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                   verbose=1, save_best_only=True)
-
-    # # checkpoint to save metrics every epoch
-    # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
-    # csv_logger = CSVLogger(save_history_filename, append=True, separator=',')
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
+        # checkpoint to save model after each epoch
+        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
+                                                                           verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'regression_output': 'mse',
-                                     'classification_output': 'binary_crossentropy'},
-                               loss_weights={'regression_output': 1.0,
-                                             'classification_output': 1000.0},
-                               optimizer='Adadelta', metrics=['mse', 'mae'],
+        parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
+                               optimizer='Adadelta',
+                               metrics={'classification_output': 'accuracy'},
                                sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-                           sample_weight=[train_dataset['mask'], train_dataset['mask']],
+        parallel_model.fit(train_dataset['im'],
+                           {'classification_output': train_dataset['seg']},
+                           sample_weight={'classification_output': train_dataset['mask'][..., 0]},
                            validation_data=(test_dataset['im'],
-                                            [test_dataset['dmap'], test_dataset['seg']],
-                                            [test_dataset['mask'], test_dataset['mask']]),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
+                                            {'classification_output': test_dataset['seg']},
+                                            {'classification_output': test_dataset['mask'][..., 0]}),
+                           batch_size=10, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
     else:  # compile and train model: One GPU
 
+        # checkpoint to save model after each epoch
+        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                       verbose=1, save_best_only=True)
+
         # compile model
-        model.compile(loss={'regression_output': 'mse',
-                            'classification_output': 'binary_crossentropy'},
-                      loss_weights={'regression_output': 1.0,
-                                    'classification_output': 1000.0},
-                      optimizer='Adadelta', metrics=['mse', 'mae'],
+        model.compile(loss={'classification_output': 'binary_crossentropy'},
+                      optimizer='Adadelta',
+                      metrics={'classification_output': 'accuracy'},
                       sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-                  sample_weight=[train_dataset['mask'], train_dataset['mask']],
+        model.fit(train_dataset['im'],
+                  {'classification_output': train_dataset['seg']},
+                  sample_weight={'classification_output': train_dataset['mask'][..., 0]},
                   validation_data=(test_dataset['im'],
-                                   [test_dataset['dmap'], test_dataset['seg']],
-                                   [test_dataset['mask'], test_dataset['mask']]),
-                  batch_size=4, epochs=epochs, initial_epoch=0,
+                                   {'classification_output': test_dataset['seg']},
+                                   {'classification_output': test_dataset['mask'][..., 0]}),
+                  batch_size=10, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
-    # save result (note, we save the template model, not the multiparallel object)
-    model.save(saved_model_filename)
-
-# if we ran the script with nohup in linux, the output is in file nohup.out.
-# Save it to saved_models directory (
+# if we run the script with qsub on the cluster, the standard output is in file
+# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
+# Save it to saved_models directory
 log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
-if os.path.isfile(nohup_filename):
-    shutil.copy2(nohup_filename, log_filename)
+stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
+stdout_filename = glob.glob(stdout_filename)[0]
+if stdout_filename and os.path.isfile(stdout_filename):
+    shutil.copy2(stdout_filename, log_filename)
+else:
+    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
+    # Save it to saved_models directory
+    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+    if os.path.isfile(nohup_filename):
+        shutil.copy2(nohup_filename, log_filename)

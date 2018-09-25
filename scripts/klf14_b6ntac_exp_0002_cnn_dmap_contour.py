@@ -31,7 +31,6 @@ import keras.backend as K
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
 from keras.layers.normalization import BatchNormalization
-# from keras.callbacks import CSVLogger
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -44,7 +43,7 @@ import tensorflow as tf
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
 # config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 1.0
+# config.gpu_options.per_process_gpu_memory_fraction = 0.9
 # set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
@@ -59,7 +58,7 @@ nblocks = 3
 n_folds = 11
 
 # number of epochs for training
-epochs = 10
+epochs = 20
 
 # timestamp at the beginning of loading data and processing so that all folds have a common name
 timestamp = datetime.datetime.now()
@@ -68,18 +67,18 @@ timestamp = datetime.datetime.now()
 '''
 
 # data paths
-root_data_dir = os.path.join(home, 'Dropbox/klf14')
-training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 # timestamp and script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
-    experiment_id = os.path.splitext(experiment_id)[0]
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 '''CNN Model
 '''
@@ -141,7 +140,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same', name='regression_output')(x)
 
     # classification output
-    x = Conv2D(filters=1, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
+    x = Conv2D(filters=2, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
     x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
@@ -201,7 +200,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         plt.clf()
         for pi, prefix in enumerate(train_dataset.keys()):
             plt.subplot(1, len(train_dataset.keys()), pi + 1)
-            if train_dataset[prefix].shape[-1] == 1:
+            if train_dataset[prefix].shape[-1] < 3:
                 plt.imshow(train_dataset[prefix][i, :, :, 0])
             else:
                 plt.imshow(train_dataset[prefix][i, :, :, :])
@@ -211,7 +210,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         plt.clf()
         for pi, prefix in enumerate(test_dataset.keys()):
             plt.subplot(1, len(test_dataset.keys()), pi + 1)
-            if test_dataset[prefix].shape[-1] == 1:
+            if test_dataset[prefix].shape[-1] < 3:
                 plt.imshow(test_dataset[prefix][i, :, :, 0])
             else:
                 plt.imshow(test_dataset[prefix][i, :, :, :])
@@ -223,92 +222,55 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
     function
     '''
 
-    # list all CPUs and GPUs
-    device_list = K.get_session().list_devices()
-
-    # number of GPUs
-    gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
-
     # instantiate model
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_regression_and_classifier(input_shape=train_dataset['im'].shape[1:])
 
-    # checkpoint to save model after each epoch
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-    checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                       verbose=1, save_best_only=True)
 
-    # # checkpoint to save metrics every epoch
-    # save_history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.csv')
-    # csv_logger = CSVLogger(save_history_filename, append=True, separator=',')
+    # checkpoint to save model after each epoch
+    checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                   verbose=1, save_best_only=True)
 
-    if gpu_number > 1:  # compile and train model: Multiple GPUs
+    # compile model
+    model.compile(loss={'regression_output': 'mse',
+                        'classification_output': 'binary_crossentropy'},
+                  loss_weights={'regression_output': 1.0,
+                                'classification_output': 1000.0},
+                  optimizer='Adadelta',
+                  metrics={'regression_output': ['mse', 'mae'],
+                           'classification_output': 'accuracy'},
+                  sample_weight_mode='element')
 
-        # compile model
-        parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'regression_output': 'mse',
-                                     'classification_output': 'binary_crossentropy'},
-                               loss_weights={'regression_output': 1.0,
-                                             'classification_output': 1000.0},
-                               optimizer='Adadelta', metrics=['mse', 'mae'],
-                               sample_weight_mode='element')
+    # train model
+    tic = datetime.datetime.now()
+    model.fit(train_dataset['im'],
+              {'regression_output': train_dataset['dmap'],
+               'classification_output': train_dataset['seg']},
+              sample_weight={'regression_output': train_dataset['mask'][..., 0],
+                             'classification_output': train_dataset['mask'][..., 0]},
+              validation_data=(test_dataset['im'],
+                               {'regression_output': test_dataset['dmap'],
+                                'classification_output': test_dataset['seg']},
+                               {'regression_output': test_dataset['mask'][..., 0],
+                                'classification_output': test_dataset['mask'][..., 0]}),
+              batch_size=4, epochs=epochs, initial_epoch=0,
+              callbacks=[checkpointer])
+    toc = datetime.datetime.now()
+    print('Training duration: ' + str(toc - tic))
 
-        # train model
-        tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-                           sample_weight=[train_dataset['mask'], train_dataset['mask']],
-                           validation_data=(test_dataset['im'],
-                                            [test_dataset['dmap'], test_dataset['seg']],
-                                            [test_dataset['mask'], test_dataset['mask']]),
-                           batch_size=4, epochs=epochs, initial_epoch=0)
-        # parallel_model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-        #                    sample_weight=[train_dataset['mask'], train_dataset['mask']],
-        #                    validation_data=(test_dataset['im'],
-        #                                     [test_dataset['dmap'], test_dataset['seg']],
-        #                                     [test_dataset['mask'], test_dataset['mask']]),
-        #                    batch_size=4, epochs=epochs, initial_epoch=0,
-        #                    callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
-
-        # save the model
-        model.save(saved_model_filename)
-
-    else:  # compile and train model: One GPU
-
-        # compile model
-        model.compile(loss={'regression_output': 'mse',
-                            'classification_output': 'binary_crossentropy'},
-                      loss_weights={'regression_output': 1.0,
-                                    'classification_output': 1000.0},
-                      optimizer='Adadelta', metrics=['mse', 'mae'],
-                      sample_weight_mode='element')
-
-        # train model
-        tic = datetime.datetime.now()
-        model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-                  sample_weight=[train_dataset['mask'], train_dataset['mask']],
-                  validation_data=(test_dataset['im'],
-                                   [test_dataset['dmap'], test_dataset['seg']],
-                                   [test_dataset['mask'], test_dataset['mask']]),
-                  batch_size=4, epochs=epochs, initial_epoch=0)
-        # model.fit(train_dataset['im'], [train_dataset['dmap'], train_dataset['seg']],
-        #           sample_weight=[train_dataset['mask'], train_dataset['mask']],
-        #           validation_data=(test_dataset['im'],
-        #                            [test_dataset['dmap'], test_dataset['seg']],
-        #                            [test_dataset['mask'], test_dataset['mask']]),
-        #           batch_size=4, epochs=epochs, initial_epoch=0,
-        #           callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
-
-        # save the model
-        model.save(saved_model_filename)
-
-
-# if we ran the script with nohup in linux, the output is in file nohup.out.
-# Save it to saved_models directory (
+# if we run the script with qsub on the cluster, the standard output is in file
+# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
+# Save it to saved_models directory
 log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
-if os.path.isfile(nohup_filename):
-    shutil.copy2(nohup_filename, log_filename)
+stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
+stdout_filename = glob.glob(stdout_filename)[0]
+if stdout_filename and os.path.isfile(stdout_filename):
+    shutil.copy2(stdout_filename, log_filename)
+else:
+    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
+    # Save it to saved_models directory
+    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+    if os.path.isfile(nohup_filename):
+        shutil.copy2(nohup_filename, log_filename)

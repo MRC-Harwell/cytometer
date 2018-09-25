@@ -48,7 +48,7 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-saved_model_basename = 'klf14_b6ntac_exp_0001_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+saved_model_basename = 'klf14_b6ntac_exp_0002_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
 # saved_model_basename = 'unknownscript'
 
 model_name = saved_model_basename + '*.h5'
@@ -144,7 +144,7 @@ im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold
 
 # load im, seg and mask datasets
 test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                   prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=2)
+                                                   prefix_to=['im', 'seg', 'mask', 'dmap'], nblocks=3)
 im_test = test_datasets['im']
 seg_test = test_datasets['seg']
 mask_test = test_datasets['mask']
