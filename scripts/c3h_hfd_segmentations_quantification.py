@@ -20,6 +20,7 @@ import numpy as np
 import openslide
 import csv
 import pickle
+import cytometer.models
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -46,23 +47,10 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 
-''' Defining watershed algorithm and CNN model
+''' Defining CNN model
 ========================================================================================================================
 '''
 
-# def watershed_segmentation(pixels, x_res, y_res):
-#
-#     local_maxi = peak_local_max(image=pixels, min_distance=20, indices=False)
-#
-#     markers = ndi.label(local_maxi)[0]
-#
-#     labels = watershed(-pixels, markers)
-#
-#     pixel_res = x_res * y_res
-#     unique_cells = np.unique(labels, return_counts=True)
-#     area_list = unique_cells[1] * pixel_res
-#
-#     return np.array(area_list)
 
 def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
@@ -243,6 +231,10 @@ im_file_list = cytometer.data.change_home_directory(im_file_list,
 # list of model files to inspect
 model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 
+# create empty dataframe to host the data
+df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'image_id': []})
+print(df)
+
 for fold_i, model_file in enumerate(model_files):
 
     # split the data into training and testing datasets
@@ -250,7 +242,7 @@ for fold_i, model_file in enumerate(model_files):
 
     # load im, seg and mask datasets
     test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                       prefix_to=['im', 'mask', 'dmap'], nblocks=2)
+                                                       prefix_to=['im', 'mask', 'dmap'], nblocks=1)
     im_test = test_datasets['im']
     mask_test = test_datasets['mask']
     dmap_test = test_datasets['dmap']
@@ -259,94 +251,63 @@ for fold_i, model_file in enumerate(model_files):
     # load model
     model = fcn_sherrah2016_regression(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
+    model = cytometer.models.change_input_size(model, batch_shape=(None, 1001, 1001, 3))
 
-    i=18
+    for i in range(im_test.shape[0]):
 
-    # run image through network
-    dmap_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
+        im_test_it = im_test[i, :, :, :].reshape((1,) + im_test.shape[1:])
 
-    # compute mean curvature from dmap
-    _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
+        # run image through network
+        dmap_test_pred = model.predict(im_test_it)
 
-    # plot results
-    plt.clf()
-    plt.subplot(221)
-    plt.imshow(im_test[i, :, :, :])
-    plt.title('histology, i = ' + str(i))
-    plt.subplot(222)
-    plt.imshow(dmap_test[i, :, :, 0])
-    plt.title('ground truth dmap')
-    plt.subplot(223)
-    plt.imshow(dmap_test_pred[0, :, :, 0])
-    plt.title('predicted dmap')
-    plt.subplot(224)
-    plt.imshow(mean_curvature)
-    plt.title('mean curvature of dmap')
+        # compute mean curvature from dmap
+        _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
 
+        # reshape for watershed
+        dmap_test_pred = dmap_test_pred[0, :, :, 0]
 
-    # reshape for watershed
-    dmap_test_pred = dmap_test_pred[0, :, :, 0]
+        # from dmaps calculate area using watershed method
+        local_maxi = peak_local_max(image=dmap_test_pred, min_distance=15, indices=False)
+        markers = ndi.label(local_maxi)[0]
+        labels = watershed(-dmap_test_pred, markers)
 
-    # from dmaps calculate area using watershed method
-    local_maxi = peak_local_max(image=dmap_test_pred, min_distance=15, indices=False)
-    markers = ndi.label(local_maxi)[0]
-    labels = watershed(-dmap_test_pred, markers)
+        # get area of each individual cell
+        unique_cells = np.unique(labels, return_counts=True)
+        cell_number = len(unique_cells[0])
+        x = unique_cells[0]
+        area_list = unique_cells[1] * (x_res * y_res) * 1e12
 
-    # get area of each individual cell
-    unique_cells = np.unique(labels, return_counts=True)
-    cell_number = len(unique_cells[0])
-    x = unique_cells[0]
-    area_list = unique_cells[1] * (x_res*y_res)
+        # image ID
+        image_id = os.path.basename(im_test_file_list[i])
+        image_id = os.path.splitext(image_id)[-2]
+        image_id = image_id.replace('im_seed_nan_', '')
+        image_id = image_id.replace('-', ' ', 1)
+        image_id = image_id.replace(' ', '', 2)
 
-    # plot segmentation
-    plt.subplot(212)
-    plt.cla()
-    plt.imshow(labels.astype('uint32'))
+        # get mouse ID from the file name
+        mouse_id = None
+        for x in c3h_ids:
+            if x in image_id:
+                mouse_id = x
+                break
+        if mouse_id is None:
+            raise ValueError('Filename does not seem to correspond to any known mouse ID: ' + im_test_file_list[i])
 
-    # save area list to dataframe
+        # index of mouse ID
+        idx = c3h_ids.index(mouse_id)
 
+        # metainformation for this mouse
+        mouse_sex = c3h_info[idx]['sex']
+        mouse_diet = c3h_info[idx]['diet']
 
-# # file_list = glob.glob(os.path.join(training_data_dir, '*.tif'))
-#
-# # create empty dataframe to host the data
-# df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'image_id': []})
-# print(df)
-#
-# # read all dmap files, and categorise them into hfd/lfd and f/m
-# for file in file_list:
-#
-#     # image ID
-#     image_id = os.path.basename(file)
-#     image_id = os.path.splitext(image_id)[-2]
-#     image_id = image_id.replace('-', ' ', 1)
-#     image_id = image_id.replace(' ', '', 2)
-#
-#
-#     # get mouse ID from the file name
-#     mouse_id = None
-#     for x in c3h_ids:
-#         if x in image_id:
-#             mouse_id = x
-#             break
-#     if mouse_id is None:
-#         raise ValueError('Filename does not seem to correspond to any known mouse ID: ' + file)
-#
-#     # index of mouse ID
-#     idx = c3h_ids.index(mouse_id)
-#
-#     # metainformation for this mouse
-#     mouse_sex = c3h_info[idx]['sex']
-#     mouse_diet = c3h_info[idx]['diet']
-#
-#     # watershed
-#     areas = watershed_segmentation(file, x_res=1, y_res=1)
-#
-#     # add to dataframe: area, image id, mouse id, sex, diet
-#     for i, a in enumerate(areas):
-#         if a == 0.0:
-#             print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
-#         df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'diet': mouse_diet, 'image_id': image_id},
-#                        ignore_index=True)
+        # add to dataframe: area, image id, mouse id, sex, diet
+        for i, a in enumerate(area_list):
+            if a == 0.0:
+                print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
+            df = df.append(
+                {'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'diet': mouse_diet, 'image_id': image_id},
+                ignore_index=True)
+
 
 
 ''' split full dataset into smaller datasets for different groups 
@@ -357,10 +318,18 @@ for fold_i, model_file in enumerate(model_files):
 df_no_f = df_no.loc[df_no.sex == 'f', ('area', 'diet', 'image_id', 'mouse_id')]
 df_no_m = df_no.loc[df_no.sex == 'm', ('area', 'diet', 'image_id', 'mouse_id')]
 
-df_no_f_h = df_no_f.loc[df_no_f.diet == 'h', ('area', 'image_id', 'mouse_id')]
-df_no_f_l = df_no_f.loc[df_no_f.diet == 'l', ('area', 'image_id', 'mouse_id')]
-df_no_m_h = df_no_m.loc[df_no_m.diet == 'h', ('area', 'image_id', 'mouse_id')]
-df_no_m_l = df_no_m.loc[df_no_m.diet == 'l', ('area', 'image_id', 'mouse_id')]
+df_no_f_h = df_no_f.loc[df_no_f.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_no_f_l = df_no_f.loc[df_no_f.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
+df_no_m_h = df_no_m.loc[df_no_m.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_no_m_l = df_no_m.loc[df_no_m.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
+
+df_f = df.loc[df.sex == 'f', ('area', 'diet', 'image_id', 'mouse_id')]
+df_m = df.loc[df.sex == 'm', ('area', 'diet', 'image_id', 'mouse_id')]
+
+df_f_h = df_f.loc[df_f.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_f_l = df_f.loc[df_f.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
+df_m_h = df_m.loc[df_m.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_m_l = df_m.loc[df_m.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
 
 ''' boxplots of each image
 ========================================================================================================================
@@ -423,3 +392,19 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
+# same boxplots without outliers (df)
+plt.clf()
+ax = plt.subplot(121)
+df_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('female', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+ax = plt.subplot(122)
+df_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('male', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)

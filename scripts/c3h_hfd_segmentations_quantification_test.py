@@ -20,6 +20,7 @@ import numpy as np
 import openslide
 import csv
 import pickle
+import cytometer.models
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -241,7 +242,7 @@ for fold_i, model_file in enumerate(model_files):
 
     # load im, seg and mask datasets
     test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                       prefix_to=['im', 'mask', 'dmap'], nblocks=2)
+                                                       prefix_to=['im', 'mask', 'dmap'], nblocks=1)
     im_test = test_datasets['im']
     mask_test = test_datasets['mask']
     dmap_test = test_datasets['dmap']
@@ -250,16 +251,14 @@ for fold_i, model_file in enumerate(model_files):
     # load model
     model = fcn_sherrah2016_regression(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
+    model = cytometer.models.change_input_size(model, batch_shape=(None, 1001, 1001, 3))
 
-    for file in (im_test_file_list):
+    for i in range(im_test.shape[0]):
 
-        i = 0
-        # file = im_test_file_list[0]
-
-        im_test = im_test[i, :, :, :].reshape((1,) + im_test.shape[1:])
+        im_test_it = im_test[i, :, :, :].reshape((1,) + im_test.shape[1:])
 
         # run image through network
-        dmap_test_pred = model.predict(im_test)
+        dmap_test_pred = model.predict(im_test_it)
 
         # compute mean curvature from dmap
         _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
@@ -279,7 +278,7 @@ for fold_i, model_file in enumerate(model_files):
         area_list = unique_cells[1] * (x_res * y_res) * 1e12
 
         # image ID
-        image_id = os.path.basename(file)
+        image_id = os.path.basename(im_test_file_list[i])
         image_id = os.path.splitext(image_id)[-2]
         image_id = image_id.replace('im_seed_nan_', '')
         image_id = image_id.replace('-', ' ', 1)
@@ -292,7 +291,7 @@ for fold_i, model_file in enumerate(model_files):
                 mouse_id = x
                 break
         if mouse_id is None:
-            raise ValueError('Filename does not seem to correspond to any known mouse ID: ' + file)
+            raise ValueError('Filename does not seem to correspond to any known mouse ID: ' + im_test_file_list[i])
 
         # index of mouse ID
         idx = c3h_ids.index(mouse_id)
