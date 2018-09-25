@@ -251,10 +251,10 @@ for fold_i, model_file in enumerate(model_files):
     model = fcn_sherrah2016_regression(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
 
-    for i, file in enumerate(im_test_file_list):
+    for file in (im_test_file_list):
 
-        i = 1
-        file = im_test_file_list[1]
+        i = 0
+        # file = im_test_file_list[0]
 
         im_test = im_test[i, :, :, :].reshape((1,) + im_test.shape[1:])
 
@@ -319,10 +319,18 @@ for fold_i, model_file in enumerate(model_files):
 df_no_f = df_no.loc[df_no.sex == 'f', ('area', 'diet', 'image_id', 'mouse_id')]
 df_no_m = df_no.loc[df_no.sex == 'm', ('area', 'diet', 'image_id', 'mouse_id')]
 
-df_no_f_h = df_no_f.loc[df_no_f.diet == 'h', ('area', 'image_id', 'mouse_id')]
-df_no_f_l = df_no_f.loc[df_no_f.diet == 'l', ('area', 'image_id', 'mouse_id')]
-df_no_m_h = df_no_m.loc[df_no_m.diet == 'h', ('area', 'image_id', 'mouse_id')]
-df_no_m_l = df_no_m.loc[df_no_m.diet == 'l', ('area', 'image_id', 'mouse_id')]
+df_no_f_h = df_no_f.loc[df_no_f.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_no_f_l = df_no_f.loc[df_no_f.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
+df_no_m_h = df_no_m.loc[df_no_m.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_no_m_l = df_no_m.loc[df_no_m.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
+
+df_f = df.loc[df.sex == 'f', ('area', 'diet', 'image_id', 'mouse_id')]
+df_m = df.loc[df.sex == 'm', ('area', 'diet', 'image_id', 'mouse_id')]
+
+df_f_h = df_f.loc[df_f.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_f_l = df_f.loc[df_f.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
+df_m_h = df_m.loc[df_m.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
+df_m_l = df_m.loc[df_m.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
 
 ''' boxplots of each image
 ========================================================================================================================
@@ -385,3 +393,19 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
+# same boxplots without outliers (df)
+plt.clf()
+ax = plt.subplot(121)
+df_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('female', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+ax = plt.subplot(122)
+df_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('male', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)

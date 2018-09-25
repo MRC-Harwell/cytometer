@@ -260,7 +260,7 @@ for fold_i, model_file in enumerate(model_files):
     model = fcn_sherrah2016_regression(input_shape=im_test.shape[1:])
     model.load_weights(model_file)
 
-    i=1
+    i=18
 
     # run image through network
     dmap_test_pred = model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
@@ -282,6 +282,7 @@ for fold_i, model_file in enumerate(model_files):
     plt.subplot(224)
     plt.imshow(mean_curvature)
     plt.title('mean curvature of dmap')
+
 
     # reshape for watershed
     dmap_test_pred = dmap_test_pred[0, :, :, 0]
