@@ -48,7 +48,7 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-saved_model_basename = 'klf14_b6ntac_exp_0001_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+saved_model_basename = 'klf14_b6ntac_exp_0005_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
 # saved_model_basename = 'unknownscript'
 
 model_name = saved_model_basename + '*.h5'
@@ -184,7 +184,7 @@ plt.imshow(mean_curvature)
 plt.title('mean curvature of dmap')
 plt.subplot(326)
 plt.imshow(mean_curvature * contour_test_pred[0, :, :, 1])
-plt.title('predicted contours * mean curvature')
+plt.title('pred. contours * mean curv.')
 
 # visualise results
 i = 18

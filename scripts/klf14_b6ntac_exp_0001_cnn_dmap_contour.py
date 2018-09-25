@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -30,8 +30,6 @@ import keras.backend as K
 
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
-from keras.layers.normalization import BatchNormalization
-# from keras.callbacks import CSVLogger
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -61,25 +59,22 @@ n_folds = 11
 # number of epochs for training
 epochs = 20
 
-# timestamp at the beginning of loading data and processing so that all folds have a common name
-timestamp = datetime.datetime.now()
-
 '''Directories and filenames
 '''
 
 # data paths
-root_data_dir = os.path.join(home, 'Dropbox/klf14')
-training_dir = os.path.join(home, 'Dropbox/klf14/klf14_b6ntac_training')
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'OfflineData/klf14/klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(home, 'Dropbox/klf14/saved_models')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-# timestamp and script name to identify this experiment
+# script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
-    experiment_id = os.path.splitext(experiment_id)[0]
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 '''CNN Model
 '''
@@ -267,7 +262,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
                                              'classification_output': test_dataset['seg']},
                                             {'regression_output': test_dataset['mask'][..., 0],
                                              'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=4, epochs=epochs, initial_epoch=0,
+                           batch_size=10, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -296,21 +291,30 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         model.fit(train_dataset['im'],
                   {'regression_output': train_dataset['dmap'],
                    'classification_output': train_dataset['seg']},
-                  sample_weight={'regression_output': train_dataset['mask'],
-                                 'classification_output': train_dataset['mask']},
+                  sample_weight={'regression_output': train_dataset['mask'][..., 0],
+                                 'classification_output': train_dataset['mask'][..., 0]},
                   validation_data=(test_dataset['im'],
                                    {'regression_output': test_dataset['dmap'],
                                     'classification_output': test_dataset['seg']},
-                                   {'regression_output': test_dataset['mask'],
-                                    'classification_output': test_dataset['mask']}),
-                  batch_size=4, epochs=epochs, initial_epoch=0,
+                                   {'regression_output': test_dataset['mask'][..., 0],
+                                    'classification_output': test_dataset['mask'][..., 0]}),
+                  batch_size=10, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
-# if we ran the script with nohup in linux, the output is in file nohup.out.
-# Save it to saved_models directory (
+# if we run the script with qsub on the cluster, the standard output is in file
+# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
+# Save it to saved_models directory
 log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
-if os.path.isfile(nohup_filename):
-    shutil.copy2(nohup_filename, log_filename)
+stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
+stdout_filename = glob.glob(stdout_filename)[0]
+if stdout_filename and os.path.isfile(stdout_filename):
+    shutil.copy2(stdout_filename, log_filename)
+else:
+    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
+    # Save it to saved_models directory
+    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+    if os.path.isfile(nohup_filename):
+        shutil.copy2(nohup_filename, log_filename)
