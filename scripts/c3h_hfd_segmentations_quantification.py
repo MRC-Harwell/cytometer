@@ -267,7 +267,7 @@ for fold_i, model_file in enumerate(model_files):
         dmap_test_pred = dmap_test_pred[0, :, :, 0]
 
         # from dmaps calculate area using watershed method
-        local_maxi = peak_local_max(image=dmap_test_pred, min_distance=15, indices=False)
+        local_maxi = peak_local_max(image=dmap_test_pred, min_distance=35, indices=False)
         markers = ndi.label(local_maxi)[0]
         labels = watershed(-dmap_test_pred, markers)
 
@@ -276,6 +276,25 @@ for fold_i, model_file in enumerate(model_files):
         cell_number = len(unique_cells[0])
         x = unique_cells[0]
         area_list = unique_cells[1] * (x_res * y_res) * 1e12
+
+        # plt.clf()
+        # plt.subplot(221)
+        # plt.imshow(im_test_it[1:])
+        # plt.title('histology, i = ' + str(i))
+        # plt.subplot(222)
+        # plt.imshow(dmap_test[i, :, :, 0])
+        # plt.title('ground truth dmap')
+        # plt.subplot(223)
+        # plt.imshow(dmap_test_pred)
+        # plt.title('predicted dmap')
+        # plt.subplot(224)
+        # plt.imshow(mean_curvature)
+        # plt.title('mean curvature of dmap')
+
+        # to plot segmentation
+        # plt.subplot(111)
+        # plt.cla()
+        # plt.imshow(labels.astype('uint32'))
 
         # image ID
         image_id = os.path.basename(im_test_file_list[i])
