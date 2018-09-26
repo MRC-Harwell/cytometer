@@ -19,7 +19,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -35,6 +35,7 @@ import keras
 import keras.backend as K
 import cytometer.data
 import cytometer.models
+from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
 from receptivefield.keras import KerasReceptiveField
 
@@ -78,6 +79,8 @@ im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittsc
 '''Load model and visualise results
 '''
 
+fold_i = 0
+
 # split the data into training and testing datasets
 im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
 
@@ -93,7 +96,6 @@ del test_datasets
 contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
 dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
 
-fold_i = 0
 contour_model_file = contour_model_files[fold_i]
 dmap_model_file = dmap_model_files[fold_i]
 
@@ -107,36 +109,31 @@ dmap_model = cytometer.models.change_input_size(dmap_model, batch_shape=(None,) 
 
 # visualise results
 i = 0
+# i = 18
 # run image through network
 contour_test_pred = contour_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 dmap_test_pred = dmap_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
-# plot results
-plt.clf()
-plt.subplot(131)
-plt.imshow(im_test[i, :, :, :])
-plt.title('histology, i = ' + str(i))
-plt.subplot(132)
-plt.imshow(contour_test_pred[0, :, :, 1])
-plt.title('predicted contours')
-plt.subplot(133)
-plt.imshow(dmap_test_pred[0, :, :, 0])
-plt.title('predicted dmap')
+# compute mean curvature from dmap
+_, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
 
-# visualise results
-i = 18
-# run image through network
-contour_test_pred = contour_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
-dmap_test_pred = dmap_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
+# multiply mean curvature by estimated contours
+contour_weighted = contour_test_pred[0, :, :, 1] * mean_curvature
 
 # plot results
 plt.clf()
-plt.subplot(131)
+plt.subplot(231)
 plt.imshow(im_test[i, :, :, :])
 plt.title('histology, i = ' + str(i))
-plt.subplot(132)
+plt.subplot(232)
 plt.imshow(contour_test_pred[0, :, :, 1])
 plt.title('predicted contours')
-plt.subplot(133)
+plt.subplot(233)
 plt.imshow(dmap_test_pred[0, :, :, 0])
 plt.title('predicted dmap')
+plt.subplot(234)
+plt.imshow(mean_curvature)
+plt.title('dmap\'s mean curvature')
+plt.subplot(235)
+plt.imshow(contour_weighted)
+plt.title('contour * curvature')
