@@ -8,6 +8,7 @@ from PIL import Image
 from scipy import ndimage as ndi
 from skimage.morphology import watershed
 from skimage.feature import peak_local_max
+from skimage import measure
 import PIL
 # cross-platform home directory
 from pathlib import Path
@@ -141,7 +142,8 @@ c3h_ids = [x['mouse_id'] for x in c3h_info]
 file_list = glob.glob(os.path.join(training_nooverlap_data_dir, '*.tif'))
 
 # create empty dataframe to host the data
-df_no = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'diet': [], 'image_id': []})
+df_no = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'diet': [],
+                           'image_id': [], 'training/test': []})
 
 for file in file_list:
 
@@ -173,7 +175,7 @@ for file in file_list:
 
     if DEBUG:
         plt.clf()
-        plt.imshow(im)
+        plt.imshow(np.array(im))
         plt.show()
 
     # number of pixels in each label
@@ -198,7 +200,7 @@ for file in file_list:
         if a == 0.0:
             print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
         df_no = df_no.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex,
-                              'diet': mouse_diet, 'image_id': image_id},
+                              'diet': mouse_diet, 'image_id': image_id, 'training/test': 'training'},
                              ignore_index=True)
 
 
@@ -232,7 +234,7 @@ im_file_list = cytometer.data.change_home_directory(im_file_list,
 model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 
 # create empty dataframe to host the data
-df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'image_id': []})
+df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'diet': [], 'image_id': [], 'training_test': []})
 print(df)
 
 for fold_i, model_file in enumerate(model_files):
@@ -267,15 +269,37 @@ for fold_i, model_file in enumerate(model_files):
         dmap_test_pred = dmap_test_pred[0, :, :, 0]
 
         # from dmaps calculate area using watershed method
-        local_maxi = peak_local_max(image=dmap_test_pred, min_distance=35, indices=False)
+        local_maxi = peak_local_max(image=dmap_test_pred, min_distance=40, indices=False)
         markers = ndi.label(local_maxi)[0]
         labels = watershed(-dmap_test_pred, markers)
 
-        # get area of each individual cell
-        unique_cells = np.unique(labels, return_counts=True)
-        cell_number = len(unique_cells[0])
-        x = unique_cells[0]
-        area_list = unique_cells[1] * (x_res * y_res) * 1e12
+        # eliminate cell areas which cross boundary of image
+        cell_list = measure.regionprops(labels)
+        area_list = []
+
+        for i in range(cell_list[0]):
+            if cell_list[i]['bbox'][0] != 0 or cell_list[i]['bbox'][1] != 0 or\
+                    cell_list[i]['bbox'][2] != 1000 or cell_list[i]['bbox'][3] != 1000:
+                area_from_list = cell_list[i]['area']
+                area_list.append(area_from_list)
+                area_list = area_list * (x_res * y_res) * 1e12
+
+
+        # # get area of each individual cell
+        # unique_cells = np.unique(labels, return_counts=True)
+        # cell_number = len(cell_list)
+        # area_list = cell_list[] * (x_res * y_res) * 1e12
+
+
+
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(dmap_test_pred)
+
+
+        plt.subplot(212)
+        plt.cla()
+        plt.imshow(labels.astype('uint32'))
 
         # plt.clf()
         # plt.subplot(221)
@@ -324,7 +348,8 @@ for fold_i, model_file in enumerate(model_files):
             if a == 0.0:
                 print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
             df = df.append(
-                {'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'diet': mouse_diet, 'image_id': image_id},
+                {'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex,
+                 'diet': mouse_diet, 'image_id': image_id, 'training_test': 'test'},
                 ignore_index=True)
 
 
@@ -350,18 +375,27 @@ df_f_l = df_f.loc[df_f.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
 df_m_h = df_m.loc[df_m.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
 df_m_l = df_m.loc[df_m.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
 
+# both_df = [df, df_no]
+# merge_df = pd.concat(both_df)
+#
+# merge_df_f_h = merge_df.loc[df_f_h.st == 'training', ('area', 'image_id', 'mouse_id' )]
+# merge_df_train_f_l = merge_df.loc[df_f_l.training_test == 'training', ('area', 'image_id', 'mouse_id' )]
+# merge_df_test_f_h = merge_df.loc[df_f_h.training_test == 'test', ('area', 'image_id', 'mouse_id' )]
+# merge_df_test_f_l = merge_df.loc[df_f_l.training_test == 'test', ('area', 'image_id', 'mouse_id' )]
+
+
 ''' boxplots of each image
 ========================================================================================================================
 '''
 
 # # plot cell area boxplots for each individual image
-df_no.boxplot(column='area', by='image_id', vert=False)
+# df_no.boxplot(column='area', by='image_id', vert=False)
 #
-# plot boxplots for each individual image, split into f/m groups
-plt.clf()
-ax = plt.subplot(211)
-df_no_f.boxplot(column='area', by='image_id', vert=False, ax=ax)
-plt.title('female')
+# # plot boxplots for each individual image, split into f/m groups
+# plt.clf()
+# ax = plt.subplot(211)
+# df_no_f.boxplot(column='area', by='image_id', vert=False, ax=ax)
+# plt.title('female')
 #
 # ax = plt.subplot(212)
 # df_m.boxplot(column='area', by='image_id', vert=False, ax=ax)
@@ -376,7 +410,7 @@ plt.title('female')
 # ax = plt.subplot(212)
 # df_PAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
 # plt.title('PAT')
-#
+
 # # plot boxplots for f/m, h/l comparison (just to check scales etc are okay)
 plt.clf()
 ax = plt.subplot(121)
@@ -411,19 +445,53 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
-# same boxplots without outliers (df)
+# same boxplots without outliers (test)
 plt.clf()
 ax = plt.subplot(121)
 df_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
-ax.set_ylabel('area (um^2)', fontsize=14)
+ax.set_ylabel('Cell area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
 df_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('male', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('Cell area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+# boxplot comparing female training vs female test
+plt.clf()
+ax = plt.subplot(121)
+df_no_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('female training', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+ax = plt.subplot(122)
+df_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('female test', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+# boxplot comparing male training vs male test
+plt.clf()
+ax = plt.subplot(121)
+df_no_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('male training', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+ax = plt.subplot(122)
+df_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('male test', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
