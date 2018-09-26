@@ -2,6 +2,8 @@
 Combine the contours estimated:
 * directly with the classification CNN
 * computing normal curvature on dmap estimated with the regression CNN
+
+Extract cells using watershed.
 '''
 
 # cross-platform home directory
