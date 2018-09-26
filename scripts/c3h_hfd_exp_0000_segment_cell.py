@@ -14,7 +14,7 @@ DEBUG = False
 
 # Showing the file
 
-test_name = os.path.join(home, 'Downloads/dmap_test_pred.tif')
+test_name = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training_augmented/dmap_seed_nan_C3HHM 3095.5c 368-16 C1 - 2016-04-21 16.04.38_row_012780_col_018892.tif')
 test = Image.open(test_name)
 image = np.array(test)
 plt.clf()
@@ -24,7 +24,7 @@ plt.imshow(image)
 # Now we want to separate the two objects in image
 # Generate the markers as local maxima of the distance to the background
 
-local_maxi = peak_local_max(image=image, min_distance=20, indices=True)
+local_maxi = peak_local_max(image=image, min_distance=40, indices=True)
 
 plt.plot(local_maxi[:, 1], local_maxi[:, 0], 'xr')
 
