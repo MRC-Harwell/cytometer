@@ -19,7 +19,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -37,7 +37,11 @@ import cytometer.data
 import cytometer.models
 from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
-from receptivefield.keras import KerasReceptiveField
+
+from skimage import measure
+from skimage.morphology import watershed
+from mahotas.labeled import borders
+import cv2
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -120,20 +124,65 @@ _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, 
 # multiply mean curvature by estimated contours
 contour_weighted = contour_test_pred[0, :, :, 1] * mean_curvature
 
+# rough segmentation of inner areas
+labels = (contour_weighted <= 0).astype('uint8')
+
+# label areas with a different label per connected area
+labels = measure.label(labels)
+
+# remove very small labels (noise)
+labels_prop = measure.regionprops(labels)
+for j in range(1, np.max(labels)):
+    # label of region under consideration is not the same as index j
+    lab = labels_prop[j]['label']
+    if labels_prop[j]['area'] < 50:
+        labels[labels == lab] = 0
+
+# extend labels using watershed
+labels_ext = watershed(-dmap_test_pred[0, :, :, 0], labels)
+labels_ext = watershed(mean_curvature, labels)
+
+# extract borders of watershed regions for plots
+labels_borders = borders(labels_ext)
+
+# dilate borders for easier visualization
+kernel = np.ones((3, 3), np.uint8)
+labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel) > 0
+
+# add borders as coloured curves
+im_test_r = im_test[i, :, :, 0].copy()
+im_test_g = im_test[i, :, :, 1].copy()
+im_test_b = im_test[i, :, :, 2].copy()
+im_test_r[labels_borders] = 0.0
+im_test_g[labels_borders] = 1.0
+im_test_b[labels_borders] = 0.0
+im_borders = np.concatenate((np.expand_dims(im_test_r, axis=2),
+                             np.expand_dims(im_test_g, axis=2),
+                             np.expand_dims(im_test_b, axis=2)), axis=2)
+
 # plot results
 plt.clf()
-plt.subplot(231)
+plt.subplot(331)
 plt.imshow(im_test[i, :, :, :])
 plt.title('histology, i = ' + str(i))
-plt.subplot(232)
+plt.subplot(332)
 plt.imshow(contour_test_pred[0, :, :, 1])
 plt.title('predicted contours')
-plt.subplot(233)
+plt.subplot(333)
 plt.imshow(dmap_test_pred[0, :, :, 0])
 plt.title('predicted dmap')
-plt.subplot(234)
+plt.subplot(334)
 plt.imshow(mean_curvature)
 plt.title('dmap\'s mean curvature')
-plt.subplot(235)
+plt.subplot(335)
 plt.imshow(contour_weighted)
 plt.title('contour * curvature')
+plt.subplot(336)
+plt.imshow(labels)
+plt.title('labels')
+plt.subplot(337)
+plt.imshow(labels_ext)
+plt.title('watershed on labels')
+plt.subplot(338)
+plt.imshow(im_borders)
+plt.title('watershed on labels')
