@@ -234,7 +234,7 @@ im_file_list = cytometer.data.change_home_directory(im_file_list,
 model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 
 # create empty dataframe to host the data
-df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'diet': [], 'image_id': [], 'training_test': []})
+df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'diet': [], 'image_id': [], 'training/test': []})
 print(df)
 
 for fold_i, model_file in enumerate(model_files):
@@ -276,13 +276,17 @@ for fold_i, model_file in enumerate(model_files):
         # eliminate cell areas which cross boundary of image
         cell_list = measure.regionprops(labels)
         area_list = []
+        boundary_cell_list = []
 
-        for i in range(cell_list[0]):
-            if cell_list[i]['bbox'][0] != 0 or cell_list[i]['bbox'][1] != 0 or\
-                    cell_list[i]['bbox'][2] != 1000 or cell_list[i]['bbox'][3] != 1000:
-                area_from_list = cell_list[i]['area']
+        for k in range(len(cell_list)):
+            if cell_list[k]['bbox'][0] != 0 and cell_list[k]['bbox'][1] != 0 and\
+                    cell_list[k]['bbox'][2] != 1000 and cell_list[k]['bbox'][3] != 1000:
+                # print('this cell is fine')
+                area_from_list = int(cell_list[i]['area']) * (x_res * y_res) * 1e12
                 area_list.append(area_from_list)
-                area_list = area_list * (x_res * y_res) * 1e12
+            else:
+                # print('this cell touches boundary')
+                boundary_cell_list.append(k)
 
 
         # # get area of each individual cell
@@ -291,15 +295,15 @@ for fold_i, model_file in enumerate(model_files):
         # area_list = cell_list[] * (x_res * y_res) * 1e12
 
 
+        #
+        # plt.clf()
+        # plt.subplot(211)
+        # plt.imshow(dmap_test_pred)
 
-        plt.clf()
-        plt.subplot(211)
-        plt.imshow(dmap_test_pred)
-
-
-        plt.subplot(212)
-        plt.cla()
-        plt.imshow(labels.astype('uint32'))
+        #
+        # plt.subplot(212)
+        # plt.cla()
+        # plt.imshow(labels.astype('uint32'))
 
         # plt.clf()
         # plt.subplot(221)
@@ -349,7 +353,7 @@ for fold_i, model_file in enumerate(model_files):
                 print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
             df = df.append(
                 {'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex,
-                 'diet': mouse_diet, 'image_id': image_id, 'training_test': 'test'},
+                 'diet': mouse_diet, 'image_id': image_id, 'training/test': 'test'},
                 ignore_index=True)
 
 
@@ -375,13 +379,22 @@ df_f_l = df_f.loc[df_f.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
 df_m_h = df_m.loc[df_m.diet == 'hfd', ('area', 'image_id', 'mouse_id')]
 df_m_l = df_m.loc[df_m.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
 
-# both_df = [df, df_no]
-# merge_df = pd.concat(both_df)
-#
-# merge_df_f_h = merge_df.loc[df_f_h.st == 'training', ('area', 'image_id', 'mouse_id' )]
-# merge_df_train_f_l = merge_df.loc[df_f_l.training_test == 'training', ('area', 'image_id', 'mouse_id' )]
-# merge_df_test_f_h = merge_df.loc[df_f_h.training_test == 'test', ('area', 'image_id', 'mouse_id' )]
-# merge_df_test_f_l = merge_df.loc[df_f_l.training_test == 'test', ('area', 'image_id', 'mouse_id' )]
+# merged training and test dataframes to compare test vs training
+
+both_df = [df, df_no]
+merge = pd.concat(both_df)
+
+# by sex
+merge_f = merge.loc[merge.sex == 'f', ('area', 'diet', 'image_id', 'mouse_id', 'training/test')]
+merge_m = merge.loc[merge.sex == 'm', ('area', 'diet', 'image_id', 'mouse_id', 'training/test')]
+
+# by diet
+merge_f_h = merge_f.loc[merge_f.diet == 'hfd', ('area', 'image_id', 'mouse_id', 'training/test')]
+merge_f_l = merge_f.loc[merge_f.diet == 'lfd', ('area', 'image_id', 'mouse_id', 'training/test')]
+merge_m_h = merge_m.loc[merge_m.diet == 'hfd', ('area', 'image_id', 'mouse_id', 'training/test')]
+merge_m_l = merge_m.loc[merge_m.diet == 'lfd', ('area', 'image_id', 'mouse_id', 'training/test')]
+
+
 
 
 ''' boxplots of each image
@@ -411,7 +424,7 @@ df_m_l = df_m.loc[df_m.diet == 'lfd', ('area', 'image_id', 'mouse_id')]
 # df_PAT.boxplot(column='area', by='image_id', vert=False, ax=ax)
 # plt.title('PAT')
 
-# # plot boxplots for f/m, h/l comparison (just to check scales etc are okay)
+# plot boxplots for f/m, h/l comparison (just to check scales etc are okay)
 plt.clf()
 ax = plt.subplot(121)
 df_no_f.boxplot(column='area', by='diet', ax=ax, notch=True)
@@ -428,7 +441,7 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
-# same boxplots without outliers
+# same boxplots without outliers (training)
 plt.clf()
 ax = plt.subplot(121)
 df_no_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
@@ -449,14 +462,14 @@ plt.tick_params(axis='both', which='major', labelsize=14)
 plt.clf()
 ax = plt.subplot(121)
 df_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
-ax.set_ylim(0, 2e4)
+ax.set_ylim(0, 1.25e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('Cell area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
 df_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
-ax.set_ylim(0, 2e4)
+ax.set_ylim(0, 1.25e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('Cell area (um^2)', fontsize=14)
@@ -465,33 +478,50 @@ plt.tick_params(axis='both', which='major', labelsize=14)
 # boxplot comparing female training vs female test
 plt.clf()
 ax = plt.subplot(121)
-df_no_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+merge_f_h.boxplot(column='area', by='training/test', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('female training', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-df_f.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+merge_f_l.boxplot(column='area', by='training/test', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('female test', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
-# boxplot comparing male training vs male test
+# boxplot comparing female training vs female test
 plt.clf()
-ax = plt.subplot(121)
-df_no_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax = plt.subplot(122)
+merge_f_l.boxplot(column='area', by='training/test', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 2e4)
-ax.set_title('male training', fontsize=16)
+ax.set_title('female lfd', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
-ax = plt.subplot(122)
-df_m.boxplot(column='area', by='diet', ax=ax, showfliers=False, notch=True)
+ax = plt.subplot(121)
+merge_f_h.boxplot(column='area', by='training/test', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 2e4)
-ax.set_title('male test', fontsize=16)
+ax.set_title('female hfd', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+# boxplot comparing male training vs male test
+plt.clf()
+ax = plt.subplot(122)
+merge_m_l.boxplot(column='area', by='training/test', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 1.5e4)
+ax.set_title('male lfd', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+ax = plt.subplot(121)
+merge_m_h.boxplot(column='area', by='training/test', ax=ax, showfliers=False, notch=True)
+ax.set_ylim(0, 1.5e4)
+ax.set_title('male hfd', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
