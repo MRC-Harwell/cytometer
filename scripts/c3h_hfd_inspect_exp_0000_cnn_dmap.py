@@ -282,9 +282,9 @@ if os.path.isfile(log_filename):
         epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
         plt.legend(handles=[loss_plot, epoch_ends_plot1])
         plt.subplot(312)
-        regr_mae_plot, = plt.plot(df.index, df.regression_output_mean_absolute_error, label='dmap mae')
-        regr_mse_plot, = plt.plot(df.index, np.sqrt(df.regression_output_mean_squared_error), label='sqrt(dmap mse)')
-        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.regression_output_mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
-        regr_mse_epoch_ends_plot2, = plt.plot(epoch_ends, np.sqrt(df.regression_output_mean_squared_error[epoch_ends]), 'ro', label='end of epoch')
+        regr_mae_plot, = plt.plot(df.index, df.mean_absolute_error, label='dmap mae')
+        regr_mse_plot, = plt.plot(df.index, np.sqrt(df.mean_squared_error), label='sqrt(dmap mse)')
+        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
+        regr_mse_epoch_ends_plot2, = plt.plot(epoch_ends, np.sqrt(df.mean_squared_error[epoch_ends]), 'ro', label='end of epoch')
         plt.legend(handles=[regr_mae_plot, regr_mse_plot, regr_mae_epoch_ends_plot2])
 
