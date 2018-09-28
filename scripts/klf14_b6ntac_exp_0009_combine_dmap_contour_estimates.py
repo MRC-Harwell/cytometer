@@ -21,7 +21,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -141,7 +141,7 @@ for j in range(1, np.max(labels)):
         labels[labels == lab] = 0
 
 # extend labels using watershed
-labels_ext = watershed(-dmap_test_pred[0, :, :, 0], labels)
+# labels_ext = watershed(-dmap_test_pred[0, :, :, 0], labels)
 labels_ext = watershed(mean_curvature, labels)
 
 # extract borders of watershed regions for plots
