@@ -163,31 +163,31 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
 # Method for calculating receptive field, not working properly.
 
-# receptive_field_size = []
-# for model_file in model_files:
-#
-#     print(model_file)
-#
-#     # estimate receptive field of the model
-#     def model_build_func(input_shape):
-#         model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
-#         model.load_weights(model_file)
-#         return model
-#
-#
-#     rf = KerasReceptiveField(model_build_func, init_weights=False)
-#
-#     rf_params = rf.compute(
-#         input_shape=(500, 500, 3),
-#         input_layer='input_image',
-#         output_layers=['regression_output'])
-#     print(rf_params)
-#
-#     receptive_field_size.append(rf._rf_params[0].size)
-#
-# for i, model_file in enumerate(model_files):
-#     print(model_file)
-#     print('Receptive field size: ' + str(receptive_field_size[i]))
+receptive_field_size = []
+for model_file in model_files:
+
+    print(model_file)
+
+    # estimate receptive field of the model
+    def model_build_func(input_shape):
+        model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
+        model.load_weights(model_file)
+        return model
+
+
+    rf = KerasReceptiveField(model_build_func, init_weights=False)
+
+    rf_params = rf.compute(
+        input_shape=(500, 500, 3),
+        input_layer='input_image',
+        output_layers=['regression_output'])
+    print(rf_params)
+
+    receptive_field_size.append(rf._rf_params[0].size)
+
+for i, model_file in enumerate(model_files):
+    print(model_file)
+    print('Receptive field size: ' + str(receptive_field_size[i]))
 #
 '''Load model and visualise results
 '''
