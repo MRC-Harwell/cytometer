@@ -8,9 +8,10 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
-
 import glob
 import numpy as np
+import openslide
+import csv
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -48,16 +49,15 @@ DEBUG = False
 
 # data paths
 root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
-training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
-training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
-saved_models_dir = os.path.join(home, 'klf14_model')
-# training_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training')
-# training_nooverlap_data_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_non_overlap')
-# training_augmented_dir = os.path.join(home, 'Dropbox/c3h/c3h_hfd_training_augmented')
-# saved_models_dir = os.path.join(home, 'Dropbox/c3h/saved_models')
+training_data_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training_non_overlap')
+training_augmented_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training_augmented')
+saved_models_dir = os.path.join(home, 'Data/cytometer_data/c3h/saved_models')
 
-saved_model_basename = 'exp_0000_klf14_b6ntac_cnn_dmap_contour'  # dmap + contour, classification loss weight 1000, hard_sigmoid for classification
+# Check softlink works
+test_softlink = os.listdir(saved_models_dir)
+
+saved_model_basename = 'c3h_hfd_exp_0000_cnn_dmap'
 
 model_name = saved_model_basename + '*.h5'
 
@@ -73,7 +73,10 @@ im_file_list = aux['file_list']
 idx_test_all = aux['idx_test_all']
 
 # correct home directory if we are in a different system than what was used to train the models
-im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=False)
+im_file_list = cytometer.data.change_home_directory(im_file_list,
+                                                    '/users/rittscher/rcasero/Dropbox/c3h/c3h_hfd_training_augmented',
+                                                    training_augmented_dir,
+                                                    check_isfile=True)
 
 '''CNN Model
 '''
@@ -128,38 +131,37 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
     return Model(inputs=input, outputs=main_output)
 
 
-'''Load example data to display'''
+# '''Load example data to display'''
+#
+# # load im, seg and mask datasets
+# datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'mask', 'dmap'])
+# im = datasets['im']
+# mask = datasets['mask']
+# dmap = datasets['dmap']
+# del datasets
+#
+# # number of training images
+# n_im = im.shape[0]
+#
+# if DEBUG:
+#     i = 5
+#     print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
+#     plt.clf()
+#     plt.subplot(221)
+#     plt.imshow(im[i, :, :, :])
+#     plt.title('Histology: ' + str(i))
+#     plt.subplot(223)
+#     plt.imshow(dmap[i, :, :, 0])
+#     plt.title('Distance transformation')
+#     plt.subplot(224)
+#     plt.imshow(mask[i, :, :, 0])
+#     plt.title('Mask')
+#
+# '''Receptive field
+#
+# '''
 
-# load im, seg and mask datasets
-datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'mask', 'dmap'])
-im = datasets['im']
-mask = datasets['mask']
-dmap = datasets['dmap']
-del datasets
-
-# number of training images
-n_im = im.shape[0]
-
-if DEBUG:
-    i = 10
-    print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
-    plt.clf()
-    plt.subplot(221)
-    plt.imshow(im[i, :, :, :])
-    plt.title('Histology: ' + str(i))
-    plt.subplot(223)
-    plt.imshow(dmap[i, :, :, 0])
-    plt.title('Distance transformation')
-    plt.subplot(224)
-    plt.imshow(mask[i, :, :, 0])
-    plt.title('Mask')
-
-'''Receptive field
-
-'''
-
-# list of model files to inspect
-model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+# Method for calculating receptive field, not working properly.
 
 receptive_field_size = []
 for model_file in model_files:
@@ -186,9 +188,14 @@ for model_file in model_files:
 for i, model_file in enumerate(model_files):
     print(model_file)
     print('Receptive field size: ' + str(receptive_field_size[i]))
-
+#
 '''Load model and visualise results
 '''
+
+
+# list of model files to inspect
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+
 
 for fold_i, model_file in enumerate(model_files):
 
@@ -217,16 +224,16 @@ for fold_i, model_file in enumerate(model_files):
 
     # plot results
     plt.clf()
-    plt.subplot(321)
+    plt.subplot(221)
     plt.imshow(im_test[i, :, :, :])
     plt.title('histology, i = ' + str(i))
-    plt.subplot(322)
+    plt.subplot(222)
     plt.imshow(dmap_test[i, :, :, 0])
     plt.title('ground truth dmap')
-    plt.subplot(324)
+    plt.subplot(223)
     plt.imshow(dmap_test_pred[0, :, :, 0])
     plt.title('predicted dmap')
-    plt.subplot(325)
+    plt.subplot(224)
     plt.imshow(mean_curvature)
     plt.title('mean curvature of dmap')
 
@@ -240,24 +247,26 @@ for fold_i, model_file in enumerate(model_files):
 
     # plot results
     plt.clf()
-    plt.subplot(321)
+    plt.subplot(221)
     plt.imshow(im_test[i, :, :, :])
     plt.title('histology, i = ' + str(i))
-    plt.subplot(322)
+    plt.subplot(222)
     plt.imshow(dmap_test[i, :, :, 0])
     plt.title('ground truth dmap')
-    plt.subplot(324)
+    plt.subplot(223)
     plt.imshow(dmap_test_pred[0, :, :, 0])
     plt.title('predicted dmap')
-    plt.subplot(325)
+    plt.subplot(224)
     plt.imshow(mean_curvature)
     plt.title('mean curvature of dmap')
-
 
 '''Plot metrics and convergence
 '''
 
 log_filename = os.path.join(saved_models_dir, model_name.replace('*.h5', '.log'))
+
+# Compare to klf14 model
+# log_filename = '/home/gcientanni/Desktop/inspect_test/exp_0000_klf14_b6ntac_cnn_dmap_contour.log'
 
 if os.path.isfile(log_filename):
 
@@ -273,9 +282,9 @@ if os.path.isfile(log_filename):
         epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
         plt.legend(handles=[loss_plot, epoch_ends_plot1])
         plt.subplot(312)
-        regr_mae_plot, = plt.plot(df.index, df.regression_output_mean_absolute_error, label='dmap mae')
-        regr_mse_plot, = plt.plot(df.index, np.sqrt(df.regression_output_mean_squared_error), label='sqrt(dmap mse)')
-        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.regression_output_mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
-        regr_mse_epoch_ends_plot2, = plt.plot(epoch_ends, np.sqrt(df.regression_output_mean_squared_error[epoch_ends]), 'ro', label='end of epoch')
+        regr_mae_plot, = plt.plot(df.index, df.mean_absolute_error, label='dmap mae')
+        regr_mse_plot, = plt.plot(df.index, np.sqrt(df.mean_squared_error), label='sqrt(dmap mse)')
+        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
+        regr_mse_epoch_ends_plot2, = plt.plot(epoch_ends, np.sqrt(df.mean_squared_error[epoch_ends]), 'ro', label='end of epoch')
         plt.legend(handles=[regr_mae_plot, regr_mse_plot, regr_mae_epoch_ends_plot2])
 
