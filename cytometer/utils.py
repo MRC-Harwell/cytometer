@@ -3,6 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
+from skimage import measure
+from skimage.morphology import watershed
+from mahotas.labeled import borders
+
 
 DEBUG = False
 
@@ -117,5 +121,42 @@ def principal_curvatures_range_image(img, sigma=10):
 
     return K, H, k1, k2
 
+
+def segment_dmap_contour(dmap, contour=None, sigma=10, noise_threshold=50, border_dilation=0):
+
+    # compute mean curvature from dmap
+    _, mean_curvature, _, _ = principal_curvatures_range_image(dmap, sigma=sigma)
+
+    # multiply mean curvature by estimated contours
+    if contour is not None:
+        contour *= mean_curvature
+    else:
+        contour = mean_curvature.copy()
+
+    # rough segmentation of inner areas
+    labels = (mean_curvature <= 0).astype('uint8')
+
+    # label areas with a different label per connected area
+    labels = measure.label(labels)
+
+    # remove very small labels (noise)
+    labels_prop = measure.regionprops(labels)
+    for j in range(1, np.max(labels)):
+        # label of region under consideration is not the same as index j
+        lab = labels_prop[j]['label']
+        if labels_prop[j]['area'] < noise_threshold:
+            labels[labels == lab] = 0
+
+    # extend labels using watershed
+    labels = watershed(mean_curvature, labels)
+
+    # extract borders of watershed regions for plots
+    labels_borders = borders(labels)
+
+    # dilate borders for easier visualization
+    kernel = np.ones((3, 3), np.uint8)
+    labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
+
+    return labels, labels_borders
 
 # if __name__ == '__main__':
