@@ -122,7 +122,47 @@ def principal_curvatures_range_image(img, sigma=10):
     return K, H, k1, k2
 
 
-def segment_dmap_contour(dmap, contour=None, sigma=10, noise_threshold=50, border_dilation=0):
+def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, border_dilation=0):
+    """
+    Segment cells from a distance transformation image, and optionally, a contour estimate image.
+
+    This function computes the normal curvate of the dmap seen as a Monge patch. The "valleys" in
+    the dmap (the cell contours) correspond to higher normal curvature values.
+
+    If provided, the normal curvature is element-wise multiplied by a prior estimate of where the
+    cell contours are. This prior estimate can be computed e.g. with a convolutional neural
+    network classifier.
+
+    Then a threshold <= 0 is applied to the curvatures (or weighted curvatures). Those pixels are
+    considered to belong to the inside of cells. This usually produces separate "islands", one per
+    cell, that don't extend all the way to the cells edges. "Islands" with less that
+    min_seed_object_size pixels are removed as noise.
+
+    Next, a watershed algorithm is initialised with the "islands", and run on the (weighted) mean
+    curvature image to extend the segmentations all the way to the cell borders. This produces
+    one different label per cell.
+
+    The borders of each cell are then extracted, and optionally, dilated with a 3x3 kernel of ones,
+    "border_dilation" times.
+
+    :param dmap: numpy.ndarray matrix with distance transformation, distance range image,
+    topographic map, etc.
+    :param contour: (def None) numpy.ndarray matrix, same size as dmap, with an estimate of where the
+    contours are.
+    :param sigma: (def 10) Standar deviation in pixels of Gaussian blurring applied to the dmap
+    before computing the normal curvature. Because normal curvature is a function of second
+    derivatives, slight noise in the dmap gets amplified, and produces poor curvature estimates.
+    Gaussian blurring removes part of that noise.
+    :param min_seed_object_size: (def 50). Objects
+    :param border_dilation:
+    :return:
+    """
+
+    # check size of inputs
+    if dmap.ndim != 2:
+        raise ValueError('dmap array must have 2 dimensions')
+    if contour is not None and contour.shape != dmap.shape:
+        raise ValueError('if provided, contour must have the same shape as dmap')
 
     # compute mean curvature from dmap
     _, mean_curvature, _, _ = principal_curvatures_range_image(dmap, sigma=sigma)
@@ -144,7 +184,7 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, noise_threshold=50, borde
     for j in range(1, np.max(labels)):
         # label of region under consideration is not the same as index j
         lab = labels_prop[j]['label']
-        if labels_prop[j]['area'] < noise_threshold:
+        if labels_prop[j]['area'] < min_seed_object_size:
             labels[labels == lab] = 0
 
     # extend labels using watershed
@@ -154,8 +194,9 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, noise_threshold=50, borde
     labels_borders = borders(labels)
 
     # dilate borders for easier visualization
-    kernel = np.ones((3, 3), np.uint8)
-    labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
+    if border_dilation > 0:
+        kernel = np.ones((3, 3), np.uint8)
+        labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
 
     return labels, labels_borders
 
