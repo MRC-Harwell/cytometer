@@ -79,6 +79,9 @@ im /= 255
 # number of training images
 n_im = im.shape[0]
 
+# save copy of the labelled image
+lab = seg.copy()
+
 # set all inside pixels of segmentation to same value
 seg = (seg < 2).astype(np.uint8)
 
@@ -101,6 +104,8 @@ for i, base_file in enumerate(im_file_list):
         plt.imshow(mask[i, :, :, 0])
         plt.subplot(223)
         plt.imshow(seg[i, :, :, 0] * mask[i, :, :, 0])
+        plt.subplot(224)
+        plt.imshow(lab[i, :, :, 0])
 
     # create filenames based on the original foo.tif, so that we have
     # * im_seed_nan_foo.tif
@@ -113,6 +118,7 @@ for i, base_file in enumerate(im_file_list):
     dmap_file = os.path.join(training_augmented_dir, 'dmap_seed_nan_' + base_name)
     mask_file = os.path.join(training_augmented_dir, 'mask_seed_nan_' + base_name)
     seg_file = os.path.join(training_augmented_dir, 'seg_seed_nan_' + base_name)
+    lab_file = os.path.join(training_augmented_dir, 'lab_seed_nan_' + base_name)
 
     # copy the image file and create files for the dmap and mask
     shutil.copy2(base_file, im_file)
@@ -133,6 +139,11 @@ for i, base_file in enumerate(im_file_list):
     im_out = Image.fromarray(im_out.astype(np.uint32), mode='I')
     im_out.save(seg_file)
 
+    # save labels
+    im_out = lab[i, :, :, 0]
+    im_out = Image.fromarray(im_out, mode='L')
+    im_out.save(lab_file)
+
 
 # data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
 augment_factor = 10
@@ -151,6 +162,7 @@ dmap_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 im_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 mask_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 seg_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
+lab_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 
 # augment data, using the same seed so that all corresponding images, dmaps and masks undergo
 # the same transformations
@@ -164,6 +176,8 @@ for seed in range(augment_factor - 1):
     mask_augmented = np.round(mask_datagen.flow(mask, seed=seed, shuffle=False, batch_size=n_im).next())
     seg_augmented = np.round(seg_datagen.flow(seg, seed=seed, shuffle=False, batch_size=n_im).next())
     seg_augmented = seg_augmented.astype(np.uint8)
+    lab_augmented = np.round(lab_datagen.flow(lab, seed=seed, shuffle=False, batch_size=n_im).next())
+    lab_augmented = lab_augmented.astype(np.uint8)
 
     for i in range(n_im):
 
@@ -206,8 +220,7 @@ for seed in range(augment_factor - 1):
             plt.subplot(325)
             plt.imshow(seg_augmented[i, :, :, 0])
             plt.subplot(326)
-            plt.imshow(pystoim.imfuse(mask_augmented[i, :, :, 0],
-                                      seg_augmented[i, :, :, 0]))
+            plt.imshow(lab_augmented[i, :, :, 0])
 
         # create filenames based on the original foo.tif, so that we have im_seed_001_foo.tif, dmap_seed_001_foo.tif,
         # mask_seed_001_foo.tif, where seed_001 means data augmented using seed=1
@@ -217,6 +230,7 @@ for seed in range(augment_factor - 1):
         dmap_file = os.path.join(training_augmented_dir, 'dmap_seed_' + str(seed).zfill(3) + '_' + base_name)
         mask_file = os.path.join(training_augmented_dir, 'mask_seed_' + str(seed).zfill(3) + '_' + base_name)
         seg_file = os.path.join(training_augmented_dir, 'seg_seed_' + str(seed).zfill(3) + '_' + base_name)
+        lab_file = os.path.join(training_augmented_dir, 'lab_seed_' + str(seed).zfill(3) + '_' + base_name)
 
         # save transformed image
         im_out = im_augmented[i, :, :, :]
@@ -236,8 +250,12 @@ for seed in range(augment_factor - 1):
         im_out = Image.fromarray(im_out, mode='L')
         im_out.save(mask_file)
 
-        # save labels (note: we can save as uint32)
+        # save contours (note: we can save as black and white 1 byte)
         im_out = seg_augmented[i, :, :, 0]
-        im_out = im_out.astype(np.uint32)
-        im_out = Image.fromarray(im_out, mode='I')
+        im_out = Image.fromarray(im_out, mode='L')
         im_out.save(seg_file)
+
+        # save labels (note: we can save as black and white 1 byte)
+        im_out = lab_augmented[i, :, :, 0]
+        im_out = Image.fromarray(im_out, mode='L')
+        im_out.save(lab_file)
