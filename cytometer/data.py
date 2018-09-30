@@ -360,7 +360,7 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
             plt.imshow(mask[i, :, :], cmap="gray")
             plt.title('Training weight')
 
-        # compute distance map from very pixel to the closest boundary
+        # compute distance map from every pixel to the closest boundary
         dmap[i, :, :] = ndimage.distance_transform_edt(seg_aux)
 
         # plot distance map
