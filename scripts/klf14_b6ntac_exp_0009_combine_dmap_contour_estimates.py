@@ -50,7 +50,7 @@ K.set_image_data_format('channels_last')
 
 DEBUG = True
 
-'''Load data
+'''Load model
 '''
 
 # data paths
@@ -82,7 +82,7 @@ idx_test_all = aux['idx_test_all']
 # correct home directory if we are in a different system than what was used to train the models
 im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
 
-'''Load model and visualise results
+'''Load data and visualise results
 '''
 
 fold_i = 0
