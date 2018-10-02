@@ -23,7 +23,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -41,12 +41,6 @@ import cytometer.data
 import cytometer.models
 from cytometer.utils import principal_curvatures_range_image
 import matplotlib.pyplot as plt
-
-from skimage import measure
-from skimage.morphology import watershed
-from mahotas.labeled import borders
-from scipy import ndimage
-import cv2
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -95,10 +89,11 @@ im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold
 
 # load im, seg and mask datasets
 test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                   prefix_to=['im', 'seg', 'mask'], nblocks=2)
+                                                   prefix_to=['im', 'lab', 'seg', 'mask'], nblocks=2)
 im_test = test_datasets['im']
 seg_test = test_datasets['seg']
 mask_test = test_datasets['mask']
+lab_test = test_datasets['lab']
 del test_datasets
 
 # list of model files to inspect
@@ -123,36 +118,10 @@ i = 1
 contour_test_pred = contour_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 dmap_test_pred = dmap_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
 
-# compute mean curvature from dmap
-_, mean_curvature, _, _ = principal_curvatures_range_image(dmap_test_pred[0, :, :, 0], sigma=10)
-
-# multiply mean curvature by estimated contours
-contour_weighted = contour_test_pred[0, :, :, 1] * mean_curvature
-
-# rough segmentation of inner areas
-labels = (contour_weighted <= 0).astype('uint8')
-
-# label areas with a different label per connected area
-labels = measure.label(labels)
-
-# remove very small labels (noise)
-labels_prop = measure.regionprops(labels)
-for j in range(1, np.max(labels)):
-    # label of region under consideration is not the same as index j
-    lab = labels_prop[j]['label']
-    if labels_prop[j]['area'] < 50:
-        labels[labels == lab] = 0
-
-# extend labels using watershed
-labels_ext = watershed(-dmap_test_pred[0, :, :, 0], labels)
-labels_ext = watershed(mean_curvature, labels)
-
-# extract borders of watershed regions for plots
-labels_borders = borders(labels_ext)
-
-# dilate borders for easier visualization
-kernel = np.ones((3, 3), np.uint8)
-labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel) > 0
+# cell segmentation
+labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_test_pred[0, :, :, 0],
+                                                              contour=contour_test_pred[0, :, :, 1],
+                                                              border_dilation=0)
 
 # add borders as coloured curves
 im_test_r = im_test[i, :, :, 0].copy()
@@ -165,50 +134,48 @@ im_borders = np.concatenate((np.expand_dims(im_test_r, axis=2),
                              np.expand_dims(im_test_g, axis=2),
                              np.expand_dims(im_test_b, axis=2)), axis=2)
 
-# compute distance transformation from the segmented cells
-dmap_post = ndimage.distance_transform_edt(np.logical_not(labels_borders)).astype(np.float32)
-
 # plot results of cell segmentation
 plt.clf()
-plt.subplot(331)
+plt.subplot(231)
 plt.imshow(im_test[i, :, :, :])
 plt.title('histology, i = ' + str(i))
-plt.subplot(332)
+plt.subplot(232)
 plt.imshow(contour_test_pred[0, :, :, 1])
 plt.title('predicted contours')
-plt.subplot(333)
+plt.subplot(233)
 plt.imshow(dmap_test_pred[0, :, :, 0])
 plt.title('predicted dmap')
-plt.subplot(334)
-plt.imshow(mean_curvature)
-plt.title('dmap\'s mean curvature')
-plt.subplot(335)
-plt.imshow(contour_weighted)
-plt.title('contour * curvature')
-plt.subplot(336)
+plt.subplot(234)
 plt.imshow(labels)
 plt.title('labels')
-plt.subplot(337)
-plt.imshow(labels_ext)
-plt.title('watershed on labels')
-plt.subplot(338)
-plt.imshow(im_borders)
+plt.subplot(235)
+plt.imshow(labels_borders)
 plt.title('borders on histology')
+plt.subplot(236)
+plt.imshow(seg_test[i, :, :, 1])
+plt.title('ground truth borders')
 
-# plot results of segmentation's confidence check
+# compute quality measure of estimated labels
+qual = cytometer.utils.segmentation_quality(labels_test=labels,
+                                            labels_ref=lab_test[i, :, :, 0])
+
+# colour the estimated labels with their quality
+lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
+lut.fill(np.nan)
+lut[qual['lab_test']] = qual['dice']
+labels_test_qual = lut[labels]
+
+# plot validation of cell segmentation
 plt.clf()
-plt.subplot(331)
+plt.subplot(221)
 plt.imshow(im_test[i, :, :, :])
 plt.title('histology, i = ' + str(i))
-plt.subplot(332)
-plt.imshow(im_borders)
-plt.title('borders on histology')
-plt.subplot(333)
-plt.imshow(dmap_post)
-plt.title('distance transformation')
-plt.subplot(334)
-plt.imshow(dmap_test_pred[0, :, :, 0])
-plt.title('predicted dmap')
-plt.subplot(335)
-plt.imshow(dmap_post - dmap_test_pred[0, :, :, 0])
-plt.title('dmap discrepancy')
+plt.subplot(222)
+plt.imshow(lab_test[i, :, :, 0])
+plt.title('ground truth labels')
+plt.subplot(223)
+plt.imshow(labels)
+plt.title('estimated labels')
+plt.subplot(224)
+plt.imshow(labels_test_qual, cmap='Greys_r')
+plt.title('Dice coeff')
