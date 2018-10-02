@@ -200,4 +200,85 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
 
     return labels, labels_borders
 
-# if __name__ == '__main__':
+
+def segmentation_quality(labels_ref, labels_test):
+    """
+    Dice coefficients for each label in a segmented image.
+
+    This function takes two segmentations, reference and test, and computes how good each test
+    label segmentation is based on how it overlaps the reference segmentation. In a nutshell,
+    we find the reference label best aligned to each test label, and compute the Dice
+    coefficient as a similarity measure.
+
+    We illustrate this with an example.
+
+    Let one of the labels in the test segmentation be 51.
+
+    This test label partly overlaps 5 labels in the reference segmentation:
+    [ 2,  3, 10, 12, 17].
+
+    The number of pixels in the intersection of 51 with each of the other labels is:
+    [    2,   536,    29, 17413,   162]
+
+    Therefore, label 51 is best aligned to label 12.
+
+    Let label 51 contain 20,000 pixels, and label 12, 22,000 pixels.
+
+    The Dice coefficient will be 2 * 17413 / (20000 + 22000) = 0.83.
+
+    :param labels_ref: np.ndarray matrix, some integer type. All pixels with the same label
+    correspond to the same object.
+    :param labels_test: np.ndarray matrix, some integer type. All pixels with the same label
+    correspond to the same object.
+    :return: structured array out:
+     out['lab_test']: 1-d np.ndarray with unique list of labels in the test image.
+     out['lab_ref']: 1-d np.ndarray with labels that best align with the test labels.
+     out['dice']: 1-d np.ndarray with Dice coefficient for each pair of corresponding labels.
+    """
+
+    # form pairs of values between reference labels and test labels. This is going to
+    # produce pairs of all overlapping labels, e.g. if label 5 in the test image
+    # overlaps with labels 1, 12 and 4 in the reference image,
+    # label_pairs_by_pixel = [..., 5,  5, 5, ...]
+    #                        [..., 1, 12, 4, ...]
+    aux = np.stack((labels_test.flatten(), labels_ref.flatten()))
+    label_pairs_by_pixel, label_pairs_by_pixel_count = np.unique(aux, axis=1, return_counts=True)
+
+    # unique labels in the reference and test images, and number of pixels in each label
+    labels_ref_unique, labels_ref_count = np.unique(labels_ref, return_counts=True)
+    labels_test_unique, labels_test_count = np.unique(labels_test, return_counts=True)
+
+    # for each of the test labels, find which reference label overlaps it the most
+    labels_ref_correspond = np.zeros(shape=labels_test_unique.shape, dtype=labels_ref_unique.dtype)
+    intersection_count = np.zeros(shape=labels_test_count.shape, dtype=labels_test_count.dtype)
+    dice = np.zeros(shape=labels_test_count.shape, dtype=np.float32)
+    for i, lab in enumerate(labels_test_unique):
+
+        # find ref label with most overlap with the current test label
+        idx = label_pairs_by_pixel[0] == lab
+        idx_max = np.argmax(label_pairs_by_pixel_count[idx])
+        labels_ref_correspond[i] = label_pairs_by_pixel[1, idx][idx_max]
+
+        # number of pixels in the intersection of both labels
+        intersection_count[i] = label_pairs_by_pixel_count[idx][idx_max]
+
+        # # DEBUG: check the number of intersection pixels
+        # print(np.count_nonzero(np.logical_and(labels_test == lab, labels_ref == labels_ref_correspond[i])))
+
+        # to compute the Dice coefficient we need to know:
+        # * |A| = labels_test_count[i]: number of pixels in the test label
+        # * |B| = b: number of pixels in the corresponding ref label
+        # * |A ∩ B| = intersection_count: number of pixels in the intersection of both labels
+        # DICE = 2 * |A ∩ B| / (|A| + |B|)
+        a = labels_test_count[i]
+        b = labels_ref_count[labels_ref_unique == labels_ref_correspond[i]]
+        dice[i] = 2 * intersection_count[i] / (a + b)
+
+    # prepare output as structured array
+    out = np.zeros((1, len(dice)), dtype=[('lab_test', labels_test_unique.dtype),
+                                          ('lab_ref', labels_ref_unique.dtype),
+                                          ('dice', dice.dtype)])
+    out['lab_test'] = labels_test_unique
+    out['lab_ref'] = labels_ref_correspond
+    out['dice'] = dice
+    return out
