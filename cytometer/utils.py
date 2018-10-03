@@ -260,7 +260,10 @@ def segmentation_quality(labels_ref, labels_test):
         labels_ref_correspond[i] = label_pairs_by_pixel[1, idx][idx_max]
 
         # number of pixels in the intersection of both labels
-        intersection_count[i] = label_pairs_by_pixel_count[idx][idx_max]
+        if labels_ref_correspond[i] == 0:  # the test label overlaps mostly background
+            intersection_count[i] = 0
+        else:                              # the test label overlaps mostly a ref label
+            intersection_count[i] = label_pairs_by_pixel_count[idx][idx_max]
 
         # # DEBUG: check the number of intersection pixels
         # print(np.count_nonzero(np.logical_and(labels_test == lab, labels_ref == labels_ref_correspond[i])))
