@@ -20,7 +20,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
