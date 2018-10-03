@@ -78,7 +78,7 @@ idx_test_all = aux['idx_test_all']
 # correct home directory if we are in a different system than what was used to train the models
 im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
 
-'''Load data and visualise results
+'''Load data 
 '''
 
 fold_i = 0
@@ -126,73 +126,81 @@ for i in range(lab_train.shape[0]):
 # change the background label from 1 to 0
 lab_train[lab_train == 1] = 0
 
-# visualise results
-i = 0
-# i = 18
-# run histology image through network
-contour_train_pred = contour_model.predict(im_train[i, :, :, :].reshape((1,) + im_train.shape[1:]))
-dmap_train_pred = dmap_model.predict(im_train[i, :, :, :].reshape((1,) + im_train.shape[1:]))
+'''Segmentation and Dice coefficients
+'''
 
-# cell segmentation
-labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_train_pred[0, :, :, 0],
-                                                              contour=contour_train_pred[0, :, :, 1],
-                                                              border_dilation=0)
+# loop images
+for i in range(im_train.shape[0]):
 
-# plot results of cell segmentation
-if DEBUG:
-    # add borders as coloured curves
-    im_test_r = im_train[i, :, :, 0].copy()
-    im_test_g = im_train[i, :, :, 1].copy()
-    im_test_b = im_train[i, :, :, 2].copy()
-    im_test_r[labels_borders] = 0.0
-    im_test_g[labels_borders] = 1.0
-    im_test_b[labels_borders] = 0.0
-    im_borders = np.concatenate((np.expand_dims(im_test_r, axis=2),
-                                 np.expand_dims(im_test_g, axis=2),
-                                 np.expand_dims(im_test_b, axis=2)), axis=2)
+    # run histology image through network
+    contour_train_pred = contour_model.predict(im_train[i, :, :, :].reshape((1,) + im_train.shape[1:]))
+    dmap_train_pred = dmap_model.predict(im_train[i, :, :, :].reshape((1,) + im_train.shape[1:]))
 
-    plt.clf()
-    plt.subplot(231)
-    plt.imshow(im_train[i, :, :, :])
-    plt.title('histology, i = ' + str(i))
-    plt.subplot(232)
-    plt.imshow(contour_train_pred[0, :, :, 1])
-    plt.title('predicted contours')
-    plt.subplot(233)
-    plt.imshow(dmap_train_pred[0, :, :, 0])
-    plt.title('predicted dmap')
-    plt.subplot(234)
-    plt.imshow(labels)
-    plt.title('labels')
-    plt.subplot(235)
-    plt.imshow(labels_borders)
-    plt.title('borders on histology')
-    plt.subplot(236)
-    plt.imshow(seg_train[i, :, :, 1])
-    plt.title('ground truth borders')
+    # cell segmentation
+    labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_train_pred[0, :, :, 0],
+                                                                  contour=contour_train_pred[0, :, :, 1],
+                                                                  border_dilation=0)
 
-# compute quality measure of estimated labels
-qual = cytometer.utils.segmentation_quality(labels_test=labels,
-                                            labels_ref=lab_train[i, :, :, 0])
+    # plot results of cell segmentation
+    if DEBUG:
 
-# colour the estimated labels with their quality
-lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
-lut.fill(np.nan)
-lut[qual['lab_test']] = qual['dice']
-labels_test_qual = lut[labels]
+        plt.clf()
+        plt.subplot(231)
+        plt.imshow(im_train[i, :, :, :])
+        plt.title('histology, i = ' + str(i))
+        plt.subplot(232)
+        plt.imshow(contour_train_pred[0, :, :, 1])
+        plt.title('predicted contours')
+        plt.subplot(233)
+        plt.imshow(dmap_train_pred[0, :, :, 0])
+        plt.title('predicted dmap')
+        plt.subplot(234)
+        plt.imshow(labels)
+        plt.title('labels')
+        plt.subplot(235)
+        plt.imshow(labels_borders)
+        plt.title('borders on histology')
+        plt.subplot(236)
+        plt.imshow(seg_train[i, :, :, 1])
+        plt.title('ground truth borders')
 
-# plot validation of cell segmentation
-if DEBUG:
-    plt.clf()
-    plt.subplot(221)
-    plt.imshow(im_train[i, :, :, :])
-    plt.title('histology, i = ' + str(i))
-    plt.subplot(222)
-    plt.imshow(lab_train[i, :, :, 0])
-    plt.title('ground truth labels')
-    plt.subplot(223)
-    plt.imshow(labels)
-    plt.title('estimated labels')
-    plt.subplot(224)
-    plt.imshow(labels_test_qual, cmap='Greys_r')
-    plt.title('Dice coeff')
+    # compute quality measure of estimated labels
+    qual = cytometer.utils.segmentation_quality(labels_test=labels,
+                                                labels_ref=lab_train[i, :, :, 0])
+
+    # colour the estimated labels with their quality
+    lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
+    lut.fill(np.nan)
+    lut[qual['lab_test']] = qual['dice']
+    labels_test_qual = lut[labels]
+
+    # plot validation of cell segmentation
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im_train[i, :, :, :])
+        plt.title('histology, i = ' + str(i))
+        plt.subplot(222)
+        plt.imshow(border_train[i, :, :, 0])
+        plt.title('ground truth labels')
+        plt.subplot(223)
+        aux = np.zeros(shape=labels_borders.shape + (3,), dtype=np.float32)
+        aux[:, :, 0] = border_train[i, :, :, 0]
+        aux[:, :, 1] = labels_borders
+        aux[:, :, 2] = border_train[i, :, :, 0]
+        plt.imshow(aux)
+        plt.title('estimated (green) vs. ground truth (purple)')
+        plt.subplot(224)
+        aux = np.zeros(shape=labels_borders.shape + (3,), dtype=np.float32)
+        aux[:, :, 0] = labels_test_qual
+        aux[:, :, 1] = labels_test_qual
+        aux[:, :, 2] = labels_test_qual
+        aux_r = aux[:, :, 0]
+        aux_r[border_train[i, :, :, 0] == 1.0] = 1.0
+        aux[:, :, 0] = aux_r
+        aux[:, :, 2] = aux_r
+        aux_g = aux[:, :, 1]
+        aux_g[labels_borders == 1.0] = 1.0
+        aux[:, :, 1] = aux_g
+        plt.imshow(aux, cmap='Greys_r')
+        plt.title('Dice coeff')
