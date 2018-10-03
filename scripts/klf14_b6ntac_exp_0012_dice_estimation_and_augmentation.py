@@ -37,14 +37,16 @@ import keras.backend as K
 import cytometer.data
 import cytometer.models
 from cytometer.utils import principal_curvatures_range_image
+import pysto.imgproc as pystoim
 import matplotlib.pyplot as plt
+from PIL import Image
 from skimage.morphology import watershed
 from mahotas.labeled import borders
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
 
-DEBUG = True
+DEBUG = False
 
 '''Load model
 '''
@@ -78,6 +80,24 @@ idx_test_all = aux['idx_test_all']
 # correct home directory if we are in a different system than what was used to train the models
 im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
 
+'''Data augmentation parameters
+'''
+
+# data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
+augment_factor = 10
+
+# we create two instances with the same arguments
+data_gen_args = dict(
+    rotation_range=90,     # randomly rotate images up to 90 degrees
+    fill_mode="constant",  # fill points outside boundaries with zeros
+    cval=0,                #
+    zoom_range=.1,         # [1-zoom_range, 1+zoom_range]
+    horizontal_flip=True,  # randomly flip images
+    vertical_flip=True     # randomly flip images
+)
+
+dice_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
+
 '''Load data 
 '''
 
@@ -96,6 +116,9 @@ seg_train = train_datasets['seg']
 mask_train = train_datasets['mask']
 lab_train = train_datasets['lab']
 del train_datasets
+
+# number of images
+n_im = im_train.shape[0]
 
 # list of trained model
 contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
@@ -129,7 +152,8 @@ lab_train[lab_train == 1] = 0
 '''Segmentation and Dice coefficients
 '''
 
-# loop images
+# loop images to compute
+labels_test_qual = np.zeros(shape=im_train.shape[:-1] + (1,), dtype=np.float32)
 for i in range(im_train.shape[0]):
 
     # run histology image through network
@@ -172,7 +196,7 @@ for i in range(im_train.shape[0]):
     lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
     lut.fill(np.nan)
     lut[qual['lab_test']] = qual['dice']
-    labels_test_qual = lut[labels]
+    labels_test_qual[i, :, :, 0] = lut[labels]
 
     # plot validation of cell segmentation
     if DEBUG:
@@ -192,9 +216,9 @@ for i in range(im_train.shape[0]):
         plt.title('estimated (green) vs. ground truth (purple)')
         plt.subplot(224)
         aux = np.zeros(shape=labels_borders.shape + (3,), dtype=np.float32)
-        aux[:, :, 0] = labels_test_qual
-        aux[:, :, 1] = labels_test_qual
-        aux[:, :, 2] = labels_test_qual
+        aux[:, :, 0] = labels_test_qual[i, :, :, 0]
+        aux[:, :, 1] = labels_test_qual[i, :, :, 0]
+        aux[:, :, 2] = labels_test_qual[i, :, :, 0]
         aux_r = aux[:, :, 0]
         aux_r[border_train[i, :, :, 0] == 1.0] = 1.0
         aux[:, :, 0] = aux_r
@@ -204,3 +228,43 @@ for i in range(im_train.shape[0]):
         aux[:, :, 1] = aux_g
         plt.imshow(aux, cmap='Greys_r')
         plt.title('Dice coeff')
+
+    # filenames for the Dice coefficient files
+    base_file = im_file_list[i]
+    base_path, base_name = os.path.split(base_file)
+    dice_file = os.path.join(training_augmented_dir, base_file.replace('im_', 'dice_'))
+
+    # save the Dice coefficient labels
+    im_out = labels_test_qual[i, :, :, 0]
+    im_out = Image.fromarray(im_out, mode='F')
+    im_out.save(dice_file)
+
+
+# augment Dice images
+for seed in range(augment_factor - 1):
+    print('* Augmentation round: ' + str(seed + 1) + '/' + str(augment_factor - 1))
+
+    # random rotation, flip and scaling of the image
+    labels_test_qual_augmented = dice_datagen.flow(labels_test_qual, seed=seed, shuffle=False, batch_size=n_im).next()
+
+    if DEBUG:
+        i = 0
+
+        # file name of the histology corresponding to the random transformation of the Dice coefficient image
+        base_file = im_file_list[i]
+        base_path, base_name = os.path.split(base_file)
+        im_file = os.path.join(training_augmented_dir, base_file.replace('seed_nan', 'seed_' + str(seed).zfill(3)))
+
+        # load histology
+        aux_dataset, _, _ = cytometer.data.load_datasets([im_file], prefix_from='im', prefix_to=['im'], nblocks=1)
+
+        # compare randomly transformed histology to corresponding Dice coefficient
+        plt.clf()
+        plt.subplot(311)
+        plt.imshow(aux_dataset['im'][0, :, :, :])
+        plt.subplot(312)
+        plt.imshow(labels_test_qual_augmented[i, :, :, 0], cmap='Greys_r')
+        plt.subplot(313)
+        aux = pystoim.imfuse(aux_dataset['im'][0, :, :, :], labels_test_qual_augmented[i, :, :, 0])
+        plt.imshow(aux, cmap='Greys_r')
+
