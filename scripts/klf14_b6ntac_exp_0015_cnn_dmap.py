@@ -1,8 +1,7 @@
 '''
-Dmap regression
+Dmap regression.
 
-BUG: The sample_weights have been forgotten for gpu_number > 1.
-Corrected in: klf14_b6ntac_exp_0015_cnn_dmap.py
+This script corrects bug in: klf14_b6ntac_exp_0007_cnn_dmap.py
 '''
 
 # cross-platform home directory
@@ -238,6 +237,7 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         tic = datetime.datetime.now()
         parallel_model.fit(train_dataset['im'],
                            {'regression_output': train_dataset['dmap']},
+                           sample_weight={'regression_output': train_dataset['mask'][..., 0]},
                            validation_data=(test_dataset['im'],
                                             {'regression_output': test_dataset['dmap']},
                                             {'regression_output': test_dataset['mask'][..., 0]}),
