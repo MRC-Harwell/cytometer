@@ -85,6 +85,9 @@ lab = seg.copy()
 # set all inside pixels of segmentation to same value
 seg = (seg < 2).astype(np.uint8)
 
+# keep only the contours, not the background
+seg = seg * mask
+
 # dilate contours
 for i in range(n_im):
     seg[i, :, :, 0] = cv2.dilate(seg[i, :, :, 0], kernel=np.ones(shape=(3, 3)))
@@ -96,6 +99,8 @@ for i in range(n_im):
 # method to read all the augmented data, and we don't need to recompute the distance transformations
 for i, base_file in enumerate(im_file_list):
 
+    print('File ' + str(i) + '/' + str(len(im_file_list) - 1))
+
     if DEBUG:
         plt.clf()
         plt.subplot(221)
@@ -103,7 +108,7 @@ for i, base_file in enumerate(im_file_list):
         plt.subplot(222)
         plt.imshow(mask[i, :, :, 0])
         plt.subplot(223)
-        plt.imshow(seg[i, :, :, 0] * mask[i, :, :, 0])
+        plt.imshow(seg[i, :, :, 0])
         plt.subplot(224)
         plt.imshow(lab[i, :, :, 0])
 
@@ -182,28 +187,6 @@ for seed in range(augment_factor - 1):
     for i in range(n_im):
 
         print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
-
-        # the generator creates an artifact in the masks (the rotated bounding box, for some reason, presents
-        # intermitent points, instead of being all zeros). Here we compute connected components and remove the really
-        # small ones as noise
-        mask_aux = mask_augmented[i, :, :, :].reshape(mask_augmented.shape[1:3]).astype(np.uint8)
-        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask_aux)
-        lblareas = stats[:, cv2.CC_STAT_AREA]
-
-        # labels of small components, that we assume are edge artifacts
-        labels_artifact = np.where(lblareas < 50)[0]
-        labels_artifact = list(labels_artifact)
-
-        # clear the artifact objects from the image
-        mask_aux[np.isin(labels, labels_artifact)] = 0
-
-        # transfer result to mask array
-        mask_augmented[i, :, :, :] = mask_aux.reshape(mask_aux.shape + (1,))
-
-        # we don't need to clear the border artifact from seg, because the mask will make it ignored anyway
-
-        # keep only contours in the segmentation array
-        seg_augmented[i, :, :, 0] *= mask_augmented[i, :, :, 0].astype('uint8')
 
         if DEBUG:
             plt.clf()
