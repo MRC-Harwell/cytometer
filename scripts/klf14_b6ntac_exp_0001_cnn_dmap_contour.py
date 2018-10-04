@@ -267,9 +267,6 @@ for i_fold, idx_test in enumerate([idx_test_all[0]]):
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
-        # FOO
-        model.save('/users/rittscher/rcasero/Dropbox/klf14/saved_models/foo.h5')
-
     else:  # compile and train model: One GPU
 
         # checkpoint to save model after each epoch
