@@ -220,6 +220,8 @@ def load_datasets(file_list, prefix_from='im', prefix_to=[], nblocks=1, shuffle_
         out_file_list[prefix] = []
         for x in file_list:
             x_path, x_basename = os.path.split(x)
+            if re.match('^' + prefix_from, x_basename) is None:
+                raise ValueError('Prefix not found in filename: ' + x)
             prefix_file = os.path.join(x_path,
                                        re.sub('^' + prefix_from, prefix, x_basename, count=1))
             if not os.path.isfile(prefix_file):
