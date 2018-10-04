@@ -1,5 +1,6 @@
 """
-Contour segmentation
+Training of CNN for regression of Dice coefficients, using element-wise weighting of the loss function to ignore image
+regions outside the training data.
 """
 
 # cross-platform home directory
