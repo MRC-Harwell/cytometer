@@ -234,7 +234,8 @@ for i in range(n_im):
     # filenames for the Dice coefficient files
     base_file = im_file_list[i]
     base_path, base_name = os.path.split(base_file)
-    dice_file = os.path.join(training_augmented_dir, base_file.replace('im_', 'dice_'))
+    dice_file = os.path.join(training_augmented_dir, base_file.replace('im_',
+                                                                       'dice_kfold_' + str(fold_i).zfill(2) + '_'))
 
     # save the Dice coefficient labels
     im_out = labels_qual[i, :, :, 0]
@@ -271,14 +272,18 @@ for seed in range(augment_factor - 1):
         aux = pystoim.imfuse(aux_dataset['im'][0, :, :, :], labels_qual_augmented[i, :, :, 0])
         plt.imshow(aux, cmap='Greys_r')
 
-    # filenames for the Dice coefficient augmented files
-    base_file = im_file_list[i]
-    base_path, base_name = os.path.split(base_file)
-    dice_file = os.path.join(training_augmented_dir,
-                             base_name.replace('im_seed_nan_',
-                                               'dice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
+    for i in range(n_im):
 
-    # save the Dice coefficient labels
-    im_out = labels_qual_augmented[i, :, :, 0]
-    im_out = Image.fromarray(im_out, mode='F')
-    im_out.save(dice_file)
+        print('** Image ' + str(i) + '/' + str(n_im - 1))
+
+        # filenames for the Dice coefficient augmented files
+        base_file = im_file_list[i]
+        base_path, base_name = os.path.split(base_file)
+        dice_file = os.path.join(training_augmented_dir,
+                                 base_name.replace('im_seed_nan_',
+                                                   'dice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
+
+        # save the Dice coefficient labels
+        im_out = labels_qual_augmented[i, :, :, 0]
+        im_out = Image.fromarray(im_out, mode='F')
+        im_out.save(dice_file)
