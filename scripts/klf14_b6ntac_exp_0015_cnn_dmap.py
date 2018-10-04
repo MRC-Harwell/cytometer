@@ -57,7 +57,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of blocks to split each image into so that training fits into GPU memory
-nblocks = 3
+nblocks = 2
 
 # number of folds for k-fold cross validation
 n_folds = 11
