@@ -136,7 +136,7 @@ def fcn_sherrah2016_regression_and_classifier(input_shape, for_receptive_field=F
     regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same', name='regression_output')(x)
 
     # classification output
-    x = Conv2D(filters=2, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
+    x = Conv2D(filters=1, kernel_size=(32, 32), strides=1, dilation_rate=1, padding='same')(regression_output)
     # x = BatchNormalization(axis=norm_axis)(x)
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
