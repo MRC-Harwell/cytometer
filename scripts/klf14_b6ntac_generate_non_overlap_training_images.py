@@ -18,7 +18,7 @@ import mahotas
 
 DEBUG = False
 
-root_data_dir = os.path.join(home, 'Dropbox/klf14')
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_nooverlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 
