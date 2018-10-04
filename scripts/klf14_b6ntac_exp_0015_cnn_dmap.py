@@ -1,7 +1,7 @@
 '''
 Dmap regression.
 
-This script corrects bug in: klf14_b6ntac_exp_0007_cnn_dmap.py
+This script corrects bug in klf14_b6ntac_exp_0007_cnn_dmap.py (lack of sample_weights for gpu_number > 1)
 '''
 
 # cross-platform home directory
