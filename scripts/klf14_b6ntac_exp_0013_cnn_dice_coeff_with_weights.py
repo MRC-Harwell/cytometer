@@ -247,6 +247,7 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
         tic = datetime.datetime.now()
         parallel_model.fit(train_dataset['im'],
                            {'regression_output': train_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
+                           sample_weight={'regression_output': train_dataset['mask'][..., 0]},
                            validation_data=(test_dataset['im'],
                                             {'regression_output': test_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
                                             {'regression_output': test_dataset['mask'][..., 0]}),
