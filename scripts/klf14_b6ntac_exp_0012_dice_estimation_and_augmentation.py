@@ -20,7 +20,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -70,15 +70,16 @@ dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
 contour_n_folds = len(contour_model_files)
 dmap_n_folds = len(dmap_model_files)
 
-# load k-fold sets that were used to train the models (we assume they are the same for contours and dmaps)
-saved_contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
-with open(saved_contour_model_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-im_file_list = aux['file_list']
-idx_test_all = aux['idx_test_all']
+# list of segmented files
+seg_file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
 
-# correct home directory if we are in a different system than what was used to train the models
-im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
+# list of images
+im_file_list = [seg_file.replace(training_non_overlap_data_dir, training_dir) for seg_file in seg_file_list]
+
+# replace path to the augmented directory, and add prefix 'im_seed_nan_' to filenames
+for i in range(len(im_file_list)):
+    base_path, base_name = os.path.split(im_file_list[i])
+    im_file_list[i] = os.path.join(training_augmented_dir, 'im_seed_nan_' + base_name)
 
 '''Data augmentation parameters
 '''
@@ -103,22 +104,22 @@ dice_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
 
 fold_i = 0
 
-# We want the same datasets that were used for training, because we want to generate training Dice coefficient images
-# for the quality estimation. If we were to compute Dice coeffs on the test data, and then train a CNN with it, we
-# wouldn't have any data left over to validate the Dice estimator
-_, im_train_file_list = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
+# _, im_train_file_list = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
 
 # load datasets.
-train_datasets, _, _ = cytometer.data.load_datasets(im_train_file_list, prefix_from='im',
-                                                    prefix_to=['im', 'lab', 'seg', 'mask'], nblocks=1)
-im_train = train_datasets['im']
-seg_train = train_datasets['seg']
-mask_train = train_datasets['mask']
-lab_train = train_datasets['lab']
-del train_datasets
+# we need to load all images, whether for training or testing, because otherwise
+# ImageDataGenerator is not going to produce the same transformations in
+# klf14_b6ntac_generate_augmented_training_images.py
+datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im',
+                                              prefix_to=['im', 'lab', 'seg', 'mask'], nblocks=1)
+im = datasets['im']
+seg = datasets['seg']
+mask = datasets['mask']
+lab = datasets['lab']
+del datasets
 
 # number of images
-n_im = im_train.shape[0]
+n_im = im.shape[0]
 
 # list of trained model
 contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
@@ -133,94 +134,95 @@ contour_model = keras.models.load_model(contour_model_file)
 dmap_model = keras.models.load_model(dmap_model_file)
 
 # set input layer to size of images
-contour_model = cytometer.models.change_input_size(contour_model, batch_shape=(None,) + im_train.shape[1:])
-dmap_model = cytometer.models.change_input_size(dmap_model, batch_shape=(None,) + im_train.shape[1:])
+contour_model = cytometer.models.change_input_size(contour_model, batch_shape=(None,) + im.shape[1:])
+dmap_model = cytometer.models.change_input_size(dmap_model, batch_shape=(None,) + im.shape[1:])
 
-border_train = lab_train.copy()
-for i in range(lab_train.shape[0]):
+border = lab.copy()
+for i in range(lab.shape[0]):
 
     # remove borders between cells in the lab_train data. For this experiment, we want labels touching each other
-    lab_train[i, :, :, 0] = watershed(image=np.zeros(shape=lab_train[i, :, :, 0].shape, dtype=np.uint8),
-                                      markers=lab_train[i, :, :, 0], watershed_line=False)
+    lab[i, :, :, 0] = watershed(image=np.zeros(shape=lab[i, :, :, 0].shape, dtype=np.uint8),
+                                markers=lab[i, :, :, 0], watershed_line=False)
 
     # extract the borders of all labels
-    border_train[i, :, :, 0] = borders(lab_train[i, :, :, 0])
+    border[i, :, :, 0] = borders(lab[i, :, :, 0])
 
 # change the background label from 1 to 0
-lab_train[lab_train == 1] = 0
+lab[lab == 1] = 0
 
 '''Segmentation and Dice coefficients
 '''
 
 # loop images to compute
-labels_test_qual = np.zeros(shape=im_train.shape[:-1] + (1,), dtype=np.float32)
-for i in range(im_train.shape[0]):
+labels_qual = np.zeros(shape=im.shape[:-1] + (1,), dtype=np.float32)
+for i in range(n_im):
+
+    print('Image ' + str(i) + '/' + str(n_im-1))
 
     # run histology image through network
-    contour_train_pred = contour_model.predict(im_train[i, :, :, :].reshape((1,) + im_train.shape[1:]))
-    dmap_train_pred = dmap_model.predict(im_train[i, :, :, :].reshape((1,) + im_train.shape[1:]))
+    contour_pred = contour_model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
+    dmap_pred = dmap_model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
 
     # cell segmentation
-    labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_train_pred[0, :, :, 0],
-                                                                  contour=contour_train_pred[0, :, :, 1],
+    labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
+                                                                  contour=contour_pred[0, :, :, 1],
                                                                   border_dilation=0)
 
     # plot results of cell segmentation
     if DEBUG:
-
         plt.clf()
         plt.subplot(231)
-        plt.imshow(im_train[i, :, :, :])
+        plt.imshow(im[i, :, :, :])
         plt.title('histology, i = ' + str(i))
         plt.subplot(232)
-        plt.imshow(contour_train_pred[0, :, :, 1])
+        plt.imshow(contour_pred[0, :, :, 1])
         plt.title('predicted contours')
         plt.subplot(233)
-        plt.imshow(dmap_train_pred[0, :, :, 0])
+        plt.imshow(dmap_pred[0, :, :, 0])
         plt.title('predicted dmap')
         plt.subplot(234)
         plt.imshow(labels)
         plt.title('labels')
         plt.subplot(235)
         plt.imshow(labels_borders)
-        plt.title('borders on histology')
         plt.subplot(236)
-        plt.imshow(seg_train[i, :, :, 1])
+        plt.imshow(seg[i, :, :, 1])
+        plt.title('borders on histology')
         plt.title('ground truth borders')
 
     # compute quality measure of estimated labels
     qual = cytometer.utils.segmentation_quality(labels_test=labels,
-                                                labels_ref=lab_train[i, :, :, 0])
+                                                labels_ref=lab[i, :, :, 0])
 
     # colour the estimated labels with their quality
     lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
     lut.fill(np.nan)
     lut[qual['lab_test']] = qual['dice']
-    labels_test_qual[i, :, :, 0] = lut[labels]
+    labels_qual[i, :, :, 0] = lut[labels]
 
     # plot validation of cell segmentation
     if DEBUG:
         plt.clf()
         plt.subplot(221)
-        plt.imshow(im_train[i, :, :, :])
+        plt.imshow(im[i, :, :, :])
         plt.title('histology, i = ' + str(i))
         plt.subplot(222)
-        plt.imshow(border_train[i, :, :, 0])
+        plt.imshow(border[i, :, :, 0])
         plt.title('ground truth labels')
         plt.subplot(223)
         aux = np.zeros(shape=labels_borders.shape + (3,), dtype=np.float32)
-        aux[:, :, 0] = border_train[i, :, :, 0]
+        aux[:, :, 0] = border[i, :, :, 0]
         aux[:, :, 1] = labels_borders
-        aux[:, :, 2] = border_train[i, :, :, 0]
+        aux[:, :, 2] = border[i, :, :, 0]
         plt.imshow(aux)
         plt.title('estimated (green) vs. ground truth (purple)')
         plt.subplot(224)
         aux = np.zeros(shape=labels_borders.shape + (3,), dtype=np.float32)
-        aux[:, :, 0] = labels_test_qual[i, :, :, 0]
-        aux[:, :, 1] = labels_test_qual[i, :, :, 0]
-        aux[:, :, 2] = labels_test_qual[i, :, :, 0]
+        aux[:, :, 0] = labels_qual[i, :, :, 0]
+        aux[:, :, 1] = labels_qual[i, :, :, 0]
+        aux[:, :, 2] = labels_qual[i, :, :, 0]
         aux_r = aux[:, :, 0]
-        aux_r[border_train[i, :, :, 0] == 1.0] = 1.0
+        aux_r[border[i, :, :, 0] == 1.0] = 1.0
         aux[:, :, 0] = aux_r
         aux[:, :, 2] = aux_r
         aux_g = aux[:, :, 1]
@@ -235,17 +237,18 @@ for i in range(im_train.shape[0]):
     dice_file = os.path.join(training_augmented_dir, base_file.replace('im_', 'dice_'))
 
     # save the Dice coefficient labels
-    im_out = labels_test_qual[i, :, :, 0]
+    im_out = labels_qual[i, :, :, 0]
     im_out = Image.fromarray(im_out, mode='F')
     im_out.save(dice_file)
 
 
 # augment Dice images
 for seed in range(augment_factor - 1):
+
     print('* Augmentation round: ' + str(seed + 1) + '/' + str(augment_factor - 1))
 
     # random rotation, flip and scaling of the image
-    labels_test_qual_augmented = dice_datagen.flow(labels_test_qual, seed=seed, shuffle=False, batch_size=n_im).next()
+    labels_qual_augmented = dice_datagen.flow(labels_qual, seed=seed, shuffle=False, batch_size=n_im).next()
 
     if DEBUG:
         i = 0
@@ -263,8 +266,19 @@ for seed in range(augment_factor - 1):
         plt.subplot(311)
         plt.imshow(aux_dataset['im'][0, :, :, :])
         plt.subplot(312)
-        plt.imshow(labels_test_qual_augmented[i, :, :, 0], cmap='Greys_r')
+        plt.imshow(labels_qual_augmented[i, :, :, 0], cmap='Greys_r')
         plt.subplot(313)
-        aux = pystoim.imfuse(aux_dataset['im'][0, :, :, :], labels_test_qual_augmented[i, :, :, 0])
+        aux = pystoim.imfuse(aux_dataset['im'][0, :, :, :], labels_qual_augmented[i, :, :, 0])
         plt.imshow(aux, cmap='Greys_r')
 
+    # filenames for the Dice coefficient augmented files
+    base_file = im_file_list[i]
+    base_path, base_name = os.path.split(base_file)
+    dice_file = os.path.join(training_augmented_dir,
+                             base_name.replace('im_seed_nan_',
+                                               'dice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
+
+    # save the Dice coefficient labels
+    im_out = labels_qual_augmented[i, :, :, 0]
+    im_out = Image.fromarray(im_out, mode='F')
+    im_out.save(dice_file)
