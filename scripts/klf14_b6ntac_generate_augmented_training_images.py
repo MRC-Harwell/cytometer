@@ -3,9 +3,10 @@ scripts/klf14_b6ntac_generate_augmented_training_images.py
 
 Script to generate augmented training data for the klf14_b6ntac experiments.
 
-This script loads histology windows, masks, distance transformations and labels, and generates
-random rotations and scale changes (consistent between corresponding data), and saves them to
-file for later use in training.
+It loads instance segmentation, and computes  distance transformations. It augments
+the training dataset with random rotations, flips and scale changes (consistent between corresponding data).
+
+This script creates dmap, im, mask, seg and lab in klf14_b6ntac_training_augmented.
 """
 
 # cross-platform home directory

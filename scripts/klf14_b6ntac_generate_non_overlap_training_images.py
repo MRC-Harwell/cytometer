@@ -1,3 +1,8 @@
+"""
+Rasterise hand traced contours as polygons, and split overlapping areas between contributing cells using watershed.
+This script creates the data in klf14_b6ntac_training_non_overlap.
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
