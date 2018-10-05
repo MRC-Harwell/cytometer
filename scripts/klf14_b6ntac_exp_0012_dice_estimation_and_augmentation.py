@@ -1,8 +1,8 @@
 '''
-Train a CNN to estimate the quality of the segmentation produced by my algorithm
-(CNN dmap estimation + contour detection + watershed).
+Take the models for fold 0, and segment all 55 images (train+test). Compute Dice coeffs for each segmented cell.
+Augment Dice images to prepare training of classifier.
 
-The quality measure is the Dice coefficient associated to each segmented cell.
+This script creates files dice_kfold_00_seed_XXX_*.tif in klf14_b6ntac_training_augmented.
 '''
 
 # cross-platform home directory
@@ -59,7 +59,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
-saved_dmap_model_basename = 'klf14_b6ntac_exp_0007_cnn_dmap'  # dmap
+saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
 
 contour_model_name = saved_contour_model_basename + '*.h5'
 dmap_model_name = saved_dmap_model_basename + '*.h5'
@@ -125,7 +125,7 @@ n_im = im.shape[0]
 contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
 dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
 
-# select one of the models
+# select the model that corresponds to current fold
 contour_model_file = contour_model_files[fold_i]
 dmap_model_file = dmap_model_files[fold_i]
 
@@ -165,7 +165,7 @@ for i in range(n_im):
 
     # cell segmentation
     labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
-                                                                  contour=contour_pred[0, :, :, 1],
+                                                                  contour=contour_pred[0, :, :, 0],
                                                                   border_dilation=0)
 
     # plot results of cell segmentation
@@ -175,7 +175,7 @@ for i in range(n_im):
         plt.imshow(im[i, :, :, :])
         plt.title('histology, i = ' + str(i))
         plt.subplot(232)
-        plt.imshow(contour_pred[0, :, :, 1])
+        plt.imshow(contour_pred[0, :, :, 0])
         plt.title('predicted contours')
         plt.subplot(233)
         plt.imshow(dmap_pred[0, :, :, 0])
@@ -186,7 +186,7 @@ for i in range(n_im):
         plt.subplot(235)
         plt.imshow(labels_borders)
         plt.subplot(236)
-        plt.imshow(seg[i, :, :, 1])
+        plt.imshow(seg[i, :, :, 0])
         plt.title('borders on histology')
         plt.title('ground truth borders')
 
