@@ -138,7 +138,7 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 '''
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
-saved_dmap_model_basename = 'klf14_b6ntac_exp_0007_cnn_dmap'  # dmap
+saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
 
 contour_model_name = saved_contour_model_basename + '*.h5'
 dmap_model_name = saved_dmap_model_basename + '*.h5'
