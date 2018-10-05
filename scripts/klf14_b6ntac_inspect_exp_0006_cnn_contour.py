@@ -128,7 +128,7 @@ plt.subplot(121)
 plt.imshow(im_test[i, :, :, :])
 plt.title('histology, i = ' + str(i))
 plt.subplot(122)
-plt.imshow(contour_test_pred[0, :, :, 1])
+plt.imshow(contour_test_pred[0, :, :, 0])
 plt.title('predicted contours')
 
 # visualise results
@@ -142,7 +142,7 @@ plt.subplot(121)
 plt.imshow(im_test[i, :, :, :])
 plt.title('histology, i = ' + str(i))
 plt.subplot(122)
-plt.imshow(contour_test_pred[0, :, :, 1])
+plt.imshow(contour_test_pred[0, :, :, 0])
 plt.title('predicted contours')
 
 
