@@ -55,7 +55,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of blocks to split each image into so that training fits into GPU memory
-nblocks = 3
+nblocks = 2
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -127,7 +127,7 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
 
     # dimensionality reduction
-    x = Conv2D(filters=2, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
 
     # classification output
     classification_output = Activation('hard_sigmoid', name='classification_output')(x)
