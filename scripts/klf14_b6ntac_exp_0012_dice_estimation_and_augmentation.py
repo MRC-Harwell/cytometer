@@ -20,14 +20,14 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
 set_session(tf.Session(config=config))
 
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -154,6 +154,8 @@ lab[lab == 1] = 0
 '''
 
 # loop images to compute
+labels = np.zeros(shape=im.shape[:-1] + (1,), dtype=np.int32)
+labels_borders = np.zeros(shape=im.shape[:-1] + (1,), dtype=np.uint8)
 labels_qual = np.zeros(shape=im.shape[:-1] + (1,), dtype=np.float32)
 for i in range(n_im):
 
@@ -164,9 +166,10 @@ for i in range(n_im):
     dmap_pred = dmap_model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
 
     # cell segmentation
-    labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
-                                                                  contour=contour_pred[0, :, :, 0],
-                                                                  border_dilation=0)
+    labels[i, :, :, 0], \
+    labels_borders[i, :, :, 0] = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
+                                                                      contour=contour_pred[0, :, :, 0],
+                                                                      border_dilation=0)
 
     # plot results of cell segmentation
     if DEBUG:
@@ -181,24 +184,24 @@ for i in range(n_im):
         plt.imshow(dmap_pred[0, :, :, 0])
         plt.title('predicted dmap')
         plt.subplot(234)
-        plt.imshow(labels)
+        plt.imshow(labels[i, :, :, 0])
         plt.title('labels')
         plt.subplot(235)
-        plt.imshow(labels_borders)
+        plt.imshow(labels_borders[i, :, :, 0])
+        plt.title('label borders')
         plt.subplot(236)
         plt.imshow(seg[i, :, :, 0])
-        plt.title('borders on histology')
         plt.title('ground truth borders')
 
     # compute quality measure of estimated labels
-    qual = cytometer.utils.segmentation_quality(labels_test=labels,
+    qual = cytometer.utils.segmentation_quality(labels_test=labels[i, :, :, 0],
                                                 labels_ref=lab[i, :, :, 0])
 
     # colour the estimated labels with their quality
     lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
     lut.fill(np.nan)
     lut[qual['lab_test']] = qual['dice']
-    labels_qual[i, :, :, 0] = lut[labels]
+    labels_qual[i, :, :, 0] = lut[labels[i, :, :, 0]]
 
     # plot validation of cell segmentation
     if DEBUG:
@@ -210,14 +213,14 @@ for i in range(n_im):
         plt.imshow(border[i, :, :, 0])
         plt.title('ground truth labels')
         plt.subplot(223)
-        aux = np.zeros(shape=labels_borders.shape + (3,), dtype=np.float32)
+        aux = np.zeros(shape=labels_borders[i, :, :, 0].shape + (3,), dtype=np.float32)
         aux[:, :, 0] = border[i, :, :, 0]
-        aux[:, :, 1] = labels_borders
+        aux[:, :, 1] = labels_borders[i, :, :, 0]
         aux[:, :, 2] = border[i, :, :, 0]
         plt.imshow(aux)
         plt.title('estimated (green) vs. ground truth (purple)')
         plt.subplot(224)
-        aux = np.zeros(shape=labels_borders.shape + (3,), dtype=np.float32)
+        aux = np.zeros(shape=labels_borders[i, :, :, 0].shape + (3,), dtype=np.float32)
         aux[:, :, 0] = labels_qual[i, :, :, 0]
         aux[:, :, 1] = labels_qual[i, :, :, 0]
         aux[:, :, 2] = labels_qual[i, :, :, 0]
@@ -226,21 +229,32 @@ for i in range(n_im):
         aux[:, :, 0] = aux_r
         aux[:, :, 2] = aux_r
         aux_g = aux[:, :, 1]
-        aux_g[labels_borders == 1.0] = 1.0
+        aux_g[labels_borders[i, :, :, 0] == 1.0] = 1.0
         aux[:, :, 1] = aux_g
         plt.imshow(aux, cmap='Greys_r')
         plt.title('Dice coeff')
 
-    # filenames for the Dice coefficient files
+    # filenames for output files
     base_file = im_file_list[i]
     base_path, base_name = os.path.split(base_file)
-    dice_file = os.path.join(training_augmented_dir, base_file.replace('im_',
-                                                                       'dice_kfold_' + str(fold_i).zfill(2) + '_'))
+    predlab_file = os.path.join(training_augmented_dir,
+                                base_file.replace('im_', 'predlab_kfold_' + str(fold_i).zfill(2) + '_'))
+    predseg_file = os.path.join(training_augmented_dir,
+                                base_file.replace('im_', 'predseg_kfold_' + str(fold_i).zfill(2) + '_'))
+    preddice_file = os.path.join(training_augmented_dir,
+                                 base_file.replace('im_', 'preddice_kfold_' + str(fold_i).zfill(2) + '_'))
+
+    # save the predicted labels (one per cell)
+    im_out = Image.fromarray(labels[i, :, :, 0], mode='I')  # int32
+    im_out.save(predlab_file)
+
+    # save the predicted contours
+    im_out = Image.fromarray(labels_borders[i, :, :, 0], mode='L')  # uint8
+    im_out.save(predseg_file)
 
     # save the Dice coefficient labels
-    im_out = labels_qual[i, :, :, 0]
-    im_out = Image.fromarray(im_out, mode='F')
-    im_out.save(dice_file)
+    im_out = Image.fromarray(labels_qual[i, :, :, 0], mode='F')  # float32
+    im_out.save(preddice_file)
 
 
 # augment Dice images
@@ -249,6 +263,8 @@ for seed in range(augment_factor - 1):
     print('* Augmentation round: ' + str(seed + 1) + '/' + str(augment_factor - 1))
 
     # random rotation, flip and scaling of the image
+    labels_augmented = dice_datagen.flow(labels, seed=seed, shuffle=False, batch_size=n_im).next()
+    labels_borders_augmented = dice_datagen.flow(labels_borders, seed=seed, shuffle=False, batch_size=n_im).next()
     labels_qual_augmented = dice_datagen.flow(labels_qual, seed=seed, shuffle=False, batch_size=n_im).next()
 
     if DEBUG:
@@ -264,13 +280,17 @@ for seed in range(augment_factor - 1):
 
         # compare randomly transformed histology to corresponding Dice coefficient
         plt.clf()
-        plt.subplot(311)
+        plt.subplot(321)
         plt.imshow(aux_dataset['im'][0, :, :, :])
-        plt.subplot(312)
+        plt.subplot(322)
         plt.imshow(labels_qual_augmented[i, :, :, 0], cmap='Greys_r')
-        plt.subplot(313)
+        plt.subplot(323)
         aux = pystoim.imfuse(aux_dataset['im'][0, :, :, :], labels_qual_augmented[i, :, :, 0])
         plt.imshow(aux, cmap='Greys_r')
+        plt.subplot(324)
+        plt.imshow(labels_augmented[i, :, :, 0])
+        plt.subplot(325)
+        plt.imshow(labels_borders_augmented[i, :, :, 0])
 
     for i in range(n_im):
 
@@ -279,11 +299,24 @@ for seed in range(augment_factor - 1):
         # filenames for the Dice coefficient augmented files
         base_file = im_file_list[i]
         base_path, base_name = os.path.split(base_file)
-        dice_file = os.path.join(training_augmented_dir,
-                                 base_name.replace('im_seed_nan_',
-                                                   'dice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
+        predlab_file = os.path.join(training_augmented_dir,
+                                    base_name.replace('im_seed_nan_',
+                                                      'predlab_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
+        predseg_file = os.path.join(training_augmented_dir,
+                                    base_name.replace('im_seed_nan_',
+                                                      'predseg_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
+        preddice_file = os.path.join(training_augmented_dir,
+                                     base_name.replace('im_seed_nan_',
+                                                       'preddice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
+
+        # save the predicted labels (one per cell)
+        im_out = Image.fromarray(labels_augmented[i, :, :, 0], mode='I')  # int32
+        im_out.save(predlab_file)
+
+        # save the predicted contours
+        im_out = Image.fromarray(labels_borders_augmented[i, :, :, 0], mode='L')  # uint8
+        im_out.save(predseg_file)
 
         # save the Dice coefficient labels
-        im_out = labels_qual_augmented[i, :, :, 0]
-        im_out = Image.fromarray(im_out, mode='F')
-        im_out.save(dice_file)
+        im_out = Image.fromarray(labels_qual_augmented[i, :, :, 0], mode='F')  # float32
+        im_out.save(preddice_file)
