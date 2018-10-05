@@ -1,3 +1,8 @@
+"""
+Read full .ndpi slides, rough segmentation of tissue areas, random selection of centroids, extract
+1001x1001 windows around centroids
+"""
+
 import os
 import openslide
 import numpy as np

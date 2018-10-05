@@ -1,3 +1,7 @@
+"""
+Statistical analysis of cell areas computed on the hand segmented training data.
+"""
+
 import os
 import glob
 import numpy as np
