@@ -1,11 +1,5 @@
 '''
-Combine the contours estimated:
-* directly with the classification CNN
-* computing normal curvature on dmap estimated with the regression CNN
-
-Extract cells using watershed.
-
-Compute post dmap from estimated segmentation, and compare to estimated dmap.
+Optional: (Inspection only) Segmentation quality measure using Dice coefficient for each segmented cell
 '''
 
 # cross-platform home directory
@@ -58,7 +52,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
-saved_dmap_model_basename = 'klf14_b6ntac_exp_0007_cnn_dmap'  # dmap
+saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
 
 contour_model_name = saved_contour_model_basename + '*.h5'
 dmap_model_name = saved_dmap_model_basename + '*.h5'
@@ -120,7 +114,7 @@ dmap_test_pred = dmap_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.s
 
 # cell segmentation
 labels, labels_borders = cytometer.utils.segment_dmap_contour(dmap_test_pred[0, :, :, 0],
-                                                              contour=contour_test_pred[0, :, :, 1],
+                                                              contour=contour_test_pred[0, :, :, 0],
                                                               border_dilation=0)
 
 # add borders as coloured curves
@@ -140,7 +134,7 @@ plt.subplot(231)
 plt.imshow(im_test[i, :, :, :])
 plt.title('histology, i = ' + str(i))
 plt.subplot(232)
-plt.imshow(contour_test_pred[0, :, :, 1])
+plt.imshow(contour_test_pred[0, :, :, 0])
 plt.title('predicted contours')
 plt.subplot(233)
 plt.imshow(dmap_test_pred[0, :, :, 0])
@@ -152,7 +146,7 @@ plt.subplot(235)
 plt.imshow(labels_borders)
 plt.title('borders on histology')
 plt.subplot(236)
-plt.imshow(seg_test[i, :, :, 1])
+plt.imshow(seg_test[i, :, :, 0])
 plt.title('ground truth borders')
 
 # compute quality measure of estimated labels
