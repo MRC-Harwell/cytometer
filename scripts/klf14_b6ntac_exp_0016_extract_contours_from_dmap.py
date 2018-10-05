@@ -1,3 +1,7 @@
+"""
+Failed experiment trying to invert the distance transformation to obtain the corresponding contours
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
