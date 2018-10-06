@@ -141,7 +141,7 @@ for i, base_file in enumerate(im_file_list):
     im_out.save(mask_file)
 
     # set all contour pixels
-    im_out = seg[i, :, :, 0] * mask[i, :, :, 0]
+    im_out = seg[i, :, :, 0]
     im_out = Image.fromarray(im_out.astype(np.uint32), mode='I')
     im_out.save(seg_file)
 
