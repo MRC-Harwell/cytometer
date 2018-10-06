@@ -49,7 +49,7 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-dice_saved_model_basename = 'klf14_b6ntac_exp_0014_cnn_dice_coeff_no_weights'  # Dice coefficient regression model
+dice_saved_model_basename = 'klf14_b6ntac_exp_0013_cnn_dice_coeff_with_weights'  # Dice coefficient regression model
 
 dice_model_name = dice_saved_model_basename + '*.h5'
 
