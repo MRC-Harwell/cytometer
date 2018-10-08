@@ -31,9 +31,6 @@ import cytometer.data
 import cytometer.models
 import matplotlib.pyplot as plt
 import cv2
-from skimage.future.graph import rag_mean_color
-from skimage.measure import regionprops
-import networkx as nx
 import pysto.imgproc as pystoim
 
 # specify data format as (n, row, col, channel)
@@ -111,20 +108,8 @@ preddice_test_pred = dice_model.predict(im_test[i, :, :, :].reshape((1,) + im_te
 """Split segmentation into multiple masked segmentations where the network can only see one cell at a time
 """
 
-# simplify notation
-labels = predlab_test[i, :, :, 0]
 
-# compute the center of mass for each labelled region. E.g. centroids_xy[53, :] is the centroid for label 53.
-labels_prop = regionprops(labels, coordinates='rc')
-centroids_xy = {}
-for lp in labels_prop:
-    centroids_xy[lp['label']] = lp['centroid'][::-1]
 
-# compute Region Adjacency Graph (RAG) for labels. Note that we don't care about the mean colour difference
-# between regions. We only care about whether labels are adjacent to others or not
-rag = rag_mean_color(image=labels, labels=labels)
-
-# colour the nodes in the graph, so that the effective receptive field can only see one cell at a time
 
 # plot results
 plt.clf()
@@ -142,4 +127,3 @@ plt.subplot(325)
 plt.imshow(predlab_test[i, :, :, 0])
 nx.draw(rag, pos=centroids_xy, node_size=30)
 plt.title('cell adjacency graph')
-
