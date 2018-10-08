@@ -5,7 +5,10 @@ from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
 from skimage import measure
 from skimage.morphology import watershed
+from skimage.future.graph import rag_mean_color
+from skimage.measure import regionprops
 from mahotas.labeled import borders
+import networkx as nx
 
 
 DEBUG = False
@@ -285,3 +288,96 @@ def segmentation_quality(labels_ref, labels_test):
     out['lab_ref'] = labels_ref_correspond
     out['dice'] = dice
     return out
+
+
+# simplify notation
+labels = predlab_test[i, :, :, 0]
+def colour_labels_with_receptive_field(labels, receptive_field):
+
+    # receptive_field = (width/cols, height/rows)
+    if np.isscalar(receptive_field):
+        receptive_field = (receptive_field, receptive_field)
+    if not isinstance(receptive_field, tuple):
+        raise TypeError('receptive_field must be a scalar or a tuple')
+
+    # make receptive_field (height/rows, width/cols)
+    receptive_field = receptive_field[::-1]
+
+    # half-sizes of the receptive field rectangle
+    if receptive_field[0] % 2:
+        receptive_field_half = ((receptive_field[0] - 1) / 2,)
+    else:
+        receptive_field_half = (receptive_field[0] / 2,)
+    if receptive_field[1] % 2:
+        receptive_field_half += ((receptive_field[1] - 1) / 2,)
+    else:
+        receptive_field_half += (receptive_field[1] / 2, )
+
+    # compute the center of mass for each labelled region. E.g. centroids_rc[53, :] is the centroid for label 53.
+    # Note: if the centroid is in the center of pixel (row=3, col=6), regionprops gives the centroid as
+    # index (3.0, 6.0), instead of the physical centre (3.5, 6.5)
+    labels_prop = regionprops(labels, coordinates='rc')
+    centroids_rc = {}
+    for lp in labels_prop:
+        centroids_rc[lp['label']] = lp['centroid']
+
+    # compute Region Adjacency Graph (RAG) for labels. Note that we don't care about the mean colour difference
+    # between regions. We only care about whether labels are adjacent to others or not
+    rag = rag_mean_color(image=labels, labels=labels)
+
+    # initially, we colour all nodes as -1 (no colour)
+    nx.set_node_attributes(rag, -1, 'colour')
+
+    # initialize list of subset nodes that can be considered for colouring.
+    # we start with only the first node in the list of nodes in the graph
+    v_candidates = set([list(rag)[0]])
+
+    while len(v_candidates) > 0:  # iterate the algorithm until all nodes are labelled
+
+        # we are going to colour the first candidate in the list
+        v = v_candidates.pop()
+
+        # add uncoloured neighbours to the list of candidates for the next iteration
+        for x in rag[v]:
+            if 'colour' not in rag.nodes[x]:
+                v_candidates.add(x)
+
+        # (row, col) coordinates of the current vertex
+        c = centroids_rc[v]
+
+        # rectangle corners with receptive_field size around current node. Note that if the rectangle goes
+        # outside of the image, we have to crop it to avoid an index error
+        rmin = int(max(0.0, np.round(c[0] - receptive_field_half[0])))
+        rmax = int(min(labels.shape[0] - 1.0, np.round(c[0] + receptive_field_half[0])))
+        cmin = int(max(0.0, np.round(c[1] - receptive_field_half[1])))
+        cmax = int(min(labels.shape[1] - 1.0, np.round(c[1] + receptive_field_half[1])))
+
+        # extract labels that will interfere with the current vertex at training time
+        v_interfere = np.unique(labels[rmin:rmax+1, cmin:cmax+1])
+
+        # get the colours of the interfering labels (if they have any)
+        colour_interfere = nx.get_node_attributes(rag, 'colour')
+        colour_interfere = [colour_interfere[x] for x in v_interfere]
+
+        
+
+
+        if DEBUG:
+            centroids_xy = centroids_rc
+            for n in centroids_rc.keys():
+                centroids_xy[n] = centroids_rc[n][::-1]
+
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(labels)
+            plt.title('labels')
+            plt.subplot(222)
+            plt.imshow(labels)
+            nx.draw(rag, pos=centroids_xy, node_size=30)
+            plt.title('label adjacency graph')
+            plt.subplot(223)
+            plt.imshow(labels)
+            plt.plot(c[1], c[0], 'or')
+            plt.plot([cmin, cmax, cmax, cmin, cmin], [rmin, rmin, rmax, rmax, rmin], 'r')
+            plt.title('receptive field')
+
