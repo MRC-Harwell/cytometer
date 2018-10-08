@@ -49,7 +49,7 @@ conda install -y matplotlib pillow
 conda install -y scikit-image scikit-learn h5py 
 conda install -y nose pytest
 pip install opencv-python pysto openslide-python
-pip install tifffile mahotas
+pip install tifffile mahotas networkx
 conda install -y pandas
 
 ########################################################################
