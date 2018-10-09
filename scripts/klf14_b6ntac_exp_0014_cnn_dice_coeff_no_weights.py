@@ -181,11 +181,11 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
     # load the train and test data: im, seg, dmap and mask data
     train_dataset, train_file_list, train_shuffle_idx = \
         cytometer.data.load_datasets(im_train_file_list, prefix_from='im',
-                                     prefix_to=['im', 'mask', 'dice_kfold_' + str(i_fold).zfill(2)],
+                                     prefix_to=['im', 'mask', 'preddice_kfold_' + str(i_fold).zfill(2)],
                                      nblocks=nblocks, shuffle_seed=i_fold)
     test_dataset, test_file_list, test_shuffle_idx = \
         cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                     prefix_to=['im', 'mask', 'dice_kfold_' + str(i_fold).zfill(2)],
+                                     prefix_to=['im', 'mask', 'preddice_kfold_' + str(i_fold).zfill(2)],
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
     # remove training data where the mask has very few valid pixels
@@ -245,9 +245,9 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
         # train model
         tic = datetime.datetime.now()
         parallel_model.fit(train_dataset['im'],
-                           {'regression_output': train_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
+                           {'regression_output': train_dataset['preddice_kfold_' + str(i_fold).zfill(2)]},
                            validation_data=(test_dataset['im'],
-                                            {'regression_output': test_dataset['dice_kfold_' + str(i_fold).zfill(2)]}),
+                                            {'regression_output': test_dataset['preddice_kfold_' + str(i_fold).zfill(2)]}),
                            batch_size=10, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -267,9 +267,9 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
         # train model
         tic = datetime.datetime.now()
         model.fit(train_dataset['im'],
-                  {'regression_output': train_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
+                  {'regression_output': train_dataset['preddice_kfold_' + str(i_fold).zfill(2)]},
                   validation_data=(test_dataset['im'],
-                                   {'regression_output': test_dataset['dice_kfold_' + str(i_fold).zfill(2)]}),
+                                   {'regression_output': test_dataset['preddice_kfold_' + str(i_fold).zfill(2)]}),
                   batch_size=10, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
