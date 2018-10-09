@@ -13,7 +13,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -112,21 +112,17 @@ preddice_test_pred = dice_model.predict(im_test[i, :, :, :].reshape((1,) + im_te
 """Split segmentation into multiple masked segmentations where the network can only see one cell at a time
 """
 
-
-
-
-# plot results
-
 # compute Region Adjacency Graph (RAG) for labels
 rag = rag_mean_color(image=predlab_test[i, :, :, 0], labels=predlab_test[i, :, :, 0])
 labels_prop = regionprops(predlab_test[i, :, :, 0], coordinates='rc')
 centroids_rc = {}
 for lp in labels_prop:
     centroids_rc[lp['label']] = lp['centroid']
-centroids_xy = centroids_rc
+centroids_xy = centroids_rc.copy()
 for n in centroids_rc.keys():
     centroids_xy[n] = centroids_rc[n][::-1]
 
+# plot results
 plt.clf()
 plt.subplot(321)
 plt.imshow(im_test[i, :, :, :])
@@ -144,7 +140,7 @@ nx.draw(rag, pos=centroids_xy, node_size=30)
 plt.title('cell adjacency graph')
 
 labels = predlab_test[i, :, :, 0]
-receptive_field = 162
+receptive_field = (162, 162)
 
 # colour labels
 colours, coloured_labels = cytometer.utils.colour_labels_with_receptive_field(labels, receptive_field)
