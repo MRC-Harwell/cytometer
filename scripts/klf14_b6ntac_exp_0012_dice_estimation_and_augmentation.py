@@ -27,7 +27,7 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
+config.gpu_options.per_process_gpu_memory_fraction = 0.95
 set_session(tf.Session(config=config))
 
 # Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -310,11 +310,11 @@ for seed in range(augment_factor - 1):
                                                        'preddice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
 
         # save the predicted labels (one per cell)
-        im_out = Image.fromarray(labels_augmented[i, :, :, 0], mode='I')  # int32
+        im_out = Image.fromarray(labels_augmented[i, :, :, 0].astype(np.int32), mode='I')  # int32
         im_out.save(predlab_file)
 
         # save the predicted contours
-        im_out = Image.fromarray(labels_borders_augmented[i, :, :, 0], mode='L')  # uint8
+        im_out = Image.fromarray(np.round(labels_borders_augmented[i, :, :, 0]).astype(np.uint8), mode='L')  # uint8
         im_out.save(predseg_file)
 
         # save the Dice coefficient labels
