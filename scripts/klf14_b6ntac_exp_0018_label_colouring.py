@@ -13,7 +13,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -29,9 +29,13 @@ import keras
 import keras.backend as K
 import cytometer.data
 import cytometer.models
+import cytometer.utils
 import matplotlib.pyplot as plt
 import cv2
 import pysto.imgproc as pystoim
+from skimage.future.graph import rag_mean_color
+from skimage.measure import regionprops
+import networkx as nx
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -112,6 +116,17 @@ preddice_test_pred = dice_model.predict(im_test[i, :, :, :].reshape((1,) + im_te
 
 
 # plot results
+
+# compute Region Adjacency Graph (RAG) for labels
+rag = rag_mean_color(image=predlab_test[i, :, :, 0], labels=predlab_test[i, :, :, 0])
+labels_prop = regionprops(predlab_test[i, :, :, 0], coordinates='rc')
+centroids_rc = {}
+for lp in labels_prop:
+    centroids_rc[lp['label']] = lp['centroid']
+centroids_xy = centroids_rc
+for n in centroids_rc.keys():
+    centroids_xy[n] = centroids_rc[n][::-1]
+
 plt.clf()
 plt.subplot(321)
 plt.imshow(im_test[i, :, :, :])
@@ -127,3 +142,36 @@ plt.subplot(325)
 plt.imshow(predlab_test[i, :, :, 0])
 nx.draw(rag, pos=centroids_xy, node_size=30)
 plt.title('cell adjacency graph')
+
+labels = predlab_test[i, :, :, 0]
+receptive_field = 162
+
+# colour labels
+colours, coloured_labels = cytometer.utils.colour_labels_with_receptive_field(labels, receptive_field)
+
+plt.clf()
+plt.subplot(221)
+plt.imshow(labels)
+plt.title('labels')
+plt.subplot(222)
+plt.imshow(labels)
+nx.draw(rag, pos=centroids_xy, node_size=30)
+plt.title('label adjacency graph')
+plt.subplot(223)
+plt.imshow(coloured_labels, cmap='tab10')
+c = centroids_rc[38]
+plt.plot(c[1], c[0], 'ok')
+if receptive_field[0] % 2:
+    receptive_field_half = ((receptive_field[0] - 1) / 2,)
+else:
+    receptive_field_half = (receptive_field[0] / 2,)
+if receptive_field[1] % 2:
+    receptive_field_half += ((receptive_field[1] - 1) / 2,)
+else:
+    receptive_field_half += (receptive_field[1] / 2,)
+rmin = int(max(0.0, np.round(c[0] - receptive_field_half[0])))
+rmax = int(min(labels.shape[0] - 1.0, np.round(c[0] + receptive_field_half[0])))
+cmin = int(max(0.0, np.round(c[1] - receptive_field_half[1])))
+cmax = int(min(labels.shape[1] - 1.0, np.round(c[1] + receptive_field_half[1])))
+plt.plot([cmin, cmax, cmax, cmin, cmin], [rmin, rmin, rmax, rmax, rmin], 'k')
+plt.title('coloured labels')
