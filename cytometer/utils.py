@@ -290,9 +290,22 @@ def segmentation_quality(labels_ref, labels_test):
     return out
 
 
-# simplify notation
-labels = predlab_test[i, :, :, 0]
 def colour_labels_with_receptive_field(labels, receptive_field):
+    """
+    Take a segmentation where each object has a different label, and colour them with a distance constraint:
+
+    Let c(i) be the center of mass of label i that we have assigned colour k. If we draw a rectangle of size
+    receptive_field around c(i), the only object with colour k within the rectangle is i.
+
+    :param labels: 2D np.ndarray that describes a segmentation. All pixels that correspond to the same object have
+    the same label.
+    :param receptive_field: (width, height) tuple with the size of the receptive field in pixels. If
+    receptive_field is a scalar, then it's used for both the width and height.
+    :return: colours, coloured_labels:
+
+    colours is a dictionary with pairs {label: colour}.
+    coloured_labels: np.ndarray of the same size as labels, with the labels replaced by colours.
+    """
 
     # receptive_field = (width/cols, height/rows)
     if np.isscalar(receptive_field):
@@ -339,7 +352,7 @@ def colour_labels_with_receptive_field(labels, receptive_field):
 
         # add uncoloured neighbours to the list of candidates for the next iteration
         for x in rag[v]:
-            if 'colour' not in rag.nodes[x]:
+            if rag.nodes[x]['colour'] == -1:
                 v_candidates.add(x)
 
         # (row, col) coordinates of the current vertex
@@ -353,17 +366,33 @@ def colour_labels_with_receptive_field(labels, receptive_field):
         cmax = int(min(labels.shape[1] - 1.0, np.round(c[1] + receptive_field_half[1])))
 
         # extract labels that will interfere with the current vertex at training time
-        v_interfere = np.unique(labels[rmin:rmax+1, cmin:cmax+1])
+        v_interference = np.unique(labels[rmin:rmax+1, cmin:cmax+1])
 
         # get the colours of the interfering labels (if they have any)
-        colour_interfere = nx.get_node_attributes(rag, 'colour')
-        colour_interfere = [colour_interfere[x] for x in v_interfere]
+        colour_interference = nx.get_node_attributes(rag, 'colour')
+        colour_interference = [colour_interference[x] for x in v_interference]
 
-        
+        # remove -1 from the list of colours
+        colour_interference = np.array(colour_interference)
+        colour_interference = colour_interference[colour_interference != -1]
 
+        # assign the lowest possible colour given the existing colours
+        if len(colour_interference) == 0:  # no colours assigned to neighbours
+            nx.set_node_attributes(rag, {v: 0}, 'colour')
+        else:
+            # list of reusable colours between 0 and the highest colour
+            max_colour = np.max(colour_interference)
+            recyclable_colours = list(set(range(max_colour + 1)) - set(colour_interference))
+
+            if len(recyclable_colours) == 0:
+                # no recyclable colours, so we have to create a new one
+                nx.set_node_attributes(rag, {v: max_colour + 1}, 'colour')
+            else:
+                # we recycle the lowest colour index for the current node
+                nx.set_node_attributes(rag, {v: np.min(recyclable_colours)}, 'colour')
 
         if DEBUG:
-            centroids_xy = centroids_rc
+            centroids_xy = centroids_rc.copy()
             for n in centroids_rc.keys():
                 centroids_xy[n] = centroids_rc[n][::-1]
 
@@ -381,3 +410,32 @@ def colour_labels_with_receptive_field(labels, receptive_field):
             plt.plot([cmin, cmax, cmax, cmin, cmin], [rmin, rmin, rmax, rmax, rmin], 'r')
             plt.title('receptive field')
 
+    # list of coloured nodes
+    colours = nx.get_node_attributes(rag, 'colour')
+
+    # transfer colours to labels image
+    coloured_labels = labels.copy()
+    for lab in colours.keys():
+        coloured_labels[coloured_labels == lab] = colours[lab]
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(labels)
+        plt.title('labels')
+        plt.subplot(222)
+        plt.imshow(labels)
+        nx.draw(rag, pos=centroids_xy, node_size=30)
+        plt.title('label adjacency graph')
+        plt.subplot(223)
+        plt.imshow(coloured_labels, cmap='tab10')
+        c = centroids_rc[38]
+        plt.plot(c[1], c[0], 'ok')
+        rmin = int(max(0.0, np.round(c[0] - receptive_field_half[0])))
+        rmax = int(min(labels.shape[0] - 1.0, np.round(c[0] + receptive_field_half[0])))
+        cmin = int(max(0.0, np.round(c[1] - receptive_field_half[1])))
+        cmax = int(min(labels.shape[1] - 1.0, np.round(c[1] + receptive_field_half[1])))
+        plt.plot([cmin, cmax, cmax, cmin, cmin], [rmin, rmin, rmax, rmax, rmin], 'k')
+        plt.title('coloured labels')
+
+    return colours, coloured_labels
