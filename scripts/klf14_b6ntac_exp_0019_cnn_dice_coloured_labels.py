@@ -45,7 +45,7 @@ from keras.utils import multi_gpu_model
 
 import cytometer.data
 import cytometer.model_checkpoint_parallel
-import random
+import cytometer.utils
 import tensorflow as tf
 
 # # limit GPU memory used
@@ -223,6 +223,12 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
 
     '''Colour the labels to create disjoint training datasets'''
 
+    for i in range(train_dataset['im'].shape[0]):
+        print('i = ' + str(i))
+        _, train_dataset['predcolour_kfold_' + str(i_fold).zfill(2)] = \
+            cytometer.utils.colour_labels_with_receptive_field(
+            labels=train_dataset['predlab_kfold_' + str(i_fold).zfill(2)][i, :, :, 0],
+            receptive_field=(162, 162))
 
 
     '''Convolutional neural network training
