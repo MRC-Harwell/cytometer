@@ -313,6 +313,10 @@ def colour_labels_with_receptive_field(labels, receptive_field):
     if not isinstance(receptive_field, tuple):
         raise TypeError('receptive_field must be a scalar or a tuple')
 
+    # constant for clearer nomenclature
+    no_colour = 0
+    background = 0
+
     # make receptive_field (height/rows, width/cols)
     receptive_field = receptive_field[::-1]
 
@@ -338,8 +342,12 @@ def colour_labels_with_receptive_field(labels, receptive_field):
     # between regions. We only care about whether labels are adjacent to others or not
     rag = rag_mean_color(image=labels, labels=labels)
 
-    # initially, we colour all nodes as -1 (no colour)
-    nx.set_node_attributes(rag, -1, 'colour')
+    # node 0 corresponds to the background, and it's ignored in terms of colouring
+    if rag.has_node(background):
+        rag.remove_node(background)
+
+    # initially, we colour all nodes as 0 (no colour)
+    nx.set_node_attributes(rag, no_colour, 'colour')
 
     # initialize list of subset nodes that can be considered for colouring.
     # we start with only the first node in the list of nodes in the graph
@@ -352,7 +360,7 @@ def colour_labels_with_receptive_field(labels, receptive_field):
 
         # add uncoloured neighbours to the list of candidates for the next iteration
         for x in rag[v]:
-            if rag.nodes[x]['colour'] == -1:
+            if rag.nodes[x]['colour'] == no_colour:
                 v_candidates.add(x)
 
         # (row, col) coordinates of the current vertex
@@ -368,21 +376,24 @@ def colour_labels_with_receptive_field(labels, receptive_field):
         # extract labels that will interfere with the current vertex at training time
         v_interference = np.unique(labels[rmin:rmax+1, cmin:cmax+1])
 
+        # ignore background pixels (label=0)
+        v_interference = v_interference[v_interference != background]
+
         # get the colours of the interfering labels (if they have any)
         colour_interference = nx.get_node_attributes(rag, 'colour')
         colour_interference = [colour_interference[x] for x in v_interference]
 
-        # remove -1 from the list of colours
+        # remove no_colour from the list of colours
         colour_interference = np.array(colour_interference)
-        colour_interference = colour_interference[colour_interference != -1]
+        colour_interference = colour_interference[colour_interference != no_colour]
 
         # assign the lowest possible colour given the existing colours
         if len(colour_interference) == 0:  # no colours assigned to neighbours
-            nx.set_node_attributes(rag, {v: 0}, 'colour')
+            nx.set_node_attributes(rag, {v: 1}, 'colour')
         else:
-            # list of reusable colours between 0 and the highest colour
+            # list of reusable colours between 1 and the highest colour
             max_colour = np.max(colour_interference)
-            recyclable_colours = list(set(range(max_colour + 1)) - set(colour_interference))
+            recyclable_colours = list(set(range(1, max_colour + 1)) - set(colour_interference))
 
             if len(recyclable_colours) == 0:
                 # no recyclable colours, so we have to create a new one
@@ -392,8 +403,8 @@ def colour_labels_with_receptive_field(labels, receptive_field):
                 nx.set_node_attributes(rag, {v: np.min(recyclable_colours)}, 'colour')
 
         if DEBUG:
-            centroids_xy = centroids_rc.copy()
-            for n in centroids_rc.keys():
+            centroids_xy = {}
+            for n in rag.nodes():
                 centroids_xy[n] = centroids_rc[n][::-1]
 
             plt.clf()
@@ -416,7 +427,7 @@ def colour_labels_with_receptive_field(labels, receptive_field):
     # transfer colours to labels image
     coloured_labels = labels.copy()
     for lab in colours.keys():
-        coloured_labels[coloured_labels == lab] = colours[lab]
+        coloured_labels[labels == lab] = colours[lab]
 
     if DEBUG:
         plt.clf()
@@ -428,7 +439,7 @@ def colour_labels_with_receptive_field(labels, receptive_field):
         nx.draw(rag, pos=centroids_xy, node_size=30)
         plt.title('label adjacency graph')
         plt.subplot(223)
-        plt.imshow(coloured_labels, cmap='tab10')
+        plt.imshow(coloured_labels, cmap='tab20')
         c = centroids_rc[38]
         plt.plot(c[1], c[0], 'ok')
         rmin = int(max(0.0, np.round(c[0] - receptive_field_half[0])))
