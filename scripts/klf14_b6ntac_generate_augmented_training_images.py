@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import cv2
 import random
-from skimage.transform import warp, SimilarityTransform, AffineTransform
+from skimage.transform import warp
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
