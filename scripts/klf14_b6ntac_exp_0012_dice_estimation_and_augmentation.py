@@ -42,6 +42,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from skimage.morphology import watershed
 from mahotas.labeled import borders
+from skimage.transform import warp
+
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -87,24 +89,10 @@ for i in range(len(im_file_list)):
 # data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
 augment_factor = 10
 
-# we create two instances with the same arguments
-data_gen_args = dict(
-    rotation_range=90,     # randomly rotate images up to 90 degrees
-    fill_mode="constant",  # fill points outside boundaries with zeros
-    cval=0,                #
-    zoom_range=.1,         # [1-zoom_range, 1+zoom_range]
-    horizontal_flip=True,  # randomly flip images
-    vertical_flip=True     # randomly flip images
-)
-
-dice_datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args)
-
 '''Load data 
 '''
 
 fold_i = 0
-
-# _, im_train_file_list = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
 
 # load datasets.
 # we need to load all images, whether for training or testing, because otherwise
@@ -166,10 +154,10 @@ for i in range(n_im):
     dmap_pred = dmap_model.predict(im[i, :, :, :].reshape((1,) + im.shape[1:]))
 
     # cell segmentation
-    labels[i, :, :, 0], \
-    labels_borders[i, :, :, 0] = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
-                                                                      contour=contour_pred[0, :, :, 0],
-                                                                      border_dilation=0)
+    labels[i, :, :, 0], labels_borders[i, :, :, 0] \
+        = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
+                                               contour=contour_pred[0, :, :, 0],
+                                               border_dilation=0)
 
     # plot results of cell segmentation
     if DEBUG:
@@ -262,43 +250,63 @@ for seed in range(augment_factor - 1):
 
     print('* Augmentation round: ' + str(seed + 1) + '/' + str(augment_factor - 1))
 
-    # random rotation, flip and scaling of the image
-    labels_augmented = dice_datagen.flow(labels, seed=seed, shuffle=False, batch_size=n_im).next()
-    labels_borders_augmented = dice_datagen.flow(labels_borders, seed=seed, shuffle=False, batch_size=n_im).next()
-    labels_qual_augmented = dice_datagen.flow(labels_qual, seed=seed, shuffle=False, batch_size=n_im).next()
-
-    if DEBUG:
-        i = 0
-
-        # file name of the histology corresponding to the random transformation of the Dice coefficient image
-        base_file = im_file_list[i]
-        base_path, base_name = os.path.split(base_file)
-        im_file = os.path.join(training_augmented_dir, base_file.replace('seed_nan', 'seed_' + str(seed).zfill(3)))
-
-        # load histology
-        aux_dataset, _, _ = cytometer.data.load_datasets([im_file], prefix_from='im', prefix_to=['im'], nblocks=1)
-
-        # compare randomly transformed histology to corresponding Dice coefficient
-        plt.clf()
-        plt.subplot(321)
-        plt.imshow(aux_dataset['im'][0, :, :, :])
-        plt.subplot(322)
-        plt.imshow(labels_qual_augmented[i, :, :, 0], cmap='Greys_r')
-        plt.subplot(323)
-        aux = pystoim.imfuse(aux_dataset['im'][0, :, :, :], labels_qual_augmented[i, :, :, 0])
-        plt.imshow(aux, cmap='Greys_r')
-        plt.subplot(324)
-        plt.imshow(labels_augmented[i, :, :, 0])
-        plt.subplot(325)
-        plt.imshow(labels_borders_augmented[i, :, :, 0])
-
     for i in range(n_im):
 
         print('** Image ' + str(i) + '/' + str(n_im - 1))
 
-        # filenames for the Dice coefficient augmented files
+        # file name of the histology corresponding to the random transformation of the Dice coefficient image
         base_file = im_file_list[i]
         base_path, base_name = os.path.split(base_file)
+        transform_file = os.path.join(base_path, base_name.replace('im_', 'transform_')
+                                      .replace('.tif', '.pickle').replace('seed_nan', 'seed_' + str(seed).zfill(3)))
+        transform = pickle.load(open(transform_file, 'br'))
+
+        # convert transform to skimage format
+        transform_skimage = cytometer.utils.keras2skimage_transform(transform=transform, shape=im.shape[1:3])
+
+        # apply transform to reference images
+        labels_augmented = warp(labels[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
+        labels_borders_augmented = warp(labels_borders[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
+        labels_qual_augmented = warp(labels_qual[i, :, :, 0], transform_skimage.inverse, order=1, preserve_range=True)
+
+        # apply flips
+        if transform['flip_horizontal'] == 1:
+            labels_augmented = labels_augmented[:, ::-1]
+            labels_borders_augmented = labels_borders_augmented[:, ::-1]
+            labels_qual_augmented = labels_qual_augmented[:, ::-1]
+        if transform['flip_vertical'] == 1:
+            labels_augmented = labels_augmented[::-1, :]
+            labels_borders_augmented = labels_borders_augmented[::-1, :]
+            labels_qual_augmented = labels_qual_augmented[::-1, :]
+
+        # convert to types for display and save to file
+        labels_augmented = labels_augmented.astype(np.int32)
+        labels_borders_augmented = labels_borders_augmented.astype(np.uint8)
+        labels_qual_augmented = labels_qual_augmented.astype(np.float32)
+
+        if DEBUG:
+
+            # file name of the histology corresponding to the random transformation of the Dice coefficient image
+            im_file_augmented = os.path.join(training_augmented_dir, base_file.replace('seed_nan', 'seed_' + str(seed).zfill(3)))
+
+            # load histology
+            aux_dataset, _, _ = cytometer.data.load_datasets([im_file_augmented], prefix_from='im', prefix_to=['im'], nblocks=1)
+
+            # compare randomly transformed histology to corresponding Dice coefficient
+            plt.clf()
+            plt.subplot(321)
+            plt.imshow(aux_dataset['im'][0, :, :, :])
+            plt.subplot(322)
+            plt.imshow(labels_qual_augmented, cmap='Greys_r')
+            plt.subplot(323)
+            aux = pystoim.imfuse(aux_dataset['im'][0, :, :, :], labels_qual_augmented)
+            plt.imshow(aux, cmap='Greys_r')
+            plt.subplot(324)
+            plt.imshow(labels_augmented)
+            plt.subplot(325)
+            plt.imshow(labels_borders_augmented)
+
+        # filenames for the Dice coefficient augmented files
         predlab_file = os.path.join(training_augmented_dir,
                                     base_name.replace('im_seed_nan_',
                                                       'predlab_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
@@ -310,13 +318,13 @@ for seed in range(augment_factor - 1):
                                                        'preddice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
 
         # save the predicted labels (one per cell)
-        im_out = Image.fromarray(labels_augmented[i, :, :, 0].astype(np.int32), mode='I')  # int32
+        im_out = Image.fromarray(labels_augmented.astype(np.int32), mode='I')  # int32
         im_out.save(predlab_file)
 
         # save the predicted contours
-        im_out = Image.fromarray(np.round(labels_borders_augmented[i, :, :, 0]).astype(np.uint8), mode='L')  # uint8
+        im_out = Image.fromarray(labels_borders_augmented.astype(np.uint8), mode='L')  # uint8
         im_out.save(predseg_file)
 
         # save the Dice coefficient labels
-        im_out = Image.fromarray(labels_qual_augmented[i, :, :, 0], mode='F')  # float32
+        im_out = Image.fromarray(labels_qual_augmented.astype(np.float32), mode='F')  # float32
         im_out.save(preddice_file)
