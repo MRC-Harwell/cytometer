@@ -43,10 +43,13 @@ from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
 
+from receptivefield.keras import KerasReceptiveField
+
 import cytometer.data
 import cytometer.model_checkpoint_parallel
 import cytometer.utils
 import tensorflow as tf
+from skimage.measure import regionprops
 
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
@@ -84,6 +87,41 @@ if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
     experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
+
+'''Load labels to evaluate what input size we need 
+'''
+
+saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
+
+# load list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
+aux = pickle.load(open(contour_model_kfold_filename, 'rb'))
+im_orig_file_list = aux['file_list']
+
+# correct home directory if we are in a different system than what was used to train the models
+im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, '/users/rittscher/rcasero', home,
+                                                         check_isfile=True)
+
+# load the train and test data: im, seg, dmap and mask data
+dataset, _, _ = cytometer.data.load_datasets(im_orig_file_list, prefix_from='im', prefix_to=['lab'], nblocks=nblocks)
+
+# get the bounding box size of each cell
+bbox_len = []
+for i in range(dataset['lab'].shape[0]):
+    props = regionprops(dataset['lab'][i, :, :, 0])
+    for j in range(len(props)):
+        if props[j]['label'] > 1:
+            bbox = props[j]['bbox']
+            bbox_len.append(bbox[3] - bbox[1])
+            bbox_len.append(bbox[2] - bbox[0])
+
+print('Maximum box size: ' + str(np.max(bbox_len)))
+
+# plot box size values
+plt.clf()
+plt.hist(bbox_len)
+plt.xlabel('Box size', fontsize=18)
+plt.ylabel('Count', fontsize=18)
 
 '''CNN classifier to estimate Dice coefficient
 '''
@@ -133,10 +171,30 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
     # regression output
     x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
-    regression_output = Activation('hard_sigmoid', name='regression_output')(x)
+    if for_receptive_field:
+        regression_output = Activation('linear', name='regression_output')(x)
+    else:
+        regression_output = Activation('hard_sigmoid', name='regression_output')(x)
 
     return Model(inputs=input, outputs=[regression_output])
 
+'''Estimate the effective receptive field pre-training
+'''
+
+# estimate receptive field of the model
+def model_build_func(input_shape):
+    model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
+    return model
+
+rf = KerasReceptiveField(model_build_func, init_weights=True)
+
+rf_params = rf.compute(
+    input_shape=(500, 500, 3),
+    input_layer='input_image',
+    output_layers=['regression_output'])
+print(rf_params)
+
+print('Effective receptive field: ' + str(rf._rf_params[0].size))
 
 '''Models that were used to generate the segmentations
 '''
