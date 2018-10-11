@@ -186,12 +186,7 @@ for seed in range(augment_factor - 1):
         print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
 
         # convert transform from keras to skimage format
-        transform_skimage_center = SimilarityTransform(translation=(im.shape[2] / 2, im.shape[1] / 2))
-        transform_skimage_center_inv = SimilarityTransform(translation=(-im.shape[2] / 2, -im.shape[1] / 2))
-        transform_skimage_affine = AffineTransform(matrix=None, scale=(transform[i]['zx'], transform[i]['zy']),
-                                                   rotation=transform[i]['theta'] / 180.0 * np.pi, shear=None,
-                                                   translation=None)
-        transform_skimage = transform_skimage_center_inv + (transform_skimage_affine + transform_skimage_center)
+        transform_skimage = cytometer.utils.keras2skimage_transform(transform[i], shape=im.shape[1:3])
 
         # apply affine transformation
         im_augmented = warp(im[i, :, :, :], transform_skimage.inverse, order=1, preserve_range=True)
