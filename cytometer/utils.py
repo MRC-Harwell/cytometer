@@ -9,6 +9,7 @@ from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
 from mahotas.labeled import borders
 import networkx as nx
+from skimage.transform import SimilarityTransform, AffineTransform
 
 
 DEBUG = False
@@ -450,3 +451,23 @@ def colour_labels_with_receptive_field(labels, receptive_field):
         plt.title('coloured labels')
 
     return colours, coloured_labels
+
+
+def keras2skimage_transform(transform, shape):
+    """
+    Convert an affine transform from keras to skimage format. This can then be used to apply a transformation
+    to an image with skimage.transform.warp.
+
+    :param transform: Dictionary with affine transform in keras format, as returned by keras.get_random_transform.
+    :param shape: Tuple with (width, height) size of output image.
+    :return: transform_skimage: skimage.transform._geometric.ProjectiveTransform with same affine transform.
+    """
+
+    transform_skimage_center = SimilarityTransform(translation=(shape[1] / 2, shape[0] / 2))
+    transform_skimage_center_inv = SimilarityTransform(translation=(-shape[1] / 2, -shape[0] / 2))
+    transform_skimage_affine = AffineTransform(matrix=None, scale=(transform['zx'], transform['zy']),
+                                               rotation=transform['theta'] / 180.0 * np.pi, shear=None,
+                                               translation=None)
+    transform_skimage = transform_skimage_center_inv + (transform_skimage_affine + transform_skimage_center)
+
+    return transform_skimage
