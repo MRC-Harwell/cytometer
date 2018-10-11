@@ -458,6 +458,12 @@ def keras2skimage_transform(transform, shape):
     Convert an affine transform from keras to skimage format. This can then be used to apply a transformation
     to an image with skimage.transform.warp.
 
+    Note: Currently, only scaling ('zx', 'zy') and rotation ('theta') are considered. Translation, flips, etc are
+    ignored.
+
+    Note 2: This function takes into account that rotations in keras are referred to the centre of the image, but
+    skimage rotates around the centre of coordinates.
+
     :param transform: Dictionary with affine transform in keras format, as returned by keras.get_random_transform.
     :param shape: Tuple with (width, height) size of output image.
     :return: transform_skimage: skimage.transform._geometric.ProjectiveTransform with same affine transform.
