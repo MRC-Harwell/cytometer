@@ -241,6 +241,21 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
 # estimate receptive field of the model
 def model_build_func(input_shape):
+    model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
+    return model
+
+rf = KerasReceptiveField(model_build_func, init_weights=True)
+
+rf_params = rf.compute(
+    input_shape=(512, 512, 3),
+    input_layer='input_image',
+    output_layers=['regression_output'])
+print(rf_params)
+
+print('Sherrah 2016 effective receptive field: ' + str(rf._rf_params[0].size))
+
+# estimate receptive field of the model
+def model_build_func(input_shape):
     # model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
     model = unet(input_shape=input_shape, for_receptive_field=True)
     return model
@@ -253,181 +268,4 @@ rf_params = rf.compute(
     output_layers=['regression_output'])
 print(rf_params)
 
-print('Effective receptive field: ' + str(rf._rf_params[0].size))
-
-'''Models that were used to generate the segmentations
-'''
-
-saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
-saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
-
-contour_model_name = saved_contour_model_basename + '*.h5'
-dmap_model_name = saved_dmap_model_basename + '*.h5'
-
-'''Filenames of whole dataset, and indices of train vs. test subsets
-'''
-
-# load list of images, and indices for training vs. testing indices
-contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
-with open(contour_model_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-im_orig_file_list = aux['file_list']
-idx_orig_test_all = aux['idx_test_all']
-
-# number of original training images
-n_im = len(im_orig_file_list)
-
-# correct home directory if we are in a different system than what was used to train the models
-im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, '/users/rittscher/rcasero', home,
-                                                         check_isfile=True)
-
-'''Loop folds (in this script, we actually only work with fold 0)
-'''
-
-# loop each fold: we split the data into train vs test, train a model, and compute errors with the
-# test data. In each fold, the test data is different
-# for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
-
-    '''Load data
-    '''
-
-    # split the data into training and testing datasets
-    im_orig_test_file_list, im_orig_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
-
-    # add the augmented image files
-    im_train_file_list = cytometer.data.augment_file_list(im_orig_train_file_list, '_nan_', '_*_')
-    im_test_file_list = cytometer.data.augment_file_list(im_orig_test_file_list, '_nan_', '_*_')
-
-    # load the train and test data: im, seg, dmap and mask data
-    train_dataset, train_file_list, train_shuffle_idx = \
-        cytometer.data.load_datasets(im_train_file_list, prefix_from='im',
-                                     prefix_to=['im', 'mask',
-                                                'preddice_kfold_' + str(i_fold).zfill(2),
-                                                'predlab_kfold_' + str(i_fold).zfill(2)],
-                                     nblocks=nblocks, shuffle_seed=i_fold)
-    test_dataset, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                     prefix_to=['im', 'mask',
-                                                'preddice_kfold_' + str(i_fold).zfill(2),
-                                                'predlab_kfold_' + str(i_fold).zfill(2)],
-                                     nblocks=nblocks, shuffle_seed=i_fold)
-
-    # remove training data where the mask has very few valid pixels
-    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
-    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
-
-    if DEBUG:
-        i = 150
-        plt.clf()
-        for pi, prefix in enumerate(train_dataset.keys()):
-            plt.subplot(1, len(train_dataset.keys()), pi + 1)
-            if train_dataset[prefix].shape[-1] < 3:
-                plt.imshow(train_dataset[prefix][i, :, :, 0])
-            else:
-                plt.imshow(train_dataset[prefix][i, :, :, :])
-            plt.title('out[' + prefix + ']')
-
-        i = 22
-        plt.clf()
-        for pi, prefix in enumerate(test_dataset.keys()):
-            plt.subplot(1, len(test_dataset.keys()), pi + 1)
-            if test_dataset[prefix].shape[-1] < 3:
-                plt.imshow(test_dataset[prefix][i, :, :, 0])
-            else:
-                plt.imshow(test_dataset[prefix][i, :, :, :])
-            plt.title('out[' + prefix + ']')
-
-    '''Colour the labels to create disjoint training datasets'''
-
-    for i in range(train_dataset['im'].shape[0]):
-        print('i = ' + str(i))
-        _, train_dataset['predcolour_kfold_' + str(i_fold).zfill(2)] = \
-            cytometer.utils.colour_labels_with_receptive_field(
-            labels=train_dataset['predlab_kfold_' + str(i_fold).zfill(2)][i, :, :, 0],
-            receptive_field=(162, 162))
-
-
-    '''Convolutional neural network training
-    
-    Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
-    function
-    '''
-
-    # list all CPUs and GPUs
-    device_list = K.get_session().list_devices()
-
-    # number of GPUs
-    gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
-
-    # instantiate model
-    with tf.device('/cpu:0'):
-        model = fcn_sherrah2016_regression(input_shape=train_dataset['im'].shape[1:])
-
-    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-
-    if gpu_number > 1:  # compile and train model: Multiple GPUs
-
-        # checkpoint to save model after each epoch
-        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                           verbose=1, save_best_only=True)
-        # compile model
-        parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'regression_output': 'mse'},
-                               optimizer='Adadelta',
-                               metrics={'regression_output': ['mse', 'mae']},
-                               sample_weight_mode='element')
-
-        # train model
-        tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'],
-                           {'regression_output': train_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
-                           sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                           validation_data=(test_dataset['im'],
-                                            {'regression_output': test_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
-                                            {'regression_output': test_dataset['mask'][..., 0]}),
-                           batch_size=10, epochs=epochs, initial_epoch=0,
-                           callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
-
-    else:  # compile and train model: One GPU
-
-        # checkpoint to save model after each epoch
-        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                       verbose=1, save_best_only=True)
-
-        # compile model
-        model.compile(loss={'regression_output': 'mse'},
-                      optimizer='Adadelta',
-                      metrics={'regression_output': ['mse', 'mae']},
-                      sample_weight_mode='element')
-
-        # train model
-        tic = datetime.datetime.now()
-        model.fit(train_dataset['im'],
-                  {'regression_output': train_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
-                  sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                  validation_data=(test_dataset['im'],
-                                   {'regression_output': test_dataset['dice_kfold_' + str(i_fold).zfill(2)]},
-                                   {'regression_output': test_dataset['mask'][..., 0]}),
-                  batch_size=10, epochs=epochs, initial_epoch=0,
-                  callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
-
-# if we run the script with qsub on the cluster, the standard output is in file
-# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
-# Save it to saved_models directory
-log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
-stdout_filename = glob.glob(stdout_filename)[0]
-if stdout_filename and os.path.isfile(stdout_filename):
-    shutil.copy2(stdout_filename, log_filename)
-else:
-    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
-    # Save it to saved_models directory
-    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
-    if os.path.isfile(nohup_filename):
-        shutil.copy2(nohup_filename, log_filename)
+print('U-net effective receptive field: ' + str(rf._rf_params[0].size))
