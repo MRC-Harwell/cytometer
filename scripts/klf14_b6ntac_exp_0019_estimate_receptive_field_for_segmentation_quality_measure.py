@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -48,6 +48,8 @@ from receptivefield.keras import KerasReceptiveField
 import cytometer.data
 import cytometer.model_checkpoint_parallel
 import cytometer.utils
+# import cytometer.resnet
+import keras.applications
 import tensorflow as tf
 from skimage.measure import regionprops
 
@@ -236,8 +238,14 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
     return Model(inputs=input, outputs=[regression_output])
 
+
+
 '''Estimate the effective receptive field pre-training
 '''
+
+##########################################################################################
+# fcn_sherrah2016_regression
+##########################################################################################
 
 # estimate receptive field of the model
 def model_build_func(input_shape):
@@ -254,9 +262,12 @@ print(rf_params)
 
 print('Sherrah 2016 effective receptive field: ' + str(rf._rf_params[0].size))
 
+##########################################################################################
+# U-net
+##########################################################################################
+
 # estimate receptive field of the model
 def model_build_func(input_shape):
-    # model = fcn_sherrah2016_regression(input_shape=input_shape, for_receptive_field=True)
     model = unet(input_shape=input_shape, for_receptive_field=True)
     return model
 
