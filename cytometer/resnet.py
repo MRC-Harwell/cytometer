@@ -2,8 +2,12 @@
 
 rcasero: This file was originally downloaded from
 https://github.com/keras-team/keras-contrib/blob/master/keras_contrib/applications/resnet.py
-after commit 46fcdb9384b3bc9399c651b2b43640aa54098e64. It has been modified for project cytometer to be able to estimate
-receptive fields.
+after commit 46fcdb9384b3bc9399c651b2b43640aa54098e64.
+
+It has been modified for project cytometer to be able to estimate receptive fields:
+* relu -> linear
+* *MaxPooling -> *AvgPooling
+* Remove BatchNormalization
 
 # Reference
 
@@ -45,8 +49,8 @@ from keras_applications.imagenet_utils import _obtain_input_shape
 def _bn_relu(x, bn_name=None, relu_name=None):
     """Helper to build a BN -> relu block
     """
-    norm = BatchNormalization(axis=CHANNEL_AXIS, name=bn_name)(x)
-    return Activation("relu", name=relu_name)(norm)
+    # norm = BatchNormalization(axis=CHANNEL_AXIS, name=bn_name)(x)
+    return Activation("linear", name=relu_name)(x)
 
 
 def _conv_bn_relu(**conv_params):
@@ -130,7 +134,7 @@ def _shortcut(input_feature, residual, conv_name_base=None, bn_name_base=None):
                           name=conv_name_base)(input_feature)
         if bn_name_base is not None:
             bn_name_base = bn_name_base + '1'
-        shortcut = BatchNormalization(axis=CHANNEL_AXIS, name=bn_name_base)(shortcut)
+        # shortcut = BatchNormalization(axis=CHANNEL_AXIS, name=bn_name_base)(shortcut)
 
     return add([shortcut, residual])
 
@@ -284,7 +288,7 @@ def _string_to_function(identifier):
     return identifier
 
 
-def ResNet(input_shape=None, classes=10, block='bottleneck', residual_unit='v2', repetitions=None,
+def ResNet_for_receptive_field(input_shape=None, classes=10, block='bottleneck', residual_unit='v2', repetitions=None,
            initial_filters=64, activation='softmax', include_top=True, input_tensor=None, dropout=None,
            transition_dilation_rate=(1, 1), initial_strides=(2, 2), initial_kernel_size=(7, 7),
            initial_pooling='max', final_pooling=None, top='classification'):
@@ -382,10 +386,10 @@ def ResNet(input_shape=None, classes=10, block='bottleneck', residual_unit='v2',
                                       data_format=K.image_data_format(),
                                       require_flatten=include_top)
 
-    img_input = Input(shape=input_shape, tensor=input_tensor)
+    img_input = Input(shape=input_shape, tensor=input_tensor, name="input_image")
     x = _conv_bn_relu(filters=initial_filters, kernel_size=initial_kernel_size, strides=initial_strides)(img_input)
     if initial_pooling == 'max':
-        x = MaxPooling2D(pool_size=(3, 3), strides=initial_strides, padding="same")(x)
+        x = AveragePooling2D(pool_size=(3, 3), strides=initial_strides, padding="same")(x)
 
     block = x
     filters = initial_filters
@@ -409,7 +413,7 @@ def ResNet(input_shape=None, classes=10, block='bottleneck', residual_unit='v2',
     # Classifier block
     if include_top and top is 'classification':
         x = GlobalAveragePooling2D()(x)
-        x = Dense(units=classes, activation=activation, kernel_initializer="he_normal")(x)
+        x = Dense(units=classes, activation=activation, kernel_initializer="he_normal", name="output")(x)
     elif include_top and top is 'segmentation':
         x = Conv2D(classes, (1, 1), activation='linear', padding='same')(x)
 
@@ -420,41 +424,41 @@ def ResNet(input_shape=None, classes=10, block='bottleneck', residual_unit='v2',
 
         x = Reshape((row * col, classes))(x)
         x = Activation(activation)(x)
-        x = Reshape((row, col, classes))(x)
+        x = Reshape((row, col, classes), name="output")(x)
     elif final_pooling == 'avg':
-        x = GlobalAveragePooling2D()(x)
+        x = GlobalAveragePooling2D(name="output")(x)
     elif final_pooling == 'max':
-        x = GlobalMaxPooling2D()(x)
+        x = GlobalAveragePooling2D(name="output")(x)
 
     model = Model(inputs=img_input, outputs=x)
     return model
 
 
-def ResNet18(input_shape, classes):
+def ResNet18_for_receptive_field(input_shape, classes):
     """ResNet with 18 layers and v2 residual units
     """
-    return ResNet(input_shape, classes, basic_block, repetitions=[2, 2, 2, 2])
+    return ResNet_for_receptive_field(input_shape, classes, basic_block, repetitions=[2, 2, 2, 2])
 
 
-def ResNet34(input_shape, classes):
+def ResNet34_for_receptive_field(input_shape, classes):
     """ResNet with 34 layers and v2 residual units
     """
-    return ResNet(input_shape, classes, basic_block, repetitions=[3, 4, 6, 3])
+    return ResNet_for_receptive_field(input_shape, classes, basic_block, repetitions=[3, 4, 6, 3])
 
 
-def ResNet50(input_shape, classes):
+def ResNet50_for_receptive_field(input_shape, classes):
     """ResNet with 50 layers and v2 residual units
     """
-    return ResNet(input_shape, classes, bottleneck, repetitions=[3, 4, 6, 3])
+    return ResNet_for_receptive_field(input_shape, classes, bottleneck, repetitions=[3, 4, 6, 3])
 
 
-def ResNet101(input_shape, classes):
+def ResNet101_for_receptive_field(input_shape, classes):
     """ResNet with 101 layers and v2 residual units
     """
-    return ResNet(input_shape, classes, bottleneck, repetitions=[3, 4, 23, 3])
+    return ResNet_for_receptive_field(input_shape, classes, bottleneck, repetitions=[3, 4, 23, 3])
 
 
-def ResNet152(input_shape, classes):
+def ResNet152_for_receptive_field(input_shape, classes):
     """ResNet with 152 layers and v2 residual units
     """
-    return ResNet(input_shape, classes, bottleneck, repetitions=[3, 8, 36, 3])
+    return ResNet_for_receptive_field(input_shape, classes, bottleneck, repetitions=[3, 8, 36, 3])
