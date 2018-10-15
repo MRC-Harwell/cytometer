@@ -1,6 +1,8 @@
 """
-Training of CNN for regression of Dice coefficients, using element-wise weighting of the loss function to ignore image
-regions outside the training data.
+Training of CNN for regression of Dice coefficients.
+
+I use a DenseNet. Inputs are the RGB histology and the segmentation mask scaled by 255 so that values are closer to
+the histology intensities. The output is the Dice coefficient.
 """
 
 # cross-platform home directory
@@ -27,14 +29,13 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,2'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
+from keras_applications.densenet import DenseNet
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -43,21 +44,17 @@ import cytometer.data
 import cytometer.model_checkpoint_parallel
 import cytometer.utils
 import tensorflow as tf
-from skimage.measure import regionprops
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.95
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.95
+# set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
 
 DEBUG = False
-
-# number of blocks to split each image into so that training fits into GPU memory
-# nblocks = 2
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -91,54 +88,6 @@ else:
 '''CNN classifier to estimate Dice coefficient
 '''
 
-
-def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
-
-    input = Input(shape=input_shape, dtype='float32', name='input_image')
-
-    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-    else:
-        x = Activation('relu')(x)
-
-    # regression output
-    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
-    regression_output = Activation('hard_sigmoid', name='regression_output')(x)
-
-    return Model(inputs=input, outputs=[regression_output])
 
 
 '''Models that were used to generate the segmentations
@@ -239,15 +188,18 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
         i = 150
         plt.clf()
         plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_lab[i, :, :, 0] > 0, levels=1)
+        plt.contour(train_cell_lab[i, :, :, 0], levels=1)
         plt.title('Dice = ' + str(train_cell_dice[i]))
-        plt.imshow(train_cell_lab[i, :, :, 0])
 
+    # combine histology and segmentations to have a single input tensor. Scale the segmentation value from 1 to 255
+    train_cell_in = np.concatenate((train_cell_im, 255 * train_cell_lab), axis=3)
+    del train_cell_im
+    del train_cell_lab
+    test_cell_in = np.concatenate((test_cell_im, 255 * test_cell_lab), axis=3)
+    del test_cell_im
+    del test_cell_lab
 
-    '''Convolutional neural network training
-    
-    Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
-    function
+    '''Neural network training
     '''
 
     # list all CPUs and GPUs
@@ -258,7 +210,8 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
 
     # instantiate model
     with tf.device('/cpu:0'):
-        model = fcn_sherrah2016_regression(input_shape=train_dataset['im'].shape[1:])
+        model = DenseNet(blocks=[6, 12, 24, 16], include_top=True, weights=None, input_shape=(401, 401, 4),
+                         classes=1)
 
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
 
@@ -269,19 +222,16 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
                                                                            verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'regression_output': 'mse'},
+        parallel_model.compile(loss={'fc1000': 'mse'},
                                optimizer='Adadelta',
-                               metrics={'regression_output': ['mse', 'mae']},
-                               sample_weight_mode='element')
+                               metrics={'fc1000': ['mse', 'mae']})
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'],
-                           {'regression_output': train_dataset['preddice_kfold_' + str(i_fold).zfill(2)]},
-                           sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                           validation_data=(test_dataset['im'],
-                                            {'regression_output': test_dataset['preddice_kfold_' + str(i_fold).zfill(2)]},
-                                            {'regression_output': test_dataset['mask'][..., 0]}),
+        parallel_model.fit(train_cell_in,
+                           {'fc1000': train_cell_dice},
+                           validation_data=(test_cell_in,
+                                            {'fc1000': test_cell_dice}),
                            batch_size=10, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -294,21 +244,18 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
                                                        verbose=1, save_best_only=True)
 
         # compile model
-        model.compile(loss={'regression_output': 'mse'},
-                      optimizer='Adadelta',
-                      metrics={'regression_output': ['mse', 'mae']},
-                      sample_weight_mode='element')
+        model.compile(loss={'fc1000': 'mse'},
+                               optimizer='Adadelta',
+                               metrics={'fc1000': ['mse', 'mae']})
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_dataset['im'],
-                  {'regression_output': train_dataset['preddice_kfold_' + str(i_fold).zfill(2)]},
-                  sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                  validation_data=(test_dataset['im'],
-                                   {'regression_output': test_dataset['preddice_kfold_' + str(i_fold).zfill(2)]},
-                                   {'regression_output': test_dataset['mask'][..., 0]}),
-                  batch_size=10, epochs=epochs, initial_epoch=0,
-                  callbacks=[checkpointer])
+        model.fit(train_cell_in,
+                           {'fc1000': train_cell_dice},
+                           validation_data=(test_cell_in,
+                                            {'fc1000': test_cell_dice}),
+                           batch_size=10, epochs=epochs, initial_epoch=0,
+                           callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
