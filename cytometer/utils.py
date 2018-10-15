@@ -500,7 +500,9 @@ def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_
 
     training_windows: numpy.ndarray (N, training_window_len, training_window_len, channel). Small windows extracted from
     the histology. Each window is centered around one of N labelled cells.
-    dice: numpy.ndarray (N,). Dice coefficient for each cell's segmentation.
+    label_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The segmentation label or mask for
+    the cell in the training window.
+    dice: numpy.ndarray (N,). Dice coefficient for the cell's segmentation.
     """
 
     # (r,c) size of the image
@@ -508,6 +510,7 @@ def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_
     n_col = dataset_im.shape[2]
 
     training_windows_list = []
+    label_windows_list = []
     dice_list = []
     for i in range(dataset_im.shape[0]):
 
@@ -518,7 +521,7 @@ def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_
 
         # mask labels that have a Dice coefficient value. These are the ones we can use for training. We ignore the
         # other labels, as they have no ground truth to compare against, but by default they get Dice = 0.0
-        labels = dataset_lab[i, :, :, 0] * (dataset_dice[i, :, :, 0] > 0.0).astype(np.float32)
+        labels = dataset_lab[i, :, :, 0] * (dataset_dice[i, :, :, 0] > 0.0).astype(np.uint8)
         labels = labels.astype(np.int32)
 
         # compute bounding boxes for the testing labels (note that the background 0 label is ignored)
@@ -578,28 +581,43 @@ def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_
             assert(lbox_max_row - lbox_min_row == i_max_row - i_min_row)
             assert(lbox_max_col - lbox_min_col == i_max_col - i_min_col)
 
-            # extract the training window
+            # extract histology window
             training_window = np.zeros(shape=(training_window_len, training_window_len, dataset_im.shape[3]),
                                        dtype=dataset_im.dtype)
             training_window[i_min_row:i_max_row, i_min_col:i_max_col, :] = \
                 dataset_im[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, :]
             training_windows_list.append(training_window)
 
+            # extract label window
+            label_window = np.zeros(shape=(training_window_len, training_window_len, dataset_lab.shape[3]),
+                                    dtype=np.uint8)
+            label_window[i_min_row:i_max_row, i_min_col:i_max_col, 0] = \
+                dataset_lab[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, 0] == p['label']
+            label_windows_list.append(label_window)
+
+
             if DEBUG:
                 plt.clf()
-                plt.subplot(311)
+                plt.subplot(221)
                 plt.imshow(dataset_im[i, :, :, :])
                 plt.contour(labels == p['label'], levels=1)
                 plt.plot([bbox_min_col, bbox_max_col, bbox_max_col, bbox_min_col, bbox_min_col],
                          [bbox_min_row, bbox_min_row, bbox_max_row, bbox_max_row, bbox_min_row], 'r')
-                plt.subplot(312)
+                plt.plot([lbox_min_col, lbox_max_col, lbox_max_col, lbox_min_col, lbox_min_col],
+                         [lbox_min_row, lbox_min_row, lbox_max_row, lbox_max_row, lbox_min_row], 'g')
+                plt.subplot(222)
                 # plt.imshow(labels)
                 plt.imshow(dice_aux)
-                plt.subplot(313)
+                plt.subplot(223)
                 plt.imshow(training_window)
+                plt.contour(label_window[:, :, 0], levels=1)
+                plt.subplot(224)
+                plt.imshow(label_window[:, :, 0])
+                plt.title('Dice = ' + str(dice_list[-1]))
 
     # convert list to array
     training_windows_list = np.stack(training_windows_list)
+    label_windows_list = np.stack(label_windows_list)
     dice_list = np.stack(dice_list)
 
-    return training_windows_list, dice_list
+    return training_windows_list, label_windows_list, dice_list

@@ -222,20 +222,27 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
     '''Extract one window for each individual cell, with the corresponding Dice coefficient
     '''
 
-    train_cell_dataset, \
+    train_cell_im, train_cell_lab, \
     train_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=train_dataset['im'],
                                                                   dataset_lab=train_dataset[predlab_str],
                                                                   dataset_dice=train_dataset[preddice_str],
                                                                   training_window_len=training_window_len,
                                                                   smallest_cell_area=smallest_cell_area)
-    test_cell_dataset, \
+    test_cell_im, test_cell_lab, \
     test_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=test_dataset['im'],
                                                                  dataset_lab=test_dataset[predlab_str],
                                                                  dataset_dice=test_dataset[preddice_str],
                                                                  training_window_len=training_window_len,
                                                                  smallest_cell_area=smallest_cell_area)
 
-    
+    if DEBUG:
+        i = 150
+        plt.clf()
+        plt.imshow(train_cell_im[i, :, :, :])
+        plt.contour(train_cell_lab[i, :, :, 0] > 0, levels=1)
+        plt.title('Dice = ' + str(train_cell_dice[i]))
+        plt.imshow(train_cell_lab[i, :, :, 0])
+
 
     '''Convolutional neural network training
     
