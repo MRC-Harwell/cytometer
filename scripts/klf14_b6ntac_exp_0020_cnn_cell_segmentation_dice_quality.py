@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -41,14 +41,15 @@ from keras.utils import multi_gpu_model
 
 import cytometer.data
 import cytometer.model_checkpoint_parallel
+import cytometer.utils
 import tensorflow as tf
 from skimage.measure import regionprops
 
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 1.0
-# set_session(tf.Session(config=config))
+# limit GPU memory used
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.95
+set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -221,105 +222,20 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
     '''Extract one window for each individual cell, with the corresponding Dice coefficient
     '''
 
-    # (r,c) size of the image
-    n_row = train_dataset['im'].shape[1]
-    n_col = train_dataset['im'].shape[2]
+    train_cell_dataset, \
+    train_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=train_dataset['im'],
+                                                                  dataset_lab=train_dataset[predlab_str],
+                                                                  dataset_dice=train_dataset[preddice_str],
+                                                                  training_window_len=training_window_len,
+                                                                  smallest_cell_area=smallest_cell_area)
+    test_cell_dataset, \
+    test_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=test_dataset['im'],
+                                                                 dataset_lab=test_dataset[predlab_str],
+                                                                 dataset_dice=test_dataset[preddice_str],
+                                                                 training_window_len=training_window_len,
+                                                                 smallest_cell_area=smallest_cell_area)
 
-    training_windows_list = []
-    dice_list = []
-    for i in range(train_dataset['im'].shape[0]):
-
-        # print('Image ' + str(i) + '/' + str(train_dataset['im'].shape[0] - 1))
-
-        # for convenience, we save a copy of the Dice coefficients for the current image
-        dice_aux = train_dataset[preddice_str][i, :, :, 0]
-
-        # mask labels that have a Dice coefficient value. These are the ones we can use for training. We ignore the
-        # other labels, as they have no ground truth to compare against, but by default they get Dice = 0.0
-        labels = train_dataset[predlab_str][i, :, :, 0] \
-                 * (train_dataset[preddice_str][i, :, :, 0] > 0.0).astype(np.float32)
-        labels = labels.astype(np.int32)
-
-        # compute centers of mass for the testing labels (note that the background 0 label is ignored)
-        props = regionprops(labels, coordinates='rc')
-
-        for p in props:
-
-            # sometimes we get artifact labels, for really tiny objects. We ignore those
-            if p['area'] < smallest_cell_area:
-                continue
-
-            # Dice value of the label (note we take the median to ignore small interpolation errors that pick Dice
-            # values from adjacent labels)
-            dice_list.append(dice_aux[labels == p['label']])
-
-            # width and height of the label's bounding box. Taking into account: Bounding box
-            # (min_row, min_col, max_row, max_col). Pixels belonging to the bounding box are in the half-open interval
-            # [min_row; max_row) and [min_col; max_col).
-            bbox_min_row = p['bbox'][0]
-            bbox_max_row = p['bbox'][2]
-            bbox_min_col = p['bbox'][1]
-            bbox_max_col = p['bbox'][3]
-            bbox_width = bbox_max_col - bbox_min_col
-            bbox_height = bbox_max_row - bbox_min_row
-
-            # padding of cell bbox so that it's centered in the larger bbox (i.e. the training window)
-            pad_left = int(np.round((training_window_len - bbox_width) / 2.0))
-            pad_bottom = int(np.round((training_window_len - bbox_height) / 2.0))
-
-            # (r,c)-coordinates of the larger bbox within dataset['im'][i, :, :, 0]
-            # Note: if the bbox is quite close to an edge, the larger bbox may overflow out of the image
-            lbox_min_row = bbox_min_row - pad_bottom
-            lbox_max_row = lbox_min_row + training_window_len
-            lbox_min_col = bbox_min_col - pad_left
-            lbox_max_col = lbox_min_col + training_window_len
-
-            # compute correction to the larger bbox to avoid overflowing the image
-            delta_min_row = - lbox_min_row if lbox_min_row < 0 else 0
-            delta_max_row = n_row - lbox_max_row if lbox_max_row > n_row else 0
-            delta_min_col = - lbox_min_col if lbox_min_col < 0 else 0
-            delta_max_col = n_col - lbox_max_col if lbox_max_col > n_col else 0
-
-            # apply the correction
-            lbox_min_row += delta_min_row
-            lbox_max_row += delta_max_row
-            lbox_min_col += delta_min_col
-            lbox_max_col += delta_max_col
-
-            # array indices for the training window
-            i_min_row = delta_min_row
-            i_max_row = training_window_len + delta_max_row
-            i_min_col = delta_min_col
-            i_max_col = training_window_len + delta_max_col
-
-            # check that the larger bbox we extract from 'im' has the same size as the subarray we target in the
-            # training window
-            assert(lbox_max_row - lbox_min_row == i_max_row - i_min_row)
-            assert(lbox_max_col - lbox_min_col == i_max_col - i_min_col)
-
-            # extract the training window
-            training_window = np.zeros(shape=(training_window_len, training_window_len, train_dataset['im'].shape[3]),
-                                       dtype=train_dataset['im'].dtype)
-            training_window[i_min_row:i_max_row, i_min_col:i_max_col, :] = \
-                train_dataset['im'][i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, :]
-            training_windows_list.append(training_window)
-
-            if DEBUG:
-                plt.clf()
-                plt.subplot(311)
-                plt.imshow(train_dataset['im'][i, :, :, :])
-                plt.contour(labels == p['label'], levels=1)
-                plt.plot([bbox_min_col, bbox_max_col, bbox_max_col, bbox_min_col, bbox_min_col],
-                         [bbox_min_row, bbox_min_row, bbox_max_row, bbox_max_row, bbox_min_row], 'r')
-                plt.subplot(312)
-                # plt.imshow(labels)
-                plt.imshow(dice_aux)
-                plt.subplot(313)
-                plt.imshow(training_window)
-
-    # convert list to array
-    training_windows_list = np.stack(training_windows_list)
-
+    
 
     '''Convolutional neural network training
     
