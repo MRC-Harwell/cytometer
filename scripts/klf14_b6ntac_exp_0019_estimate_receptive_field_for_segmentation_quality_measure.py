@@ -64,9 +64,6 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
-# number of blocks to split each image into so that training fits into GPU memory
-nblocks = 2
-
 # number of folds for k-fold cross validation
 n_folds = 11
 
@@ -104,8 +101,8 @@ im_orig_file_list = aux['file_list']
 im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, '/users/rittscher/rcasero', home,
                                                          check_isfile=True)
 
-# load the train and test data: im, seg, dmap and mask data
-dataset, _, _ = cytometer.data.load_datasets(im_orig_file_list, prefix_from='im', prefix_to=['lab'], nblocks=nblocks)
+# load the data
+dataset, _, _ = cytometer.data.load_datasets(im_orig_file_list, prefix_from='im', prefix_to=['lab'], nblocks=1)
 
 # get the bounding box size of each cell
 bbox_len = []
