@@ -236,7 +236,7 @@ if DEBUG:
 fold_i = 0
 model_file = model_files[fold_i]
 
-log_filename = os.path.join(saved_models_dir, model_name.replace('*.h5', '.log'))
+log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
 
 if os.path.isfile(log_filename):
 
