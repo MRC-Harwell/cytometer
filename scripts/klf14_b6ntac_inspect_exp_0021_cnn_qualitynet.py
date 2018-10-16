@@ -229,6 +229,13 @@ if DEBUG:
     plt.imshow(test_cell_im[i, :, :, :])
     plt.title('Dice: ' + str(test_cell_dice[i]) + ' (ground truth)\n' + str(test_cell_preddice[i]) + ' (estimated)')
 
+'''Look at distribution of Dice coefficients
+'''
+
+plt.clf()
+plt.hist(np.concatenate((test_cell_dice, train_cell_dice)))
+plt.title('Distribution of Dice coeff values')
+plt.xlabel('Dice coeff')
 
 '''Plot metrics and convergence
 '''
