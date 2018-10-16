@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -38,11 +38,12 @@ import cytometer.model_checkpoint_parallel
 import cytometer.utils
 import cytometer.models
 
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.95
-# set_session(tf.Session(config=config))
+# limit GPU memory used
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.95
+set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -191,54 +192,49 @@ del test_cell_lab
 '''Load neural network for predictions
 '''
 
-saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
+fold_i = 0
+
+model_name = experiment_id + '_model_fold_' + str(i_fold) + '.h5'
+
+saved_model_filename = os.path.join(saved_models_dir, model_name)
+
+# list of model files to inspect
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+
+model_file = model_files[fold_i]
 
 # load model
-model = keras.models.load_model(saved_model_filename)
+model = keras.models.load_model(model_file)
 
-if gpu_number > 1:  # compile and train model: Multiple GPUs
+test_cell_preddice = np.zeros(shape=test_cell_dice.shape, dtype=test_cell_dice.dtype)
+for i in range(test_cell_in.shape[0]):
 
-    # checkpoint to save model after each epoch
-    checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                       verbose=1, save_best_only=True)
-    # compile model
-    parallel_model = multi_gpu_model(model, gpus=gpu_number)
-    parallel_model.compile(loss={'fc1000': 'mse'},
-                           optimizer='Adadelta',
-                           metrics={'fc1000': ['mse', 'mae']})
+    if not i % 10:
+        print('Test image: ' + str(i) + '/' + str(test_cell_in.shape[0]-1))
 
-    # train model
-    tic = datetime.datetime.now()
-    parallel_model.fit(train_cell_in,
-                       {'fc1000': train_cell_dice},
-                       validation_data=(test_cell_in,
-                                        {'fc1000': test_cell_dice}),
-                       batch_size=10, epochs=epochs, initial_epoch=0,
-                       callbacks=[checkpointer])
-    toc = datetime.datetime.now()
-    print('Training duration: ' + str(toc - tic))
+    # predict Dice coefficient for test segmentation
+    test_cell_preddice[i] = model.predict(np.expand_dims(test_cell_in[i, :, :, :], axis=0))
 
-else:  # compile and train model: One GPU
 
-    # checkpoint to save model after each epoch
-    checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                   verbose=1, save_best_only=True)
+# plot all predicted vs. ground truth Dice values
+if DEBUG:
+    plt.clf()
+    plt.scatter(test_cell_dice, test_cell_preddice)
 
-    # compile model
-    model.compile(loss={'fc1000': 'mse'},
-                  optimizer='Adadelta',
-                  metrics={'fc1000': ['mse', 'mae']})
+# plot prediction
+if DEBUG:
+    i = 150
+    plt.clf()
+    plt.imshow(test_cell_in[i, :, :, 0:3])
+    plt.contour(test_cell_in[i, :, :, 3] / 255.0, levels=1)
+    plt.title('Dice: ' + str(test_cell_dice[i]) + ' (ground truth)\n' + str(test_cell_preddice[i]) + ' (estimated)')
 
-    # train model
-    tic = datetime.datetime.now()
-    model.fit(train_cell_in,
-              {'fc1000': train_cell_dice},
-              validation_data=(test_cell_in,
-                               {'fc1000': test_cell_dice}),
-              batch_size=10, epochs=epochs, initial_epoch=0,
-              callbacks=[checkpointer])
-    toc = datetime.datetime.now()
-    print('Training duration: ' + str(toc - tic))
+    i = 1001
+    plt.clf()
+    plt.imshow(test_cell_in[i, :, :, 0:3])
+    plt.contour(test_cell_in[i, :, :, 3] / 255.0, levels=1)
+    plt.title('Dice: ' + str(test_cell_dice[i]) + ' (ground truth)\n' + str(test_cell_preddice[i]) + ' (estimated)')
+
 
 '''Plot metrics and convergence
 '''
