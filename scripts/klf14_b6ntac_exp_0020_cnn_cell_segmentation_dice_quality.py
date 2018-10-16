@@ -232,7 +232,7 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
                            {'fc1000': train_cell_dice},
                            validation_data=(test_cell_in,
                                             {'fc1000': test_cell_dice}),
-                           batch_size=10, epochs=epochs, initial_epoch=0,
+                           batch_size=20, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -254,7 +254,7 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
                            {'fc1000': train_cell_dice},
                            validation_data=(test_cell_in,
                                             {'fc1000': test_cell_dice}),
-                           batch_size=10, epochs=epochs, initial_epoch=0,
+                           batch_size=20, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
