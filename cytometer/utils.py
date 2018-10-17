@@ -10,6 +10,8 @@ from skimage.measure import regionprops
 from mahotas.labeled import borders
 import networkx as nx
 from skimage.transform import SimilarityTransform, AffineTransform
+import keras.backend as K
+import tensorflow as tf
 
 
 DEBUG = False
@@ -621,3 +623,23 @@ def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_
     dice_list = np.stack(dice_list)
 
     return training_windows_list, label_windows_list, dice_list
+
+
+def focal_loss(gamma=2., alpha=.25):
+    """
+    Focal loss implementation by mkocabas (https://github.com/mkocabas/focal-loss-keras) of the loss proposed by Lin et
+    al. "Focal Loss for Dense Object Detection", 2017 (https://arxiv.org/abs/1708.02002). Released under the MIT License
+    (see focal_loss_LICENSE.txt).
+
+    Only available for tensorflow.
+    :param gamma: (def 2.0)
+    :param alpha: (def 0.25)
+    :return: focal_loss_fixed(y_true, y_pred)
+    """
+
+    def focal_loss_fixed(y_true, y_pred):
+        pt_1 = tf.where(tf.equal(y_true, 1), y_pred, tf.ones_like(y_pred))
+        pt_0 = tf.where(tf.equal(y_true, 0), y_pred, tf.zeros_like(y_pred))
+        return -K.sum(alpha * K.pow(1. - pt_1, gamma) * K.log(pt_1))-K.sum((1-alpha) * K.pow( pt_0, gamma) * K.log(1. - pt_0))
+
+    return focal_loss_fixed
