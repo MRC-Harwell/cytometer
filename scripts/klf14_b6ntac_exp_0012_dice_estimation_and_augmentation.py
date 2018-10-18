@@ -20,7 +20,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -103,7 +103,7 @@ datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im',
 im = datasets['im']
 seg = datasets['seg']
 mask = datasets['mask']
-lab = datasets['lab']
+reflab = datasets['lab']
 del datasets
 
 # number of images
@@ -125,18 +125,19 @@ dmap_model = keras.models.load_model(dmap_model_file)
 contour_model = cytometer.models.change_input_size(contour_model, batch_shape=(None,) + im.shape[1:])
 dmap_model = cytometer.models.change_input_size(dmap_model, batch_shape=(None,) + im.shape[1:])
 
-border = lab.copy()
-for i in range(lab.shape[0]):
+
+border = reflab.copy()
+for i in range(reflab.shape[0]):
 
     # remove borders between cells in the lab_train data. For this experiment, we want labels touching each other
-    lab[i, :, :, 0] = watershed(image=np.zeros(shape=lab[i, :, :, 0].shape, dtype=np.uint8),
-                                markers=lab[i, :, :, 0], watershed_line=False)
+    reflab[i, :, :, 0] = watershed(image=np.zeros(shape=reflab[i, :, :, 0].shape, dtype=np.uint8),
+                                   markers=reflab[i, :, :, 0], watershed_line=False)
 
     # extract the borders of all labels
-    border[i, :, :, 0] = borders(lab[i, :, :, 0])
+    border[i, :, :, 0] = borders(reflab[i, :, :, 0])
 
 # change the background label from 1 to 0
-lab[lab == 1] = 0
+reflab[reflab == 1] = 0
 
 '''Segmentation and Dice coefficients
 '''
@@ -183,7 +184,7 @@ for i in range(n_im):
 
     # compute quality measure of estimated labels
     qual = cytometer.utils.segmentation_quality(labels_test=labels[i, :, :, 0],
-                                                labels_ref=lab[i, :, :, 0])
+                                                labels_ref=reflab[i, :, :, 0])
 
     # colour the estimated labels with their quality
     lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
