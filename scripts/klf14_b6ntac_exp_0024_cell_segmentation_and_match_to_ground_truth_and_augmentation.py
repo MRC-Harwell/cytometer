@@ -1,8 +1,12 @@
 '''
-Take the models for fold 0, and segment all 55 images (train+test). Compute Dice coeffs for each segmented cell.
-Augment Dice images to prepare training of classifier.
+Take the dmap and contour models for fold 0, and segment all 55 images (train+test). Then augment 9 times with random
+rotations, scalings and flips.
 
-This script creates files dice_kfold_00_seed_XXX_*.tif in klf14_b6ntac_training_augmented.
+Dice coefficients are computed for illustration purposes, but because later down the pipeline we need to randomly
+change individual segmentations, and recompute the corresponding Dice values, they are not saved in separate images.
+
+This script creates files predlab_kfold_00_seed_XXX_*.tif, predseg_kfold_00_seed_XXX_*.tif in
+klf14_b6ntac_training_augmented.
 '''
 
 # cross-platform home directory
@@ -263,8 +267,10 @@ for seed in range(augment_factor - 1):
         transform_skimage = cytometer.utils.keras2skimage_transform(transform=transform, shape=im.shape[1:3])
 
         # apply transform to reference images
-        labels_augmented = warp(labels[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
-        labels_borders_augmented = warp(labels_borders[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
+        labels_augmented = warp(labels[i, :, :, 0], transform_skimage.inverse,
+                                order=0, preserve_range=True)
+        labels_borders_augmented = warp(labels_borders[i, :, :, 0], transform_skimage.inverse,
+                                        order=0, preserve_range=True)
 
         # apply flips
         if transform['flip_horizontal'] == 1:
@@ -285,6 +291,11 @@ for seed in range(augment_factor - 1):
 
             # load histology
             aux_dataset, _, _ = cytometer.data.load_datasets([im_file_augmented], prefix_from='im', prefix_to=['im'], nblocks=1)
+
+            qual = cytometer.utils.match_overlapping_labels(labels_test=labels[i, :, :, 0],
+                                                            labels_ref=reflab[i, :, :, 0])
+            labels_qual_augmented = cytometer.utils.paint_labels(labels=labels_augmented, paint_labs=qual['lab_test'],
+                                                                 paint_values=qual['dice'])
 
             # compare randomly transformed histology to corresponding Dice coefficient
             plt.clf()
@@ -307,9 +318,6 @@ for seed in range(augment_factor - 1):
         predseg_file = os.path.join(training_augmented_dir,
                                     base_name.replace('im_seed_nan_',
                                                       'predseg_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
-        preddice_file = os.path.join(training_augmented_dir,
-                                     base_name.replace('im_seed_nan_',
-                                                       'preddice_kfold_' + str(fold_i).zfill(2) + '_seed_' + str(seed).zfill(3) + '_'))
 
         # save the predicted labels (one per cell)
         im_out = Image.fromarray(labels_augmented.astype(np.int32), mode='I')  # int32
@@ -318,7 +326,3 @@ for seed in range(augment_factor - 1):
         # save the predicted contours
         im_out = Image.fromarray(labels_borders_augmented.astype(np.uint8), mode='L')  # uint8
         im_out.save(predseg_file)
-
-        # save the Dice coefficient labels
-        im_out = Image.fromarray(labels_qual_augmented.astype(np.float32), mode='F')  # float32
-        im_out.save(preddice_file)
