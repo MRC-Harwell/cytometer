@@ -642,3 +642,37 @@ def focal_loss(gamma=2., alpha=.25):
         return -K.sum(alpha * K.pow(1. - pt_1, gamma) * K.log(pt_1))-K.sum((1-alpha) * K.pow( pt_0, gamma) * K.log(1. - pt_0))
 
     return focal_loss_fixed
+
+
+def paint_labels(labels, paint_labs, paint_values):
+    """
+    Assign values to pixels in image according to their labels. E.g.
+
+    labels = [2, 2, 2, 3, 0]   paint_labs = [0, 1, 2, 3]   paint_values = [.3, .5., .9, .7]
+             [2, 2, 0, 3, 1]
+             [2, 2, 0, 0, 3]
+
+    out = paint_labels(labels, paint_labs, paint_values)
+
+    out = [.9, .9, .9, .7, .3]
+          [.9, .9, .3, .7, .5]
+          [.9, .9, .3, .3, .7]
+
+    :param labels: numpy.ndarray (e.g. segmentation of image). We want to assign a value to each pixel according to its
+    label. labels needs to be a type that can be used to index an array, x[labels], e.g. np.int32.
+    :param paint_labs: List, tuple or 1-D array of label values, e.g. [2, 5, 6, 7, 10, 13]
+    :param paint_values: Same size as paint_labs, with values that will be assigned to the labels, e.g.
+    [0.34, 0.12, 0.77, 1.22, -2.34, 0.99]
+    :return: numpy.ndarray of the same size as labels, where labels have been replaced by their corresponding values.
+    """
+
+    # allocate memory for look-up table. This will make painting each pixel with a value more efficient
+    lut = np.zeros(shape=(np.max(paint_labs) + 1,), dtype=paint_values.dtype)
+    lut.fill(np.nan)
+
+    # populate look-up table with the paint values, so that lut[23] = 4.3 means that pixels with label 23 get painted
+    # with value 4.3
+    lut[paint_labs] = paint_values
+
+    # paint each pixel with a value according to its label
+    return lut[labels]
