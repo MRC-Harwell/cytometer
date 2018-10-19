@@ -150,8 +150,8 @@ plt.imshow(seg_test[i, :, :, 0])
 plt.title('ground truth borders')
 
 # compute quality measure of estimated labels
-qual = cytometer.utils.segmentation_quality(labels_test=labels,
-                                            labels_ref=lab_test[i, :, :, 0])
+qual = cytometer.utils.match_overlapping_labels(labels_test=labels,
+                                                labels_ref=lab_test[i, :, :, 0])
 
 # colour the estimated labels with their quality
 lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
