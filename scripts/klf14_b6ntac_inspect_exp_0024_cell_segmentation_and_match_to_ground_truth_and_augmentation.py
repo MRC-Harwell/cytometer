@@ -153,11 +153,8 @@ plt.title('ground truth borders')
 qual = cytometer.utils.match_overlapping_labels(labels_test=labels,
                                                 labels_ref=lab_test[i, :, :, 0])
 
-# colour the estimated labels with their quality
-lut = np.zeros(shape=(np.max(qual['lab_test']) + 1,), dtype=qual['dice'].dtype)
-lut.fill(np.nan)
-lut[qual['lab_test']] = qual['dice']
-labels_test_qual = lut[labels]
+labels_test_qual = cytometer.utils.paint_labels(labels=labels, paint_labs=qual['lab_test'],
+                                                paint_values=qual['dice'])
 
 # plot validation of cell segmentation
 plt.clf()
