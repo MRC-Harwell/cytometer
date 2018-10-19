@@ -139,7 +139,7 @@ for i in range(reflab.shape[0]):
 # change the background label from 1 to 0
 reflab[reflab == 1] = 0
 
-'''Segmentation and Dice coefficients
+'''Cell segmentation, match estimated segmentations to ground truth segmentations and Dice coefficients
 '''
 
 # loop images to compute
