@@ -209,7 +209,7 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
 
 def segmentation_quality(labels_ref, labels_test):
     """
-    Dice coefficients for each label in a segmented image.
+    Match estimated segmentations to ground truth segmentations and compute Dice coefficients.
 
     This function takes two segmentations, reference and test, and computes how good each test
     label segmentation is based on how it overlaps the reference segmentation. In a nutshell,
@@ -256,7 +256,6 @@ def segmentation_quality(labels_ref, labels_test):
 
     # for each of the test labels, find which reference label overlaps it the most
     labels_ref_correspond = np.zeros(shape=labels_test_unique.shape, dtype=labels_ref_unique.dtype)
-    intersection_count = np.zeros(shape=labels_test_count.shape, dtype=labels_test_count.dtype)
     dice = np.zeros(shape=labels_test_count.shape, dtype=np.float32)
     for i, lab in enumerate(labels_test_unique):
 
@@ -267,9 +266,9 @@ def segmentation_quality(labels_ref, labels_test):
 
         # number of pixels in the intersection of both labels
         if labels_ref_correspond[i] == 0:  # the test label overlaps mostly background
-            intersection_count[i] = 0
+            intersection_count = 0
         else:                              # the test label overlaps mostly a ref label
-            intersection_count[i] = label_pairs_by_pixel_count[idx][idx_max]
+            intersection_count = label_pairs_by_pixel_count[idx][idx_max]
 
         # # DEBUG: check the number of intersection pixels
         # print(np.count_nonzero(np.logical_and(labels_test == lab, labels_ref == labels_ref_correspond[i])))
@@ -281,7 +280,7 @@ def segmentation_quality(labels_ref, labels_test):
         # DICE = 2 * |A ∩ B| / (|A| + |B|)
         a = labels_test_count[i]
         b = labels_ref_count[labels_ref_unique == labels_ref_correspond[i]]
-        dice[i] = 2 * intersection_count[i] / (a + b)
+        dice[i] = 2 * intersection_count / (a + b)
 
     # prepare output as structured array
     out = np.zeros((1, len(dice)), dtype=[('lab_test', labels_test_unique.dtype),
