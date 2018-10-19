@@ -73,6 +73,156 @@ smallest_cell_area = 804
 # training window length
 training_window_len = 401
 
+'''Deprecated function
+'''
+
+from skimage.measure import regionprops
+
+
+def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_window_len=401, smallest_cell_area=804):
+    """
+    Extract a small image centered on each cell (label) of a dataset, and the corresponding Dice coefficient that gives
+    a measure of how well the label segments the cell (the Dice coefficient must have been computed previously,
+    typically by comparing the label with some other ground truth label).
+
+    :param dataset_im: numpy.ndarray (image, width, height, channel). Histology images.
+    :param dataset_lab: numpy.ndarray (image, width, height, 1). Instance segmentation of the histology. Each label
+    gives the segmentation of one cell. Not all cells need to have been segmented. Label=0 corresponds to the background
+    and will be ignored.
+    :param dataset_dice: numpy.ndarray (image, width, height, 1). Dice coefficients for dataset_lab. All pixels that
+    correspond to the same label should have the same Dice coefficient value, but this is sometimes not the case due to
+    interpolation errors after data augmentation. Thus, internally a median value is computed.
+    :param training_window_len: (def 401) Each cell will be extracted to a (training_window_len, training_window_len)
+    window.
+    :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as segmentation
+    noise.
+    :return: training_windows, dice
+
+    training_windows: numpy.ndarray (N, training_window_len, training_window_len, channel). Small windows extracted from
+    the histology. Each window is centered around one of N labelled cells.
+    label_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The segmentation label or mask for
+    the cell in the training window.
+    dice: numpy.ndarray (N,). Dice coefficient for the cell's segmentation.
+    """
+
+    # (r,c) size of the image
+    n_row = dataset_im.shape[1]
+    n_col = dataset_im.shape[2]
+
+    training_windows_list = []
+    label_windows_list = []
+    dice_list = []
+    for i in range(dataset_im.shape[0]):
+
+        # print('Image ' + str(i) + '/' + str(dataset['im'].shape[0] - 1))
+
+        # for convenience, we save a copy of the Dice coefficients for the current image
+        dice_aux = dataset_dice[i, :, :, 0]
+
+        # mask labels that have a Dice coefficient value. These are the ones we can use for training. We ignore the
+        # other labels, as they have no ground truth to compare against, but by default they get Dice = 0.0
+        labels = dataset_lab[i, :, :, 0] * (dataset_dice[i, :, :, 0] > 0.0).astype(np.uint8)
+        labels = labels.astype(np.int32)
+
+        # compute bounding boxes for the testing labels (note that the background 0 label is ignored)
+        props = regionprops(labels, coordinates='rc')
+
+        for p in props:
+
+            # sometimes we get artifact labels, for really tiny objects. We ignore those
+            if p['area'] < smallest_cell_area:
+                continue
+
+            # Dice value of the label (note we take the median to ignore small interpolation errors that pick Dice
+            # values from adjacent labels)
+            dice_list.append(np.median(dice_aux[labels == p['label']]))
+
+            # width and height of the label's bounding box. Taking into account: Bounding box
+            # (min_row, min_col, max_row, max_col). Pixels belonging to the bounding box are in the half-open interval
+            # [min_row; max_row) and [min_col; max_col).
+            bbox_min_row = p['bbox'][0]
+            bbox_max_row = p['bbox'][2]
+            bbox_min_col = p['bbox'][1]
+            bbox_max_col = p['bbox'][3]
+            bbox_width = bbox_max_col - bbox_min_col
+            bbox_height = bbox_max_row - bbox_min_row
+
+            # padding of cell bbox so that it's centered in the larger bbox (i.e. the training window)
+            pad_left = int(np.round((training_window_len - bbox_width) / 2.0))
+            pad_bottom = int(np.round((training_window_len - bbox_height) / 2.0))
+
+            # (r,c)-coordinates of the larger bbox within dataset['im'][i, :, :, 0]
+            # Note: if the bbox is quite close to an edge, the larger bbox may overflow out of the image
+            lbox_min_row = bbox_min_row - pad_bottom
+            lbox_max_row = lbox_min_row + training_window_len
+            lbox_min_col = bbox_min_col - pad_left
+            lbox_max_col = lbox_min_col + training_window_len
+
+            # compute correction to the larger bbox to avoid overflowing the image
+            delta_min_row = - lbox_min_row if lbox_min_row < 0 else 0
+            delta_max_row = n_row - lbox_max_row if lbox_max_row > n_row else 0
+            delta_min_col = - lbox_min_col if lbox_min_col < 0 else 0
+            delta_max_col = n_col - lbox_max_col if lbox_max_col > n_col else 0
+
+            # apply the correction
+            lbox_min_row += delta_min_row
+            lbox_max_row += delta_max_row
+            lbox_min_col += delta_min_col
+            lbox_max_col += delta_max_col
+
+            # array indices for the training window
+            i_min_row = delta_min_row
+            i_max_row = training_window_len + delta_max_row
+            i_min_col = delta_min_col
+            i_max_col = training_window_len + delta_max_col
+
+            # check that the larger bbox we extract from 'im' has the same size as the subarray we target in the
+            # training window
+            assert(lbox_max_row - lbox_min_row == i_max_row - i_min_row)
+            assert(lbox_max_col - lbox_min_col == i_max_col - i_min_col)
+
+            # extract histology window
+            training_window = np.zeros(shape=(training_window_len, training_window_len, dataset_im.shape[3]),
+                                       dtype=dataset_im.dtype)
+            training_window[i_min_row:i_max_row, i_min_col:i_max_col, :] = \
+                dataset_im[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, :]
+            training_windows_list.append(training_window)
+
+            # extract label window
+            label_window = np.zeros(shape=(training_window_len, training_window_len, dataset_lab.shape[3]),
+                                    dtype=np.uint8)
+            label_window[i_min_row:i_max_row, i_min_col:i_max_col, 0] = \
+                dataset_lab[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, 0] == p['label']
+            label_windows_list.append(label_window)
+
+
+            if DEBUG:
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(dataset_im[i, :, :, :])
+                plt.contour(labels == p['label'], levels=1)
+                plt.plot([bbox_min_col, bbox_max_col, bbox_max_col, bbox_min_col, bbox_min_col],
+                         [bbox_min_row, bbox_min_row, bbox_max_row, bbox_max_row, bbox_min_row], 'r')
+                plt.plot([lbox_min_col, lbox_max_col, lbox_max_col, lbox_min_col, lbox_min_col],
+                         [lbox_min_row, lbox_min_row, lbox_max_row, lbox_max_row, lbox_min_row], 'g')
+                plt.subplot(222)
+                # plt.imshow(labels)
+                plt.imshow(dice_aux)
+                plt.subplot(223)
+                plt.imshow(training_window)
+                plt.contour(label_window[:, :, 0], levels=1)
+                plt.subplot(224)
+                plt.imshow(label_window[:, :, 0])
+                plt.title('Dice = ' + str(dice_list[-1]))
+
+    # convert list to array
+    training_windows_list = np.stack(training_windows_list)
+    label_windows_list = np.stack(label_windows_list)
+    dice_list = np.stack(dice_list)
+
+    return training_windows_list, label_windows_list, dice_list
+
+
 '''Directories and filenames
 '''
 
@@ -177,17 +327,17 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
     '''
 
     train_cell_im, train_cell_lab, \
-    train_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=train_dataset['im'],
-                                                                  dataset_lab=train_dataset[predlab_str],
-                                                                  dataset_dice=train_dataset[preddice_str],
-                                                                  training_window_len=training_window_len,
-                                                                  smallest_cell_area=smallest_cell_area)
+    train_cell_dice = one_image_and_dice_per_cell(dataset_im=train_dataset['im'],
+                                                  dataset_lab=train_dataset[predlab_str],
+                                                  dataset_dice=train_dataset[preddice_str],
+                                                  training_window_len=training_window_len,
+                                                  smallest_cell_area=smallest_cell_area)
     test_cell_im, test_cell_lab, \
-    test_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=test_dataset['im'],
-                                                                 dataset_lab=test_dataset[predlab_str],
-                                                                 dataset_dice=test_dataset[preddice_str],
-                                                                 training_window_len=training_window_len,
-                                                                 smallest_cell_area=smallest_cell_area)
+    test_cell_dice = one_image_and_dice_per_cell(dataset_im=test_dataset['im'],
+                                                 dataset_lab=test_dataset[predlab_str],
+                                                 dataset_dice=test_dataset[preddice_str],
+                                                 training_window_len=training_window_len,
+                                                 smallest_cell_area=smallest_cell_area)
 
     if DEBUG:
         i = 150
