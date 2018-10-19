@@ -183,8 +183,8 @@ for i in range(n_im):
         plt.title('ground truth borders')
 
     # compute quality measure of estimated labels
-    qual = cytometer.utils.segmentation_quality(labels_test=labels[i, :, :, 0],
-                                                labels_ref=reflab[i, :, :, 0])
+    qual = cytometer.utils.match_overlapping_labels(labels_test=labels[i, :, :, 0],
+                                                    labels_ref=reflab[i, :, :, 0])
 
     # plot validation of cell segmentation
     if DEBUG:

@@ -207,7 +207,7 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     return labels, labels_borders
 
 
-def segmentation_quality(labels_ref, labels_test):
+def match_overlapping_labels(labels_ref, labels_test):
     """
     Match estimated segmentations to ground truth segmentations and compute Dice coefficients.
 
