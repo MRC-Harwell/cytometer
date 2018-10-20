@@ -480,7 +480,7 @@ def keras2skimage_transform(transform, shape):
     return transform_skimage
 
 
-def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_window_len=401, smallest_cell_area=804):
+def one_image_and_dice_per_cell(dataset_im, dataset_reflab, dataset_lab, training_window_len=401, smallest_cell_area=804):
     """
     Extract a small image centered on each cell (label) of a dataset, and the corresponding Dice coefficient that gives
     a measure of how well the label segments the cell (the Dice coefficient must have been computed previously,
@@ -516,6 +516,10 @@ def one_image_and_dice_per_cell(dataset_im, dataset_lab, dataset_dice, training_
     for i in range(dataset_im.shape[0]):
 
         # print('Image ' + str(i) + '/' + str(dataset['im'].shape[0] - 1))
+
+        # compute overlap between estimated and ground truth labels
+        lab_correspondence = match_overlapping_labels(labels_test=dataset_lab[i, :, :, 0],
+                                                      labels_ref=dataset_reflab[i, :, :, 0])
 
         # for convenience, we save a copy of the Dice coefficients for the current image
         dice_aux = dataset_dice[i, :, :, 0]

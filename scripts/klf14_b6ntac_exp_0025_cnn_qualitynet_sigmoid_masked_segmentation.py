@@ -197,14 +197,14 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
 
     train_cell_im, train_cell_lab, \
     train_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=train_dataset['im'],
+                                                                  dataset_reflab=train_dataset['lab'],
                                                                   dataset_lab=train_dataset[predlab_str],
-                                                                  dataset_dice=train_dataset[preddice_str],
                                                                   training_window_len=training_window_len,
                                                                   smallest_cell_area=smallest_cell_area)
     test_cell_im, test_cell_lab, \
     test_cell_dice = cytometer.utils.one_image_and_dice_per_cell(dataset_im=test_dataset['im'],
+                                                                 dataset_reflab=train_dataset['lab'],
                                                                  dataset_lab=test_dataset[predlab_str],
-                                                                 dataset_dice=test_dataset[preddice_str],
                                                                  training_window_len=training_window_len,
                                                                  smallest_cell_area=smallest_cell_area)
 
