@@ -237,9 +237,9 @@ def match_overlapping_labels(labels_ref, labels_test):
     :param labels_test: np.ndarray matrix, some integer type. All pixels with the same label
     correspond to the same object.
     :return: structured array out:
-     out['lab_test']: 1-d np.ndarray with unique list of labels in the test image.
-     out['lab_ref']: 1-d np.ndarray with labels that best align with the test labels.
-     out['dice']: 1-d np.ndarray with Dice coefficient for each pair of corresponding labels.
+     out['lab_test']: (N,) np.ndarray with unique list of labels in the test image.
+     out['lab_ref']: (N,) np.ndarray with labels that best align with the test labels.
+     out['dice']: (N,) np.ndarray with Dice coefficient for each pair of corresponding labels.
     """
 
     # form pairs of values between reference labels and test labels. This is going to
@@ -283,7 +283,7 @@ def match_overlapping_labels(labels_ref, labels_test):
         dice[i] = 2 * intersection_count / (a + b)
 
     # prepare output as structured array
-    out = np.zeros((1, len(dice)), dtype=[('lab_test', labels_test_unique.dtype),
+    out = np.zeros((len(dice),), dtype=[('lab_test', labels_test_unique.dtype),
                                           ('lab_ref', labels_ref_unique.dtype),
                                           ('dice', dice.dtype)])
     out['lab_test'] = labels_test_unique
@@ -480,30 +480,31 @@ def keras2skimage_transform(transform, shape):
     return transform_skimage
 
 
-def one_image_and_dice_per_cell(dataset_im, dataset_reflab, dataset_lab, training_window_len=401, smallest_cell_area=804):
+def one_image_per_label(dataset_im, dataset_lab_ref, dataset_lab_test, training_window_len=401, smallest_cell_area=804):
     """
     Extract a small image centered on each cell (label) of a dataset, and the corresponding Dice coefficient that gives
     a measure of how well the label segments the cell (the Dice coefficient must have been computed previously,
     typically by comparing the label with some other ground truth label).
 
     :param dataset_im: numpy.ndarray (image, width, height, channel). Histology images.
-    :param dataset_lab: numpy.ndarray (image, width, height, 1). Instance segmentation of the histology. Each label
-    gives the segmentation of one cell. Not all cells need to have been segmented. Label=0 corresponds to the background
-    and will be ignored.
-    :param dataset_dice: numpy.ndarray (image, width, height, 1). Dice coefficients for dataset_lab. All pixels that
-    correspond to the same label should have the same Dice coefficient value, but this is sometimes not the case due to
-    interpolation errors after data augmentation. Thus, internally a median value is computed.
+    :param dataset_lab_ref: numpy.ndarray (image, width, height, 1). Ground truth instance segmentation of the
+    histology. Each label gives the segmentation of one cell. Not all cells need to have been segmented. Label=0
+    corresponds to the background and will be ignored.
+    :param dataset_lab_test: numpy.ndarray (image, width, height, 1). Instance segmentation of the histology to be
+    tested. Each label gives the segmentation of one cell. Not all cells need to have been segmented. Label=0
+    corresponds to the background and will be ignored.
     :param training_window_len: (def 401) Each cell will be extracted to a (training_window_len, training_window_len)
     window.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as segmentation
     noise.
-    :return: training_windows, dice
+    :return: training_windows, label_windows, dice.
 
     training_windows: numpy.ndarray (N, training_window_len, training_window_len, channel). Small windows extracted from
     the histology. Each window is centered around one of N labelled cells.
     label_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The segmentation label or mask for
     the cell in the training window.
-    dice: numpy.ndarray (N,). Dice coefficient for the cell's segmentation.
+    dice: numpy.ndarray (N,). dice[i] is the Dice coefficient between corresponding each label_windows[i, ...] and its
+    corresponding ground truth label.
     """
 
     # (r,c) size of the image
@@ -515,26 +516,43 @@ def one_image_and_dice_per_cell(dataset_im, dataset_reflab, dataset_lab, trainin
     dice_list = []
     for i in range(dataset_im.shape[0]):
 
-        # print('Image ' + str(i) + '/' + str(dataset['im'].shape[0] - 1))
+        # print('Image ' + str(i) + '/' + str(dataset_im.shape[0] - 1))  # DEBUG
 
         # compute overlap between estimated and ground truth labels
-        lab_correspondence = match_overlapping_labels(labels_ref=dataset_reflab[i, :, :, 0],
-                                                      labels_test=dataset_lab[i, :, :, 0])
+        lab_correspondence = match_overlapping_labels(labels_ref=dataset_lab_ref[i, :, :, 0],
+                                                      labels_test=dataset_lab_test[i, :, :, 0])
 
         # compute bounding boxes for the testing labels (note that the background 0 label is ignored)
-        props = regionprops(dataset_lab[i, :, :, 0], coordinates='rc')
+        props = regionprops(dataset_lab_test[i, :, :, 0], coordinates='rc')
 
         for p in props:
 
-            # sometimes we get artifact labels, for really tiny objects. We ignore those
-            if p['area'] < smallest_cell_area:
+            # print('p[\'label\'] = ' + str(p['label']))  # DEBUG
+
+            # simplify nomenclature
+            lab_test = p['label']  # test label under consideration
+            lab_ref = lab_correspondence['lab_ref'][lab_correspondence['lab_test'] == lab_test]  # corresponding ground truth label
+            assert(len(lab_ref) == 1)  # each test label should have one and only one reference label
+            lab_ref = lab_ref[0]
+            dice = lab_correspondence['dice'][lab_correspondence['lab_test'] == lab_test]  # Dice coefficient
+            assert(len(dice) == 1)  # the test label shouldn't be repeated. Thus, we should get only one Dice coeff here
+            dice = dice[0]
+
+            # we ignore tiny labels as artifacts, as well as tests labels that have no corresponding ground truth
+            if p['area'] < smallest_cell_area or lab_ref == 0:
                 continue
 
-            # Dice value of the label (note we take the median to ignore small interpolation errors that pick Dice
-            # values from adjacent labels)
-            dice_list.append(np.median(dice_aux[labels == p['label']]))
+            if DEBUG:
+                plt.clf()
+                plt.subplot(211)
+                plt.imshow(dataset_lab_ref[i, :, :, 0] == lab_ref)
+                plt.title('i = ' + str(i) + ', Dice = ' + str(dice))
+                plt.ylabel('lab_ref = ' + str(lab_ref))
+                plt.subplot(212)
+                plt.imshow(dataset_lab_test[i, :, :, 0] == lab_test)
+                plt.ylabel('lab_test = ' + str(lab_test))
 
-            # width and height of the label's bounding box. Taking into account: Bounding box
+            # width and height of the test label's bounding box. Taking into account: Bounding box
             # (min_row, min_col, max_row, max_col). Pixels belonging to the bounding box are in the half-open interval
             # [min_row; max_row) and [min_col; max_col).
             bbox_min_row = p['bbox'][0]
@@ -586,31 +604,32 @@ def one_image_and_dice_per_cell(dataset_im, dataset_reflab, dataset_lab, trainin
             training_windows_list.append(training_window)
 
             # extract label window
-            label_window = np.zeros(shape=(training_window_len, training_window_len, dataset_lab.shape[3]),
+            label_window = np.zeros(shape=(training_window_len, training_window_len, dataset_lab_test.shape[3]),
                                     dtype=np.uint8)
             label_window[i_min_row:i_max_row, i_min_col:i_max_col, 0] = \
-                dataset_lab[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, 0] == p['label']
+                dataset_lab_test[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, 0] == p['label']
             label_windows_list.append(label_window)
 
+            # save Dice value for later
+            dice_list.append(dice)
 
             if DEBUG:
                 plt.clf()
                 plt.subplot(221)
                 plt.imshow(dataset_im[i, :, :, :])
-                plt.contour(labels == p['label'], levels=1)
+                plt.contour(dataset_lab_test[i, :, :, 0] == p['label'], levels=1)
                 plt.plot([bbox_min_col, bbox_max_col, bbox_max_col, bbox_min_col, bbox_min_col],
                          [bbox_min_row, bbox_min_row, bbox_max_row, bbox_max_row, bbox_min_row], 'r')
                 plt.plot([lbox_min_col, lbox_max_col, lbox_max_col, lbox_min_col, lbox_min_col],
                          [lbox_min_row, lbox_min_row, lbox_max_row, lbox_max_row, lbox_min_row], 'g')
                 plt.subplot(222)
-                # plt.imshow(labels)
-                plt.imshow(dice_aux)
-                plt.subplot(223)
                 plt.imshow(training_window)
                 plt.contour(label_window[:, :, 0], levels=1)
+                plt.title('Dice = ' + str(round(dice_list[-1], 2)))
+                plt.subplot(223)
+                plt.imshow(dataset_lab_test[i, :, :, 0] == p['label'])
                 plt.subplot(224)
                 plt.imshow(label_window[:, :, 0])
-                plt.title('Dice = ' + str(dice_list[-1]))
 
     # convert list to array
     training_windows_list = np.stack(training_windows_list)
