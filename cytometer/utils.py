@@ -482,9 +482,8 @@ def keras2skimage_transform(transform, shape):
 
 def one_image_per_label(dataset_im, dataset_lab_ref, dataset_lab_test, training_window_len=401, smallest_cell_area=804):
     """
-    Extract a small image centered on each cell (label) of a dataset, and the corresponding Dice coefficient that gives
-    a measure of how well the label segments the cell (the Dice coefficient must have been computed previously,
-    typically by comparing the label with some other ground truth label).
+    Extract a small image centered on each cell (label) of a dataset, the ground truth and test segmentations, and the
+    corresponding Dice coefficient.
 
     :param dataset_im: numpy.ndarray (image, width, height, channel). Histology images.
     :param dataset_lab_ref: numpy.ndarray (image, width, height, 1). Ground truth instance segmentation of the
@@ -497,12 +496,14 @@ def one_image_per_label(dataset_im, dataset_lab_ref, dataset_lab_test, training_
     window.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as segmentation
     noise.
-    :return: training_windows, label_windows, dice.
+    :return: training_windows, reflabel_windows, testlabel_windows, dice.
 
     training_windows: numpy.ndarray (N, training_window_len, training_window_len, channel). Small windows extracted from
     the histology. Each window is centered around one of N labelled cells.
-    label_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The segmentation label or mask for
-    the cell in the training window.
+    reflabel_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The ground truth segmentation
+    label or mask for the cell in the training window.
+    testlabel_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The test segmentation label or
+    mask for the cell in the training window.
     dice: numpy.ndarray (N,). dice[i] is the Dice coefficient between corresponding each label_windows[i, ...] and its
     corresponding ground truth label.
     """
@@ -512,7 +513,8 @@ def one_image_per_label(dataset_im, dataset_lab_ref, dataset_lab_test, training_
     n_col = dataset_im.shape[2]
 
     training_windows_list = []
-    label_windows_list = []
+    testlabel_windows_list = []
+    reflabel_windows_list = []
     dice_list = []
     for i in range(dataset_im.shape[0]):
 
@@ -607,8 +609,15 @@ def one_image_per_label(dataset_im, dataset_lab_ref, dataset_lab_test, training_
             label_window = np.zeros(shape=(training_window_len, training_window_len, dataset_lab_test.shape[3]),
                                     dtype=np.uint8)
             label_window[i_min_row:i_max_row, i_min_col:i_max_col, 0] = \
-                dataset_lab_test[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, 0] == p['label']
-            label_windows_list.append(label_window)
+                dataset_lab_test[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, 0] == lab_test
+            testlabel_windows_list.append(label_window)
+
+            # extract reference label window
+            reflabel_window = np.zeros(shape=(training_window_len, training_window_len, dataset_lab_ref.shape[3]),
+                                       dtype=np.uint8)
+            reflabel_window[i_min_row:i_max_row, i_min_col:i_max_col, 0] = \
+                dataset_lab_ref[i, lbox_min_row:lbox_max_row, lbox_min_col:lbox_max_col, 0] == lab_ref
+            reflabel_windows_list.append(reflabel_window)
 
             # save Dice value for later
             dice_list.append(dice)
@@ -629,14 +638,17 @@ def one_image_per_label(dataset_im, dataset_lab_ref, dataset_lab_test, training_
                 plt.subplot(223)
                 plt.imshow(dataset_lab_test[i, :, :, 0] == p['label'])
                 plt.subplot(224)
-                plt.imshow(label_window[:, :, 0])
+                plt.gca().invert_yaxis()
+                plt.contour(reflabel_window[:, :, 0], levels=1, colors='green', label='ref')
+                plt.contour(label_window[:, :, 0], levels=1, label='test')
 
     # convert list to array
     training_windows_list = np.stack(training_windows_list)
-    label_windows_list = np.stack(label_windows_list)
+    testlabel_windows_list = np.stack(testlabel_windows_list)
+    reflabel_windows_list = np.stack(reflabel_windows_list)
     dice_list = np.stack(dice_list)
 
-    return training_windows_list, label_windows_list, dice_list
+    return training_windows_list, reflabel_windows_list, testlabel_windows_list, dice_list
 
 
 def focal_loss(gamma=2., alpha=.25):
