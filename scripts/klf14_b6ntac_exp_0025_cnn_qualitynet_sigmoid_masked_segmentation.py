@@ -50,6 +50,7 @@ import cytometer.data
 import cytometer.model_checkpoint_parallel
 import cytometer.utils
 import tensorflow as tf
+from skimage.morphology import watershed
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -148,7 +149,17 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
                                      prefix_to=['im', 'mask', 'lab', predlab_str],
                                      nblocks=1, shuffle_seed=i_fold)
 
-    # load the matching of predicted segmentations to ground truth segmentations
+    # remove borders between cells in the lab_train data. For this experiment, we want labels touching each other
+    for i in range(train_dataset['lab'].shape[0]):
+        train_dataset['lab'][i, :, :, 0] = watershed(image=np.zeros(shape=train_dataset['lab'].shape[1:3],
+                                                                    dtype=train_dataset['lab'].dtype),
+                                                     markers=train_dataset['lab'][i, :, :, 0],
+                                                     watershed_line=False)
+
+    # change the background label from 1 to 0
+    train_dataset['lab'][train_dataset['lab'] == 1] = 0
+
+    # load the mapping between predicted and ground truth segmentations
     # Note: the correspondence between labels doesn't change with agumentation, so we load the same labcorr file for all
     # the _seed_???_ variations
     labcorr_str = 'labcorr_kfold_' + str(i_fold).zfill(2)
