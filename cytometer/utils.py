@@ -518,19 +518,11 @@ def one_image_and_dice_per_cell(dataset_im, dataset_reflab, dataset_lab, trainin
         # print('Image ' + str(i) + '/' + str(dataset['im'].shape[0] - 1))
 
         # compute overlap between estimated and ground truth labels
-        lab_correspondence = match_overlapping_labels(labels_test=dataset_lab[i, :, :, 0],
-                                                      labels_ref=dataset_reflab[i, :, :, 0])
-
-        # for convenience, we save a copy of the Dice coefficients for the current image
-        dice_aux = dataset_dice[i, :, :, 0]
-
-        # mask labels that have a Dice coefficient value. These are the ones we can use for training. We ignore the
-        # other labels, as they have no ground truth to compare against, but by default they get Dice = 0.0
-        labels = dataset_lab[i, :, :, 0] * (dataset_dice[i, :, :, 0] > 0.0).astype(np.uint8)
-        labels = labels.astype(np.int32)
+        lab_correspondence = match_overlapping_labels(labels_ref=dataset_reflab[i, :, :, 0],
+                                                      labels_test=dataset_lab[i, :, :, 0])
 
         # compute bounding boxes for the testing labels (note that the background 0 label is ignored)
-        props = regionprops(labels, coordinates='rc')
+        props = regionprops(dataset_lab[i, :, :, 0], coordinates='rc')
 
         for p in props:
 
