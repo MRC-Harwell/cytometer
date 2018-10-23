@@ -51,6 +51,7 @@ import cytometer.model_checkpoint_parallel
 import cytometer.utils
 import tensorflow as tf
 from skimage.morphology import watershed
+from skimage.measure import regionprops
 import cv2
 
 # limit GPU memory used
@@ -160,6 +161,16 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
     # change the background label from 1 to 0
     train_dataset['lab'][train_dataset['lab'] == 1] = 0
 
+    # remove borders between cells in the lab_test data. For this experiment, we want labels touching each other
+    for i in range(test_dataset['lab'].shape[0]):
+        test_dataset['lab'][i, :, :, 0] = watershed(image=np.zeros(shape=test_dataset['lab'].shape[1:3],
+                                                                   dtype=test_dataset['lab'].dtype),
+                                                    markers=test_dataset['lab'][i, :, :, 0],
+                                                    watershed_line=False)
+
+    # change the background label from 1 to 0
+    test_dataset['lab'][test_dataset['lab'] == 1] = 0
+
     # load the mapping between predicted and ground truth segmentations
     # Note: the correspondence between labels doesn't change with agumentation, so we load the same labcorr file for all
     # the _seed_???_ variations
@@ -205,18 +216,18 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
     '''Extract one window for each individual cell, with the corresponding Dice coefficient
     '''
 
-    train_cell_im, train_cell_reflab, train_cell_testlab, \
-    train_cell_dice = cytometer.utils.one_image_per_label(dataset_im=train_dataset['im'],
-                                                          dataset_lab_ref=train_dataset['lab'],
-                                                          dataset_lab_test=train_dataset[predlab_str],
-                                                          training_window_len=training_window_len,
-                                                          smallest_cell_area=smallest_cell_area)
-    test_cell_im, test_cell_reflab, test_cell_testlab, \
-    test_cell_dice = cytometer.utils.one_image_per_label(dataset_im=test_dataset['im'],
-                                                         dataset_lab_ref=train_dataset['lab'],
-                                                         dataset_lab_test=test_dataset[predlab_str],
-                                                         training_window_len=training_window_len,
-                                                         smallest_cell_area=smallest_cell_area)
+    train_cell_im, train_cell_reflab, train_cell_testlab, train_cell_dice = \
+        cytometer.utils.one_image_per_label(dataset_im=train_dataset['im'],
+                                            dataset_lab_ref=train_dataset['lab'],
+                                            dataset_lab_test=train_dataset[predlab_str],
+                                            training_window_len=training_window_len,
+                                            smallest_cell_area=smallest_cell_area)
+    test_cell_im, test_cell_reflab, test_cell_testlab, test_cell_dice = \
+        cytometer.utils.one_image_per_label(dataset_im=test_dataset['im'],
+                                            dataset_lab_ref=test_dataset['lab'],
+                                            dataset_lab_test=test_dataset[predlab_str],
+                                            training_window_len=training_window_len,
+                                            smallest_cell_area=smallest_cell_area)
 
     if DEBUG:
         i = 150
@@ -225,102 +236,115 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
         plt.contour(train_cell_testlab[i, :, :, 0], levels=1)
         plt.title('Dice = ' + str(train_cell_dice[i]))
 
-    # apply random changes to the segmentations, to worsen the Dice values
-    for i in range(test_cell_im.shape):
-        # random dilation or erosion radius
-        radius = np.random.random_integers(low=0, high=10)
+    if DEBUG:
+        i = 1000
+        plt.clf()
+        plt.imshow(test_cell_im[i, :, :, :])
+        plt.contour(test_cell_testlab[i, :, :, 0], levels=1)
+        plt.title('Dice = ' + str(test_cell_dice[i]))
+
+    # save one-cell data for later use
+    onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_000.npz')
+    np.savez_compressed(onecell_filename, train_cell_im=train_cell_im, train_cell_reflab=train_cell_reflab,
+                        train_cell_testlab=train_cell_testlab, train_cell_dice=train_cell_dice,
+                        test_cell_im=test_cell_im, test_cell_reflab=test_cell_reflab,
+                        test_cell_testlab=test_cell_testlab, test_cell_dice=test_cell_dice)
+
+    # make copy of training data to worsen it
+    worsen_train_cell_testlab = train_cell_testlab.copy()
+    worsen_train_cell_dice = train_cell_dice.copy()
+    worsen_test_cell_testlab = test_cell_testlab.copy()
+    worsen_test_cell_dice = test_cell_dice.copy()
+
+    # train images: apply random changes to the segmentations, to worsen the Dice values
+    for i in range(train_cell_im.shape[0]):
+
+        # get bounding box around segmentation
+        props = regionprops(train_cell_testlab[i, :, :, 0])
+
+        # diameter of a circle with the same area as the cell segmentation
+        diameter_test = np.sqrt(4 / np.pi * np.count_nonzero(train_cell_testlab[i, :, :, 0]))
+
+        # dilation or erosion kernel. Its size is a random percentage of diameter_test
+        np.random.seed(i)
+        diameter = int(np.random.uniform(low=0, high=0.3) * diameter_test)
+        kernel = np.ones(shape=(diameter, diameter))
+
+        # random dilation or erosion
         if np.random.random_integers(low=0, high=1) == 0:
-            train_cell_testlab[i, :, :, 0] = cv2.erode(train_cell_testlab[i, :, :, 0],
-                                                       kernel=np.ones(shape=(radius, radius)))
+            worsen_train_cell_testlab[i, :, :, 0] = cv2.erode(train_cell_testlab[i, :, :, 0], kernel=kernel)
         else:
-            train_cell_testlab[i, :, :, 0] = cv2.dilate(train_cell_testlab[i, :, :, 0],
-                                                        kernel=np.ones(shape=(radius, radius)))
+            worsen_train_cell_testlab[i, :, :, 0] = cv2.dilate(train_cell_testlab[i, :, :, 0], kernel=kernel)
         # recompute Dice coefficient
-        a_intersect_b = np.logical_and(train_cell_testlab[i, :, :, 0], train_cell_reflab[i, :, :, 0])
+        a_intersect_b = np.count_nonzero(np.logical_and(worsen_train_cell_testlab[i, :, :, 0],
+                                                        train_cell_reflab[i, :, :, 0]))
+        a = np.count_nonzero(worsen_train_cell_testlab[i, :, :, 0])
+        b = np.count_nonzero(train_cell_reflab[i, :, :, 0])
+        worsen_train_cell_dice[i] = 2 * a_intersect_b / (a + b)
 
+    # test images: apply random changes to the segmentations, to worsen the Dice values
+    for i in range(test_cell_im.shape[0]):
+
+        # get bounding box around segmentation
+        props = regionprops(test_cell_testlab[i, :, :, 0])
+
+        # diameter of a circle with the same area as the cell segmentation
+        diameter_test = np.sqrt(4 / np.pi * np.count_nonzero(test_cell_testlab[i, :, :, 0]))
+
+        # dilation or erosion kernel. Its size is a random percentage of diameter_test
+        np.random.seed(i)
+        diameter = int(np.random.uniform(low=0, high=0.3) * diameter_test)
+        kernel = np.ones(shape=(diameter, diameter))
+
+        # random dilation or erosion
+        if np.random.random_integers(low=0, high=1) == 0:
+            worsen_test_cell_testlab[i, :, :, 0] = cv2.erode(test_cell_testlab[i, :, :, 0], kernel=kernel)
+        else:
+            worsen_test_cell_testlab[i, :, :, 0] = cv2.dilate(test_cell_testlab[i, :, :, 0], kernel=kernel)
+        # recompute Dice coefficient
+        a_intersect_b = np.count_nonzero(np.logical_and(worsen_test_cell_testlab[i, :, :, 0],
+                                                        test_cell_reflab[i, :, :, 0]))
+        a = np.count_nonzero(worsen_test_cell_testlab[i, :, :, 0])
+        b = np.count_nonzero(test_cell_reflab[i, :, :, 0])
+        worsen_test_cell_dice[i] = 2 * a_intersect_b / (a + b)
+
+    # save worsened one-cell data for later use
+    onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_030.npz')
+    np.savez_compressed(onecell_filename, train_cell_testlab=worsen_train_cell_testlab,
+                        train_cell_dice=worsen_train_cell_dice, test_cell_testlab=worsen_test_cell_testlab,
+                        test_cell_dice=worsen_test_cell_dice)
 
     if DEBUG:
-        i = 150
+        i = 1006
         plt.clf()
         plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_testlab[i, :, :, 0], levels=1)
-        plt.title('Dice = ' + str(train_cell_dice[i]))
-
-    # multiply histology by segmentations to have a single input tensor
-    train_cell_im *= np.repeat(train_cell_testlab.astype(np.float32), repeats=train_cell_im.shape[3], axis=3)
-    test_cell_im *= np.repeat(test_cell_testlab.astype(np.float32), repeats=test_cell_im.shape[3], axis=3)
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.contour(worsen_train_cell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + "{:.2f}".format(worsen_train_cell_dice[i]) + ' (from '
+                  + "{:.2f}".format(train_cell_dice[i]) + ')')
 
     if DEBUG:
-        i = 150
+        # histograms of Dice values
         plt.clf()
-        plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_testlab[i, :, :, 0], levels=1)
-        plt.title('Dice = ' + str(train_cell_dice[i]))
+        plt.subplot(221)
+        plt.hist(train_cell_dice, histtype='step')
+        plt.hist(worsen_train_cell_dice, histtype='step')
+        plt.legend(['original', 'worsened'], loc='upper left')
+        plt.title('Training set')
+        plt.subplot(222)
+        plt.hist(test_cell_dice, histtype='step')
+        plt.hist(worsen_test_cell_dice, histtype='step')
+        plt.legend(['original', 'worsened'], loc='upper left')
+        plt.title('Testing set')
+        plt.subplot(223)
+        plt.hist(np.concatenate((train_cell_dice, worsen_train_cell_dice)), histtype='step')
+        plt.legend(['aggregate'], loc='upper left')
+        plt.xlabel('Dice coeff.')
+        plt.subplot(224)
+        plt.hist(np.concatenate((test_cell_dice, worsen_test_cell_dice)), histtype='step')
+        plt.legend(['aggregate'], loc='upper left')
+        plt.xlabel('Dice coeff.')
 
-    '''Neural network training
-    '''
-
-    # list all CPUs and GPUs
-    device_list = K.get_session().list_devices()
-
-    # number of GPUs
-    gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
-
-    # instantiate model
-    with tf.device('/cpu:0'):
-        # we start with the DenseNet without the final Dense layer, because it has a softmax activation, and we only
-        # want to classify 1 class. So then we manually add an extra Dense layer with a sigmoid activation as final
-        # output
-        base_model = DenseNet(blocks=[6, 12, 24, 16], include_top=False, weights=None, input_shape=(401, 401, 3),
-                              pooling='avg')
-        x = Dense(units=1, activation='sigmoid', name='fc1')(base_model.output)
-        model = Model(inputs=base_model.input, outputs=x)
-
-    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-
-    if gpu_number > 1:  # compile and train model: Multiple GPUs
-
-        # checkpoint to save model after each epoch
-        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                           verbose=1, save_best_only=True)
-        # compile model
-        parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'fc1': 'mse'},
-                               optimizer='Adadelta',
-                               metrics={'fc1': ['mse', 'mae']})
-
-        # train model
-        tic = datetime.datetime.now()
-        parallel_model.fit(train_cell_im,
-                           {'fc1': train_cell_dice},
-                           validation_data=(test_cell_im,
-                                            {'fc1': test_cell_dice}),
-                           batch_size=15, epochs=epochs, initial_epoch=0,
-                           callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
-
-    else:  # compile and train model: One GPU
-
-        # checkpoint to save model after each epoch
-        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                       verbose=1, save_best_only=True)
-
-        # compile model
-        model.compile(loss={'fc1': 'mse'},
-                      optimizer='Adadelta',
-                      metrics={'fc1': ['mse', 'mae']})
-
-        # train model
-        tic = datetime.datetime.now()
-        model.fit(train_cell_im,
-                  {'fc1': train_cell_dice},
-                  validation_data=(test_cell_im,
-                                   {'fc1': test_cell_dice}),
-                  batch_size=15, epochs=epochs, initial_epoch=0,
-                  callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
 
 # if we run the script with qsub on the cluster, the standard output is in file
 # klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
