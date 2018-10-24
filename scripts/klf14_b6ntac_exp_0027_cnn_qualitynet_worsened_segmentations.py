@@ -92,49 +92,25 @@ if experiment_id == '<input>':
 else:
     experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
-
-'''Models that were used to generate the segmentations
-'''
-
-saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
-saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
-
-contour_model_name = saved_contour_model_basename + '*.h5'
-dmap_model_name = saved_dmap_model_basename + '*.h5'
-
-'''Filenames of whole dataset, and indices of train vs. test subsets
-'''
-
-# load list of images, and indices for training vs. testing indices
-contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
-with open(contour_model_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-im_orig_file_list = aux['file_list']
-idx_orig_test_all = aux['idx_test_all']
-
-# number of original training images
-n_im = len(im_orig_file_list)
-
-# correct home directory if we are in a different system than what was used to train the models
-im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, '/users/rittscher/rcasero', home,
-                                                         check_isfile=True)
-
 '''Loop folds (in this script, we actually only work with fold 0)
 '''
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
+for i_fold in range(1):
 
     '''Load data
     '''
 
     # one-cell windows from the segmentations obtained with our pipeline
+    # ['train_cell_im', 'train_cell_reflab', 'train_cell_testlab', 'train_cell_dice', 'test_cell_im',
+    # 'test_cell_reflab', 'test_cell_testlab', 'test_cell_dice']
     onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_000.npz')
     dataset_orig = np.load(onecell_filename)
 
     # extra data created by worsening the segmentations above
+    # ['train_cell_testlab', 'train_cell_dice', 'test_cell_testlab', 'test_cell_dice']
     onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_030.npz')
     dataset_worsen = np.load(onecell_filename)
 
