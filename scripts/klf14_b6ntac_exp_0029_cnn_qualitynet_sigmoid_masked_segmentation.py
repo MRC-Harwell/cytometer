@@ -1,7 +1,10 @@
 """
 Training of CNN for regression of Dice coefficients.
 
-This script deprecated by klf14_b6ntac_exp_0029_cnn_qualitynet_sigmoid_masked_segmentation.py.
+This script deprecates klf14_b6ntac_exp_0025_cnn_qualitynet_sigmoid_masked_segmentation.py. (The former relies on
+precomputed Dice-coeff images that we no longer produce. This script computes Dice coeffs on the fly).
+
+Create a histology window per cell for training of the quality network.
 
 Following QualityNet^1 [1], but using the DenseNet as CNN.
 Inputs are the RGB histology masked by the segmentation mask. The output is the Dice coefficient.
@@ -69,7 +72,7 @@ DEBUG = False
 n_folds = 11
 
 # number of epochs for training
-epochs = 20
+epochs = 40
 
 # area (pixel**2) of the smallest object we accept as a cell (pi * (16 pixel)**2 = 804.2 pixel**2)
 smallest_cell_area = 804
@@ -94,148 +97,63 @@ if experiment_id == '<input>':
 else:
     experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
-
-'''Models that were used to generate the segmentations
-'''
-
-saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
-saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
-
-contour_model_name = saved_contour_model_basename + '*.h5'
-dmap_model_name = saved_dmap_model_basename + '*.h5'
-
-'''Filenames of whole dataset, and indices of train vs. test subsets
-'''
-
-# load list of images, and indices for training vs. testing indices
-contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
-with open(contour_model_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-im_orig_file_list = aux['file_list']
-idx_orig_test_all = aux['idx_test_all']
-
-# number of original training images
-n_im = len(im_orig_file_list)
-
-# correct home directory if we are in a different system than what was used to train the models
-im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, '/users/rittscher/rcasero', home,
-                                                         check_isfile=True)
-
 '''Loop folds (in this script, we actually only work with fold 0)
 '''
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
+for i_fold in range(1):  # this is a clunky way of doing i_fold = 0, but that can be easily extended for more folds
 
     '''Load data
     '''
 
-    # split the data into training and testing datasets
-    im_orig_test_file_list, im_orig_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
+    # one-cell windows from the segmentations obtained with our pipeline
+    # ['train_cell_im', 'train_cell_reflab', 'train_cell_testlab', 'train_cell_dice', 'test_cell_im',
+    # 'test_cell_reflab', 'test_cell_testlab', 'test_cell_dice']
+    onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_000.npz')
+    dataset_orig = np.load(onecell_filename)
 
-    # add the augmented image files
-    im_train_file_list = cytometer.data.augment_file_list(im_orig_train_file_list, '_nan_', '_*_')
-    im_test_file_list = cytometer.data.augment_file_list(im_orig_test_file_list, '_nan_', '_*_')
+    # read the data into memory
+    train_cell_im = dataset_orig['train_cell_im']
+    train_cell_reflab = dataset_orig['train_cell_reflab']
+    train_cell_testlab = dataset_orig['train_cell_testlab']
+    train_cell_dice = dataset_orig['train_cell_dice']
+    test_cell_im = dataset_orig['test_cell_im']
+    test_cell_reflab = dataset_orig['test_cell_reflab']
+    test_cell_testlab = dataset_orig['test_cell_testlab']
+    test_cell_dice = dataset_orig['test_cell_dice']
 
-    # load the train and test data: im, mask, predlab_kfold_00 data
-    # Note: we need to load whole images, to avoid splitting cells, that then become unusable
-    predlab_str = 'predlab_kfold_' + str(i_fold).zfill(2)
-    train_dataset, train_file_list, train_shuffle_idx = \
-        cytometer.data.load_datasets(im_train_file_list, prefix_from='im',
-                                     prefix_to=['im', 'mask', 'lab', predlab_str],
-                                     nblocks=1, shuffle_seed=i_fold)
-    test_dataset, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                     prefix_to=['im', 'mask', 'lab', predlab_str],
-                                     nblocks=1, shuffle_seed=i_fold)
-
-    # remove borders between cells in the lab_train data. For this experiment, we want labels touching each other
-    for i in range(train_dataset['lab'].shape[0]):
-        train_dataset['lab'][i, :, :, 0] = watershed(image=np.zeros(shape=train_dataset['lab'].shape[1:3],
-                                                                    dtype=train_dataset['lab'].dtype),
-                                                     markers=train_dataset['lab'][i, :, :, 0],
-                                                     watershed_line=False)
-
-    # change the background label from 1 to 0
-    train_dataset['lab'][train_dataset['lab'] == 1] = 0
-
-    # load the mapping between predicted and ground truth segmentations
-    # Note: the correspondence between labels doesn't change with agumentation, so we load the same labcorr file for all
-    # the _seed_???_ variations
-    labcorr_str = 'labcorr_kfold_' + str(i_fold).zfill(2)
-    train_labcorr = []
-    for i in range(len(im_train_file_list)):
-        labcorr_file = im_train_file_list[i].replace('im_', labcorr_str + '_')
-        labcorr_file = re.sub(r'_seed_..._', '_seed_nan_', labcorr_file)
-        labcorr_file = os.path.join(training_augmented_dir,
-                                    labcorr_file.replace('.tif', '.npy'))
-        train_labcorr.append(np.load(labcorr_file))
-
-    test_labcorr = []
-    for i in range(len(im_test_file_list)):
-        labcorr_file = im_test_file_list[i].replace('im_', labcorr_str + '_')
-        labcorr_file = re.sub(r'_seed_..._', '_seed_nan_', labcorr_file)
-        labcorr_file = os.path.join(training_augmented_dir,
-                                    labcorr_file.replace('.tif', '.npy'))
-        test_labcorr.append(np.load(labcorr_file))
-
+    # save memory
+    del dataset_orig
 
     if DEBUG:
-        i = 150
-        plt.clf()
-        for pi, prefix in enumerate(train_dataset.keys()):
-            plt.subplot(1, len(train_dataset.keys()), pi + 1)
-            if train_dataset[prefix].shape[-1] < 3:
-                plt.imshow(train_dataset[prefix][i, :, :, 0])
-            else:
-                plt.imshow(train_dataset[prefix][i, :, :, :])
-            plt.title('out[' + prefix + ']')
-
-        i = 22
-        plt.clf()
-        for pi, prefix in enumerate(test_dataset.keys()):
-            plt.subplot(1, len(test_dataset.keys()), pi + 1)
-            if test_dataset[prefix].shape[-1] < 3:
-                plt.imshow(test_dataset[prefix][i, :, :, 0])
-            else:
-                plt.imshow(test_dataset[prefix][i, :, :, :])
-            plt.title('out[' + prefix + ']')
-
-    '''Extract one window for each individual cell, with the corresponding Dice coefficient
-    '''
-
-    train_cell_im, _, train_cell_lab, \
-    train_cell_dice = cytometer.utils.one_image_per_label(dataset_im=train_dataset['im'],
-                                                          dataset_lab_ref=train_dataset['lab'],
-                                                          dataset_lab_test=train_dataset[predlab_str],
-                                                          training_window_len=training_window_len,
-                                                          smallest_cell_area=smallest_cell_area)
-    test_cell_im, _, test_cell_lab, \
-    test_cell_dice = cytometer.utils.one_image_per_label(dataset_im=test_dataset['im'],
-                                                         dataset_lab_ref=train_dataset['lab'],
-                                                         dataset_lab_test=test_dataset[predlab_str],
-                                                         training_window_len=training_window_len,
-                                                         smallest_cell_area=smallest_cell_area)
-
-    if DEBUG:
-        i = 150
+        i = 1006
         plt.clf()
         plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_lab[i, :, :, 0], levels=1)
-        plt.title('Dice = ' + str(train_cell_dice[i]))
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
 
     # multiply histology by segmentations to have a single input tensor
-    train_cell_im *= np.repeat(train_cell_lab.astype(np.float32), repeats=train_cell_im.shape[3], axis=3)
-    test_cell_im *= np.repeat(test_cell_lab.astype(np.float32), repeats=test_cell_im.shape[3], axis=3)
+    train_cell_im *= np.repeat(train_cell_testlab.astype(np.float32), repeats=train_cell_im.shape[3], axis=3)
+    test_cell_im *= np.repeat(test_cell_testlab.astype(np.float32), repeats=test_cell_im.shape[3], axis=3)
 
     if DEBUG:
-        i = 150
         plt.clf()
+        plt.subplot(121)
+        i = 1006
         plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_lab[i, :, :, 0], levels=1)
-        plt.title('Dice = ' + str(train_cell_dice[i]))
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+        plt.subplot(122)
+        i += int(train_cell_im.shape[0]/2)
+        plt.imshow(train_cell_im[i, :, :, :])
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
 
     '''Neural network training
     '''
@@ -275,7 +193,7 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
                            {'fc1': train_cell_dice},
                            validation_data=(test_cell_im,
                                             {'fc1': test_cell_dice}),
-                           batch_size=15, epochs=epochs, initial_epoch=0,
+                           batch_size=16, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -297,7 +215,7 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
                   {'fc1': train_cell_dice},
                   validation_data=(test_cell_im,
                                    {'fc1': test_cell_dice}),
-                  batch_size=15, epochs=epochs, initial_epoch=0,
+                  batch_size=16, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
