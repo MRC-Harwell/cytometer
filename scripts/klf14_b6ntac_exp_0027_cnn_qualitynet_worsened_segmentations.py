@@ -172,11 +172,15 @@ for i_fold in range(1):  # this is a clunky way of doing i_fold = 0, but that ca
         plt.imshow(train_cell_im[i, :, :, :])
         plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
         plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
         plt.subplot(122)
         i += int(train_cell_im.shape[0]/2)
         plt.imshow(train_cell_im[i, :, :, :])
         plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='red')
         plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
 
     '''Neural network training
     '''
