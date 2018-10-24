@@ -67,7 +67,7 @@ DEBUG = False
 n_folds = 11
 
 # number of epochs for training
-epochs = 20
+epochs = 40
 
 # area (pixel**2) of the smallest object we accept as a cell (pi * (16 pixel)**2 = 804.2 pixel**2)
 smallest_cell_area = 804
@@ -98,7 +98,7 @@ else:
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold in range(1):
+for i_fold in range(1):  # this is a clunky way of doing i_fold = 0, but that can be easily extended for more folds
 
     '''Load data
     '''
@@ -114,25 +114,69 @@ for i_fold in range(1):
     onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_030.npz')
     dataset_worsen = np.load(onecell_filename)
 
-    # TODO: Here
+    # read the data into memory
+    train_cell_im = dataset_orig['train_cell_im']
+    train_cell_reflab = dataset_orig['train_cell_reflab']
+    train_cell_testlab = dataset_orig['train_cell_testlab']
+    train_cell_dice = dataset_orig['train_cell_dice']
+    test_cell_im = dataset_orig['test_cell_im']
+    test_cell_reflab = dataset_orig['test_cell_reflab']
+    test_cell_testlab = dataset_orig['test_cell_testlab']
+    test_cell_dice = dataset_orig['test_cell_dice']
+    worsen_train_cell_testlab = dataset_worsen['train_cell_testlab']
+    worsen_train_cell_dice = dataset_worsen['train_cell_dice']
+    worsen_test_cell_testlab = dataset_worsen['test_cell_testlab']
+    worsen_test_cell_dice = dataset_worsen['test_cell_dice']
+
+    # save memory
+    del dataset_orig
+    del dataset_worsen
 
     if DEBUG:
-        i = 150
+        i = 1006
         plt.clf()
         plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_lab[i, :, :, 0], levels=1)
-        plt.title('Dice = ' + str(train_cell_dice[i]))
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.contour(worsen_train_cell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+
+    # concatenate training and test data, the original one-cell windows and the worsened ones
+    train_cell_im = np.concatenate((train_cell_im, train_cell_im), axis=0)
+    train_cell_testlab = np.concatenate((train_cell_testlab, worsen_train_cell_testlab), axis=0)
+    train_cell_dice = np.concatenate((train_cell_dice, worsen_train_cell_dice), axis=0)
+    test_cell_im = np.concatenate((test_cell_im, test_cell_im), axis=0)
+    test_cell_testlab = np.concatenate((test_cell_testlab, worsen_test_cell_testlab), axis=0)
+    test_cell_dice = np.concatenate((test_cell_dice, worsen_test_cell_dice), axis=0)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 1006
+        plt.imshow(train_cell_im[i, :, :, :])
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.subplot(122)
+        i += int(train_cell_im.shape[0]/2)
+        plt.imshow(train_cell_im[i, :, :, :])
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
 
     # multiply histology by segmentations to have a single input tensor
-    train_cell_im *= np.repeat(train_cell_lab.astype(np.float32), repeats=train_cell_im.shape[3], axis=3)
-    test_cell_im *= np.repeat(test_cell_lab.astype(np.float32), repeats=test_cell_im.shape[3], axis=3)
+    train_cell_im *= np.repeat(train_cell_testlab.astype(np.float32), repeats=train_cell_im.shape[3], axis=3)
+    test_cell_im *= np.repeat(test_cell_testlab.astype(np.float32), repeats=test_cell_im.shape[3], axis=3)
 
     if DEBUG:
-        i = 150
         plt.clf()
+        plt.subplot(121)
+        i = 1006
         plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_lab[i, :, :, 0], levels=1)
-        plt.title('Dice = ' + str(train_cell_dice[i]))
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.subplot(122)
+        i += int(train_cell_im.shape[0]/2)
+        plt.imshow(train_cell_im[i, :, :, :])
+        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
 
     '''Neural network training
     '''
@@ -172,7 +216,7 @@ for i_fold in range(1):
                            {'fc1': train_cell_dice},
                            validation_data=(test_cell_im,
                                             {'fc1': test_cell_dice}),
-                           batch_size=15, epochs=epochs, initial_epoch=0,
+                           batch_size=16, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -194,7 +238,7 @@ for i_fold in range(1):
                   {'fc1': train_cell_dice},
                   validation_data=(test_cell_im,
                                    {'fc1': test_cell_dice}),
-                  batch_size=15, epochs=epochs, initial_epoch=0,
+                  batch_size=16, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
