@@ -15,7 +15,6 @@ import ast
 from mahotas import bwperim
 import pysto.imgproc as pystoim
 import re
-import keras
 
 
 DEBUG = False
@@ -457,10 +456,9 @@ def read_keras_training_output(filename):
 
             # remove whitespaces: '1/1846[..............................]-ETA:1:33:38-loss:1611.5088-mean_squared_error:933.6124-mean_absolute_error:17.6664'
             line = line.strip()
-            line = line.replace(' ', '')
 
             # split line into elements: ['1/1846[..............................]', 'ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
-            line = line.split('-')
+            line = line.split(' - ')
 
             # remove first element: ['ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
             line = line[1:]
