@@ -1,11 +1,6 @@
 """
-Training of CNN for regression of Dice coefficients.
-
-Following QualityNet^1 [1], but using the DenseNet as CNN.
-Inputs are the RGB histology masked by the segmentation mask. The output is the Dice coefficient.
-
-[1] Huang et al. "QualityNet: Segmentation quality evaluation with deep convolutional networks", 2016 Visual
-Communications and Image Processing (VCIP).
+Extract a window centered on each cell from test data (histology, ground truth segmentation, algorithm segmentation and
+Dice coefficient.
 """
 
 # cross-platform home directory
@@ -245,7 +240,7 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
 
     # save one-cell data for later use
     onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_000.npz')
-    np.savez_compressed(onecell_filename, train_cell_im=train_cell_im, train_cell_reflab=train_cell_reflab,
+    np.savez(onecell_filename, train_cell_im=train_cell_im, train_cell_reflab=train_cell_reflab,
                         train_cell_testlab=train_cell_testlab, train_cell_dice=train_cell_dice,
                         test_cell_im=test_cell_im, test_cell_reflab=test_cell_reflab,
                         test_cell_testlab=test_cell_testlab, test_cell_dice=test_cell_dice)
@@ -310,7 +305,7 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
 
     # save worsened one-cell data for later use
     onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_030.npz')
-    np.savez_compressed(onecell_filename, train_cell_testlab=worsen_train_cell_testlab,
+    np.savez(onecell_filename, train_cell_testlab=worsen_train_cell_testlab,
                         train_cell_dice=worsen_train_cell_dice, test_cell_testlab=worsen_test_cell_testlab,
                         test_cell_dice=worsen_test_cell_dice)
 
