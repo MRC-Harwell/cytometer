@@ -159,9 +159,9 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     before computing the normal curvature. Because normal curvature is a function of second
     derivatives, slight noise in the dmap gets amplified, and produces poor curvature estimates.
     Gaussian blurring removes part of that noise.
-    :param min_seed_object_size: (def 50). Objects
-    :param border_dilation:
-    :return:
+    :param min_seed_object_size: (def 50). Objects with fewer pixels than this value will be discarded.
+    :param border_dilation: (def 0) Optional dilation of the watershed borders.
+    :return: labels, labels_borders
     """
 
     # check size of inputs
