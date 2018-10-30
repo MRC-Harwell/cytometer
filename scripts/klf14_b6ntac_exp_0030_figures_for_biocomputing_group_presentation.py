@@ -1,5 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+
+# cross-platform home directory
+from pathlib import Path
+home = str(Path.home())
+
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+fig_dir = os.path.join(root_data_dir, 'figures')
 
 """Synthetic example of population percentile vs. area ECDF curves
 """
@@ -8,8 +16,8 @@ area = np.linspace(0, 20000, 1000)
 
 # plot synthetic examples of ECDFs
 plt.clf()
-plt.plot(area, -100 + 200 / (1 + np.exp(- area / 2000)))
 plt.plot(area, -100 + 200 / (1 + np.exp(- area / 5000)))
+plt.plot(area, -100 + 200 / (1 + np.exp(- area / 2000)))
 plt.legend(['PAT', 'MAT'])
 plt.xlabel(r'Cell area ($\mu m^2$)', fontsize=18)
 plt.ylabel('ECDF (%)', fontsize=18)
@@ -31,17 +39,17 @@ plt.annotate(s='', xy=(a_mat, 20), xytext=(a_pat, 20), arrowprops=dict(arrowstyl
 plt.text(2300, 10, r'$\Delta$area=', fontsize=14)
 plt.text(2300, 5, str((a_pat - a_mat) / a_mat * 100) + '%', fontsize=14)
 
+# save figure
+plt.savefig(os.path.join(fig_dir, 'klf14_b6ntac_exp_0030_figures_for_biocomputing_group_presentation_synthetic_area_ecdf.png'),
+            bbox_inches='tight', pad_inches=0.5)
+
+
 """
 Histology, distance transformation, etc for pipeline chart
 """
 
-# cross-platform home directory
-from pathlib import Path
-home = str(Path.home())
-
 # PyCharm automatically adds cytometer to the python path, but this doesn't happen if the script is run
 # with "python scriptname.py"
-import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
@@ -84,12 +92,10 @@ training_window_len = 401
 '''
 
 # data paths
-root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
-fig_dir = os.path.join(root_data_dir, 'figures')
 
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'
 saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'
@@ -158,7 +164,7 @@ plt.clf()
 plt.axis('off')
 plt.imshow(im_test[i, :, :, :])
 plt.savefig(os.path.join(fig_dir, 'klf14_b6ntac_exp_0030_figures_for_biocomputing_group_presentation_histology.png'),
-            bbox_inches='tight', pad_inches = 0)
+            bbox_inches='tight', pad_inches=0)
 
 # run image through network
 dmap_test_pred = dmap_model.predict(im_test[i, :, :, :].reshape((1,) + im_test.shape[1:]))
