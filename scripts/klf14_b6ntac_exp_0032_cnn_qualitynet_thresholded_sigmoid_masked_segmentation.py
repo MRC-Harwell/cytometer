@@ -1,6 +1,6 @@
 """
 Training of DenseNet for quality assessement of individual cells based on classification of thresholded Dice coeff.
-(Dice >= 0.9).
+(Dice >= 0.9). Here the loss if focal loss.
 
 The reason is to center the decision boundary on 0.9, to get finer granularity around that threshold.
 
