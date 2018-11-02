@@ -15,7 +15,8 @@ import ast
 from mahotas import bwperim
 import pysto.imgproc as pystoim
 import re
-
+import csv
+import six
 
 DEBUG = False
 
@@ -508,3 +509,90 @@ def read_keras_training_output(filename):
     file.close()
 
     return df_all
+
+
+csvfile = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+def read_mouse_csv_info(csvfile):
+    """
+    Read CSV file with metainformation for all mice in the dataset.
+
+    The metainformation for all mice is read from a CSV file that looks like this:
+
+    id,ko,sex,genotype,BW,SC,gWAT,Liver
+    18.1b,MAT,f,KLF14-KO:Het,29.61,0.24,1.12,1.03
+    18.2a,MAT,f,KLF14-KO:Het,32.36,0.21,0.74,1.32
+    18.2b,MAT,f,KLF14-KO:Het,24.28,0.11,0.22,0.86
+
+    The function returns a list of OrderedDict, one per row in the CSV file.
+
+    :param csvfile: string with the full path to the CSV file with the mouse metadata.
+    :return: List of OrderedDict, e.g. [OrderedDict([('id', '18.1b'), ('ko', 'MAT'), ('sex', 'f'),
+    ('genotype', 'KLF14-KO:Het'), ('BW', '29.61'), ('SC', '0.24'), ('gWAT', '1.12'), ('Liver', '1.03')]), ...]
+    """
+
+    # read CSV file with metainformation for mice
+    with open(csvfile, 'r') as f:
+        reader = csv.DictReader(f, skipinitialspace=True)
+        metainfo = []
+        for row in reader:
+            metainfo.append(row)
+    f.close()
+
+    return metainfo
+
+
+def tag_values_with_mouse_info(metainfo, sid, values, values_tag='values'):
+    """
+    Create a dataframe with one row per value, and columns with different metainformation about the mouse, e.g.
+
+    ...
+
+
+
+    :param metainfo: List of OrderedDict from read_mouse_csv_info(), or string with CSV filename that contains the
+    metainformation.
+    :param sid: String that contains the mouse id, e.g.
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.svg'
+    :param values: List or vector of values. Each value creates a row in the output dataframe.
+    :return: panda.DataFrame.
+    """
+
+    # if metainfo is provided as CSV filename, read it to memory as a DataFrame
+    if isinstance(metainfo, six.string_types):
+        metainfo = pd.read_csv(metainfo)
+
+    # list of mouse IDs
+    mouse_ids = metainfo['id']
+
+    # create empty dataframe to host the data
+    df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [],
+                            'bw': [], 'sc': [], 'gwat': [], 'liver': [], 'image_id': []})
+
+    # find the mouse ID in the sid
+    mouse_id = None
+    for x in mouse_ids:
+        if x in sid:
+            mouse_id = x
+            break
+    if mouse_id is None:
+        raise ValueError('sid does not seem to contain to any known mouse ID: ' + sid)
+
+    # index of mouse ID
+    idx = mouse_ids.index(mouse_id)
+
+    # metainformation for this mouse
+    mouse_sex = metainfo[idx]['sex']
+    mouse_ko = metainfo[idx]['ko']
+    mouse_bw = float(metainfo[idx]['BW'])
+    mouse_sc = float(metainfo[idx]['SC'])
+    mouse_gwat = float(metainfo[idx]['gWAT'])
+    mouse_liver = float(metainfo[idx]['Liver'])
+
+    # add to dataframe: area, image id, mouse id, sex, KO
+    for i, a in enumerate(areas):
+        if a == 0.0:
+            print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
+        df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko,
+                        'bw': mouse_bw, 'sc': mouse_sc, 'gwat': mouse_gwat, 'liver': mouse_liver,
+                        'image_id': image_id},
+                       ignore_index=True)
