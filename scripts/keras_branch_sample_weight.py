@@ -10,6 +10,9 @@ from keras.layers.normalization import BatchNormalization
 
 from keras.utils import multi_gpu_model
 
+from keras.metrics import mae
+
+
 # remove warning "Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Just disables the warning, doesn't enable AVX/FMA
 
@@ -17,6 +20,34 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Just disables the warning, doesn't e
 image_data_format = 'channels_last'
 
 K.set_image_data_format(image_data_format)
+
+'''Error when the score_array doesn't have dmin-1 compared to y_test
+'''
+
+im = np.zeros((10, 5, 5, 3))
+out1 = np.ones((10, 5, 5, 1))
+out2 = np.ones((10, 2, 2, 2))
+
+input_tensor = Input(shape=im.shape[1:])
+main_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same',
+                     name='main_output')(input_tensor)
+aux_output = Conv2D(filters=2, kernel_size=(1, 1), strides=3, padding='same',
+                    name='aux_output')(input_tensor)
+model = Model(inputs=input_tensor, outputs=[main_output, aux_output])
+
+
+def dummy_loss(y_true, y_pred):
+    return K.mean(mae(y_true, y_pred), axis=-1)
+
+
+model.compile(loss=dummy_loss, optimizer='sgd',
+              sample_weight_mode=['element', 'element'])
+
+model.fit(im, [out1, out2],
+          sample_weight=[out1[..., 0, 0], out2[..., 0, 0]],
+          batch_size=3, epochs=2)  # fails here
+
+##################################################################################
 
 # simulate input images
 if image_data_format == 'channels_first':
@@ -163,3 +194,29 @@ model.compile(loss='mae', optimizer=optimizer, metrics=['accuracy'],
 model.fit(im, [out, np.repeat(aux_out, repeats=2, axis=3)],
           sample_weight=[weight, aux_weight],
           batch_size=3, epochs=3)
+
+'''Error when the score_array doesn't have dmin-1 compared to y_test
+'''
+
+im = np.zeros((10, 5, 5, 3))
+out1 = np.ones((10, 5, 5, 1))
+out2 = np.ones((10, 2, 2, 2))
+
+input_tensor = Input(shape=im.shape[1:])
+main_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, padding='same',
+                     name='main_output')(input_tensor)
+aux_output = Conv2D(filters=2, kernel_size=(1, 1), strides=3, padding='same',
+                    name='aux_output')(input_tensor)
+model = Model(inputs=input_tensor, outputs=[main_output, aux_output])
+
+
+def dummy_loss(y_true, y_pred):
+    return K.mean(mae(y_true, y_pred), axis=-1)
+
+
+model.compile(loss=dummy_loss, optimizer='sgd',
+              sample_weight_mode=['element', 'element'])
+
+model.fit(im, [out1, out2],
+          sample_weight=[out1[..., 0, 0], out2[..., 0, 0]],
+          batch_size=3, epochs=2)  # fails here
