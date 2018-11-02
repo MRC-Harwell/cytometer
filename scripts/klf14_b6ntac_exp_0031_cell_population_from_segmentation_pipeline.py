@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -77,7 +77,25 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0029_cnn_qualitynet_sigmoid_masked_segmentation'
+experiment_id = 'klf14_b6ntac_exp_0031_cell_population_from_segmentation_pipeline'
+
+'''
+************************************************************************************************************************
+Hand segmented cells (ground truth)
+************************************************************************************************************************
+'''
+
+'''Load data
+'''
+
+
+
+
+'''
+************************************************************************************************************************
+
+************************************************************************************************************************
+'''
 
 '''Load data
 '''
