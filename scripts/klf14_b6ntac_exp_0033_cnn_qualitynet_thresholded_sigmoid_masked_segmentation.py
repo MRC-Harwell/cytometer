@@ -197,9 +197,9 @@ for i_fold in range(1):  # this is a clunky way of doing i_fold = 0, but that ca
         # train model
         tic = datetime.datetime.now()
         parallel_model.fit(train_cell_im,
-                           {'fc1': (train_cell_dice > quality_threshold).astype(np.int)},
+                           {'fc1': (train_cell_dice >= quality_threshold).astype(np.int)},
                            validation_data=(test_cell_im,
-                                            {'fc1': (test_cell_dice > quality_threshold).astype(np.int)}),
+                                            {'fc1': (test_cell_dice >= quality_threshold).astype(np.int)}),
                            batch_size=16, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -219,9 +219,9 @@ for i_fold in range(1):  # this is a clunky way of doing i_fold = 0, but that ca
         # train model
         tic = datetime.datetime.now()
         model.fit(train_cell_im,
-                  {'fc1': (train_cell_dice > quality_threshold).astype(np.int)},
+                  {'fc1': (train_cell_dice >= quality_threshold).astype(np.int)},
                   validation_data=(test_cell_im,
-                                   {'fc1': (test_cell_dice > quality_threshold).astype(np.int)}),
+                                   {'fc1': (test_cell_dice >= quality_threshold).astype(np.int)}),
                   batch_size=16, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
