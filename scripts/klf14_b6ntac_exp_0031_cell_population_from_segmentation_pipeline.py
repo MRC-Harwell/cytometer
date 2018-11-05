@@ -19,11 +19,13 @@ import pickle
 import inspect
 
 # other imports
+import PIL
 import glob
-import shutil
-import datetime
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from skimage.morphology import watershed
+from skimage.measure import regionprops
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -81,15 +83,92 @@ experiment_id = 'klf14_b6ntac_exp_0031_cell_population_from_segmentation_pipelin
 
 '''
 ************************************************************************************************************************
-Hand segmented cells (ground truth)
+Hand segmented cells (ground truth), no-overlap approximation
 ************************************************************************************************************************
 '''
 
 '''Load data
 '''
 
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# list of all non-overlap original files
+im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_seed_nan_*.tif'))
+
+# read pixel size information
+orig_file = os.path.basename(im_file_list[0]).replace('im_seed_nan_', '')
+im = PIL.Image.open(os.path.join(training_dir, orig_file))
+xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+# load the train and test data: im, seg, dmap and mask data
+full_dataset, full_file_list, full_shuffle_idx = \
+    cytometer.data.load_datasets(im_file_list, prefix_from='im', prefix_to=['im', 'lab'], nblocks=1)
+
+# remove borders between cells in the lab_train data. For this experiment, we want labels touching each other
+for i in range(full_dataset['lab'].shape[0]):
+    full_dataset['lab'][i, :, :, 0] = watershed(image=np.zeros(shape=full_dataset['lab'].shape[1:3],
+                                                               dtype=full_dataset['lab'].dtype),
+                                                markers=full_dataset['lab'][i, :, :, 0],
+                                                watershed_line=False)
+
+# relabel background as "0" instead of "1"
+full_dataset['lab'][full_dataset['lab'] == 1] = 0
+
+# plot example of data
+if DEBUG:
+    i = 0
+    plt.clf()
+    plt.subplot(121)
+    plt.imshow(full_dataset['im'][i, :, :, :])
+    plt.subplot(122)
+    plt.imshow(full_dataset['lab'][i, :, :, 0])
+
+# loop images
+df = None
+for i in range(full_dataset['lab'].shape[0]):
+
+    # get area of each cell in um^2
+    props = regionprops(full_dataset['lab'][i, :, :, 0])
+    area = np.array([x['area'] for x in props]) * xres * yres
+
+    # create dataframe with metainformation from mouse
+    df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(full_file_list['im'][i]),
+                                                          area, values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+
+    # add a column with the window filename. This is later used in the linear models
+    df_window['file'] = os.path.basename(full_file_list['im'][i])
+
+    # create new total dataframe, or concat to existing one
+    if df is None:
+        df = df_window
+    else:
+        df = pd.concat([df, df_window], axis=0, ignore_index=True)
 
 
+# make sure that in the boxplots PAT comes before MAT
+df['ko'] = df['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+
+# plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
+plt.clf()
+ax = plt.subplot(121)
+df[df['sex'] == 'f'].boxplot(column='area', by='ko', ax=ax, notch=True)
+#ax.set_ylim(0, 2e4)
+ax.set_title('female', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+ax = plt.subplot(122)
+df[df['sex'] == 'm'].boxplot(column='area', by='ko', ax=ax, notch=True)
+#ax.set_ylim(0, 2e4)
+ax.set_title('male', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+# TODO Here
 
 '''
 ************************************************************************************************************************
