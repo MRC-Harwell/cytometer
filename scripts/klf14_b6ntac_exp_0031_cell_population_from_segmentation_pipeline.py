@@ -26,6 +26,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.morphology import watershed
 from skimage.measure import regionprops
+from statsmodels.distributions.empirical_distribution import ECDF
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -168,11 +169,43 @@ ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
+# split data into groups
+area_f_PAT = df['area'][(np.logical_and(df['sex'] == 'f', df['ko'] == 'PAT'))]
+area_f_MAT = df['area'][(np.logical_and(df['sex'] == 'f', df['ko'] == 'MAT'))]
+area_m_PAT = df['area'][(np.logical_and(df['sex'] == 'm', df['ko'] == 'PAT'))]
+area_m_MAT = df['area'][(np.logical_and(df['sex'] == 'm', df['ko'] == 'MAT'))]
+
+# compute percentile profiles of cell populations
+perc = np.linspace(0, 100, num=101)
+perc_area_f_PAT = np.percentile(area_f_PAT, perc)
+perc_area_f_MAT = np.percentile(area_f_MAT, perc)
+perc_area_m_PAT = np.percentile(area_m_PAT, perc)
+perc_area_m_MAT = np.percentile(area_m_MAT, perc)
+
+# plot curve profiles
+plt.clf()
+ax = plt.subplot(121)
+plt.plot(perc, (perc_area_f_MAT - perc_area_f_PAT) / perc_area_f_PAT * 100)
+ax.set_ylim(-50, 0)
+plt.title('Female', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+ax = plt.subplot(122)
+plt.plot(perc, (perc_area_m_MAT - perc_area_m_PAT) / perc_area_m_PAT * 100)
+ax.set_ylim(-50, 0)
+plt.title('Male', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+
 # TODO Here
 
 '''
 ************************************************************************************************************************
-
+Automatically extracted cells
 ************************************************************************************************************************
 '''
 
@@ -273,30 +306,3 @@ if DEBUG:
     plt.title('Dice: ' + "{:.2f}".format(test_cell_dice[i]) + ' (ground truth)\n'
               + "{:.2f}".format(test_cell_preddice[i]) + ' (estimated)')
 
-'''Plot metrics and convergence
-'''
-
-fold_i = 0
-model_file = model_files[fold_i]
-
-log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-
-if os.path.isfile(log_filename):
-
-    # read Keras output
-    df_list = cytometer.data.read_keras_training_output(log_filename)
-
-    # plot metrics with every iteration
-    plt.clf()
-    for df in df_list:
-        plt.subplot(211)
-        loss_plot, = plt.semilogy(df.index, df.loss, label='loss')
-        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
-        epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
-        plt.legend(handles=[loss_plot, epoch_ends_plot1])
-        plt.subplot(212)
-        regr_mae_plot, = plt.plot(df.index, df.mean_absolute_error, label='dmap mae')
-        regr_mse_plot, = plt.plot(df.index, np.sqrt(df.mean_squared_error), label='sqrt(dmap mse)')
-        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.mean_absolute_error[epoch_ends], 'ro', label='end of epoch')
-        regr_mse_epoch_ends_plot2, = plt.plot(epoch_ends, np.sqrt(df.mean_squared_error[epoch_ends]), 'ro', label='end of epoch')
-        plt.legend(handles=[regr_mae_plot, regr_mse_plot, regr_mae_epoch_ends_plot2])
