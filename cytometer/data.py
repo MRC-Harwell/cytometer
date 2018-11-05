@@ -511,50 +511,36 @@ def read_keras_training_output(filename):
     return df_all
 
 
-csvfile = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
-def read_mouse_csv_info(csvfile):
+def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to_keep=None):
     """
-    Read CSV file with metainformation for all mice in the dataset.
+    If you have a vector with cell areas, values = [4.0 , 7.0 , 9.0 , 7.3], then
 
-    The metainformation for all mice is read from a CSV file that looks like this:
+    tag_values_with_mouse_info('meta.csv',
+                               s='KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.svg',
+                               values=[4. , 7. , 9. , 7.3],
+                               values_tag='area',
+                               tags_to_keep=['id', 'ko', 'sex'])
 
-    id,ko,sex,genotype,BW,SC,gWAT,Liver
-    18.1b,MAT,f,KLF14-KO:Het,29.61,0.24,1.12,1.03
-    18.2a,MAT,f,KLF14-KO:Het,32.36,0.21,0.74,1.32
-    18.2b,MAT,f,KLF14-KO:Het,24.28,0.11,0.22,0.86
+    will read the table of metainformation for all mice from file 'meta.csv', it finds which mouse we are dealing with
+    according to s='KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.svg' (in this case,
+    mouse '37.2g'), and then it creates a dataframe with one row per value, and the mouse's metainformation repeated
+    in each row,
 
-    The function returns a list of OrderedDict, one per row in the CSV file.
-
-    :param csvfile: string with the full path to the CSV file with the mouse metadata.
-    :return: List of OrderedDict, e.g. [OrderedDict([('id', '18.1b'), ('ko', 'MAT'), ('sex', 'f'),
-    ('genotype', 'KLF14-KO:Het'), ('BW', '29.61'), ('SC', '0.24'), ('gWAT', '1.12'), ('Liver', '1.03')]), ...]
-    """
-
-    # read CSV file with metainformation for mice
-    with open(csvfile, 'r') as f:
-        reader = csv.DictReader(f, skipinitialspace=True)
-        metainfo = []
-        for row in reader:
-            metainfo.append(row)
-    f.close()
-
-    return metainfo
-
-
-def tag_values_with_mouse_info(metainfo, sid, values, values_tag='values'):
-    """
-    Create a dataframe with one row per value, and columns with different metainformation about the mouse, e.g.
-
-    ...
-
-
+          id   ko sex  area
+    0  37.4a  PAT   m   4.0
+    1  37.4a  PAT   m   7.0
+    2  37.4a  PAT   m   9.0
+    3  37.4a  PAT   m   7.3
 
     :param metainfo: List of OrderedDict from read_mouse_csv_info(), or string with CSV filename that contains the
     metainformation.
-    :param sid: String that contains the mouse id, e.g.
+    :param s: String, typically a filename, that identifies an image, containing the mouse id, e.g.
     'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.svg'
     :param values: List or vector of values. Each value creates a row in the output dataframe.
-    :return: panda.DataFrame.
+    :param values_tag: Name of the column with the values in the output dataframe.
+    :param tags_to_keep: (def None = keep all the tags). If not all the metainformation columns are needed, a list of
+    tags can be passed here, e.g. tags_to_keep = ['id', 'ko', 'sex'].
+    :return: panda.DataFrame with one row per value.
     """
 
     # if metainfo is provided as CSV filename, read it to memory as a DataFrame
@@ -564,35 +550,26 @@ def tag_values_with_mouse_info(metainfo, sid, values, values_tag='values'):
     # list of mouse IDs
     mouse_ids = metainfo['id']
 
-    # create empty dataframe to host the data
-    df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [],
-                            'bw': [], 'sc': [], 'gwat': [], 'liver': [], 'image_id': []})
+    # indices of IDs that can be found in the filename
+    id_in_sid = np.where([x in s for x in mouse_ids])[0]
 
-    # find the mouse ID in the sid
-    mouse_id = None
-    for x in mouse_ids:
-        if x in sid:
-            mouse_id = x
-            break
-    if mouse_id is None:
-        raise ValueError('sid does not seem to contain to any known mouse ID: ' + sid)
+    # if more than one ID can be found in the filename, that means that the filename is ambiguous
+    if len(id_in_sid) > 1:
+        raise ValueError('s is ambiguous, and more than one ID can be found in it: ' + s)
+    elif len(id_in_sid) == 0:  # no ID found in the filename
+        raise ValueError('No ID can be found in s: ' + s)
 
-    # index of mouse ID
-    idx = mouse_ids.index(mouse_id)
+    # row with all the metainfo for the selected mouse
+    metainfo_row = metainfo.loc[id_in_sid, :]
 
-    # metainformation for this mouse
-    mouse_sex = metainfo[idx]['sex']
-    mouse_ko = metainfo[idx]['ko']
-    mouse_bw = float(metainfo[idx]['BW'])
-    mouse_sc = float(metainfo[idx]['SC'])
-    mouse_gwat = float(metainfo[idx]['gWAT'])
-    mouse_liver = float(metainfo[idx]['Liver'])
+    # keep only some of the metainformation tags
+    if tags_to_keep:
+        metainfo_row = metainfo_row[tags_to_keep]
 
-    # add to dataframe: area, image id, mouse id, sex, KO
-    for i, a in enumerate(areas):
-        if a == 0.0:
-            print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
-        df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko,
-                        'bw': mouse_bw, 'sc': mouse_sc, 'gwat': mouse_gwat, 'liver': mouse_liver,
-                        'image_id': image_id},
-                       ignore_index=True)
+    # repeat the row once per element in values
+    df = pd.concat([metainfo_row] * len(values), ignore_index=True)
+
+    # add the values as a new column
+    df[values_tag] = values
+
+    return df
