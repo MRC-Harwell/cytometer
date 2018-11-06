@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import six
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
@@ -11,8 +12,9 @@ from mahotas.labeled import borders
 import networkx as nx
 from skimage.transform import SimilarityTransform, AffineTransform
 import keras.backend as K
+import keras
 import tensorflow as tf
-
+from cytometer.models import change_input_size
 
 DEBUG = False
 
@@ -290,6 +292,75 @@ def match_overlapping_labels(labels_ref, labels_test):
     out['lab_ref'] = labels_ref_correspond
     out['dice'] = dice
     return out
+
+
+# im = im_test
+# contour_model = contour_model_file
+# dmap_model = dmap_model_file
+def segmentation_pipeline(im, contour_model, dmap_model):
+
+    # load model if filename provided
+    if isinstance(contour_model, six.string_types):
+        contour_model = keras.models.load_model(contour_model)
+    if isinstance(dmap_model, six.string_types):
+        dmap_model = keras.models.load_model(dmap_model)
+
+    # set input layer to size of test images
+    contour_model = change_input_size(contour_model, batch_shape=(None,) + im.shape[1:])
+    dmap_model = change_input_size(dmap_model, batch_shape=(None,) + im.shape[1:])
+
+    # run images through networks
+    one_im_shape = (1,) + im.shape[1:]
+    for i in range(im.shape[0]):
+
+        # process histology image through the two pipeline branches
+        one_im = im[i, :, :, :].reshape(one_im_shape)
+        contour_pred = contour_model.predict(one_im)
+        dmap_pred = dmap_model.predict(one_im)
+
+        # combine pipeline branches for cell instance segmentation
+        labels, labels_borders = segment_dmap_contour(dmap_pred[0, :, :, 0],
+                                                      contour=contour_pred[0, :, :, 0],
+                                                      border_dilation=0)
+
+        # compute quality measure of estimated labels
+        qual = cytometer.utils.match_overlapping_labels(labels_test=labels,
+                                                        labels_ref=lab_test[i, :, :, 0])
+
+        labels_test_qual = cytometer.utils.paint_labels(labels=labels, paint_labs=qual['lab_test'],
+                                                        paint_values=qual['dice'])
+
+    # add borders as coloured curves
+    im_test_r = im_test[i, :, :, 0].copy()
+    im_test_g = im_test[i, :, :, 1].copy()
+    im_test_b = im_test[i, :, :, 2].copy()
+    im_test_r[labels_borders] = 0.0
+    im_test_g[labels_borders] = 1.0
+    im_test_b[labels_borders] = 0.0
+    im_borders = np.concatenate((np.expand_dims(im_test_r, axis=2),
+                                 np.expand_dims(im_test_g, axis=2),
+                                 np.expand_dims(im_test_b, axis=2)), axis=2)
+
+    # plot results of cell segmentation
+    plt.clf()
+    plt.subplot(231)
+    plt.imshow(im_test[i, :, :, :])
+    plt.title('histology, i = ' + str(i))
+    plt.subplot(232)
+    plt.imshow(contour_test_pred[0, :, :, 0])
+    plt.title('predicted contours')
+    plt.subplot(233)
+    plt.imshow(dmap_test_pred[0, :, :, 0])
+    plt.title('predicted dmap')
+    plt.subplot(234)
+    plt.imshow(labels)
+    plt.title('labels')
+    plt.subplot(235)
+    plt.imshow(labels_borders)
+    plt.title('borders on histology')
+    plt.subplot(236)
+    plt.imshow(seg_test[i, :, :, 0])
+    plt.title('ground truth borders')
 
 
 def colour_labels_with_receptive_field(labels, receptive_field):
