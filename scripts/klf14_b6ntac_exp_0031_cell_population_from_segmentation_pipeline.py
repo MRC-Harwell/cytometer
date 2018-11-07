@@ -212,17 +212,15 @@ Automatically extracted cells
 '''Load data
 '''
 
+# models to be used
 saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
+saved_quality_model_basename = 'klf14_b6ntac_exp_0029_cnn_qualitynet_sigmoid_masked_segmentation'  # Dice coefficient
 
+# get file name for each model and fold
 contour_model_name = saved_contour_model_basename + '*.h5'
 dmap_model_name = saved_dmap_model_basename + '*.h5'
-
-# load model weights for each fold
-contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
-dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
-contour_n_folds = len(contour_model_files)
-dmap_n_folds = len(dmap_model_files)
+quality_model_name = saved_quality_model_basename + '*.h5'
 
 # load k-fold sets that were used to train the models (we assume they are the same for contours and dmaps)
 saved_contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
@@ -252,6 +250,9 @@ del test_datasets
 # list of model files to inspect
 contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
 dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
+quality_model_files = glob.glob(os.path.join(saved_models_dir, quality_model_name))
 
 contour_model_file = contour_model_files[fold_i]
 dmap_model_file = dmap_model_files[fold_i]
+quality_model_file = quality_model_files[fold_i]
+

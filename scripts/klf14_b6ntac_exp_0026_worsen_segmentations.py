@@ -211,13 +211,13 @@ for i_fold, idx_test in enumerate([idx_orig_test_all[0]]):
     '''Extract one window for each individual cell, with the corresponding Dice coefficient
     '''
 
-    train_cell_im, train_cell_reflab, train_cell_testlab, train_cell_dice = \
+    train_cell_im, train_cell_testlab, _, train_cell_reflab, train_cell_dice = \
         cytometer.utils.one_image_per_label(dataset_im=train_dataset['im'],
                                             dataset_lab_ref=train_dataset['lab'],
                                             dataset_lab_test=train_dataset[predlab_str],
                                             training_window_len=training_window_len,
                                             smallest_cell_area=smallest_cell_area)
-    test_cell_im, test_cell_reflab, test_cell_testlab, test_cell_dice = \
+    test_cell_im, test_cell_testlab, _, test_cell_reflab, test_cell_dice = \
         cytometer.utils.one_image_per_label(dataset_im=test_dataset['im'],
                                             dataset_lab_ref=test_dataset['lab'],
                                             dataset_lab_test=test_dataset[predlab_str],
