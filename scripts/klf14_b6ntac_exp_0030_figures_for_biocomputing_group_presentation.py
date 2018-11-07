@@ -216,7 +216,7 @@ aux_im_test = np.expand_dims(im_test[i, :, :, :], axis=0)
 aux_lab_test = np.expand_dims(np.expand_dims(lab_test_pred, axis=2), axis=0)
 aux_lab_test_pred = np.expand_dims(np.expand_dims(lab_test_pred, axis=2), axis=0)
 
-test_cell_im, test_cell_reflab, test_cell_testlab, test_cell_dice = \
+test_cell_im, test_cell_testlab, _, test_cell_reflab, test_cell_dice = \
     cytometer.utils.one_image_per_label(dataset_im=aux_im_test,
                                         dataset_lab_ref=aux_lab_test,
                                         dataset_lab_test=aux_lab_test_pred,
