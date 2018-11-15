@@ -493,7 +493,8 @@ def match_overlapping_labels(labels_ref, labels_test):
 # contour_model = contour_model_file
 # dmap_model = dmap_model_file
 # quality_model = quality_model_file
-def segmentation_pipeline(im, contour_model, dmap_model, quality_model, training_window_len=401, smallest_cell_area=804):
+def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
+                          training_window_len=401, smallest_cell_area=804):
 
     # load model if filename provided
     if isinstance(contour_model, six.string_types):
@@ -521,24 +522,26 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, training
         contour_pred = contour_model.predict(one_im)
         dmap_pred = dmap_model.predict(one_im)
 
-        # combine pipeline branches for cell instance segmentation
+        # combine pipeline branches for instance segmentation
         labels[i, :, :, 0], labels_borders[i, :, :, 0] = segment_dmap_contour(dmap_pred[0, :, :, 0],
                                                                               contour=contour_pred[0, :, :, 0],
                                                                               border_dilation=0)
 
-    # split histology images into individual cells
+    # split histology images into individual segmented objects
     cell_im, cell_seg, cell_index = one_image_per_label(dataset_im=im,
                                                         dataset_lab_test=labels,
                                                         training_window_len=training_window_len,
                                                         smallest_cell_area=smallest_cell_area)
 
+    # loop segmented objects
+    quality = np.zeros(shape=(cell_im.shape[0], ), dtype=np.float32)
     for j in range(cell_im.shape[0]):
 
         # mask histology with segmentation
         aux = cell_im[j, :, :, :] * np.repeat(cell_seg[j, :, :, :], repeats=3, axis=2)
 
         # compute quality measure of each histology window
-        quality = quality_model.predict(np.expand_dims(aux, axis=0))
+        quality[j] = quality_model.predict(np.expand_dims(aux, axis=0))
 
 
 

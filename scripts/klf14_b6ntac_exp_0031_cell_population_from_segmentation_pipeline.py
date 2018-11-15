@@ -33,7 +33,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -256,3 +256,5 @@ contour_model_file = contour_model_files[fold_i]
 dmap_model_file = dmap_model_files[fold_i]
 quality_model_file = quality_model_files[fold_i]
 
+segmentation_pipeline(im, contour_model_file, dmap_model_file, quality_model_file,
+                      training_window_len=training_window_len, smallest_cell_area=smallest_cell_area)
