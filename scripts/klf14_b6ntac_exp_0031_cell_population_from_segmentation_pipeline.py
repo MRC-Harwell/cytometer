@@ -41,6 +41,7 @@ import keras.backend as K
 
 import cytometer.data
 import cytometer.models
+import cytometer.utils
 
 # limit GPU memory used
 import tensorflow as tf
@@ -201,8 +202,6 @@ plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
 
-# TODO Here
-
 '''
 ************************************************************************************************************************
 Automatically extracted cells
@@ -247,6 +246,16 @@ mask_test = test_datasets['mask']
 lab_test = test_datasets['lab']
 del test_datasets
 
+# remove borders between cells in the lab_train data. For this experiment, we want labels touching each other
+for i in range(lab_test.shape[0]):
+    lab_test[i, :, :, 0] = watershed(image=np.zeros(shape=lab_test.shape[1:3],
+                                                    dtype=lab_test.dtype),
+                                     markers=lab_test[i, :, :, 0],
+                                     watershed_line=False)
+
+# relabel background as "0" instead of "1"
+lab_test[lab_test == 1] = 0
+
 # list of model files to inspect
 contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
 dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
@@ -256,5 +265,44 @@ contour_model_file = contour_model_files[fold_i]
 dmap_model_file = dmap_model_files[fold_i]
 quality_model_file = quality_model_files[fold_i]
 
-segmentation_pipeline(im, contour_model_file, dmap_model_file, quality_model_file,
-                      training_window_len=training_window_len, smallest_cell_area=smallest_cell_area)
+# segment the test images
+labels, labels_info = cytometer.utils.segmentation_pipeline(im_test,
+                                                            contour_model_file,
+                                                            dmap_model_file,
+                                                            quality_model_file,
+                                                            smallest_cell_area=smallest_cell_area)
+
+if DEBUG:
+    i = 3
+    plt.clf()
+    plt.subplot(221)
+    plt.imshow(im_test[i, :, :, :])
+    plt.title('histo')
+    plt.subplot(222)
+    plt.imshow(lab_test[i, :, :, 0])
+    plt.title('ground truth')
+    plt.subplot(223)
+    plt.imshow(labels[i, :, :, 0])
+    plt.title('pipeline segmentation')
+
+# make copy of automatically segmented labels so that we can remove from them the segmentations without ground truth
+labels_no_ground_truth = labels.copy()
+
+for i in range(im_test.shape[0]):
+
+    # match automatically segmented cells to cells with hand-traced ground truth segmentation
+    overlap = cytometer.utils.match_overlapping_labels(lab_test[i, :, :, 0], labels[i, :, :, 0])
+
+    # labels of cells that have a ground truth reference
+    lab_with_ground_truth = overlap['lab_test'][overlap['lab_ref'] != 0]
+
+    # remove the automatically segmented cells that have no ground truth
+    labels_no_ground_truth[i, :, :, 0][np.isin(labels[i, :, :, 0], lab_with_ground_truth, invert=True)] = 0
+
+# TODO Here
+
+
+if DEBUG:
+    plt.subplot(224)
+    plt.imshow(labels_no_ground_truth[i, :, :, 0])
+    plt.title('remove segmentations\nwithout ground truth')
