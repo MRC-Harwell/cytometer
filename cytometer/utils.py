@@ -489,12 +489,29 @@ def match_overlapping_labels(labels_ref, labels_test):
     return out
 
 
-# im = im_test
-# contour_model = contour_model_file
-# dmap_model = dmap_model_file
-# quality_model = quality_model_file
-def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
-                          training_window_len=401, smallest_cell_area=804):
+def segmentation_pipeline(im, contour_model, dmap_model, quality_model, smallest_cell_area=804):
+    """
+    Instance segmentation of cells using the contour + distance transformation pipeline.
+    :param im: numpy.ndarray (image, row, col, channel) with RGB histology images.
+    :param contour_model: filename or keras model for the contour detection neural network. This is assumed to
+    be a convolutional network where the output has the same (row, col) as the input.
+    :param dmap_model: filename or keras model for the distance transformation regression neural network.
+    This is assumed to be a convolutional network where the output has the same (row, col) as the input.
+    :param quality_model: filename or keras model for the Dice coefficient estimation neural network. This
+    network.
+    :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
+    segmentation noise.
+    :return: labels, labels_info
+
+    labels: numpy.ndarray of size (image, row, col, 1). Instance segmentation of im. Each label segments a different
+    cell.
+
+    labels_info: numpy structured array. One element per cell.
+    labels_info['im']: Each element is the index of the image the cell belongs to.
+    labels_info['label']: Each element is the label assigned to the cell in that image.
+    labels_info['quality']: Each element is a quality value in [0.0, 1.0] estimating the quality of the segmentation
+    for that cell. As a rule of thumb, quality >= 0.9 corresponds to an acceptable segmentation.
+    """
 
     # load model if filename provided
     if isinstance(contour_model, six.string_types):
@@ -504,10 +521,14 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
     if isinstance(quality_model, six.string_types):
         quality_model = keras.models.load_model(quality_model)
 
-    # set input layer to size of images
+    # set input layer to size of images for the convolutional networks.
     contour_model = change_input_size(contour_model, batch_shape=(None,) + im.shape[1:])
     dmap_model = change_input_size(dmap_model, batch_shape=(None,) + im.shape[1:])
-    quality_model = change_input_size(quality_model, batch_shape=(None, training_window_len, training_window_len, 3))
+
+    # This doesn't apply to the quality network because that one needs to collapse to one output value. Thus we
+    # read the training window size from the network itself
+    training_window_len = quality_model.input_shape[1]
+    assert(training_window_len == quality_model.input_shape[2])
 
     # allocate arrays for labels
     labels = np.zeros(shape=im.shape[0:3] + (1,), dtype='int32')
@@ -542,6 +563,16 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
 
         # compute quality measure of each histology window
         quality[j] = quality_model.predict(np.expand_dims(aux, axis=0))
+
+    # prepare output as structured array
+    labels_info = np.zeros((len(quality),), dtype=[('im', cell_index.dtype),
+                                                   ('label', cell_index.dtype),
+                                                   ('quality', quality.dtype)])
+    labels_info['im'] = cell_index[:, 0]
+    labels_info['label'] = cell_index[:, 1]
+    labels_info['quality'] = quality
+
+    return labels, labels_info
 
 
 
