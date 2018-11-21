@@ -33,7 +33,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -303,6 +303,7 @@ for i in range(im_test.shape[0]):
 
 
 if DEBUG:
+    i = 3
     plt.subplot(224)
     plt.imshow(labels_no_ground_truth[i, :, :, 0])
     plt.title('remove segmentations\nwithout ground truth')
