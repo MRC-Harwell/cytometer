@@ -403,13 +403,14 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     else:
         return training_windows_list, testlabel_windows_list, index_list, reflabel_windows_list, dice_list
 
-
+labels_ref = lab_test[i, :, :, 0]
+labels_test = labels[i, :, :, 0]
 def match_overlapping_labels(labels_ref, labels_test):
     """
     Match estimated segmentations to ground truth segmentations and compute Dice coefficients.
 
     This function takes two segmentations, reference and test, and computes how good each test
-    label segmentation is based on how it overlaps the reference segmentation. In a nutshell,
+    label segmentation is, based on how it overlaps the reference segmentation. In a nutshell,
     we find the reference label best aligned to each test label, and compute the Dice
     coefficient as a similarity measure.
 
@@ -417,13 +418,13 @@ def match_overlapping_labels(labels_ref, labels_test):
 
     Let one of the labels in the test segmentation be 51.
 
-    This test label partly overlaps 5 labels in the reference segmentation:
-    [ 2,  3, 10, 12, 17].
+    This test label partly overlaps 3 labels and the background (0) in the reference segmentation:
+    [0, 10, 12, 17].
 
     The number of pixels in the intersection of 51 with each of the other labels is:
-    [    2,   536,    29, 17413,   162]
+    [53600, 29, 17413, 162]
 
-    Therefore, label 51 is best aligned to label 12.
+    We ignore the background. Therefore, label 51 is best aligned to label 12.
 
     Let label 51 contain 20,000 pixels, and label 12, 22,000 pixels.
 
@@ -456,10 +457,16 @@ def match_overlapping_labels(labels_ref, labels_test):
     dice = np.zeros(shape=labels_test_count.shape, dtype=np.float32)
     for i, lab in enumerate(labels_test_unique):
 
-        # find ref label with most overlap with the current test label
-        idx = label_pairs_by_pixel[0] == lab
-        idx_max = np.argmax(label_pairs_by_pixel_count[idx])
-        labels_ref_correspond[i] = label_pairs_by_pixel[1, idx][idx_max]
+        # target labels overlapped by lab that are not background
+        idx = np.logical_and(label_pairs_by_pixel[0, :] == lab,
+                             label_pairs_by_pixel[1, :] != 0)
+
+        # if there are no corresponding labels, that means that lab only overlaps background
+        if np.count_nonzero(idx) == 0:
+            labels_ref_correspond[i] = 0
+        else:  # if there's more than one label, we accept that object as the corresponding one
+            idx_max = np.argmax(label_pairs_by_pixel_count[idx])
+            labels_ref_correspond[i] = label_pairs_by_pixel[1, idx][idx_max]
 
         # number of pixels in the intersection of both labels
         if labels_ref_correspond[i] == 0:  # the test label overlaps mostly background
@@ -481,8 +488,8 @@ def match_overlapping_labels(labels_ref, labels_test):
 
     # prepare output as structured array
     out = np.zeros((len(dice),), dtype=[('lab_test', labels_test_unique.dtype),
-                                          ('lab_ref', labels_ref_unique.dtype),
-                                          ('dice', dice.dtype)])
+                                        ('lab_ref', labels_ref_unique.dtype),
+                                        ('dice', dice.dtype)])
     out['lab_test'] = labels_test_unique
     out['lab_ref'] = labels_ref_correspond
     out['dice'] = dice
