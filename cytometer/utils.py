@@ -403,8 +403,8 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     else:
         return training_windows_list, testlabel_windows_list, index_list, reflabel_windows_list, dice_list
 
-labels_ref = lab_test[i, :, :, 0]
-labels_test = labels[i, :, :, 0]
+# labels_ref = lab_test[i, :, :, 0]
+# labels_test = labels[i, :, :, 0]
 def match_overlapping_labels(labels_ref, labels_test):
     """
     Match estimated segmentations to ground truth segmentations and compute Dice coefficients.
