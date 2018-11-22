@@ -440,21 +440,67 @@ def match_overlapping_labels(labels_ref, labels_test):
      out['dice']: (N,) np.ndarray with Dice coefficient for each pair of corresponding labels.
     """
 
+    test = 0
+    ref = 1
+
+    # unique labels in the reference and test images, and number of pixels in each label
+    labels_test_unique, labels_test_count = np.unique(labels_test, return_counts=True)
+    labels_ref_unique, labels_ref_count = np.unique(labels_ref, return_counts=True)
+
     # form pairs of values between reference labels and test labels. This is going to
     # produce pairs of all overlapping labels, e.g. if label 5 in the test image
     # overlaps with labels 1, 12 and 4 in the reference image,
     # label_pairs_by_pixel = [..., 5,  5, 5, ...]
     #                        [..., 1, 12, 4, ...]
-    aux = np.stack((labels_test.flatten(), labels_ref.flatten()))
+    aux = np.stack((labels_test.flatten(), labels_ref.flatten()))  # TEST, REF
     label_pairs_by_pixel, label_pairs_by_pixel_count = np.unique(aux, axis=1, return_counts=True)
 
-    # unique labels in the reference and test images, and number of pixels in each label
-    labels_ref_unique, labels_ref_count = np.unique(labels_ref, return_counts=True)
-    labels_test_unique, labels_test_count = np.unique(labels_test, return_counts=True)
+    # remove correspondences between any test lab and ref 0 label (background)
+    idx = label_pairs_by_pixel[ref, :] != 0
+    label_pairs_by_pixel = label_pairs_by_pixel[:, idx]
+    label_pairs_by_pixel_count = label_pairs_by_pixel_count[idx]
+
+    # for each ref label, find the test label with the largest overlap. This establishes a one-to-one
+    # correspondence
+    labels_ref_unique_with_correspondence = np.unique(label_pairs_by_pixel[ref, :])
+    labels_test_unique_with_correspondence = np.zeros(shape=labels_ref_unique_with_correspondence.shape,
+                                                      dtype=labels_test.dtype)
+    for i, lab_ref in enumerate(labels_ref_unique_with_correspondence):
+
+        # find all test labels that overlap this ref label
+        idx = label_pairs_by_pixel[ref, :] == lab_ref
+        lab_test = label_pairs_by_pixel[test, idx]
+        lab_test_count = label_pairs_by_pixel_count[idx]
+
+        # find the test label with the largest overlap
+        idx = np.argmax(lab_test_count)
+        labels_test_unique_with_correspondence[i] = lab_test[idx]
+
+    # for each unique test label, if there's a correspondence, compute Dice coefficient
+    dice = np.zeros(shape=labels_test_count.shape, dtype=np.float32)
+    for i, lab_test in enumerate(labels_test_unique_with_correspondence):
+
+        # to compute the Dice coefficient we need to know:
+        # * |A| = labels_test_count[i]: number of pixels in the test label
+        # * |B| = b: number of pixels in the corresponding ref label
+        # * |A ∩ B| = intersection_count: number of pixels in the intersection of both labels
+        # DICE = 2 * |A ∩ B| / (|A| + |B|)
+
+        # index of test label in the full list of labels, whether they have a correspondent or not
+        idx = lab_test == labels_test_unique
+        a = labels_test_count[idx]
+
+        lab_ref = labels_ref_unique_with_correspondence[i]
+        idx = lab_ref == labels_ref_unique
+        b = labels_ref_count[idx]
+        dice[i] = 2 * intersection_count / (a + b)
+
+
+
+
 
     # for each of the test labels, find which reference label overlaps it the most
     labels_ref_correspond = np.zeros(shape=labels_test_unique.shape, dtype=labels_ref_unique.dtype)
-    dice = np.zeros(shape=labels_test_count.shape, dtype=np.float32)
     for i, lab in enumerate(labels_test_unique):
 
         # target labels overlapped by lab that are not background
@@ -477,14 +523,8 @@ def match_overlapping_labels(labels_ref, labels_test):
         # # DEBUG: check the number of intersection pixels
         # print(np.count_nonzero(np.logical_and(labels_test == lab, labels_ref == labels_ref_correspond[i])))
 
-        # to compute the Dice coefficient we need to know:
-        # * |A| = labels_test_count[i]: number of pixels in the test label
-        # * |B| = b: number of pixels in the corresponding ref label
-        # * |A ∩ B| = intersection_count: number of pixels in the intersection of both labels
-        # DICE = 2 * |A ∩ B| / (|A| + |B|)
-        a = labels_test_count[i]
-        b = labels_ref_count[labels_ref_unique == labels_ref_correspond[i]]
-        dice[i] = 2 * intersection_count / (a + b)
+
+
 
     # prepare output as structured array
     out = np.zeros((len(dice),), dtype=[('lab_test', labels_test_unique.dtype),
