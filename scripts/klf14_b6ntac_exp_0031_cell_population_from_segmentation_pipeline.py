@@ -26,7 +26,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.morphology import watershed
 from skimage.measure import regionprops
-from statsmodels.distributions.empirical_distribution import ECDF
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -185,6 +184,7 @@ perc_area_m_MAT = np.percentile(area_m_MAT, perc)
 
 # plot curve profiles
 plt.clf()
+
 ax = plt.subplot(121)
 plt.plot(perc, (perc_area_f_MAT - perc_area_f_PAT) / perc_area_f_PAT * 100)
 ax.set_ylim(-50, 0)
