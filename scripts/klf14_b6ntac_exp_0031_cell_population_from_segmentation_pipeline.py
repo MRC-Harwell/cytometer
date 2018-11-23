@@ -285,7 +285,7 @@ if DEBUG:
     plt.title('pipeline segmentation')
 
 # make copy of automatically segmented labels so that we can remove from them the segmentations without ground truth
-labels_no_ground_truth = labels.copy()
+labels_with_ground_truth = labels.copy()
 
 for i in range(im_test.shape[0]):
 
@@ -296,7 +296,7 @@ for i in range(im_test.shape[0]):
     lab_with_ground_truth = overlap['lab_test'][overlap['lab_ref'] != 0]
 
     # remove the automatically segmented cells that have no ground truth
-    labels_no_ground_truth[i, :, :, 0][np.isin(labels[i, :, :, 0], lab_with_ground_truth, invert=True)] = 0
+    labels_with_ground_truth[i, :, :, 0][np.isin(labels[i, :, :, 0], lab_with_ground_truth, invert=True)] = 0
 
 # TODO Here
 
@@ -304,5 +304,5 @@ for i in range(im_test.shape[0]):
 if DEBUG:
     i = 3
     plt.subplot(224)
-    plt.imshow(labels_no_ground_truth[i, :, :, 0])
+    plt.imshow(labels_with_ground_truth[i, :, :, 0])
     plt.title('remove segmentations\nwithout ground truth')
