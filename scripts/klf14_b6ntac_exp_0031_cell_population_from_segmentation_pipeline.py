@@ -39,7 +39,6 @@ import keras
 import keras.backend as K
 
 import cytometer.data
-import cytometer.models
 import cytometer.utils
 
 # limit GPU memory used
