@@ -127,7 +127,7 @@ if DEBUG:
     plt.imshow(full_dataset['lab'][i, :, :, 0])
 
 # loop images
-df = None
+df_gtruth = None
 for i in range(full_dataset['lab'].shape[0]):
 
     # get area of each cell in um^2
@@ -142,26 +142,26 @@ for i in range(full_dataset['lab'].shape[0]):
     df_window['file'] = os.path.basename(full_file_list['im'][i])
 
     # create new total dataframe, or concat to existing one
-    if df is None:
-        df = df_window
+    if df_gtruth is None:
+        df_gtruth = df_window
     else:
-        df = pd.concat([df, df_window], axis=0, ignore_index=True)
+        df_gtruth = pd.concat([df_gtruth, df_window], axis=0, ignore_index=True)
 
 
 # make sure that in the boxplots PAT comes before MAT
-df['ko'] = df['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_gtruth['ko'] = df_gtruth['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
 # plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
 plt.clf()
 ax = plt.subplot(121)
-df[df['sex'] == 'f'].boxplot(column='area', by='ko', ax=ax, notch=True)
+df_gtruth[df_gtruth['sex'] == 'f'].boxplot(column='area', by='ko', ax=ax, notch=True)
 #ax.set_ylim(0, 2e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-df[df['sex'] == 'm'].boxplot(column='area', by='ko', ax=ax, notch=True)
+df_gtruth[df_gtruth['sex'] == 'm'].boxplot(column='area', by='ko', ax=ax, notch=True)
 #ax.set_ylim(0, 2e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
@@ -169,23 +169,23 @@ ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
 # split data into groups
-area_f_PAT = df['area'][(np.logical_and(df['sex'] == 'f', df['ko'] == 'PAT'))]
-area_f_MAT = df['area'][(np.logical_and(df['sex'] == 'f', df['ko'] == 'MAT'))]
-area_m_PAT = df['area'][(np.logical_and(df['sex'] == 'm', df['ko'] == 'PAT'))]
-area_m_MAT = df['area'][(np.logical_and(df['sex'] == 'm', df['ko'] == 'MAT'))]
+area_gtruth_f_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko'] == 'PAT'))]
+area_gtruth_f_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko'] == 'MAT'))]
+area_gtruth_m_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko'] == 'PAT'))]
+area_gtruth_m_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko'] == 'MAT'))]
 
 # compute percentile profiles of cell populations
 perc = np.linspace(0, 100, num=101)
-perc_area_f_PAT = np.percentile(area_f_PAT, perc)
-perc_area_f_MAT = np.percentile(area_f_MAT, perc)
-perc_area_m_PAT = np.percentile(area_m_PAT, perc)
-perc_area_m_MAT = np.percentile(area_m_MAT, perc)
+perc_area_gtruth_f_PAT = np.percentile(area_gtruth_f_PAT, perc)
+perc_area_gtruth_f_MAT = np.percentile(area_gtruth_f_MAT, perc)
+perc_area_gtruth_m_PAT = np.percentile(area_gtruth_m_PAT, perc)
+perc_area_gtruth_m_MAT = np.percentile(area_gtruth_m_MAT, perc)
 
 # plot curve profiles
 plt.clf()
 
 ax = plt.subplot(121)
-plt.plot(perc, (perc_area_f_MAT - perc_area_f_PAT) / perc_area_f_PAT * 100)
+plt.plot(perc, (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100)
 ax.set_ylim(-50, 0)
 plt.title('Female', fontsize=16)
 plt.xlabel('Population percentile', fontsize=14)
@@ -193,7 +193,7 @@ plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
 ax = plt.subplot(122)
-plt.plot(perc, (perc_area_m_MAT - perc_area_m_PAT) / perc_area_m_PAT * 100)
+plt.plot(perc, (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100)
 ax.set_ylim(-50, 0)
 plt.title('Male', fontsize=16)
 plt.xlabel('Population percentile', fontsize=14)
@@ -209,6 +209,10 @@ Automatically extracted cells
 
 '''Load data
 '''
+
+# load CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
 
 # models to be used
 saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
@@ -287,8 +291,8 @@ if DEBUG:
 # make copy of automatically segmented labels so that we can remove from them the segmentations without ground truth
 labels_with_ground_truth = labels.copy()
 
-areas_ref = []
-areas_test = []
+# put all the pipeline segmented areas (with corresponding ground truth) into a dataframe
+df_test = None
 
 for i in range(im_test.shape[0]):
 
@@ -305,17 +309,27 @@ for i in range(im_test.shape[0]):
     props_ref = regionprops(lab_test[i, :, :, 0])  # ground truth
     props_test = regionprops(labels[i, :, :, 0])   # pipeline segmentations
 
-    # add areas of cells with correspondence to list of areas
-    for props in props_ref:
-        if props['label'] in overlap['lab_ref']:
-            areas_ref.append(props['area'])
+    areas_ref = []
+    areas_test = []
 
+    # add areas of cells with correspondence to list of areas
     for props in props_test:
         if props['label'] in overlap['lab_test']:
-            areas_test.append(props['area'])
+            areas_test.append(props['area'] * xres * yres)
 
-# TODO Here
+    # create dataframe with metainformation from mouse
+    df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
+                                                          areas_test, values_tag='area',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
 
+    # add a column with the window filename. This is later used in the linear models
+    df_window['file'] = os.path.basename(im_test_file_list[i])
+
+    # create new total dataframe, or concat to existing one
+    if df_test is None:
+        df_test = df_window
+    else:
+        df_test = pd.concat([df_test, df_window], axis=0, ignore_index=True)
 
 if DEBUG:
     i = 3
@@ -331,3 +345,58 @@ plt.title('ground truth')
 plt.subplot(122)
 plt.boxplot(areas_test)
 plt.title('pipeline segmentation')
+
+
+
+# make sure that in the boxplots PAT comes before MAT
+df_test['ko'] = df_test['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+
+# # plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
+# plt.clf()
+# ax = plt.subplot(121)
+# df_gtruth[df_gtruth['sex'] == 'f'].boxplot(column='area', by='ko', ax=ax, notch=True)
+# #ax.set_ylim(0, 2e4)
+# ax.set_title('female', fontsize=16)
+# ax.set_xlabel('')
+# ax.set_ylabel('area (um^2)', fontsize=14)
+# plt.tick_params(axis='both', which='major', labelsize=14)
+# ax = plt.subplot(122)
+# df_gtruth[df_gtruth['sex'] == 'm'].boxplot(column='area', by='ko', ax=ax, notch=True)
+# #ax.set_ylim(0, 2e4)
+# ax.set_title('male', fontsize=16)
+# ax.set_xlabel('')
+# ax.set_ylabel('area (um^2)', fontsize=14)
+# plt.tick_params(axis='both', which='major', labelsize=14)
+
+# split data into groups
+area_test_f_PAT = df_test['area'][(np.logical_and(df_test['sex'] == 'f', df_test['ko'] == 'PAT'))]
+area_test_f_MAT = df_test['area'][(np.logical_and(df_test['sex'] == 'f', df_test['ko'] == 'MAT'))]
+area_test_m_PAT = df_test['area'][(np.logical_and(df_test['sex'] == 'm', df_test['ko'] == 'PAT'))]
+area_test_m_MAT = df_test['area'][(np.logical_and(df_test['sex'] == 'm', df_test['ko'] == 'MAT'))]
+
+# compute percentile profiles of cell populations
+perc = np.linspace(0, 100, num=101)
+perc_area_test_f_PAT = np.percentile(area_test_f_PAT, perc)
+perc_area_test_f_MAT = np.percentile(area_test_f_MAT, perc)
+perc_area_test_m_PAT = np.percentile(area_test_m_PAT, perc)
+perc_area_test_m_MAT = np.percentile(area_test_m_MAT, perc)
+
+# plot curve profiles
+plt.clf()
+
+ax = plt.subplot(121)
+plt.plot(perc, (perc_area_test_f_MAT - perc_area_test_f_PAT) / perc_area_test_f_PAT * 100)
+ax.set_ylim(-50, 0)
+plt.title('Female', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+ax = plt.subplot(122)
+plt.plot(perc, (perc_area_test_m_MAT - perc_area_test_m_PAT) / perc_area_test_m_PAT * 100)
+ax.set_ylim(-50, 0)
+plt.title('Male', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
