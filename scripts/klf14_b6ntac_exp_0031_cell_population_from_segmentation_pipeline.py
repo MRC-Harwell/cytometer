@@ -32,7 +32,7 @@ from skimage.measure import regionprops
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -287,6 +287,9 @@ if DEBUG:
 # make copy of automatically segmented labels so that we can remove from them the segmentations without ground truth
 labels_with_ground_truth = labels.copy()
 
+areas_ref = []
+areas_test = []
+
 for i in range(im_test.shape[0]):
 
     # match automatically segmented cells to cells with hand-traced ground truth segmentation
@@ -298,6 +301,19 @@ for i in range(im_test.shape[0]):
     # remove the automatically segmented cells that have no ground truth
     labels_with_ground_truth[i, :, :, 0][np.isin(labels[i, :, :, 0], lab_with_ground_truth, invert=True)] = 0
 
+    # compute areas of all cells in images
+    props_ref = regionprops(lab_test[i, :, :, 0])  # ground truth
+    props_test = regionprops(labels[i, :, :, 0])   # pipeline segmentations
+
+    # add areas of cells with correspondence to list of areas
+    for props in props_ref:
+        if props['label'] in overlap['lab_ref']:
+            areas_ref.append(props['area'])
+
+    for props in props_test:
+        if props['label'] in overlap['lab_test']:
+            areas_test.append(props['area'])
+
 # TODO Here
 
 
@@ -306,3 +322,12 @@ if DEBUG:
     plt.subplot(224)
     plt.imshow(labels_with_ground_truth[i, :, :, 0])
     plt.title('remove segmentations\nwithout ground truth')
+
+# boxplots
+plt.clf()
+plt.subplot(121)
+plt.boxplot(areas_ref)
+plt.title('ground truth')
+plt.subplot(122)
+plt.boxplot(areas_test)
+plt.title('pipeline segmentation')
