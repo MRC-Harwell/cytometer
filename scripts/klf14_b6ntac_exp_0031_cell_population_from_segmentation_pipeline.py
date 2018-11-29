@@ -4,6 +4,8 @@ Compare the cell area distributions of:
 * Hand segmented cells (ground truth)
 * Automatically segmented cells that overlap with a ground truth cell and Dice>=0.9
 * All automatically segmented cells accepted by quality assessment network
+
+This works with contours from exp 0005 and dmap from exp 0015, which only consider fold 0.
 """
 
 # cross-platform home directory
