@@ -843,7 +843,8 @@ def paint_labels(labels, paint_labs, paint_values):
     """
 
     # allocate memory for look-up table. This will make painting each pixel with a value more efficient
-    lut = np.zeros(shape=(np.max(paint_labs) + 1,), dtype=paint_values.dtype)
+    max_lab = np.max([np.max(paint_labs), np.max(labels)])
+    lut = np.zeros(shape=(max_lab + 1,), dtype=paint_values.dtype)
     lut.fill(np.nan)
 
     # populate look-up table with the paint values, so that lut[23] = 4.3 means that pixels with label 23 get painted
