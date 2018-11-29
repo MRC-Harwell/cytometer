@@ -154,7 +154,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     '''Load data
     '''
 
-    # split the data into training and testing datasets
+    # split the data list into training and testing lists
     im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
 
     # add the augmented image files
