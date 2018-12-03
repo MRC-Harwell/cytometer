@@ -318,10 +318,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_cell_im,
-                  {'fc1': (train_cell_dice >= quality_threshold).astype(np.int)},
-                  validation_data=(test_cell_im,
-                                   {'fc1': (test_cell_dice >= quality_threshold).astype(np.int)}),
+        model.fit(train_onecell_im,
+                  {'fc1': (train_onecell_dice >= quality_threshold).astype(np.int)},
+                  validation_data=(test_onecell_im,
+                                   {'fc1': (test_onecell_dice >= quality_threshold).astype(np.int)}),
                   batch_size=16, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
