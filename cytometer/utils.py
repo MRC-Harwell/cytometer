@@ -255,6 +255,8 @@ def match_overlapping_labels(labels_ref, labels_test):
     :return: structured array out:
      out['lab_test']: (N,) np.ndarray with unique list of labels in the test image.
      out['lab_ref']: (N,) np.ndarray with labels that best align with the test labels.
+     out['area_test']: (N,) np.ndarray with area of test label in pixels.
+     out['area_ref']: (N,) np.ndarray with area of test label in pixels.
      out['dice']: (N,) np.ndarray with Dice coefficient for each pair of corresponding labels.
     """
 
@@ -311,6 +313,8 @@ def match_overlapping_labels(labels_ref, labels_test):
     # prepare output as structured array
     out = np.zeros((0,), dtype=[('lab_test', labels_test_unique.dtype),
                                 ('lab_ref', labels_ref_unique.dtype),
+                                ('area_test', np.int64),
+                                ('area_ref', np.int64),
                                 ('dice', dice.dtype)])
 
     # starting from the highest Dice values, start finding one-to-one correspondences between test and ref labels
@@ -323,8 +327,13 @@ def match_overlapping_labels(labels_ref, labels_test):
         idx = dice.argmax()
         (lab_test, lab_ref) = np.unravel_index(idx, dice.shape)
 
+        # areas of the labels
+        area_test = labels_test_unique_count_lut[lab_test]
+        area_ref = labels_ref_unique_count_lut[lab_ref]
+
         # add this pair to the output
-        out = np.append(out, np.array([(lab_test, lab_ref, dice[lab_test, lab_ref])], dtype=out.dtype))
+        out = np.append(out, np.array([(lab_test, lab_ref, area_test, area_ref, dice[lab_test, lab_ref])],
+                                      dtype=out.dtype))
 
         # convert Dice matrix to a format with faster change of sparsity
         dice = dice.tolil()
