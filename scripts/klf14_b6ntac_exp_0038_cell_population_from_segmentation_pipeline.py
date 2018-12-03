@@ -1,4 +1,5 @@
 """
+Load pipeline segmentations from 0036.
 Compare the cell area distributions of:
 
 * Hand segmented cells (ground truth)
@@ -29,12 +30,8 @@ import matplotlib.pyplot as plt
 from skimage.morphology import watershed
 from skimage.measure import regionprops
 
-# use CPU for testing on laptop
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -81,7 +78,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0031_cell_population_from_segmentation_pipeline'
+experiment_id = 'klf14_b6ntac_exp_0038_cell_population_from_segmentation_pipeline'
 
 '''
 ************************************************************************************************************************
@@ -209,12 +206,80 @@ Automatically extracted cells
 ************************************************************************************************************************
 '''
 
-'''Load data
+'''Directories and filenames
+'''
+
+# data paths
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
+training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+
+saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'  # contour
+
+# script name to identify this experiment
+experiment_id = inspect.getfile(inspect.currentframe())
+if experiment_id == '<input>':
+    experiment_id = 'unknownscript'
+else:
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
+
+# list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+im_orig_file_list = aux['file_list']
+idx_orig_test_all = aux['idx_test_all']
+
+
+'''Loop folds
 '''
 
 # load CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
+
+# loop each fold: we split the data into train vs test, train a model, and compute errors with the
+# test data. In each fold, the test data is different
+# for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate(idx_orig_test_all):
+
+    '''Load data
+    '''
+
+    # split the data list into training and testing lists
+    im_test_file_list, _ = cytometer.data.split_list(im_orig_file_list, idx_test)
+
+    # number of testing images
+    n_im = len(im_test_file_list)
+
+    # load the correspondences and Dice between pipeline segmentations and ground truth
+    correspondence = []
+    for i in range(n_im):
+
+        print('\tImage ' + str(i) + '/' + str(n_im-1))
+
+        base_file = os.path.basename(im_test_file_list[i])
+        labcorr_file = base_file.replace('im_', 'labcorr_kfold_' + str(i_fold).zfill(2) + '_')
+        labcorr_file = os.path.join(training_augmented_dir,
+                                    labcorr_file.replace('.tif', '.npy'))
+        correspondence.append(np.load(file=labcorr_file))
+    correspondence = np.concatenate(correspondence, axis=0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # models to be used
 saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
