@@ -118,8 +118,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # split the data list into training and testing lists
     im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
 
-    # number of images
-    n_im = len(im_test_file_list)
+    # number of training images
+    n_im = len(im_train_file_list)
 
     # load pipeline to ground truth segmentation correspondences
     correspondence = []
@@ -137,84 +137,128 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     datasets, _, _ = cytometer.data.load_datasets(im_train_file_list, prefix_from='im',
                                                   prefix_to=['im', 'lab', 'seg', 'mask',
                                                              'predlab_kfold_' + str(i_fold).zfill(2)], nblocks=1)
-    im = datasets['im']
-    seg = datasets['seg']
-    mask = datasets['mask']
-    reflab = datasets['lab']
-    predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
+    train_im = datasets['im']
+    train_seg = datasets['seg']
+    train_mask = datasets['mask']
+    train_reflab = datasets['lab']
+    train_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
     del datasets
 
     # remove borders between cells in the lab_train data
-    for i in range(reflab.shape[0]):
-        reflab[i, :, :, 0] = watershed(image=np.zeros(shape=reflab[i, :, :, 0].shape, dtype=np.uint8),
-                                       markers=reflab[i, :, :, 0], watershed_line=False)
+    for i in range(train_reflab.shape[0]):
+        train_reflab[i, :, :, 0] = watershed(image=np.zeros(shape=train_reflab[i, :, :, 0].shape, dtype=np.uint8),
+                                             markers=train_reflab[i, :, :, 0], watershed_line=False)
     # change the background label from 1 to 0
-    reflab[reflab == 1] = 0
-
-    # TODO here
+    train_reflab[train_reflab == 1] = 0
 
     # create one image per cell
-    onecell_train_im, onecell_lab, index_list = \
-        cytometer.utils.one_image_per_label(im, predlab,
+    train_onecell_im, train_onecell_testlab, train_onecell_index_list, train_onecell_reflab, train_onecell_dice = \
+        cytometer.utils.one_image_per_label(train_im, train_predlab,
+                                            dataset_lab_ref=train_reflab,
                                             training_window_len=training_window_len,
                                             smallest_cell_area=smallest_cell_area)
-
-    # one-cell windows from the segmentations obtained with our pipeline
-    # ['train_cell_im', 'train_cell_reflab', 'train_cell_testlab', 'train_cell_dice', 'test_cell_im',
-    # 'test_cell_reflab', 'test_cell_testlab', 'test_cell_dice']
-    onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_000.npz')
-    dataset_orig = np.load(onecell_filename)
-
-    # read the data into memory
-    train_cell_im = dataset_orig['train_cell_im']
-    train_cell_reflab = dataset_orig['train_cell_reflab']
-    train_cell_testlab = dataset_orig['train_cell_testlab']
-    train_cell_dice = dataset_orig['train_cell_dice']
-    test_cell_im = dataset_orig['test_cell_im']
-    test_cell_reflab = dataset_orig['test_cell_reflab']
-    test_cell_testlab = dataset_orig['test_cell_testlab']
-    test_cell_dice = dataset_orig['test_cell_dice']
-
-    # save memory
-    del dataset_orig
 
     if DEBUG:
         plt.clf()
         plt.subplot(121)
         i = 1006
-        plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_reflab[i, :, :, 0], levels=1, colors='black')
-        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
-        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.imshow(train_onecell_im[i, :, :, :])
+        plt.contour(train_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(train_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(train_onecell_dice[i])))
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
         plt.subplot(122)
-        i += int(train_cell_im.shape[0]/2)
-        plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_reflab[i, :, :, 0], levels=1, colors='black')
-        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='red')
-        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        i = 1705
+        plt.imshow(train_onecell_im[i, :, :, :])
+        plt.contour(train_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(train_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(train_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    # load test dataset
+    datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
+                                                  prefix_to=['im', 'lab', 'seg', 'mask',
+                                                             'predlab_kfold_' + str(i_fold).zfill(2)], nblocks=1)
+    test_im = datasets['im']
+    test_seg = datasets['seg']
+    test_mask = datasets['mask']
+    test_reflab = datasets['lab']
+    test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
+    del datasets
+
+    # remove borders between cells in the lab_test data
+    for i in range(test_reflab.shape[0]):
+        test_reflab[i, :, :, 0] = watershed(image=np.zeros(shape=test_reflab[i, :, :, 0].shape, dtype=np.uint8),
+                                            markers=test_reflab[i, :, :, 0], watershed_line=False)
+
+    # change the background label from 1 to 0
+    test_reflab[test_reflab == 1] = 0
+
+    # create one image per cell
+    test_onecell_im, test_onecell_testlab, test_onecell_index_list, test_onecell_reflab, test_onecell_dice = \
+        cytometer.utils.one_image_per_label(test_im, test_predlab,
+                                            dataset_lab_ref=test_reflab,
+                                            training_window_len=training_window_len,
+                                            smallest_cell_area=smallest_cell_area)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 50
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+        plt.subplot(122)
+        i = 150
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
 
     # multiply histology by segmentations to have a single input tensor
-    train_cell_im *= np.repeat(train_cell_testlab.astype(np.float32), repeats=train_cell_im.shape[3], axis=3)
-    test_cell_im *= np.repeat(test_cell_testlab.astype(np.float32), repeats=test_cell_im.shape[3], axis=3)
+    train_onecell_im *= np.repeat(train_onecell_testlab.astype(np.float32), repeats=train_onecell_im.shape[3], axis=3)
 
     if DEBUG:
         plt.clf()
         plt.subplot(121)
         i = 1006
-        plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='green')
-        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        plt.imshow(train_onecell_im[i, :, :, :])
+        plt.contour(train_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(train_onecell_dice[i])))
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
         plt.subplot(122)
-        i += int(train_cell_im.shape[0]/2)
-        plt.imshow(train_cell_im[i, :, :, :])
-        plt.contour(train_cell_testlab[i, :, :, 0], levels=1, colors='red')
-        plt.title('Dice = ' + str("{:.2f}".format(train_cell_dice[i])))
+        i = 1705
+        plt.imshow(train_onecell_im[i, :, :, :])
+        plt.contour(train_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(train_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    # multiply histology by segmentations to have a single input tensor
+    test_onecell_im *= np.repeat(test_onecell_testlab.astype(np.float32), repeats=test_onecell_im.shape[3], axis=3)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 50
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+        plt.subplot(122)
+        i = 150
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
 
@@ -252,10 +296,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_cell_im,
-                           {'fc1': (train_cell_dice >= quality_threshold).astype(np.int)},
-                           validation_data=(test_cell_im,
-                                            {'fc1': (test_cell_dice >= quality_threshold).astype(np.int)}),
+        parallel_model.fit(train_onecell_im,
+                           {'fc1': (train_onecell_dice >= quality_threshold).astype(np.int)},
+                           validation_data=(test_onecell_im,
+                                            {'fc1': (test_onecell_dice >= quality_threshold).astype(np.int)}),
                            batch_size=16, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
