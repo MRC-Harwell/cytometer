@@ -227,7 +227,11 @@ def match_overlapping_labels(labels_ref, labels_test):
     [0, 10, 12, 17].
 
     The number of pixels in the intersection of 51 with each of the other labels is:
-    [53600, 29, 17413, 162]
+    [53600, 29, 17413, 162]  # compute overlap between estimated and ground truth labels
+        if dataset_lab_ref is not None:
+            lab_correspondence = match_overlapping_labels(labels_ref=dataset_lab_ref[i, :, :, 0],
+                                                          labels_test=dataset_lab_test[i, :, :, 0])
+
 
     We ignore the background. Therefore, label 51 is best aligned to label 12.
 
@@ -386,7 +390,8 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     dice_list = []
     for i in range(dataset_im.shape[0]):
 
-        # print('Image ' + str(i) + '/' + str(dataset_im.shape[0] - 1))  # DEBUG
+        if DEBUG:
+            print('Image ' + str(i) + '/' + str(dataset_im.shape[0] - 1))  # DEBUG
 
         # compute overlap between estimated and ground truth labels
         if dataset_lab_ref is not None:
@@ -398,24 +403,28 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
 
         for p in props:
 
-            # print('p[\'label\'] = ' + str(p['label']))  # DEBUG
+            if DEBUG:
+                print('p[\'label\'] = ' + str(p['label']))  # DEBUG
 
             # simplify nomenclature
             lab_test = p['label']  # test label under consideration
             if dataset_lab_ref is not None:
                 lab_ref = lab_correspondence['lab_ref'][lab_correspondence['lab_test'] == lab_test]  # corresponding ground truth label
-                assert(len(lab_ref) == 1)  # each test label should have one and only one reference label
-                lab_ref = lab_ref[0]
+                # if reference labels are provided, ignore test labels without a correspondence
+                if len(lab_ref) == 0:
+                    continue
+                assert (len(lab_ref) == 1)  # each test label should have corresponding label
                 dice = lab_correspondence['dice'][lab_correspondence['lab_test'] == lab_test]  # Dice coefficient
                 assert(len(dice) == 1)  # the test label shouldn't be repeated. Thus, we should get only one Dice coeff here
+                lab_ref = lab_ref[0]
                 dice = dice[0]
 
             # we ignore tiny labels as artifacts, as well as tests labels that have no corresponding ground truth
-            if p['area'] < smallest_cell_area or dataset_lab_ref is not None and lab_ref == 0:
+            if p['area'] < smallest_cell_area or (dataset_lab_ref is not None and lab_ref == 0):
                 continue
 
-            # record image index and label for output
-            index_list.append((i, p['label']))
+            # record image index and test label for output
+            index_list.append((i, lab_test))
 
             if DEBUG:
                 plt.clf()
@@ -500,7 +509,7 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                 plt.clf()
                 plt.subplot(221)
                 plt.imshow(dataset_im[i, :, :, :])
-                plt.contour(dataset_lab_test[i, :, :, 0] == p['label'], levels=1)
+                plt.contour(dataset_lab_test[i, :, :, 0] == lab_test, levels=1)
                 plt.plot([bbox_min_col, bbox_max_col, bbox_max_col, bbox_min_col, bbox_min_col],
                          [bbox_min_row, bbox_min_row, bbox_max_row, bbox_max_row, bbox_min_row], 'r')
                 plt.plot([lbox_min_col, lbox_max_col, lbox_max_col, lbox_min_col, lbox_min_col],
@@ -510,7 +519,7 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                 plt.contour(label_window[:, :, 0], levels=1)
                 plt.title('Dice = ' + str(round(dice_list[-1], 2)))
                 plt.subplot(223)
-                plt.imshow(dataset_lab_test[i, :, :, 0] == p['label'])
+                plt.imshow(dataset_lab_test[i, :, :, 0] == lab_test)
                 plt.subplot(224)
                 plt.gca().invert_yaxis()
                 plt.contour(reflabel_window[:, :, 0], levels=1, colors='green', label='ref')
