@@ -33,7 +33,7 @@ from skimage.morphology import watershed
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -120,18 +120,6 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # number of training images
     n_im = len(im_train_file_list)
-
-    # load pipeline to ground truth segmentation correspondences
-    correspondence = []
-    for i in range(n_im):
-
-        print('\tImage ' + str(i) + '/' + str(n_im-1))
-
-        base_file = os.path.basename(im_train_file_list[i])
-        labcorr_file = base_file.replace('im_', 'labcorr_kfold_' + str(i_fold).zfill(2) + '_')
-        labcorr_file = os.path.join(training_augmented_dir,
-                                    labcorr_file.replace('.tif', '.npy'))
-        correspondence = np.load(file=labcorr_file)
 
     # load training dataset
     datasets, _, _ = cytometer.data.load_datasets(im_train_file_list, prefix_from='im',
