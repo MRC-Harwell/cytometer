@@ -1,5 +1,6 @@
 '''
-Take the dmap and contour models for each fold, and use them to segment training images.
+Take the dmap and contour models for each fold, and use them to segment all images
+(this way we'll have a train and test datasets to train the quality net).
 Find correspondences between the segmented cells and the hand traced ground truth cells.
 Then augment segmentations 9 times with random rotations, scalings and flips, so they
 can be used to train the Quality network.
@@ -102,11 +103,8 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
     '''Load data 
     '''
 
-    # split the data list into training and testing lists
-    im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
-
     # load training dataset
-    datasets, _, _ = cytometer.data.load_datasets(im_train_file_list, prefix_from='im',
+    datasets, _, _ = cytometer.data.load_datasets(im_orig_file_list, prefix_from='im',
                                                   prefix_to=['im', 'lab', 'seg', 'mask'], nblocks=1)
     im = datasets['im']
     seg = datasets['seg']
@@ -222,7 +220,7 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
             plt.title('Dice coeff')
 
         # filenames for output files
-        base_file = im_train_file_list[i]
+        base_file = im_orig_file_list[i]
         base_path, base_name = os.path.split(base_file)
         predlab_file = os.path.join(training_augmented_dir,
                                     base_file.replace('im_', 'predlab_kfold_' + str(fold_i).zfill(2) + '_'))
@@ -256,7 +254,7 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
             print('\t** Image ' + str(i) + '/' + str(n_im - 1))
 
             # file name of the histology corresponding to the random transformation of the Dice coefficient image
-            base_file = im_train_file_list[i]
+            base_file = im_orig_file_list[i]
             base_path, base_name = os.path.split(base_file)
             transform_file = os.path.join(base_path, base_name.replace('im_', 'transform_')
                                           .replace('.tif', '.pickle').replace('seed_nan', 'seed_' + str(seed).zfill(3)))
