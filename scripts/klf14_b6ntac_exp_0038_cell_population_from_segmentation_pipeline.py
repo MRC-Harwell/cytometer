@@ -76,6 +76,7 @@ training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+figures_dir = os.path.join(root_data_dir, 'figures')
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0038_cell_population_from_segmentation_pipeline'
@@ -232,21 +233,26 @@ with open(contour_model_kfold_filename, 'rb') as f:
 im_orig_file_list = aux['file_list']
 idx_orig_test_all = aux['idx_test_all']
 
-
-'''Loop folds
+'''Load data
 '''
 
 # load CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
+# list of all non-overlap original files
+im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_seed_nan_*.tif'))
+
+# read pixel size information
+orig_file = os.path.basename(im_file_list[0]).replace('im_seed_nan_', '')
+im = PIL.Image.open(os.path.join(training_dir, orig_file))
+xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
 for i_fold, idx_test in enumerate(idx_orig_test_all):
-
-    '''Load data
-    '''
 
     # split the data list into training and testing lists
     im_test_file_list, _ = cytometer.data.split_list(im_orig_file_list, idx_test)
@@ -267,13 +273,45 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         correspondence.append(np.load(file=labcorr_file))
     correspondence = np.concatenate(correspondence, axis=0)
 
+# convert areas from pixel^2 to um^2
+area_ref = correspondence['area_ref'] * xres * yres
+area_test = correspondence['area_test'] * xres * yres
 
+'''Validate results quantitatively and with plots
+'''
 
+# correlation coeff
+rho_all_cells = np.corrcoef(area_ref, area_test)[0, 1]
 
+print('Pearson corr = ' + "{:.2f}".format(rho_all_cells))
 
+# plot cell areas. All pipeline segmentations with ground truth vs. their ground truth
+plt.clf()
+plt.scatter(area_ref, area_test)
+plt.tick_params(labelsize=16)
+plt.plot([0, 14000], [0, 14000], 'orange')
+plt.xlabel('hand traced area ($\mu^2$)', fontsize=16)
+plt.ylabel('pipeline segmentation area ($\mu^2$)', fontsize=16)
+plt.text(12000, 85000, r'$\rho = $' + "{:.3f}".format(rho_all_cells), fontsize=16)
 
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_area_pipeline_vs_manual_scatter.png'))
 
+# cells with good Dice coefficient
+idx_good_segmentation = correspondence['dice'] >= valid_threshold
 
+# correlation coeff
+rho_good_cells = np.corrcoef(area_ref[idx_good_segmentation], area_test[idx_good_segmentation])[0, 1]
+
+# plot cell areas. Only segmentations with good quality
+plt.clf()
+plt.scatter(area_ref[idx_good_segmentation], area_test[idx_good_segmentation])
+plt.tick_params(labelsize=16)
+plt.plot([0, 14000], [0, 14000], 'orange')
+plt.xlabel('hand traced area ($\mu^2$)', fontsize=16)
+plt.ylabel('pipeline segmentation area ($\mu^2$)', fontsize=16)
+plt.text(12000, 9000, r'$\rho = $' + "{:.3f}".format(rho_good_cells), fontsize=16)
+
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_good_area_pipeline_vs_manual_scatter.png'))
 
 
 
