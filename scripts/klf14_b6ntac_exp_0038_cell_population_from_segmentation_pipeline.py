@@ -51,6 +51,7 @@ set_session(tf.Session(config=config))
 K.set_image_data_format('channels_last')
 
 DEBUG = False
+SAVE_FIGS = False
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -328,7 +329,8 @@ plt.xlabel('hand traced area ($\mu^2$)', fontsize=16)
 plt.ylabel('pipeline segmentation area ($\mu^2$)', fontsize=16)
 plt.text(12000, 85000, r'$\rho = $' + "{:.3f}".format(rho_all_cells), fontsize=16)
 
-plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_area_pipeline_vs_manual_scatter.png'))
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_area_pipeline_vs_manual_scatter.png'))
 
 # cells with good Dice coefficient
 idx_good_segmentation = correspondence_all['dice'] >= valid_threshold
@@ -351,7 +353,8 @@ plt.xlabel('hand traced area ($\mu^2$)', fontsize=16)
 plt.ylabel('pipeline segmentation area ($\mu^2$)', fontsize=16)
 plt.text(12000, 9000, r'$\rho = $' + "{:.3f}".format(rho_good_cells), fontsize=16)
 
-plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_good_area_pipeline_vs_manual_scatter.png'))
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_good_area_pipeline_vs_manual_scatter.png'))
 
 '''Population curves
 '''
@@ -398,8 +401,8 @@ plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 plt.legend()
 
-plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_hand_traced_pipeline_ht_dice.png'))
-
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_hand_traced_pipeline_ht_dice.png'))
 
 '''
 ************************************************************************************************************************
@@ -450,6 +453,7 @@ xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
 yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
 # loop folds
+df_pipeline_gtruth = None
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     '''Load data
@@ -541,6 +545,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # select segmentations accepted by quality control
     predlab_quality_accepted = test_onecell_testlab[idx_quality_accepted, :, :, :]
+    index_list_quality_accepted = test_onecell_index_list[idx_quality_accepted, :]
 
     # compute areas of segmentations in pixels
     quality_accepted_areas = np.sum(predlab_quality_accepted, axis=(1, 2, 3))
