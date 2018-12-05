@@ -67,6 +67,13 @@ training_window_len = 401
 # threshold for valid/invalid segmentation
 valid_threshold = 0.9
 
+
+'''
+************************************************************************************************************************
+Hand segmented cells (ground truth), no-overlap approximation
+************************************************************************************************************************
+'''
+
 '''Directories and filenames
 '''
 
@@ -80,12 +87,6 @@ figures_dir = os.path.join(root_data_dir, 'figures')
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0038_cell_population_from_segmentation_pipeline'
-
-'''
-************************************************************************************************************************
-Hand segmented cells (ground truth), no-overlap approximation
-************************************************************************************************************************
-'''
 
 '''Load data
 '''
@@ -398,3 +399,167 @@ plt.tick_params(axis='both', which='major', labelsize=14)
 plt.legend()
 
 plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_hand_traced_pipeline_ht_dice.png'))
+
+
+'''
+************************************************************************************************************************
+All pipeline segmentations with Dice >= 0.9, whether they overlap hand traced cells or not
+************************************************************************************************************************
+'''
+
+'''Directories and filenames
+'''
+
+# data paths
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
+training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+
+saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'  # contour
+
+# script name to identify this experiment
+experiment_id = inspect.getfile(inspect.currentframe())
+if experiment_id == '<input>':
+    experiment_id = 'unknownscript'
+else:
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
+
+# list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+im_orig_file_list = aux['file_list']
+idx_orig_test_all = aux['idx_test_all']
+
+'''Load data
+'''
+
+# load CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# list of all non-overlap original files
+im_file_list = glob.glob(os.path.join(training_augmented_dir, 'im_seed_nan_*.tif'))
+
+# read pixel size information
+orig_file = os.path.basename(im_file_list[0]).replace('im_seed_nan_', '')
+im = PIL.Image.open(os.path.join(training_dir, orig_file))
+xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+# loop folds
+for i_fold, idx_test in enumerate(idx_orig_test_all):
+
+    '''Load data
+    '''
+
+    # split the data list into training and testing lists
+    im_test_file_list, _ = cytometer.data.split_list(im_orig_file_list, idx_test)
+
+    # number of test images
+    n_im = len(im_test_file_list)
+
+    # load test dataset
+    datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
+                                                  prefix_to=['im', 'lab', 'seg', 'mask',
+                                                             'predlab_kfold_' + str(i_fold).zfill(2)], nblocks=1)
+    test_im = datasets['im']
+    test_seg = datasets['seg']
+    test_mask = datasets['mask']
+    test_reflab = datasets['lab']
+    test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
+    del datasets
+
+    # remove borders between cells in the lab_test data
+    for i in range(test_reflab.shape[0]):
+        test_reflab[i, :, :, 0] = watershed(image=np.zeros(shape=test_reflab[i, :, :, 0].shape, dtype=np.uint8),
+                                            markers=test_reflab[i, :, :, 0], watershed_line=False)
+
+    # change the background label from 1 to 0
+    test_reflab[test_reflab == 1] = 0
+
+    # create one image per cell
+    test_onecell_im, test_onecell_testlab, test_onecell_index_list, test_onecell_reflab, test_onecell_dice = \
+        cytometer.utils.one_image_per_label(test_im, test_predlab,
+                                            dataset_lab_ref=test_reflab,
+                                            training_window_len=training_window_len,
+                                            smallest_cell_area=smallest_cell_area)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 50
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+        plt.subplot(122)
+        i = 150
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    # multiply histology by segmentations to have a single input tensor
+    test_onecell_im *= np.repeat(test_onecell_testlab.astype(np.float32), repeats=test_onecell_im.shape[3], axis=3)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 50
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+        plt.subplot(122)
+        i = 150
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    # load quality assessment model
+    quality_model_file = 'klf14_b6ntac_exp_0037_cnn_qualitynet_thresholded_sigmoid_masked_segmentation_model_fold_' + \
+                         str(i_fold) + '.h5'
+    quality_model_file = os.path.join(saved_models_dir, quality_model_file)
+    quality_model = keras.models.load_model(quality_model_file)
+
+    # estimate quality of segmentations
+    predice = quality_model.predict(test_onecell_im)
+
+    # indices of accepted segmentations
+    idx_quality_accepted = predice >= valid_threshold
+    idx_quality_accepted = idx_quality_accepted[:, 0]
+
+    # select segmentations accepted by quality control
+    predlab_quality_accepted = test_onecell_testlab[idx_quality_accepted, :, :, :]
+
+    # compute areas of segmentations in pixels
+    quality_accepted_areas = np.sum(predlab_quality_accepted, axis=(1, 2, 3))
+
+    # create dataframe with metainformation from mouse
+    df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
+                                                          quality_accepted_areas,
+                                                          values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+
+    # add a column with the window filename. This is later used in the linear models
+    df_window['file'] = os.path.basename(im_test_file_list[i])
+
+    # create new total dataframe, or concat to existing one
+    if df_pipeline_gtruth is None:
+        df_pipeline_gtruth = df_window
+
+        # make sure that in the boxplots PAT comes before MAT
+        df_pipeline_gtruth['ko'] = df_pipeline_gtruth['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
+                                                                                                 ordered=True))
+
+    else:
+        df_pipeline_gtruth = pd.concat([df_pipeline_gtruth, df_window], axis=0, ignore_index=True)
