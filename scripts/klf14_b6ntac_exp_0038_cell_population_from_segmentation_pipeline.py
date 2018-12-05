@@ -203,7 +203,7 @@ plt.tick_params(axis='both', which='major', labelsize=14)
 
 '''
 ************************************************************************************************************************
-Automatically extracted cells
+Pipeline segmentations that overlap with hand traced cells
 ************************************************************************************************************************
 '''
 
@@ -252,6 +252,8 @@ yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
+correspondence_all = []
+df_pipeline_gtruth = None
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # split the data list into training and testing lists
@@ -261,35 +263,66 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     n_im = len(im_test_file_list)
 
     # load the correspondences and Dice between pipeline segmentations and ground truth
-    correspondence = []
+    # NOTE: in correspondence, we keep all pipeline and hand traced areas, regardless of Dice
+    #       in df_pipeline, we only keep pipeline areas with Dice >= 0.9
     for i in range(n_im):
 
-        print('\tImage ' + str(i) + '/' + str(n_im-1))
+        # print('\tImage ' + str(i) + '/' + str(n_im-1))
 
         base_file = os.path.basename(im_test_file_list[i])
         labcorr_file = base_file.replace('im_', 'labcorr_kfold_' + str(i_fold).zfill(2) + '_')
         labcorr_file = os.path.join(training_augmented_dir,
                                     labcorr_file.replace('.tif', '.npy'))
-        correspondence.append(np.load(file=labcorr_file))
-    correspondence = np.concatenate(correspondence, axis=0)
+        correspondence = np.load(file=labcorr_file)
+        correspondence_all.append(correspondence)
+
+        # convert areas from pixel to um^2
+        good_areas = correspondence['area_test'] * xres * yres
+        good_areas = good_areas[correspondence['dice'] >= valid_threshold]
+
+        if len(good_areas) == 0:
+            continue
+
+        # create dataframe with metainformation from mouse
+        df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
+                                                              good_areas,
+                                                              values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+
+        # add a column with the window filename. This is later used in the linear models
+        df_window['file'] = os.path.basename(im_test_file_list[i])
+
+        # create new total dataframe, or concat to existing one
+        if df_pipeline_gtruth is None:
+            df_pipeline_gtruth = df_window
+
+            # make sure that in the boxplots PAT comes before MAT
+            df_pipeline_gtruth['ko'] = df_pipeline_gtruth['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
+                                                                                                     ordered=True))
+
+        else:
+            df_pipeline_gtruth = pd.concat([df_pipeline_gtruth, df_window], axis=0, ignore_index=True)
+
+# convert from list of arrays to single array
+correspondence_all = np.concatenate(correspondence_all, axis=0)
 
 # convert areas from pixel^2 to um^2
-area_ref = correspondence['area_ref'] * xres * yres
-area_test = correspondence['area_test'] * xres * yres
+area_ref = correspondence_all['area_ref'] * xres * yres
+area_test = correspondence_all['area_test'] * xres * yres
 
-'''Validate results quantitatively and with plots
+
+'''Validate segmentations' areas quantitatively and with plots
 '''
 
 # correlation coeff
 rho_all_cells = np.corrcoef(area_ref, area_test)[0, 1]
 
-print('Pearson corr = ' + "{:.2f}".format(rho_all_cells))
+print('Pearson corr = ' + "{:.3f}".format(rho_all_cells))
 
 # plot cell areas. All pipeline segmentations with ground truth vs. their ground truth
 plt.clf()
 plt.scatter(area_ref, area_test)
 plt.tick_params(labelsize=16)
-plt.plot([0, 14000], [0, 14000], 'orange')
+plt.plot([0, 17500], [0, 17500], 'orange')
 plt.xlabel('hand traced area ($\mu^2$)', fontsize=16)
 plt.ylabel('pipeline segmentation area ($\mu^2$)', fontsize=16)
 plt.text(12000, 85000, r'$\rho = $' + "{:.3f}".format(rho_all_cells), fontsize=16)
@@ -297,211 +330,71 @@ plt.text(12000, 85000, r'$\rho = $' + "{:.3f}".format(rho_all_cells), fontsize=1
 plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_area_pipeline_vs_manual_scatter.png'))
 
 # cells with good Dice coefficient
-idx_good_segmentation = correspondence['dice'] >= valid_threshold
+idx_good_segmentation = correspondence_all['dice'] >= valid_threshold
+
+print('Ratio of good cells = '
+      + "{:.1f}".format(100 * np.count_nonzero(idx_good_segmentation) / len(idx_good_segmentation))
+      + '%')
 
 # correlation coeff
 rho_good_cells = np.corrcoef(area_ref[idx_good_segmentation], area_test[idx_good_segmentation])[0, 1]
+
+print('Pearson corr = ' + "{:.3f}".format(rho_good_cells))
 
 # plot cell areas. Only segmentations with good quality
 plt.clf()
 plt.scatter(area_ref[idx_good_segmentation], area_test[idx_good_segmentation])
 plt.tick_params(labelsize=16)
-plt.plot([0, 14000], [0, 14000], 'orange')
+plt.plot([0, 17500], [0, 17500], 'orange')
 plt.xlabel('hand traced area ($\mu^2$)', fontsize=16)
 plt.ylabel('pipeline segmentation area ($\mu^2$)', fontsize=16)
 plt.text(12000, 9000, r'$\rho = $' + "{:.3f}".format(rho_good_cells), fontsize=16)
 
 plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_good_area_pipeline_vs_manual_scatter.png'))
 
-
-
-
-
-
-
-# models to be used
-saved_contour_model_basename = 'klf14_b6ntac_exp_0006_cnn_contour'  # contour
-saved_dmap_model_basename = 'klf14_b6ntac_exp_0015_cnn_dmap'  # dmap
-saved_quality_model_basename = 'klf14_b6ntac_exp_0029_cnn_qualitynet_sigmoid_masked_segmentation'  # Dice coefficient
-
-# get file name for each model and fold
-contour_model_name = saved_contour_model_basename + '*.h5'
-dmap_model_name = saved_dmap_model_basename + '*.h5'
-quality_model_name = saved_quality_model_basename + '*.h5'
-
-# load k-fold sets that were used to train the models (we assume they are the same for contours and dmaps)
-saved_contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
-with open(saved_contour_model_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-im_file_list = aux['file_list']
-idx_test_all = aux['idx_test_all']
-
-# correct home directory if we are in a different system than what was used to train the models
-im_file_list = cytometer.data.change_home_directory(im_file_list, '/users/rittscher/rcasero', home, check_isfile=True)
-
-# in this script, we actually only work with fold 0
-fold_i = 0
-
-# split the data into training and testing datasets
-im_test_file_list, _ = cytometer.data.split_list(im_file_list, idx_test_all[fold_i])
-
-# load im, seg and mask datasets
-test_datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                   prefix_to=['im', 'lab', 'seg', 'mask'], nblocks=1)
-im_test = test_datasets['im']
-seg_test = test_datasets['seg']
-mask_test = test_datasets['mask']
-lab_test = test_datasets['lab']
-del test_datasets
-
-# remove borders between cells in the lab_train data. For this experiment, we want labels touching each other
-for i in range(lab_test.shape[0]):
-    lab_test[i, :, :, 0] = watershed(image=np.zeros(shape=lab_test.shape[1:3],
-                                                    dtype=lab_test.dtype),
-                                     markers=lab_test[i, :, :, 0],
-                                     watershed_line=False)
-
-# relabel background as "0" instead of "1"
-lab_test[lab_test == 1] = 0
-
-# list of model files to inspect
-contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
-dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
-quality_model_files = glob.glob(os.path.join(saved_models_dir, quality_model_name))
-
-contour_model_file = contour_model_files[fold_i]
-dmap_model_file = dmap_model_files[fold_i]
-quality_model_file = quality_model_files[fold_i]
-
-# segment the test images
-labels, labels_info = cytometer.utils.segmentation_pipeline(im_test,
-                                                            contour_model_file,
-                                                            dmap_model_file,
-                                                            quality_model_file,
-                                                            smallest_cell_area=smallest_cell_area)
-
-if DEBUG:
-    i = 3
-    plt.clf()
-    plt.subplot(221)
-    plt.imshow(im_test[i, :, :, :])
-    plt.title('histo')
-    plt.subplot(222)
-    plt.imshow(lab_test[i, :, :, 0])
-    plt.title('ground truth')
-    plt.subplot(223)
-    plt.imshow(labels[i, :, :, 0])
-    plt.title('pipeline segmentation')
-
-# make copy of automatically segmented labels so that we can remove from them the segmentations without ground truth
-labels_with_ground_truth = labels.copy()
-
-# put all the pipeline segmented areas (with corresponding ground truth) into a dataframe
-df_test = None
-
-for i in range(im_test.shape[0]):
-
-    # match automatically segmented cells to cells with hand-traced ground truth segmentation
-    overlap = cytometer.utils.match_overlapping_labels(lab_test[i, :, :, 0], labels[i, :, :, 0])
-
-    # labels of cells that have a ground truth reference
-    lab_with_ground_truth = overlap['lab_test'][overlap['lab_ref'] != 0]
-
-    # remove the automatically segmented cells that have no ground truth
-    labels_with_ground_truth[i, :, :, 0][np.isin(labels[i, :, :, 0], lab_with_ground_truth, invert=True)] = 0
-
-    # compute areas of all cells in images
-    props_ref = regionprops(lab_test[i, :, :, 0])  # ground truth
-    props_test = regionprops(labels[i, :, :, 0])   # pipeline segmentations
-
-    areas_ref = []
-    areas_test = []
-
-    # add areas of cells with correspondence to list of areas
-    for props in props_test:
-        if props['label'] in overlap['lab_test']:
-            areas_test.append(props['area'] * xres * yres)
-
-    # create dataframe with metainformation from mouse
-    df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
-                                                          areas_test, values_tag='area',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
-
-    # add a column with the window filename. This is later used in the linear models
-    df_window['file'] = os.path.basename(im_test_file_list[i])
-
-    # create new total dataframe, or concat to existing one
-    if df_test is None:
-        df_test = df_window
-    else:
-        df_test = pd.concat([df_test, df_window], axis=0, ignore_index=True)
-
-if DEBUG:
-    i = 3
-    plt.subplot(224)
-    plt.imshow(labels_with_ground_truth[i, :, :, 0])
-    plt.title('remove segmentations\nwithout ground truth')
-
-# boxplots
-plt.clf()
-plt.subplot(121)
-plt.boxplot(areas_ref)
-plt.title('ground truth')
-plt.subplot(122)
-plt.boxplot(areas_test)
-plt.title('pipeline segmentation')
-
-
-
-# make sure that in the boxplots PAT comes before MAT
-df_test['ko'] = df_test['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
-
-# # plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
-# plt.clf()
-# ax = plt.subplot(121)
-# df_gtruth[df_gtruth['sex'] == 'f'].boxplot(column='area', by='ko', ax=ax, notch=True)
-# #ax.set_ylim(0, 2e4)
-# ax.set_title('female', fontsize=16)
-# ax.set_xlabel('')
-# ax.set_ylabel('area (um^2)', fontsize=14)
-# plt.tick_params(axis='both', which='major', labelsize=14)
-# ax = plt.subplot(122)
-# df_gtruth[df_gtruth['sex'] == 'm'].boxplot(column='area', by='ko', ax=ax, notch=True)
-# #ax.set_ylim(0, 2e4)
-# ax.set_title('male', fontsize=16)
-# ax.set_xlabel('')
-# ax.set_ylabel('area (um^2)', fontsize=14)
-# plt.tick_params(axis='both', which='major', labelsize=14)
+'''Population curves
+'''
 
 # split data into groups
-area_test_f_PAT = df_test['area'][(np.logical_and(df_test['sex'] == 'f', df_test['ko'] == 'PAT'))]
-area_test_f_MAT = df_test['area'][(np.logical_and(df_test['sex'] == 'f', df_test['ko'] == 'MAT'))]
-area_test_m_PAT = df_test['area'][(np.logical_and(df_test['sex'] == 'm', df_test['ko'] == 'PAT'))]
-area_test_m_MAT = df_test['area'][(np.logical_and(df_test['sex'] == 'm', df_test['ko'] == 'MAT'))]
+area_pipeline_gtruth_f_PAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'f',
+                                                                        df_pipeline_gtruth['ko'] == 'PAT'))]
+area_pipeline_gtruth_f_MAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'f',
+                                                                        df_pipeline_gtruth['ko'] == 'MAT'))]
+area_pipeline_gtruth_m_PAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'm',
+                                                                        df_pipeline_gtruth['ko'] == 'PAT'))]
+area_pipeline_gtruth_m_MAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'm',
+                                                                        df_pipeline_gtruth['ko'] == 'MAT'))]
 
 # compute percentile profiles of cell populations
 perc = np.linspace(0, 100, num=101)
-perc_area_test_f_PAT = np.percentile(area_test_f_PAT, perc)
-perc_area_test_f_MAT = np.percentile(area_test_f_MAT, perc)
-perc_area_test_m_PAT = np.percentile(area_test_m_PAT, perc)
-perc_area_test_m_MAT = np.percentile(area_test_m_MAT, perc)
+perc_area_pipeline_gtruth_f_PAT = np.percentile(area_pipeline_gtruth_f_PAT, perc)
+perc_area_pipeline_gtruth_f_MAT = np.percentile(area_pipeline_gtruth_f_MAT, perc)
+perc_area_pipeline_gtruth_m_PAT = np.percentile(area_pipeline_gtruth_m_PAT, perc)
+perc_area_pipeline_gtruth_m_MAT = np.percentile(area_pipeline_gtruth_m_MAT, perc)
 
 # plot curve profiles
 plt.clf()
 
 ax = plt.subplot(121)
-plt.plot(perc, (perc_area_test_f_MAT - perc_area_test_f_PAT) / perc_area_test_f_PAT * 100)
+plt.plot(perc, (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100, label='Hand traced')
+plt.plot(perc, (perc_area_pipeline_gtruth_f_MAT - perc_area_pipeline_gtruth_f_PAT) / perc_area_pipeline_gtruth_f_PAT * 100,
+         label='Pipeline HT Dice>=0.9')
 ax.set_ylim(-50, 0)
 plt.title('Female', fontsize=16)
 plt.xlabel('Population percentile', fontsize=14)
 plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend()
 
 ax = plt.subplot(122)
-plt.plot(perc, (perc_area_test_m_MAT - perc_area_test_m_PAT) / perc_area_test_m_PAT * 100)
+plt.plot(perc, (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100, label='Hand traced')
+plt.plot(perc, (perc_area_pipeline_gtruth_m_MAT - perc_area_pipeline_gtruth_m_PAT) / perc_area_pipeline_gtruth_m_PAT * 100,
+         label='Pipeline HT Dice>=0.9')
 ax.set_ylim(-50, 0)
 plt.title('Male', fontsize=16)
 plt.xlabel('Population percentile', fontsize=14)
 plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend()
 
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_hand_traced_pipeline_ht_dice.png'))
