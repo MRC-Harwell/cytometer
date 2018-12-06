@@ -40,6 +40,32 @@ def change_input_size(model, batch_shape):
     return Model(newInput, newOutputs)
 
 
+def check_model(model):
+    """
+    Check the layers with weights for NaNs.
+    :param model: Keras model.
+    :return: list with the names of layers with NaNs. If no weights contain NaNs, the list is empty.
+    """
+
+    # loop layers
+    layers_with_nans = []
+    for layer in model.layers:
+        # get the weights in the layer
+        weights_list = layer.get_weights()
+        if not isinstance(weights_list, list):
+            continue
+        for weights in weights_list:
+            if not isinstance(weights, np.ndarray):
+                continue
+            # print('Checking layer ' + layer.name)
+            if np.any(np.isnan(weights)):
+                # print('Layer ' + layer.name + ': contains NaNs')
+                layers_with_nans.append(layer.name)
+                continue
+
+    return layers_with_nans
+
+
 def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
     input = Input(shape=input_shape, dtype='float32', name='input_image')
