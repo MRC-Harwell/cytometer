@@ -539,6 +539,15 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # estimate quality of segmentations
     predice = quality_model.predict(test_onecell_im)
 
+    # plot segmentations overlaid on histology
+    if DEBUG:
+        for i in range(test_im.shape[0]):
+            plt.clf()
+            plt.imshow(test_im[i, :, :, :])
+            plt.imshow(test_predlab[i, :, :, 0], )
+            plt.contour(test_predlab[i, :, :, 0] >= 0, levels=1, colors='green')
+            plt.waitforbuttonpress()
+
     # indices of accepted segmentations
     idx_quality_accepted = np.logical_and(np.logical_not(np.isnan(predice)), predice >= valid_threshold)
     idx_quality_accepted = idx_quality_accepted[:, 0]
@@ -551,8 +560,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     predlab_quality_accepted = test_onecell_testlab[idx_quality_accepted, :, :, :]
     index_list_quality_accepted = test_onecell_index_list[idx_quality_accepted, :]
 
-    # compute areas of segmentations in pixels
-    quality_accepted_areas = np.sum(predlab_quality_accepted, axis=(1, 2, 3))
+    # compute areas of segmentations
+    quality_accepted_areas = np.sum(predlab_quality_accepted, axis=(1, 2, 3))  # pixels^2
 
     # create dataframe with metainformation from mouse
     for i in range(len(quality_accepted_areas)):
@@ -567,18 +576,21 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create new total dataframe, or concat to existing one
         if df_pipeline_quality is None:
             df_pipeline_quality = df_window
-
-            # make sure that in the boxplots PAT comes before MAT
-            df_pipeline_quality['ko'] = df_pipeline_quality['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
-                                                                                                       ordered=True))
-
         else:
             df_pipeline_quality = pd.concat([df_pipeline_quality, df_window], axis=0, ignore_index=True)
+
+# add a column with areas in um^2 to the dataframe
+df_pipeline_quality.area = df_pipeline_quality.area.astype('float32')
+df_pipeline_quality.area *= xres * yres
+
+# make sure that in the boxplots PAT comes before MAT
+df_pipeline_quality['ko'] = df_pipeline_quality['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
+                                                                                           ordered=True))
 
 '''Population curves
 '''
 
-# split data into groups
+# split data into groups, and convert areas to um^2
 area_pipeline_quality_f_PAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
                                                                           df_pipeline_quality['ko'] == 'PAT'))]
 area_pipeline_quality_f_MAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
@@ -626,3 +638,27 @@ plt.legend()
 
 if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_pipeline_good_quality.png'))
+
+# split dataframe by sex
+df_pipeline_quality_f = df_pipeline_quality[df_pipeline_quality['sex'] == 'f']
+df_pipeline_quality_m = df_pipeline_quality[df_pipeline_quality['sex'] == 'm']
+
+# plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
+plt.clf()
+ax = plt.subplot(121)
+df_pipeline_quality_f.boxplot(column='area', by='ko', ax=ax, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('female', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+ax = plt.subplot(122)
+df_pipeline_quality_m.boxplot(column='area', by='ko', ax=ax, notch=True)
+ax.set_ylim(0, 2e4)
+ax.set_title('male', fontsize=16)
+ax.set_xlabel('')
+ax.set_ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_boxplots_f_m_pipeline_good_quality.png'))
