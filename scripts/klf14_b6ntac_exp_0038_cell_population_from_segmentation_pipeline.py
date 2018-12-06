@@ -453,7 +453,7 @@ xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
 yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
 # loop folds
-df_pipeline_gtruth = None
+df_pipeline_quality = None
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     '''Load data
@@ -540,8 +540,12 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     predice = quality_model.predict(test_onecell_im)
 
     # indices of accepted segmentations
-    idx_quality_accepted = predice >= valid_threshold
+    idx_quality_accepted = np.logical_and(np.logical_not(np.isnan(predice)), predice >= valid_threshold)
     idx_quality_accepted = idx_quality_accepted[:, 0]
+
+    # if there are no accepted segmentations, skip to next fold
+    if np.count_nonzero(idx_quality_accepted) == 0:
+        continue
 
     # select segmentations accepted by quality control
     predlab_quality_accepted = test_onecell_testlab[idx_quality_accepted, :, :, :]
@@ -551,20 +555,74 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     quality_accepted_areas = np.sum(predlab_quality_accepted, axis=(1, 2, 3))
 
     # create dataframe with metainformation from mouse
-    df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
-                                                          quality_accepted_areas,
-                                                          values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+    for i in range(len(quality_accepted_areas)):
+        file = im_test_file_list[index_list_quality_accepted[i, 0]]
+        df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(file),
+                                                              [quality_accepted_areas[i]],
+                                                              values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
 
-    # add a column with the window filename. This is later used in the linear models
-    df_window['file'] = os.path.basename(im_test_file_list[i])
+        # add a column with the window filename. This is later used in the linear models
+        df_window['file'] = os.path.basename(file)
 
-    # create new total dataframe, or concat to existing one
-    if df_pipeline_gtruth is None:
-        df_pipeline_gtruth = df_window
+        # create new total dataframe, or concat to existing one
+        if df_pipeline_quality is None:
+            df_pipeline_quality = df_window
 
-        # make sure that in the boxplots PAT comes before MAT
-        df_pipeline_gtruth['ko'] = df_pipeline_gtruth['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
-                                                                                                 ordered=True))
+            # make sure that in the boxplots PAT comes before MAT
+            df_pipeline_quality['ko'] = df_pipeline_quality['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
+                                                                                                       ordered=True))
 
-    else:
-        df_pipeline_gtruth = pd.concat([df_pipeline_gtruth, df_window], axis=0, ignore_index=True)
+        else:
+            df_pipeline_quality = pd.concat([df_pipeline_quality, df_window], axis=0, ignore_index=True)
+
+'''Population curves
+'''
+
+# split data into groups
+area_pipeline_quality_f_PAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
+                                                                          df_pipeline_quality['ko'] == 'PAT'))]
+area_pipeline_quality_f_MAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
+                                                                          df_pipeline_quality['ko'] == 'MAT'))]
+area_pipeline_quality_m_PAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'm',
+                                                                          df_pipeline_quality['ko'] == 'PAT'))]
+area_pipeline_quality_m_MAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'm',
+                                                                          df_pipeline_quality['ko'] == 'MAT'))]
+
+# compute percentile profiles of cell populations
+perc = np.linspace(0, 100, num=101)
+perc_area_pipeline_quality_f_PAT = np.percentile(area_pipeline_quality_f_PAT, perc)
+perc_area_pipeline_quality_f_MAT = np.percentile(area_pipeline_quality_f_MAT, perc)
+perc_area_pipeline_quality_m_PAT = np.percentile(area_pipeline_quality_m_PAT, perc)
+perc_area_pipeline_quality_m_MAT = np.percentile(area_pipeline_quality_m_MAT, perc)
+
+# plot curve profiles
+plt.clf()
+
+ax = plt.subplot(121)
+plt.plot(perc, (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100, label='Hand traced')
+plt.plot(perc, (perc_area_pipeline_gtruth_f_MAT - perc_area_pipeline_gtruth_f_PAT) / perc_area_pipeline_gtruth_f_PAT * 100,
+         label='Pipeline HT Dice>=0.9')
+plt.plot(perc, (perc_area_pipeline_quality_f_MAT - perc_area_pipeline_quality_f_PAT) / perc_area_pipeline_quality_f_PAT * 100,
+         label='Pipeline Quality>=0.9')
+ax.set_ylim(-50, 0)
+plt.title('Female', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend()
+
+ax = plt.subplot(122)
+plt.plot(perc, (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100, label='Hand traced')
+plt.plot(perc, (perc_area_pipeline_gtruth_m_MAT - perc_area_pipeline_gtruth_m_PAT) / perc_area_pipeline_gtruth_m_PAT * 100,
+         label='Pipeline HT Dice>=0.9')
+plt.plot(perc, (perc_area_pipeline_quality_m_MAT - perc_area_pipeline_quality_m_PAT) / perc_area_pipeline_quality_m_PAT * 100,
+         label='Pipeline Quality>=0.9')
+ax.set_ylim(-50, 0)
+plt.title('Male', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend()
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_pipeline_good_quality.png'))
