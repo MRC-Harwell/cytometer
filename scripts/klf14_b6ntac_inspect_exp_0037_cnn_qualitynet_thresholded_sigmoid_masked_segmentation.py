@@ -127,6 +127,8 @@ for i_fold in range(n_folds):
 
     if len(layers_with_nans) > 0:
         print('Model with NaNs: ' + model_file)
+    else:
+        print('OK model: ' + model_file)
 
 # test_cell_preddice = np.zeros(shape=test_cell_dice.shape, dtype=test_cell_dice.dtype)
 # for i in range(test_cell_im.shape[0]):
