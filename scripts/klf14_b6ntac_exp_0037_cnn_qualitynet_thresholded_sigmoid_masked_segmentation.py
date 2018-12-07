@@ -33,7 +33,7 @@ from skimage.morphology import watershed
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -111,6 +111,13 @@ idx_orig_test_all = aux['idx_test_all']
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
 for i_fold, idx_test in enumerate(idx_orig_test_all):
+
+    if i_fold not in [1, 3, 4]:
+        print('hola')
+        continue
+    else:
+        print('foo')
+        continue
 
     '''Load data
     '''
