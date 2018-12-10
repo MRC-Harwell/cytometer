@@ -33,13 +33,14 @@ from skimage.morphology import watershed
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 
-from keras_applications.densenet import DenseNet
+from keras.applications import densenet
+# from keras_applications.densenet import DenseNet
 from keras.models import Model
 from keras.layers import Dense, Input
 
@@ -264,22 +265,31 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     device_list = K.get_session().list_devices()
 
     # number of GPUs
-    gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
+    gpu_number = np.count_nonzero(['device:GPU' in str(x) for x in device_list])
 
     # instantiate model
     with tf.device('/cpu:0'):
+        # path to pre-downloaded
+        imagenet_weights_file = os.path.join(saved_models_dir,
+                                             'densenet121_weights_tf_dim_ordering_tf_kernels_notop.h5')
+
         # we start with the DenseNet without the final Dense layer, because it has a softmax activation, and we only
         # want to classify 1 class. So then we manually add an extra Dense layer with a sigmoid activation as final
         # output
-        base_model = DenseNet(blocks=[6, 12, 24, 16], include_top=False, weights=None, input_shape=(401, 401, 3),
-                              pooling='avg')
+        #
+        # DenseNet121: blocks=[6, 12, 24, 16]
+        base_model = densenet.DenseNet121(include_top=False, weights=imagenet_weights_file,
+                                       input_shape=(401, 401, 3), pooling='avg')
         x = Dense(units=1, activation='sigmoid', name='fc1')(base_model.output)
         model = Model(inputs=base_model.input, outputs=x)
+
+        # set the first part of the network as non-trainable, right up to before 'conv5_block1_0_bn'
+        for layer in model.layers[:313]:
+            layer.trainable = False
 
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
-
         # checkpoint to save model after each epoch
         checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
                                                                            verbose=1, save_best_only=True)
@@ -292,9 +302,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # train model
         tic = datetime.datetime.now()
         parallel_model.fit(train_onecell_im,
-                           {'fc1': (train_onecell_dice >= quality_threshold).astype(np.int)},
+                           {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
                            validation_data=(test_onecell_im,
-                                            {'fc1': (test_onecell_dice >= quality_threshold).astype(np.int)}),
+                                            {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
                            batch_size=16, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -314,9 +324,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # train model
         tic = datetime.datetime.now()
         model.fit(train_onecell_im,
-                  {'fc1': (train_onecell_dice >= quality_threshold).astype(np.int)},
+                  {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
                   validation_data=(test_onecell_im,
-                                   {'fc1': (test_onecell_dice >= quality_threshold).astype(np.int)}),
+                                   {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
                   batch_size=16, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
