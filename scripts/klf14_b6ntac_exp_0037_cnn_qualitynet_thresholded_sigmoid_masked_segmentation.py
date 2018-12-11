@@ -33,7 +33,7 @@ from skimage.morphology import watershed
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -78,6 +78,9 @@ training_window_len = 401
 # segmetations with Dice >= threshold are accepted
 quality_threshold = 0.9
 
+# batch size for training
+batch_size = 32
+
 '''Directories and filenames
 '''
 
@@ -103,7 +106,6 @@ with open(contour_model_kfold_filename, 'rb') as f:
     aux = pickle.load(f)
 im_orig_file_list = aux['file_list']
 idx_orig_test_all = aux['idx_test_all']
-
 
 '''Loop folds
 '''
@@ -154,6 +156,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                                             training_window_len=training_window_len,
                                             smallest_cell_area=smallest_cell_area)
 
+    # stretch intensity histogram of images
+    train_onecell_im = cytometer.utils.rescale_intensity(train_onecell_im, ignore_value=0.0)
+
     if DEBUG:
         plt.clf()
         plt.subplot(121)
@@ -172,6 +177,20 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.title('Dice = ' + str("{:.2f}".format(train_onecell_dice[i])))
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    # histogram of image intensities by channel
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 1006
+        plt.hist(train_onecell_im[i, :, :, 0].flatten(), histtype='step', color='red')
+        plt.hist(train_onecell_im[i, :, :, 1].flatten(), histtype='step', color='green')
+        plt.hist(train_onecell_im[i, :, :, 2].flatten(), histtype='step', color='blue')
+        plt.subplot(122)
+        i = 1705
+        plt.hist(train_onecell_im[i, :, :, 0].flatten(), histtype='step', color='red')
+        plt.hist(train_onecell_im[i, :, :, 1].flatten(), histtype='step', color='green')
+        plt.hist(train_onecell_im[i, :, :, 2].flatten(), histtype='step', color='blue')
 
     # load test dataset
     datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
@@ -199,6 +218,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                                             training_window_len=training_window_len,
                                             smallest_cell_area=smallest_cell_area)
 
+    # stretch intensity histogram of images
+    test_onecell_im = cytometer.utils.rescale_intensity(test_onecell_im, ignore_value=0.0)
+
     if DEBUG:
         plt.clf()
         plt.subplot(121)
@@ -217,6 +239,20 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    # histogram of image intensities by channel
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 50
+        plt.hist(test_onecell_im[i, :, :, 0].flatten(), histtype='step', color='red')
+        plt.hist(test_onecell_im[i, :, :, 1].flatten(), histtype='step', color='green')
+        plt.hist(test_onecell_im[i, :, :, 2].flatten(), histtype='step', color='blue')
+        plt.subplot(122)
+        i = 150
+        plt.hist(test_onecell_im[i, :, :, 0].flatten(), histtype='step', color='red')
+        plt.hist(test_onecell_im[i, :, :, 1].flatten(), histtype='step', color='green')
+        plt.hist(test_onecell_im[i, :, :, 2].flatten(), histtype='step', color='blue')
 
     # multiply histology by segmentations to have a single input tensor
     train_onecell_im *= np.repeat(train_onecell_testlab.astype(np.float32), repeats=train_onecell_im.shape[3], axis=3)
@@ -278,7 +314,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # output
         #
         # DenseNet121: blocks=[6, 12, 24, 16]
-        base_model = densenet.DenseNet121(include_top=False, weights=imagenet_weights_file,
+        base_model = densenet.DenseNet121(include_top=False, weights=None,
                                        input_shape=(401, 401, 3), pooling='avg')
         x = Dense(units=1, activation='sigmoid', name='fc1')(base_model.output)
         model = Model(inputs=base_model.input, outputs=x)
@@ -288,6 +324,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         #     layer.trainable = False
 
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
+
+    # the number of training images has to be a multiple of the batch_size. Otherwise, BatchNormalization
+    # produces NaNs
+    num_train_onecell_im_to_use = int(np.floor(train_onecell_im.shape[0] / batch_size) * batch_size)
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
         # checkpoint to save model after each epoch
@@ -301,11 +341,11 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_onecell_im,
-                           {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
+        parallel_model.fit(train_onecell_im[0:num_train_onecell_im_to_use, :, :, :],
+                           {'fc1': (train_onecell_dice[0:num_train_onecell_im_to_use] >= quality_threshold).astype(np.float32)},
                            validation_data=(test_onecell_im,
                                             {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
-                           batch_size=16, epochs=epochs, initial_epoch=0,
+                           batch_size=batch_size, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
