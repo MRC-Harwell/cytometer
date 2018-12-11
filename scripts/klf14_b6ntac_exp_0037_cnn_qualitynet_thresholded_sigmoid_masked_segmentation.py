@@ -33,7 +33,7 @@ from skimage.morphology import watershed
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -283,9 +283,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         x = Dense(units=1, activation='sigmoid', name='fc1')(base_model.output)
         model = Model(inputs=base_model.input, outputs=x)
 
-        # set the first part of the network as non-trainable, right up to before 'conv5_block1_0_bn'
-        for layer in model.layers[:313]:
-            layer.trainable = False
+        # # set the first part of the network as non-trainable, right up to before 'conv5_block1_0_bn'
+        # for layer in model.layers[:313]:
+        #     layer.trainable = False
 
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
 
