@@ -12,6 +12,8 @@ from skimage.measure import regionprops
 from mahotas.labeled import borders
 import networkx as nx
 from skimage.transform import SimilarityTransform, AffineTransform
+from skimage.color import rgb2hsv, hsv2rgb
+from sklearn.preprocessing import minmax_scale
 import keras.backend as K
 import keras
 import tensorflow as tf
@@ -875,3 +877,55 @@ def paint_labels(labels, paint_labs, paint_values):
 
     # paint each pixel with a value according to its label
     return lut[labels]
+
+
+def rescale_intensity(im, ignore_value=None):
+    """
+    Stretch the pixel intensities of a batch of images to cover the whole dynamic range of the dtype,
+    excluding the black background pixels.
+
+    The scaling is performed on the H-channel of the HSV transform of the RGB image.
+
+    :param im: np.ndarray (batch, rows, cols, channel) RGB images.
+    :param ignore_value: (def None). Once the image is converted from RGB to HSV, pixels with
+    V=ignore_value will be ignored for the intensity scaling. This is useful e.g. when a regular image
+    has areas that have been blacked out, and we want to scale the non-blacked-out intensities.
+    :return: Array with the same size as im.
+    """
+
+    # indices for hue, saturation, value
+    # H = 0
+    # S = 1
+    V = 2
+
+    # loop images
+    for i in range(im.shape[0]):
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(im[i, :, :, :])
+
+        # convert to Hue, Saturation, Value format
+        im_hsv = rgb2hsv(im[i, :, :, :])
+
+        # pixels that are not black background
+        im_v = im_hsv[:, :, V]
+        if ignore_value is None:
+            im_v = minmax_scale(im_v, feature_range=(0.0, 1.0))
+        else:
+            # scale intensities of non-background area
+            idx = im_v != ignore_value
+            im_v[idx] = minmax_scale(im_v[idx], feature_range=(0.0, 1.0))
+
+        # convert back to RGB
+        im_hsv[:, :, V] = im_v
+        im[i, :, :, :] = hsv2rgb(im_hsv)
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(im[i, :, :, :])
+
+            plt.clf()
+            plt.hist(im[i, :, :, :].flatten())
+
+    return im
