@@ -406,7 +406,7 @@ if SAVE_FIGS:
 
 '''
 ************************************************************************************************************************
-All pipeline segmentations with Dice >= 0.9, whether they overlap hand traced cells or not
+All pipeline segmentations with Quality >= 0.9, whether they overlap hand traced cells or not
 ************************************************************************************************************************
 '''
 
