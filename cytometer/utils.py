@@ -353,8 +353,10 @@ def match_overlapping_labels(labels_ref, labels_test):
 def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                         training_window_len=401, smallest_cell_area=804):
     """
-    Extract a small image centered on each cell of a dataset according to segmentation labels. If ground truth are
-    provided with the histology, they are also cropped, and the corresponding Dice coefficient is computed.
+    Extract a small image centered on each cell of a dataset according to segmentation labels.
+
+    If ground truth labels are provided, only the best segmentation-ground truth matches are considered.
+    Then, Dice coefficient values are computed for the matches.
 
     :param dataset_im: numpy.ndarray (image, width, height, channel). Histology images.
     :param dataset_lab_test: numpy.ndarray (image, width, height, 1). Instance segmentation of the histology
