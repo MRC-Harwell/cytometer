@@ -16,6 +16,7 @@ import shutil
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+from skimage.morphology import watershed
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -32,6 +33,7 @@ from sklearn.metrics import roc_curve, auc
 
 import cytometer.data
 import cytometer.models
+import cytometer.utils
 
 # limit GPU memory used
 import tensorflow as tf
@@ -44,9 +46,7 @@ set_session(tf.Session(config=config))
 K.set_image_data_format('channels_last')
 
 DEBUG = False
-
-# number of folds for k-fold cross validation
-n_folds = 11
+SAVE_FIGS = False
 
 # number of epochs for training
 epochs = 20
@@ -69,40 +69,12 @@ training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+figures_dir = os.path.join(root_data_dir, 'figures')
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0037_cnn_qualitynet_thresholded_sigmoid_masked_segmentation'
 
-'''Load data
-'''
-
-# in this script, we actually only work with fold 0
-i_fold = 0
-
-# # one-cell windows from the segmentations obtained with our pipeline
-# # ['train_cell_im', 'train_cell_reflab', 'train_cell_testlab', 'train_cell_dice', 'test_cell_im',
-# # 'test_cell_reflab', 'test_cell_testlab', 'test_cell_dice']
-# onecell_filename = os.path.join(training_augmented_dir, 'onecell_kfold_' + str(i_fold).zfill(2) + '_worsen_000.npz')
-# dataset_orig = np.load(onecell_filename)
-#
-# # read the data into memory
-# train_cell_im = dataset_orig['train_cell_im']
-# train_cell_reflab = dataset_orig['train_cell_reflab']
-# train_cell_testlab = dataset_orig['train_cell_testlab']
-# train_cell_dice = dataset_orig['train_cell_dice']
-# test_cell_im = dataset_orig['test_cell_im']
-# test_cell_reflab = dataset_orig['test_cell_reflab']
-# test_cell_testlab = dataset_orig['test_cell_testlab']
-# test_cell_dice = dataset_orig['test_cell_dice']
-#
-# # multiply histology by segmentations to have a single input tensor
-# masked_test_cell_im = test_cell_im * np.repeat(test_cell_testlab.astype(np.float32),
-#                                                repeats=test_cell_im.shape[3], axis=3)
-#
-# # free up memory
-# del dataset_orig
-
-'''Load neural network for predictions
+'''Check whether weights in neural networks are non NaNs (very slow!)
 '''
 
 model_name = experiment_id + '_model_fold_*.h5'
@@ -111,6 +83,8 @@ saved_model_filename = os.path.join(saved_models_dir, model_name)
 
 # list of model files to inspect
 model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+
+n_folds = len(model_files)
 
 for i_fold in range(n_folds):
 
@@ -130,33 +104,153 @@ for i_fold in range(n_folds):
     else:
         print('OK model: ' + model_file)
 
-# test_cell_preddice = np.zeros(shape=test_cell_dice.shape, dtype=test_cell_dice.dtype)
-# for i in range(test_cell_im.shape[0]):
-#
-#     if not i % 20:
-#         print('Test image: ' + str(i) + '/' + str(test_cell_im.shape[0]-1))
-#
-#     # predict Dice coefficient for test segmentation
-#     test_cell_preddice[i] = model.predict(np.expand_dims(masked_test_cell_im[i, :, :, :], axis=0))
-#
-# # compute ROC
-# fpr, tpr, thr = roc_curve(test_cell_dice >= valid_threshold, test_cell_preddice)
-# roc_auc = auc(fpr, tpr)
-#
-# # set the quality threshold equal to the Dice threshold for training (but note this are different things)
+
+'''Inference using all folds
+'''
+
+model_name = experiment_id + '_model_fold_*.h5'
+
+saved_model_filename = os.path.join(saved_models_dir, model_name)
+
+# list of model files to inspect
+model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+
+# list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0034_cnn_contour_info.pickle')
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+im_orig_file_list = aux['file_list']
+idx_orig_test_all = aux['idx_test_all']
+
+n_folds = len(model_files)
+if (n_folds != len(idx_orig_test_all)):
+    raise Exception('Number of folds in dataset and model files don\'t coincide')
+
+# process test data from all folds
+test_onecell_dice_all = None
+qual_all = None
+for i_fold, idx_test in enumerate(idx_orig_test_all):
+
+    # name of model's file
+    model_file = model_files[i_fold]
+
+    print('i_fold = ' + str(i_fold) + ', model = ' + model_file)
+
+    '''Load test data of pipeline segmentations
+    '''
+
+    # split the data list into training and testing lists
+    im_test_file_list, _ = cytometer.data.split_list(im_orig_file_list, idx_test)
+
+    # number of test images
+    n_im = len(im_test_file_list)
+
+    # load training dataset
+    datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
+                                                  prefix_to=['im', 'lab', 'seg',
+                                                             'predlab_kfold_' + str(i_fold).zfill(2)], nblocks=1)
+
+    test_im = datasets['im']
+    test_seg = datasets['seg']
+    test_reflab = datasets['lab']
+    test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
+    del datasets
+
+    # stretch intensity histogram of images
+    test_im = cytometer.utils.rescale_intensity(test_im, ignore_value=0.0)
+
+    # remove borders between cells in the lab_train data
+    for i in range(test_reflab.shape[0]):
+        test_reflab[i, :, :, 0] = watershed(image=np.zeros(shape=test_reflab[i, :, :, 0].shape, dtype=np.uint8),
+                                            markers=test_reflab[i, :, :, 0], watershed_line=False)
+    # change the background label from 1 to 0
+    test_reflab[test_reflab == 1] = 0
+
+    '''Split images into one-cell images, compute true Dice values, and prepare for inference
+    '''
+
+    # create one image per cell, and compute true Dice coefficient values
+    test_onecell_im, test_onecell_testlab, test_onecell_index_list, test_onecell_reflab, test_onecell_dice = \
+        cytometer.utils.one_image_per_label(test_im, test_predlab,
+                                            dataset_lab_ref=test_reflab,
+                                            training_window_len=training_window_len,
+                                            smallest_cell_area=smallest_cell_area)
+
+    # multiply histology by segmentations to have a single input tensor
+    masked_test_onecell_im = test_onecell_im * np.repeat(test_onecell_testlab.astype(np.float32),
+                                                         repeats=test_onecell_im.shape[3], axis=3)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        i = 50
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+        plt.subplot(122)
+        i = 150
+        plt.imshow(test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+
+    '''Assess quality of each cell's segmentation with Quality Network
+    '''
+
+    # load model
+    model = keras.models.load_model(model_file)
+
+    # quality score
+    qual = model.predict(masked_test_onecell_im)
+
+    if DEBUG:
+        plt.clf()
+        plt.scatter(test_onecell_dice, qual)
+
+    # accumulate results
+    if qual_all is None:
+        qual_all = qual
+        test_onecell_dice_all = test_onecell_dice
+    else:
+        qual_all = np.concatenate((qual_all, qual))
+        test_onecell_dice_all = np.concatenate((test_onecell_dice_all, test_onecell_dice))
+
+
+if DEBUG:
+    plt.clf()
+    plt.scatter(test_onecell_dice_all, qual_all)
+    plt.tick_params(labelsize=16)
+    plt.xlabel('Ground truth Dice coefficient', fontsize=16)
+    plt.ylabel('Quality score', fontsize=16)
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0037_dice_vs_quality_scatter.png'))
+
+# compute ROC
+fpr, tpr, thr = roc_curve(test_onecell_dice_all >= valid_threshold, qual_all)
+roc_auc = auc(fpr, tpr)
+
+# set the quality threshold equal to the Dice threshold for training (but note this are different things)
 # idx = 35
 # quality_threshold = thr[idx]
-#
-# # plot ROC
-# if DEBUG:
-#     plt.clf()
-#     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
-#     plt.scatter(fpr[idx], tpr[idx],
-#              label='Quality threshold = %0.2f\nFPR = %0.2f, TPR = %0.2f' % (quality_threshold, fpr[idx], tpr[idx]))
-#     plt.xlabel('False Positive Rate')
-#     plt.ylabel('True Positive Rate')
-#     plt.legend(loc="lower right")
-#
+quality_threshold = 0.9
+
+# plot ROC
+if DEBUG:
+    plt.clf()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.scatter(fpr[idx], tpr[idx],
+             label='Quality threshold = %0.2f\nFPR = %0.2f, TPR = %0.2f' % (quality_threshold, fpr[idx], tpr[idx]))
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.legend(loc="lower right")
+
 # # plot scatter plot all predicted vs. ground truth Dice values
 # if DEBUG:
 #     plt.clf()
@@ -170,23 +264,23 @@ for i_fold in range(n_folds):
 #
 # # Pearson coefficient
 # print('Pearson coeff = ' + "{:.2f}".format(np.corrcoef(np.stack((test_cell_dice, test_cell_preddice)))[0, 1]))
-#
-# # confusion table: estimated vs ground truth
-# est0_gt0 = np.count_nonzero(np.logical_and(test_cell_preddice < quality_threshold,
-#                                            test_cell_dice < quality_threshold)) / len(test_cell_preddice)
-# est0_gt1 = np.count_nonzero(np.logical_and(test_cell_preddice < quality_threshold,
-#                                            test_cell_dice >= quality_threshold)) / len(test_cell_preddice)
-# est1_gt0 = np.count_nonzero(np.logical_and(test_cell_preddice >= quality_threshold,
-#                                            test_cell_dice < quality_threshold)) / len(test_cell_preddice)
-# est1_gt1 = np.count_nonzero(np.logical_and(test_cell_preddice >= quality_threshold,
-#                                            test_cell_dice >= quality_threshold)) / len(test_cell_preddice)
-#
-# print(np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
-#                 ["{:.2f}".format(est0_gt0), "{:.2f}".format(est0_gt1)]]))
-#
-#
-#
-#
+
+# confusion table: estimated vs ground truth
+est0_gt0 = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
+                                           test_onecell_dice_all < quality_threshold)) / len(qual_all)
+est0_gt1 = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
+                                           test_onecell_dice_all >= quality_threshold)) / len(qual_all)
+est1_gt0 = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
+                                           test_onecell_dice_all < quality_threshold)) / len(qual_all)
+est1_gt1 = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
+                                           test_onecell_dice_all >= quality_threshold)) / len(qual_all)
+
+print(np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
+                ["{:.2f}".format(est0_gt0), "{:.2f}".format(est0_gt1)]]))
+
+
+
+
 # # plot prediction
 # if DEBUG:
 #     i = 150
@@ -202,26 +296,26 @@ for i_fold in range(n_folds):
 #     plt.contour(test_cell_testlab[i, :, :, 0], levels=1, colors='green')
 #     plt.title('Dice: ' + "{:.2f}".format(test_cell_dice[i]) + ' (ground truth)\n'
 #               + "{:.2f}".format(test_cell_preddice[i]) + ' (estimated)')
-
-'''Plot metrics and convergence
-'''
-
-log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-
-if os.path.isfile(log_filename):
-
-    # read Keras output
-    df_list = cytometer.data.read_keras_training_output(log_filename)
-
-    # plot metrics with every iteration
-    plt.clf()
-    for df in df_list:
-        plt.subplot(211)
-        loss_plot, = plt.semilogy(df.index, df.loss, label='loss')
-        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
-        epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
-        plt.legend(handles=[loss_plot, epoch_ends_plot1])
-        plt.subplot(212)
-        regr_mae_plot, = plt.plot(df.index, df.acc, label='acc')
-        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='end of epoch')
-        plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
+#
+# '''Plot metrics and convergence
+# '''
+#
+# log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+#
+# if os.path.isfile(log_filename):
+#
+#     # read Keras output
+#     df_list = cytometer.data.read_keras_training_output(log_filename)
+#
+#     # plot metrics with every iteration
+#     plt.clf()
+#     for df in df_list:
+#         plt.subplot(211)
+#         loss_plot, = plt.semilogy(df.index, df.loss, label='loss')
+#         epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
+#         epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
+#         plt.legend(handles=[loss_plot, epoch_ends_plot1])
+#         plt.subplot(212)
+#         regr_mae_plot, = plt.plot(df.index, df.acc, label='acc')
+#         regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='end of epoch')
+#         plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
