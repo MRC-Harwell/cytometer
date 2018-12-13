@@ -17,6 +17,7 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.morphology import watershed
+import pandas as pd
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -77,32 +78,33 @@ experiment_id = 'klf14_b6ntac_exp_0037_cnn_qualitynet_thresholded_sigmoid_masked
 '''Check whether weights in neural networks are non NaNs (very slow!)
 '''
 
-model_name = experiment_id + '_model_fold_*.h5'
+if DEBUG:
+    model_name = experiment_id + '_model_fold_*.h5'
 
-saved_model_filename = os.path.join(saved_models_dir, model_name)
+    saved_model_filename = os.path.join(saved_models_dir, model_name)
 
-# list of model files to inspect
-model_files = glob.glob(os.path.join(saved_models_dir, model_name))
+    # list of model files to inspect
+    model_files = glob.glob(os.path.join(saved_models_dir, model_name))
 
-n_folds = len(model_files)
+    n_folds = len(model_files)
 
-for i_fold in range(n_folds):
+    for i_fold in range(n_folds):
 
-    # name of file
-    model_file = model_files[i_fold]
+        # name of file
+        model_file = model_files[i_fold]
 
-    print('i_fold = ' + str(i_fold) + ', model = ' + model_file)
+        print('i_fold = ' + str(i_fold) + ', model = ' + model_file)
 
-    # load model
-    model = keras.models.load_model(model_file)
+        # load model
+        model = keras.models.load_model(model_file)
 
-    # check whether the model has NaN values
-    layers_with_nans = cytometer.models.check_model(model)
+        # check whether the model has NaN values
+        layers_with_nans = cytometer.models.check_model(model)
 
-    if len(layers_with_nans) > 0:
-        print('Model with NaNs: ' + model_file)
-    else:
-        print('OK model: ' + model_file)
+        if len(layers_with_nans) > 0:
+            print('Model with NaNs: ' + model_file)
+        else:
+            print('OK model: ' + model_file)
 
 
 '''Inference using all folds
@@ -176,10 +178,6 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                                             training_window_len=training_window_len,
                                             smallest_cell_area=smallest_cell_area)
 
-    # multiply histology by segmentations to have a single input tensor
-    masked_test_onecell_im = test_onecell_im * np.repeat(test_onecell_testlab.astype(np.float32),
-                                                         repeats=test_onecell_im.shape[3], axis=3)
-
     if DEBUG:
         plt.clf()
         plt.subplot(121)
@@ -191,7 +189,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
         plt.subplot(122)
-        i = 150
+        i = 80
         plt.imshow(test_onecell_im[i, :, :, :])
         plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
         plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
@@ -199,6 +197,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
 
+    # multiply histology by segmentations to have a single input tensor
+    masked_test_onecell_im = test_onecell_im * np.repeat(test_onecell_testlab.astype(np.float32),
+                                                         repeats=test_onecell_im.shape[3], axis=3)
 
     '''Assess quality of each cell's segmentation with Quality Network
     '''
@@ -211,7 +212,47 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     if DEBUG:
         plt.clf()
+        plt.subplot(121)
+        i = 50
+        plt.imshow(masked_test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='green')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i]))
+                  + ', qual = ' + str("{:.2f}".format(qual[i, 0])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+        plt.subplot(122)
+        i = 80
+        plt.imshow(masked_test_onecell_im[i, :, :, :])
+        plt.contour(test_onecell_reflab[i, :, :, 0], levels=1, colors='black')
+        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
+        plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i]))
+                  + ', qual = ' + str("{:.2f}".format(qual[i, 0])))
+        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+        plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    if DEBUG:
+        plt.clf()
         plt.scatter(test_onecell_dice, qual)
+        plt.tick_params(labelsize=16)
+        plt.xlabel('Ground truth Dice coefficient', fontsize=16)
+        plt.ylabel('Quality score', fontsize=16)
+
+    # confusion table: estimated vs ground truth
+    quality_threshold = 0.9
+    est0_gt0 = np.count_nonzero(np.logical_and(qual[:, 0] < quality_threshold,
+                                               test_onecell_dice < quality_threshold)) / len(qual)
+    est0_gt1 = np.count_nonzero(np.logical_and(qual[:, 0] < quality_threshold,
+                                               test_onecell_dice >= quality_threshold)) / len(qual)
+    est1_gt0 = np.count_nonzero(np.logical_and(qual[:, 0] >= quality_threshold,
+                                               test_onecell_dice < quality_threshold)) / len(qual)
+    est1_gt1 = np.count_nonzero(np.logical_and(qual[:, 0] >= quality_threshold,
+                                               test_onecell_dice >= quality_threshold)) / len(qual)
+
+    confusion = np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
+                          ["{:.2f}".format(est0_gt0), "{:.2f}".format(est0_gt1)]])
+    df_summary = pd.DataFrame(confusion, columns=['Bad seg.', 'Good seg.'], index=['Good qual.', 'Bad qual.'])
+    print(df_summary)
 
     # accumulate results
     if qual_all is None:
@@ -236,7 +277,7 @@ if SAVE_FIGS:
 fpr, tpr, thr = roc_curve(test_onecell_dice_all >= valid_threshold, qual_all)
 roc_auc = auc(fpr, tpr)
 
-# set the quality threshold equal to the Dice threshold for training (but note this are different things)
+# set the quality threshold equal to the Dice threshold for training (but note these are different things)
 # idx = 35
 # quality_threshold = thr[idx]
 quality_threshold = 0.9
@@ -275,11 +316,10 @@ est1_gt0 = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
 est1_gt1 = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
                                            test_onecell_dice_all >= quality_threshold)) / len(qual_all)
 
-print(np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
-                ["{:.2f}".format(est0_gt0), "{:.2f}".format(est0_gt1)]]))
-
-
-
+confusion = np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
+                      ["{:.2f}".format(est0_gt0), "{:.2f}".format(est0_gt1)]])
+df_summary = pd.DataFrame(confusion, columns=['Bad seg.', 'Good seg.'], index=['Good qual.', 'Bad qual.'])
+print(df_summary)
 
 # # plot prediction
 # if DEBUG:
