@@ -115,6 +115,8 @@ idx_orig_test_all = aux['idx_test_all']
 # for i_fold, idx_test in enumerate(idx_test_all):
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
+    print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all)))
+
     '''Load data
     '''
 
