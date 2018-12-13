@@ -4,9 +4,9 @@ thresholded Dice coefficient (Dice >= 0.9). Here the loss is binary crossentropy
 
 The reason is to center the decision boundary on 0.9, to get finer granularity around that threshold.
 
-We also mask the segmentation with a -1/+1 mask, rather than a 0/+1 mask, to loss less information.
+We also mask the segmentation with a -1/+1 mask, rather than a 0/+1 mask, to lose less information.
 
-Deprecates exp_0033, which only does fold 0.
+Based on exp 0037.
 """
 
 # cross-platform home directory
