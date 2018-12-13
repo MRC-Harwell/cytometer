@@ -135,7 +135,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     train_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
     del datasets
 
-    # remove borders between cells in the lab_train data
+    # remove borders between labels
     for i in range(train_reflab.shape[0]):
         train_reflab[i, :, :, 0] = watershed(image=np.zeros(shape=train_reflab[i, :, :, 0].shape, dtype=np.uint8),
                                              markers=train_reflab[i, :, :, 0], watershed_line=False)
@@ -196,7 +196,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
     del datasets
 
-    # remove borders between cells in the lab_test data
+    # remove borders between labels
     for i in range(test_reflab.shape[0]):
         test_reflab[i, :, :, 0] = watershed(image=np.zeros(shape=test_reflab[i, :, :, 0].shape, dtype=np.uint8),
                                             markers=test_reflab[i, :, :, 0], watershed_line=False)
@@ -298,9 +298,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # instantiate model
     with tf.device('/cpu:0'):
-        # path to pre-downloaded
-        imagenet_weights_file = os.path.join(saved_models_dir,
-                                             'densenet121_weights_tf_dim_ordering_tf_kernels_notop.h5')
+        # # path to pre-downloaded weights
+        # imagenet_weights_file = os.path.join(saved_models_dir,
+        #                                      'densenet121_weights_tf_dim_ordering_tf_kernels_notop.h5')
 
         # we start with the DenseNet without the final Dense layer, because it has a softmax activation, and we only
         # want to classify 1 class. So then we manually add an extra Dense layer with a sigmoid activation as final
@@ -308,7 +308,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         #
         # DenseNet121: blocks=[6, 12, 24, 16]
         base_model = densenet.DenseNet121(include_top=False, weights=None,
-                                       input_shape=(401, 401, 3), pooling='avg')
+                                          input_shape=(401, 401, 3), pooling='avg')
         x = Dense(units=1, activation='sigmoid', name='fc1')(base_model.output)
         model = Model(inputs=base_model.input, outputs=x)
 
