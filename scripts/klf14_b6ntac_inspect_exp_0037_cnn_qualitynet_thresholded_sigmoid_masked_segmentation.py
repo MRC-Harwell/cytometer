@@ -278,9 +278,9 @@ fpr, tpr, thr = roc_curve(test_onecell_dice_all >= valid_threshold, qual_all)
 roc_auc = auc(fpr, tpr)
 
 # set the quality threshold equal to the Dice threshold for training (but note these are different things)
-# idx = 35
-# quality_threshold = thr[idx]
-quality_threshold = 0.9
+idx = 153
+quality_threshold = thr[idx]
+# quality_threshold = 0.9
 
 # plot ROC
 if DEBUG:
@@ -292,19 +292,8 @@ if DEBUG:
     plt.ylabel('True Positive Rate')
     plt.legend(loc="lower right")
 
-# # plot scatter plot all predicted vs. ground truth Dice values
-# if DEBUG:
-#     plt.clf()
-#     plt.scatter(test_cell_dice, test_cell_preddice)
-#     plt.plot([0.2, 1.0], [0.2, 1.0])
-#     plt.plot([quality_threshold, quality_threshold], [0.0, 1.0], 'r')
-#     plt.plot([0.0, 1.0], [quality_threshold, quality_threshold], 'r')
-#     plt.xlabel('Ground truth')
-#     plt.ylabel('Estimated')
-#     plt.title('Dice coefficient')
-#
-# # Pearson coefficient
-# print('Pearson coeff = ' + "{:.2f}".format(np.corrcoef(np.stack((test_cell_dice, test_cell_preddice)))[0, 1]))
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0037_roc.png'))
 
 # confusion table: estimated vs ground truth
 est0_gt0 = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
@@ -321,41 +310,25 @@ confusion = np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
 df_summary = pd.DataFrame(confusion, columns=['Bad seg.', 'Good seg.'], index=['Good qual.', 'Bad qual.'])
 print(df_summary)
 
-# # plot prediction
-# if DEBUG:
-#     i = 150
-#     plt.clf()
-#     plt.imshow(test_cell_im[i, :, :, :])
-#     plt.contour(test_cell_testlab[i, :, :, 0], levels=1, colors='green')
-#     plt.title('Dice: ' + "{:.2f}".format(test_cell_dice[i]) + ' (ground truth)\n'
-#               + "{:.2f}".format(test_cell_preddice[i]) + ' (estimated)')
-#
-#     i = 1001
-#     plt.clf()
-#     plt.imshow(test_cell_im[i, :, :, :])
-#     plt.contour(test_cell_testlab[i, :, :, 0], levels=1, colors='green')
-#     plt.title('Dice: ' + "{:.2f}".format(test_cell_dice[i]) + ' (ground truth)\n'
-#               + "{:.2f}".format(test_cell_preddice[i]) + ' (estimated)')
-#
-# '''Plot metrics and convergence
-# '''
-#
-# log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-#
-# if os.path.isfile(log_filename):
-#
-#     # read Keras output
-#     df_list = cytometer.data.read_keras_training_output(log_filename)
-#
-#     # plot metrics with every iteration
-#     plt.clf()
-#     for df in df_list:
-#         plt.subplot(211)
-#         loss_plot, = plt.semilogy(df.index, df.loss, label='loss')
-#         epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
-#         epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
-#         plt.legend(handles=[loss_plot, epoch_ends_plot1])
-#         plt.subplot(212)
-#         regr_mae_plot, = plt.plot(df.index, df.acc, label='acc')
-#         regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='end of epoch')
-#         plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
+'''Plot metrics and convergence
+'''
+
+log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+
+if os.path.isfile(log_filename):
+
+    # read Keras output
+    df_list = cytometer.data.read_keras_training_output(log_filename)
+
+    # plot metrics with every iteration
+    plt.clf()
+    for df in df_list:
+        plt.subplot(211)
+        loss_plot, = plt.semilogy(df.index, df.loss, label='loss')
+        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
+        epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
+        plt.legend(handles=[loss_plot, epoch_ends_plot1])
+        plt.subplot(212)
+        regr_mae_plot, = plt.plot(df.index, df.acc, label='acc')
+        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='end of epoch')
+        plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
