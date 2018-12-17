@@ -261,7 +261,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.hist(test_onecell_im[i, :, :, 1].flatten(), histtype='step', color='green')
         plt.hist(test_onecell_im[i, :, :, 2].flatten(), histtype='step', color='blue')
 
-    # multiply histology by segmentations to have a single input tensor
+    # multiply histology by segmentation 0/+1 mask
     train_onecell_im *= np.repeat(train_onecell_testlab.astype(np.float32), repeats=train_onecell_im.shape[3], axis=3)
 
     if DEBUG:
