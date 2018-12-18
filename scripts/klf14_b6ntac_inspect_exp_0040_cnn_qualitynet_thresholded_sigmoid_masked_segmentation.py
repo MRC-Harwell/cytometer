@@ -17,7 +17,7 @@ from skimage.morphology import watershed
 import pandas as pd
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -122,6 +122,10 @@ if (n_folds != len(idx_orig_test_all)):
     raise Exception('Number of folds in dataset and model files don\'t coincide')
 
 # process test data from all folds
+est0_gt0 = np.zeros((n_folds, ), np.float32)
+est0_gt1 = np.zeros((n_folds, ), np.float32)
+est1_gt0 = np.zeros((n_folds, ), np.float32)
+est1_gt1 = np.zeros((n_folds, ), np.float32)
 test_onecell_dice_all = None
 qual_all = None
 for i_fold, idx_test in enumerate(idx_orig_test_all):
@@ -154,9 +158,6 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     test_reflab = datasets['lab']
     test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
     del datasets
-
-    # stretch intensity histogram of images
-    test_im = cytometer.utils.rescale_intensity(test_im, ignore_value=0.0)
 
     # remove borders between cells in the lab_train data
     for i in range(test_reflab.shape[0]):
@@ -237,17 +238,17 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # confusion table: estimated vs ground truth
     quality_threshold = 0.9
-    est0_gt0 = np.count_nonzero(np.logical_and(qual[:, 0] < quality_threshold,
-                                               test_onecell_dice < quality_threshold)) / len(qual)
-    est0_gt1 = np.count_nonzero(np.logical_and(qual[:, 0] < quality_threshold,
-                                               test_onecell_dice >= quality_threshold)) / len(qual)
-    est1_gt0 = np.count_nonzero(np.logical_and(qual[:, 0] >= quality_threshold,
-                                               test_onecell_dice < quality_threshold)) / len(qual)
-    est1_gt1 = np.count_nonzero(np.logical_and(qual[:, 0] >= quality_threshold,
-                                               test_onecell_dice >= quality_threshold)) / len(qual)
+    est0_gt0[i_fold] = np.count_nonzero(np.logical_and(qual[:, 0] < quality_threshold,
+                                                       test_onecell_dice < quality_threshold)) / len(qual)
+    est0_gt1[i_fold] = np.count_nonzero(np.logical_and(qual[:, 0] < quality_threshold,
+                                                       test_onecell_dice >= quality_threshold)) / len(qual)
+    est1_gt0[i_fold] = np.count_nonzero(np.logical_and(qual[:, 0] >= quality_threshold,
+                                                       test_onecell_dice < quality_threshold)) / len(qual)
+    est1_gt1[i_fold] = np.count_nonzero(np.logical_and(qual[:, 0] >= quality_threshold,
+                                                       test_onecell_dice >= quality_threshold)) / len(qual)
 
-    confusion = np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
-                          ["{:.2f}".format(est0_gt0), "{:.2f}".format(est0_gt1)]])
+    confusion = np.array([["{:.2f}".format(est1_gt0[i_fold]), "{:.2f}".format(est1_gt1[i_fold])],
+                          ["{:.2f}".format(est0_gt0[i_fold]), "{:.2f}".format(est0_gt1[i_fold])]])
     df_summary = pd.DataFrame(confusion, columns=['Bad seg.', 'Good seg.'], index=['Good qual.', 'Bad qual.'])
     print(df_summary)
 
@@ -258,6 +259,27 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     else:
         qual_all = np.concatenate((qual_all, qual))
         test_onecell_dice_all = np.concatenate((test_onecell_dice_all, test_onecell_dice))
+
+'''Print result summaries
+'''
+
+# print % values for each fold
+print(np.round(est0_gt0 * 100))  # good segmentation / accept segmentation
+print(np.round(est1_gt1 * 100))  # bad / reject
+print(np.round(est1_gt0 * 100))  # bad / accept
+print(np.round(est0_gt1 * 100))  # good / reject
+
+# plot boxplots for the Good/Bad segmentation vs. Accept/Reject segmentation
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot([est1_gt1*100, est0_gt0*100, est1_gt0*100, est0_gt1*100],
+                labels=['Good/Accept​', 'Bad/Reject​', 'Bad/Accept​', 'Good/Reject​'])
+    plt.title('0/+1 mask for quality network')
+    plt.ylim(-5, 65)
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0040_boxplots_confusion_matrices.png'))
 
 
 if DEBUG:
@@ -285,25 +307,26 @@ if DEBUG:
     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
     plt.scatter(fpr[idx], tpr[idx],
              label='Quality threshold = %0.2f\nFPR = %0.2f, TPR = %0.2f' % (quality_threshold, fpr[idx], tpr[idx]))
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
     plt.legend(loc="lower right")
 
 if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0040_roc.png'))
 
-# confusion table: estimated vs ground truth
-est0_gt0 = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
-                                           test_onecell_dice_all < quality_threshold)) / len(qual_all)
-est0_gt1 = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
-                                           test_onecell_dice_all >= quality_threshold)) / len(qual_all)
-est1_gt0 = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
-                                           test_onecell_dice_all < quality_threshold)) / len(qual_all)
-est1_gt1 = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
-                                           test_onecell_dice_all >= quality_threshold)) / len(qual_all)
+# aggregated confusion table: estimated vs ground truth
+est0_gt0_all = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
+                                               test_onecell_dice_all < quality_threshold)) / len(qual_all)
+est0_gt1_all = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
+                                               test_onecell_dice_all >= quality_threshold)) / len(qual_all)
+est1_gt0_all = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
+                                               test_onecell_dice_all < quality_threshold)) / len(qual_all)
+est1_gt1_all = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
+                                               test_onecell_dice_all >= quality_threshold)) / len(qual_all)
 
-confusion = np.array([["{:.2f}".format(est1_gt0), "{:.2f}".format(est1_gt1)],
-                      ["{:.2f}".format(est0_gt0), "{:.2f}".format(est0_gt1)]])
+confusion = np.array([["{:.2f}".format(est1_gt0_all), "{:.2f}".format(est1_gt1_all)],
+                      ["{:.2f}".format(est0_gt0_all), "{:.2f}".format(est0_gt1_all)]])
 df_summary = pd.DataFrame(confusion, columns=['Bad seg.', 'Good seg.'], index=['Good qual.', 'Bad qual.'])
 print(df_summary)
 
@@ -329,3 +352,4 @@ if os.path.isfile(log_filename):
         regr_mae_plot, = plt.plot(df.index, df.acc, label='acc')
         regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='end of epoch')
         plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
+
