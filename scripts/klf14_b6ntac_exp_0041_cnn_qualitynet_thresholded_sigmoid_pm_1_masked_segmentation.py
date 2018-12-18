@@ -116,9 +116,6 @@ idx_orig_test_all = aux['idx_test_all']
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all)))
-    if (i_fold < 8):
-        print('Already computed')
-        continue
 
     '''Load data
     '''
@@ -159,15 +156,12 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.subplot(224)
         plt.imshow(train_predlab[i, :, :, 0])
 
-    # create one image per cell
+    # create one image per pipeline segmentation with a ground truth segmentation
     train_onecell_im, train_onecell_testlab, train_onecell_index_list, train_onecell_reflab, train_onecell_dice = \
         cytometer.utils.one_image_per_label(train_im, train_predlab,
                                             dataset_lab_ref=train_reflab,
                                             training_window_len=training_window_len,
                                             smallest_cell_area=smallest_cell_area)
-
-    # # stretch intensity histogram of images
-    # train_onecell_im = cytometer.utils.rescale_intensity(train_onecell_im, ignore_value=0.0)
 
     if DEBUG:
         plt.clf()
@@ -227,9 +221,6 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                                             dataset_lab_ref=test_reflab,
                                             training_window_len=training_window_len,
                                             smallest_cell_area=smallest_cell_area)
-
-    # # stretch intensity histogram of images
-    # test_onecell_im = cytometer.utils.rescale_intensity(test_onecell_im, ignore_value=0.0)
 
     if DEBUG:
         plt.clf()
@@ -367,8 +358,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_onecell_im,
-                  {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
+        model.fit(train_onecell_im[0:num_train_onecell_im_to_use, :, :, :],
+                  {'fc1': (train_onecell_dice[0:num_train_onecell_im_to_use] >= quality_threshold).astype(np.float32)},
                   validation_data=(test_onecell_im,
                                    {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
                   batch_size=16, epochs=epochs, initial_epoch=0,
