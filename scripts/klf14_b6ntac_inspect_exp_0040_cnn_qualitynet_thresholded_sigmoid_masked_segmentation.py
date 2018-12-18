@@ -264,8 +264,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 '''
 
 # print % values for each fold
-print(np.round(est0_gt0 * 100))  # good segmentation / accept segmentation
-print(np.round(est1_gt1 * 100))  # bad / reject
+print(np.round(est1_gt1 * 100))  # good segmentation / accept segmentation
+print(np.round(est0_gt0 * 100))  # bad / reject
 print(np.round(est1_gt0 * 100))  # bad / accept
 print(np.round(est0_gt1 * 100))  # good / reject
 
