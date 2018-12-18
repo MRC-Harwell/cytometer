@@ -15,6 +15,11 @@ module load Anaconda3/5.1.0
 source activate cytometer_tensorflow
 
 python klf14_b6ntac_exp_0041_cnn_qualitynet_thresholded_sigmoid_pm_1_masked_segmentation.py
+rv="$?"
+
+# exit status held by qacct
+echo "Main task exit status: ${rv}"
 
 echo "Finished at :"`date`
-exit 0
+
+exit "${rv}"
