@@ -262,8 +262,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 '''
 
 # print % values for each fold
-print(np.round(est0_gt0 * 100))  # good segmentation / accept segmentation
-print(np.round(est1_gt1 * 100))  # bad / reject
+print(np.round(est1_gt1 * 100))  # good segmentation / accept segmentation
+print(np.round(est0_gt0 * 100))  # bad / reject
 print(np.round(est1_gt0 * 100))  # bad / accept
 print(np.round(est0_gt1 * 100))  # good / reject
 
@@ -273,7 +273,9 @@ if DEBUG:
     plt.clf()
     plt.boxplot([est1_gt1*100, est0_gt0*100, est1_gt0*100, est0_gt1*100],
                 labels=['Good/Accept​', 'Bad/Reject​', 'Bad/Accept​', 'Good/Reject​'])
-    plt.title('0/+1 mask for quality network')
+    plt.title('0/+1 mask for quality network', fontsize=18)
+    plt.tick_params(labelsize=16)
+    plt.xticks(rotation=15)
     plt.ylim(-5, 65)
 
 if SAVE_FIGS:
