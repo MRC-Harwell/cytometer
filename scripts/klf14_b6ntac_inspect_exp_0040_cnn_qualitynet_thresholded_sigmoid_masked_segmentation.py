@@ -126,6 +126,7 @@ est0_gt0 = np.zeros((n_folds, ), np.float32)
 est0_gt1 = np.zeros((n_folds, ), np.float32)
 est1_gt0 = np.zeros((n_folds, ), np.float32)
 est1_gt1 = np.zeros((n_folds, ), np.float32)
+n_cells = np.zeros((n_folds, ), np.float32)
 test_onecell_dice_all = None
 qual_all = None
 for i_fold, idx_test in enumerate(idx_orig_test_all):
@@ -208,6 +209,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # quality score
     qual = model.predict(masked_test_onecell_im)
 
+    # number of cells
+    n_cells[i_fold] = len(qual)
+
     if DEBUG:
         plt.clf()
         plt.subplot(121)
@@ -268,6 +272,7 @@ print(np.round(est1_gt1 * 100))  # good segmentation / accept segmentation
 print(np.round(est0_gt0 * 100))  # bad / reject
 print(np.round(est1_gt0 * 100))  # bad / accept
 print(np.round(est0_gt1 * 100))  # good / reject
+print(n_cells)
 
 # plot boxplots for the Good/Bad segmentation vs. Accept/Reject segmentation
 
@@ -275,7 +280,9 @@ if DEBUG:
     plt.clf()
     plt.boxplot([est1_gt1*100, est0_gt0*100, est1_gt0*100, est0_gt1*100],
                 labels=['Good/Accept​', 'Bad/Reject​', 'Bad/Accept​', 'Good/Reject​'])
-    plt.title('0/+1 mask for quality network')
+    plt.title('0/+1 mask for quality network', fontsize=18)
+    plt.tick_params(labelsize=16)
+    plt.xticks(rotation=15)
     plt.ylim(-5, 65)
 
 if SAVE_FIGS:
@@ -316,6 +323,7 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0040_roc.png'))
 
 # aggregated confusion table: estimated vs ground truth
+quality_threshold = 0.9
 est0_gt0_all = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
                                                test_onecell_dice_all < quality_threshold)) / len(qual_all)
 est0_gt1_all = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
@@ -344,12 +352,19 @@ if os.path.isfile(log_filename):
     plt.clf()
     for df in df_list:
         plt.subplot(211)
-        loss_plot, = plt.semilogy(df.index, df.loss, label='loss')
+        # loss_plot, = plt.semilogy(df.index, df.loss, label='Loss')
+        loss_plot, = plt.plot(df.index, df.loss, label='Loss')
         epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
-        epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='end of epoch')
+        # epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='End of epoch')
+        epoch_ends_plot1, = plt.plot(epoch_ends, df.loss[epoch_ends], 'ro', label='End of epoch')
         plt.legend(handles=[loss_plot, epoch_ends_plot1])
+        plt.tick_params(labelsize=16)
         plt.subplot(212)
-        regr_mae_plot, = plt.plot(df.index, df.acc, label='acc')
-        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='end of epoch')
+        regr_mae_plot, = plt.plot(df.index, df.acc, label='Acc')
+        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='End of epoch')
         plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
+        plt.tick_params(labelsize=16)
+        plt.xlabel('Steps', fontsize=16)
 
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0040_training_convergence.png'))
