@@ -265,6 +265,16 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 '''Print result summaries
 '''
 
+if DEBUG:
+    plt.clf()
+    plt.scatter(test_onecell_dice_all, qual_all)
+    plt.tick_params(labelsize=16)
+    plt.xlabel('Ground truth Dice coefficient', fontsize=16)
+    plt.ylabel('Quality score', fontsize=16)
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0041_dice_vs_quality_scatter.png'))
+
 # print % values for each fold
 print(np.round(est1_gt1 * 100))  # good segmentation / accept segmentation
 print(np.round(est0_gt0 * 100))  # bad / reject
@@ -287,31 +297,20 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0041_boxplots_confusion_matrices.png'))
 
 
-if DEBUG:
-    plt.clf()
-    plt.scatter(test_onecell_dice_all, qual_all)
-    plt.tick_params(labelsize=16)
-    plt.xlabel('Ground truth Dice coefficient', fontsize=16)
-    plt.ylabel('Quality score', fontsize=16)
-
-if SAVE_FIGS:
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0041_dice_vs_quality_scatter.png'))
-
 # compute ROC
 fpr, tpr, thr = roc_curve(test_onecell_dice_all >= valid_threshold, qual_all)
 roc_auc = auc(fpr, tpr)
 
 # set the quality threshold so that the False Positive Rate <= 10%
-idx = 159
-quality_threshold = thr[idx]
-# quality_threshold = 0.9
+idx = 159  # FPR =
+quality_threshold = thr[idx]  # quality_threshold =
 
 # plot ROC
 if DEBUG:
     plt.clf()
     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
     plt.scatter(fpr[idx], tpr[idx],
-             label='Quality threshold = %0.2f\nFPR = %0.2f, TPR = %0.2f' % (quality_threshold, fpr[idx], tpr[idx]))
+             label='Quality threshold = %0.3f\nFPR = %0.3f, TPR = %0.3f' % (quality_threshold, fpr[idx], tpr[idx]))
     plt.tick_params(labelsize=16)
     plt.xlabel('False Positive Rate', fontsize=16)
     plt.ylabel('True Positive Rate', fontsize=16)
