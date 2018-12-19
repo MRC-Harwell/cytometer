@@ -302,8 +302,8 @@ fpr, tpr, thr = roc_curve(test_onecell_dice_all >= valid_threshold, qual_all)
 roc_auc = auc(fpr, tpr)
 
 # set the quality threshold so that the False Positive Rate <= 10%
-idx = 159  # FPR =
-quality_threshold = thr[idx]  # quality_threshold =
+idx = 160  # FPR = 0.1008991008991009
+quality_threshold = thr[idx]  # quality_threshold = 0.73843306
 
 # plot ROC
 if DEBUG:
