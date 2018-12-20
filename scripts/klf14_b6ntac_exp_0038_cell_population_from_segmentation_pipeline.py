@@ -31,7 +31,7 @@ from skimage.morphology import watershed
 from skimage.measure import regionprops
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0, 1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -397,7 +397,6 @@ plt.plot(perc, (perc_area_pipeline_gtruth_m_MAT - perc_area_pipeline_gtruth_m_PA
 ax.set_ylim(-50, 0)
 plt.title('Male', fontsize=16)
 plt.xlabel('Population percentile', fontsize=14)
-plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 plt.legend()
 
