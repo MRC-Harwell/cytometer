@@ -121,7 +121,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all)))
 
     # hack: to restart training that died without recomputing finished folds
-    if i_fold <= 2:
+    if i_fold <= 1:
         continue
 
     '''Load data
@@ -364,6 +364,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # produces NaNs
     num_train_onecell_im_to_use = int(np.floor(train_onecell_im.shape[0] / batch_size) * batch_size)
     train_onecell_im = train_onecell_im[0:num_train_onecell_im_to_use, :, :, :]
+    train_onecell_dice = train_onecell_dice[0:num_train_onecell_im_to_use]
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
         # checkpoint to save model after each epoch
