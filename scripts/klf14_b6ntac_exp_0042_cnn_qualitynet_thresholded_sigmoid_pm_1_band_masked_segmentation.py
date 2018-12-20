@@ -120,6 +120,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all)))
 
+    # hack: to restart training that died without recomputing finished folds
+    if i_fold <= 2:
+        continue
+
     '''Load data
     '''
 
@@ -283,6 +287,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # multiply histology by 0/-1/+1 segmentation mask
     train_onecell_im *= np.repeat(train_onecell_testlab_dilated, repeats=train_onecell_im.shape[3], axis=3)
+    del train_onecell_testlab_dilated
 
     if DEBUG:
         plt.clf()
@@ -312,6 +317,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # multiply histology by 0/-1/+1 segmentation mask
     test_onecell_im *= np.repeat(test_onecell_testlab_dilated, repeats=test_onecell_im.shape[3], axis=3)
+    del test_onecell_testlab_dilated
 
     if DEBUG:
         plt.clf()
@@ -357,6 +363,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # the number of training images has to be a multiple of the batch_size. Otherwise, BatchNormalization
     # produces NaNs
     num_train_onecell_im_to_use = int(np.floor(train_onecell_im.shape[0] / batch_size) * batch_size)
+    train_onecell_im = train_onecell_im[0:num_train_onecell_im_to_use, :, :, :]
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
         # checkpoint to save model after each epoch
@@ -370,8 +377,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_onecell_im[0:num_train_onecell_im_to_use, :, :, :],
-                           {'fc1': (train_onecell_dice[0:num_train_onecell_im_to_use] >= quality_threshold).astype(np.float32)},
+        parallel_model.fit(train_onecell_im,
+                           {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
                            validation_data=(test_onecell_im,
                                             {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
                            batch_size=batch_size, epochs=epochs, initial_epoch=0,
@@ -392,8 +399,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_onecell_im[0:num_train_onecell_im_to_use, :, :, :],
-                  {'fc1': (train_onecell_dice[0:num_train_onecell_im_to_use] >= quality_threshold).astype(np.float32)},
+        model.fit(train_onecell_im,
+                  {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
                   validation_data=(test_onecell_im,
                                    {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
                   batch_size=16, epochs=epochs, initial_epoch=0,
