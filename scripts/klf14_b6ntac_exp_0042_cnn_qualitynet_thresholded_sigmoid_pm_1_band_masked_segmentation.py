@@ -121,7 +121,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all)))
 
     # hack: to restart training that died without recomputing finished folds
-    if i_fold <= 1:
+    if i_fold <= 3:
         continue
 
     '''Load data
@@ -408,6 +408,12 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+
+    # free up memory before starting next fold
+    del model
+    del parallel_model
+    cytometer.utils.clear_mem()
+
 
 # if we run the script with qsub on the cluster, the standard output is in file
 # klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
