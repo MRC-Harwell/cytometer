@@ -22,6 +22,23 @@ from cytometer.models import change_input_size
 DEBUG = False
 
 
+def clear_mem():
+    """GPU garbage collection in Keras with TensorFlow.
+
+    From Otto Stegmaier and Jeremy Howard.
+    https://forums.fast.ai/t/gpu-garbage-collection/1976/5
+    """
+
+    K.get_session().close()
+    sess = K.get_session()
+    sess.close()
+    # limit mem
+    cfg = K.tf.ConfigProto()
+    cfg.gpu_options.allow_growth = True
+    K.set_session(K.tf.Session(config=cfg))
+    return
+
+
 def principal_curvatures_range_image(img, sigma=10):
     """
     Compute Gaussian, Mean and principal curvatures of an image with depth values. Examples of such images
