@@ -27,11 +27,12 @@ import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from skimage.morphology import watershed
 from skimage.measure import regionprops
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -408,62 +409,6 @@ if SAVE_FIGS:
 All pipeline segmentations with Quality >= 0.9, whether they overlap hand traced cells or not
 ************************************************************************************************************************
 '''
-#
-# # cross-platform home directory
-# from pathlib import Path
-# home = str(Path.home())
-#
-# # PyCharm automatically adds cytometer to the python path, but this doesn't happen if the script is run
-# # with "python scriptname.py"
-# import os
-# import sys
-# sys.path.extend([os.path.join(home, 'Software/cytometer')])
-# import pickle
-#
-# # other imports
-# import glob
-# import numpy as np
-# import matplotlib.pyplot as plt
-# from skimage.morphology import watershed
-# import pandas as pd
-#
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
-#
-# os.environ['KERAS_BACKEND'] = 'tensorflow'
-# import keras
-# import keras.backend as K
-#
-# from sklearn.metrics import roc_curve, auc
-#
-# import cytometer.data
-# import cytometer.models
-# import cytometer.utils
-#
-# # limit GPU memory used
-# import tensorflow as tf
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.95
-# set_session(tf.Session(config=config))
-#
-# # specify data format as (n, row, col, channel)
-# K.set_image_data_format('channels_last')
-#
-# DEBUG = False
-# SAVE_FIGS = False
-#
-# # number of epochs for training
-# epochs = 20
-#
-# # area (pixel**2) of the smallest object we accept as a cell (pi * (16 pixel)**2 = 804.2 pixel**2)
-# smallest_cell_area = 804
-#
-# # training window length
-# training_window_len = 401
-#
-# # threshold for valid/invalid segmentation
-# valid_threshold = 0.9
 
 quality_threshold = 0.9
 
@@ -490,14 +435,16 @@ if (n_folds != len(idx_orig_test_all)):
 
 # process test data from all folds
 n_cells = np.zeros((n_folds, ), np.float32)
-qual_all = None
-area_all = None
+df_pipeline = None
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     # name of model's file
     model_file = model_files[i_fold]
 
     print('i_fold = ' + str(i_fold) + ', model = ' + model_file)
+
+    # load quality model
+    model = keras.models.load_model(model_file)
 
     '''Load test data of pipeline segmentations
     '''
@@ -508,141 +455,94 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # number of test images
     n_im = len(im_test_file_list)
 
-    # load training dataset
-    datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
-                                                  prefix_to=['im', 'predlab_kfold_' + str(i_fold).zfill(2)],
-                                                  nblocks=1)
+    for i in range(n_im):
 
-    test_im = datasets['im']
-    test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
-    del datasets
+        # load training dataset
+        datasets, _, _ = cytometer.data.load_datasets([im_test_file_list[i]], prefix_from='im',
+                                                      prefix_to=['im', 'predlab_kfold_' + str(i_fold).zfill(2)],
+                                                      nblocks=1)
 
-    '''Split images into one-cell images, compute true Dice values, and prepare for inference
-    '''
+        test_im = datasets['im']
+        test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
+        del datasets
 
-    # create one image per cell, and compute true Dice coefficient values
-    test_onecell_im, test_onecell_testlab, test_onecell_index_list = \
-        cytometer.utils.one_image_per_label(test_im, test_predlab,
-                                            training_window_len=training_window_len,
-                                            smallest_cell_area=smallest_cell_area)
+        '''Split images into one-cell images, compute true Dice values, and prepare for inference
+        '''
 
-    # multiply histology by -1/+1 mask as this is what the quality network expects
-    test_aux = 2 * (test_onecell_testlab.astype(np.float32) - 0.5)
-    masked_test_onecell_im = test_onecell_im * np.repeat(test_aux,
-                                                         repeats=test_onecell_im.shape[3], axis=3)
+        # create one image per cell, and compute true Dice coefficient values
+        test_onecell_im, test_onecell_testlab, test_onecell_index_list = \
+            cytometer.utils.one_image_per_label(test_im, test_predlab,
+                                                training_window_len=training_window_len,
+                                                smallest_cell_area=smallest_cell_area)
 
-    '''Assess quality of each cell's segmentation with Quality Network
-    '''
+        # multiply histology by -1/+1 mask as this is what the quality network expects
+        test_aux = 2 * (test_onecell_testlab.astype(np.float32) - 0.5)
+        masked_test_onecell_im = test_onecell_im * np.repeat(test_aux,
+                                                             repeats=test_onecell_im.shape[3], axis=3)
 
-    # load model
-    model = keras.models.load_model(model_file)
+        '''Assess quality of each cell's segmentation with Quality Network
+        '''
 
-    # quality score
-    qual = model.predict(masked_test_onecell_im)
+        # quality score
+        qual = model.predict(masked_test_onecell_im)
 
-    # number of cells
-    n_cells[i_fold] = len(qual)
+        # add number of cells to the total of this fold
+        n_cells[i_fold] += len(qual)
 
-    # area of each segmentation
-    area = np.sum(test_onecell_testlab, axis=(1, 2, 3)) * xres * yres
+        # area of each segmentation
+        area = np.sum(test_onecell_testlab, axis=(1, 2, 3)) * xres * yres
 
-    if DEBUG:
-        plt.clf()
-        plt.subplot(121)
-        i = 50
-        plt.imshow(test_onecell_im[i, :, :, :])
-        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='green')
-        plt.title('Qual = ' + str("{:.2f}".format(qual[i, 0]))
-                  + ', area = ' + str("{:.1f}".format(area[i])) + ' $\mu m^2$')
-        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
-        plt.text(100, 75, '-1', fontsize=14, verticalalignment='top', color='black')
-        plt.subplot(122)
-        i = 80
-        plt.imshow(test_onecell_im[i, :, :, :])
-        plt.contour(test_onecell_testlab[i, :, :, 0], levels=1, colors='red')
-        plt.title('Qual = ' + str("{:.2f}".format(qual[i, 0]))
-                  + ', area = ' + str("{:.1f}".format(area[i])) + ' $\mu m^2$')
-        plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
-        plt.text(100, 75, '-1', fontsize=14, verticalalignment='top', color='black')
+        if DEBUG:
+            plt.clf()
+            plt.subplot(121)
+            j = 50
+            plt.imshow(test_onecell_im[j, :, :, :])
+            plt.contour(test_onecell_testlab[j, :, :, 0], levels=1, colors='green')
+            plt.title('Qual = ' + str("{:.2f}".format(qual[j, 0]))
+                      + ', area = ' + str("{:.1f}".format(area[j])) + ' $\mu m^2$')
+            plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+            plt.text(100, 75, '-1', fontsize=14, verticalalignment='top', color='black')
+            plt.subplot(122)
+            i = 80
+            plt.imshow(test_onecell_im[j, :, :, :])
+            plt.contour(test_onecell_testlab[j, :, :, 0], levels=1, colors='red')
+            plt.title('Qual = ' + str("{:.2f}".format(qual[j, 0]))
+                      + ', area = ' + str("{:.1f}".format(area[j])) + ' $\mu m^2$')
+            plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
+            plt.text(100, 75, '-1', fontsize=14, verticalalignment='top', color='black')
 
-    # accumulate results
-    if qual_all is None:
-        qual_all = qual
-        area_all = area
-    else:
-        qual_all = np.concatenate((qual_all, qual))
-        area_all = np.concatenate((area_all, area))
+        # create dataframe with metainformation from mouse
+        df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
+                                                              area,
+                                                              values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
 
+        # add a column with the quality values
+        df_window['quality'] = qual
+
+        # add a column with the window filename. This is later used in the linear models
+        df_window['file'] = os.path.basename(im_test_file_list[i])
+
+        # accumulate results
+        if df_pipeline is None:
+            df_pipeline = df_window
+
+            # make sure that in the boxplots PAT comes before MAT
+            df_pipeline['ko'] = df_pipeline['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
+                                                                                       ordered=True))
+        else:
+            df_pipeline = pd.concat([df_pipeline, df_window], axis=0, ignore_index=True)
 
 '''Print result summaries
 '''
 
 if DEBUG:
+    sns.set(style="white", color_codes=True)
     plt.clf()
-    plt.scatter(test_onecell_dice_all, qual_all)
-    plt.tick_params(labelsize=16)
-    plt.xlabel('Ground truth Dice coefficient', fontsize=16)
+    sns.jointplot(df_pipeline.area, df_pipeline.quality)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Cell area ($\mu m^2$)', fontsize=16)
     plt.ylabel('Quality score', fontsize=16)
 
 if SAVE_FIGS:
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0041_dice_vs_quality_scatter.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0038_cell_area_vs_quality_jointplot.png'))
 
-# print % values for each fold
-print(np.round(est1_gt1 * 100))  # good segmentation / accept segmentation
-print(np.round(est0_gt0 * 100))  # bad / reject
-print(np.round(est1_gt0 * 100))  # bad / accept
-print(np.round(est0_gt1 * 100))  # good / reject
-print(n_cells)
-
-# plot boxplots for the Good/Bad segmentation vs. Accept/Reject segmentation
-
-if DEBUG:
-    plt.clf()
-    plt.boxplot([est1_gt1*100, est0_gt0*100, est1_gt0*100, est0_gt1*100],
-                labels=['Good/Accept​', 'Bad/Reject​', 'Bad/Accept​', 'Good/Reject​'])
-    plt.title('0/+1 mask for quality network', fontsize=18)
-    plt.tick_params(labelsize=16)
-    plt.xticks(rotation=15)
-    plt.ylim(-5, 65)
-
-if SAVE_FIGS:
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0041_boxplots_confusion_matrices.png'))
-
-
-# compute ROC
-fpr, tpr, thr = roc_curve(test_onecell_dice_all >= valid_threshold, qual_all)
-roc_auc = auc(fpr, tpr)
-
-# set the quality threshold so that the False Positive Rate <= 10%
-idx = 160  # FPR = 0.1008991008991009
-quality_threshold = thr[idx]  # quality_threshold = 0.73843306
-
-# plot ROC
-if DEBUG:
-    plt.clf()
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
-    plt.scatter(fpr[idx], tpr[idx],
-             label='Quality threshold = %0.3f\nFPR = %0.3f, TPR = %0.3f' % (quality_threshold, fpr[idx], tpr[idx]))
-    plt.tick_params(labelsize=16)
-    plt.xlabel('False Positive Rate', fontsize=16)
-    plt.ylabel('True Positive Rate', fontsize=16)
-    plt.legend(loc="lower right")
-
-if SAVE_FIGS:
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0041_roc.png'))
-
-# aggregated confusion table: estimated vs ground truth
-quality_threshold = 0.9
-est0_gt0_all = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
-                                               test_onecell_dice_all < quality_threshold)) / len(qual_all)
-est0_gt1_all = np.count_nonzero(np.logical_and(qual_all[:, 0] < quality_threshold,
-                                               test_onecell_dice_all >= quality_threshold)) / len(qual_all)
-est1_gt0_all = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
-                                               test_onecell_dice_all < quality_threshold)) / len(qual_all)
-est1_gt1_all = np.count_nonzero(np.logical_and(qual_all[:, 0] >= quality_threshold,
-                                               test_onecell_dice_all >= quality_threshold)) / len(qual_all)
-
-confusion = np.array([["{:.2f}".format(est1_gt0_all), "{:.2f}".format(est1_gt1_all)],
-                      ["{:.2f}".format(est0_gt0_all), "{:.2f}".format(est0_gt1_all)]])
-df_summary = pd.DataFrame(confusion, columns=['Bad seg.', 'Good seg.'], index=['Good qual.', 'Bad qual.'])
-print(df_summary)
