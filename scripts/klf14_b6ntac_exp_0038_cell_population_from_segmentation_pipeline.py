@@ -32,7 +32,7 @@ from skimage.morphology import watershed
 from skimage.measure import regionprops
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -537,7 +537,6 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
 if DEBUG:
     sns.set(style="white", color_codes=True)
-    plt.clf()
     sns.jointplot(df_pipeline.area, df_pipeline.quality)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Cell area ($\mu m^2$)', fontsize=16)
@@ -546,3 +545,59 @@ if DEBUG:
 if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0038_cell_area_vs_quality_jointplot.png'))
 
+'''Population curves
+'''
+
+# dataframe of good quality segmentations
+df_pipeline_quality = df_pipeline[df_pipeline.quality >= quality_threshold]
+
+# split data into groups
+area_pipeline_quality_f_PAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
+                                                                          df_pipeline_quality['ko'] == 'PAT'))]
+area_pipeline_quality_f_MAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
+                                                                          df_pipeline_quality['ko'] == 'MAT'))]
+area_pipeline_quality_m_PAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'm',
+                                                                          df_pipeline_quality['ko'] == 'PAT'))]
+area_pipeline_quality_m_MAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'm',
+                                                                          df_pipeline_quality['ko'] == 'MAT'))]
+
+# size of each group
+print('f/PAT: ' + str())
+
+# compute percentile profiles of cell populations
+perc = np.linspace(0, 100, num=101)
+perc_area_pipeline_quality_f_PAT = np.percentile(area_pipeline_quality_f_PAT, perc)
+perc_area_pipeline_quality_f_MAT = np.percentile(area_pipeline_quality_f_MAT, perc)
+perc_area_pipeline_quality_m_PAT = np.percentile(area_pipeline_quality_m_PAT, perc)
+perc_area_pipeline_quality_m_MAT = np.percentile(area_pipeline_quality_m_MAT, perc)
+
+# plot curve profiles
+plt.clf()
+
+ax = plt.subplot(121)
+plt.plot(perc, (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100, label='Hand traced')
+plt.plot(perc, (perc_area_pipeline_gtruth_f_MAT - perc_area_pipeline_gtruth_f_PAT) / perc_area_pipeline_gtruth_f_PAT * 100,
+         label='Pipeline HT Dice>=0.9')
+plt.plot(perc, (perc_area_pipeline_quality_f_MAT - perc_area_pipeline_quality_f_PAT) / perc_area_pipeline_quality_f_PAT * 100,
+         label='Pipeline Quality>=0.9')
+ax.set_ylim(-50, 0)
+plt.title('Female', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend()
+
+ax = plt.subplot(122)
+plt.plot(perc, (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100, label='Hand traced')
+plt.plot(perc, (perc_area_pipeline_gtruth_m_MAT - perc_area_pipeline_gtruth_m_PAT) / perc_area_pipeline_gtruth_m_PAT * 100,
+         label='Pipeline HT Dice>=0.9')
+plt.plot(perc, (perc_area_pipeline_quality_m_MAT - perc_area_pipeline_quality_m_PAT) / perc_area_pipeline_quality_m_PAT * 100,
+         label='Pipeline Quality>=0.9')
+ax.set_ylim(-50, 0)
+plt.title('Male', fontsize=16)
+plt.xlabel('Population percentile', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend()
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_quality_pipeline.png'))
