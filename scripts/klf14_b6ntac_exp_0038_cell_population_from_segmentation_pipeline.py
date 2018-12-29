@@ -32,7 +32,7 @@ from skimage.morphology import watershed
 from skimage.measure import regionprops
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -469,11 +469,13 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         '''Split images into one-cell images, compute true Dice values, and prepare for inference
         '''
 
-        # create one image per cell, and compute true Dice coefficient values
+        # create one image per cell, and compute true Dice coefficient values, ignoring
+        # cells that touch the image borders
         test_onecell_im, test_onecell_testlab, test_onecell_index_list = \
             cytometer.utils.one_image_per_label(test_im, test_predlab,
                                                 training_window_len=training_window_len,
-                                                smallest_cell_area=smallest_cell_area)
+                                                smallest_cell_area=smallest_cell_area,
+                                                clear_border_lab=True)
 
         # multiply histology by -1/+1 mask as this is what the quality network expects
         test_aux = 2 * (test_onecell_testlab.astype(np.float32) - 0.5)
@@ -562,7 +564,10 @@ area_pipeline_quality_m_MAT = df_pipeline_quality['area'][(np.logical_and(df_pip
                                                                           df_pipeline_quality['ko'] == 'MAT'))]
 
 # size of each group
-print('f/PAT: ' + str())
+print('f/PAT: ' + str(area_pipeline_quality_f_PAT.shape[0]))
+print('f/MAT: ' + str(area_pipeline_quality_f_MAT.shape[0]))
+print('m/PAT: ' + str(area_pipeline_quality_m_PAT.shape[0]))
+print('m/MAT: ' + str(area_pipeline_quality_m_MAT.shape[0]))
 
 # compute percentile profiles of cell populations
 perc = np.linspace(0, 100, num=101)
