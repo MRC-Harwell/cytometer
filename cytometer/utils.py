@@ -9,6 +9,7 @@ from skimage import measure
 from skimage.morphology import watershed
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
+from skimage.segmentation import clear_border
 from mahotas.labeled import borders
 import networkx as nx
 from skimage.transform import SimilarityTransform, AffineTransform
@@ -366,9 +367,8 @@ def match_overlapping_labels(labels_ref, labels_test):
 
     return out
 
-
 def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
-                        training_window_len=401, smallest_cell_area=804):
+                        training_window_len=401, smallest_cell_area=804, clear_border_lab=False):
     """
     Extract a small image centered on each cell of a dataset according to segmentation labels.
 
@@ -386,11 +386,12 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     window.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as segmentation
     noise.
+    :param clear_border_lab: (def False) Ignore labels that touch the edges of the image.
     :return: If dataset_lab_ref is provided,
-    training_windows, testlabel_windows, reflabel_windows, dice
+    (training_windows, testlabel_windows, reflabel_windows, dice)
 
     Otherwise,
-    training_windows, testlabel_windows
+    (training_windows, testlabel_windows)
 
     training_windows: numpy.ndarray (N, training_window_len, training_window_len, channel). Small windows extracted from
     the histology. Each window is centered around one of N labelled cells.
@@ -422,6 +423,10 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
 
         if DEBUG:
             print('Image ' + str(i) + '/' + str(dataset_im.shape[0] - 1))  # DEBUG
+
+        # remove labels that are touching the edges of the image
+        if clear_border_lab:
+            dataset_lab_test[i, :, :, 0] = clear_border(dataset_lab_test[i, :, :, 0])
 
         # compute overlap between estimated and ground truth labels
         if dataset_lab_ref is not None:
