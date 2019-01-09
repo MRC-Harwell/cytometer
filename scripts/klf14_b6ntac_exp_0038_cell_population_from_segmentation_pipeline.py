@@ -606,3 +606,73 @@ plt.legend()
 
 if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_population_profiles_quality_pipeline.png'))
+
+'''Plot cell populations as histograms
+'''
+
+# get range of cell area values
+area_min = np.amin(np.concatenate((df_gtruth['area'], df_pipeline_gtruth['area'], df_pipeline_quality['area'])))
+area_max = np.amax(np.concatenate((df_gtruth['area'], df_pipeline_gtruth['area'], df_pipeline_quality['area'])))
+
+print('area_min = ' + "{:.1f}".format(area_min) + ' um^2')
+print('area_max = ' + "{:.1f}".format(area_max) + ' um^2')
+
+area_bins = np.linspace(0, 18000, 51)
+area_bin_centers = (area_bins[0:-1] + area_bins[1:]) / 2.0
+
+# histograms of cell areas
+hist_area_gtruth_f_PAT, _ = np.histogram(area_gtruth_f_PAT, bins=area_bins, density=True)
+hist_area_gtruth_f_MAT, _ = np.histogram(area_gtruth_f_MAT, bins=area_bins, density=True)
+hist_area_gtruth_m_PAT, _ = np.histogram(area_gtruth_m_PAT, bins=area_bins, density=True)
+hist_area_gtruth_m_MAT, _ = np.histogram(area_gtruth_m_MAT, bins=area_bins, density=True)
+
+hist_area_pipeline_gtruth_f_PAT, _ = np.histogram(area_pipeline_gtruth_f_PAT, bins=area_bins, density=True)
+hist_area_pipeline_gtruth_f_MAT, _ = np.histogram(area_pipeline_gtruth_f_MAT, bins=area_bins, density=True)
+hist_area_pipeline_gtruth_m_PAT, _ = np.histogram(area_pipeline_gtruth_m_PAT, bins=area_bins, density=True)
+hist_area_pipeline_gtruth_m_MAT, _ = np.histogram(area_pipeline_gtruth_m_MAT, bins=area_bins, density=True)
+
+# plot curves
+if DEBUG:
+    plt.clf()
+
+    plt.subplot(221)
+    plt.plot(area_bin_centers / 1e3, np.zeros(hist_area_gtruth_f_MAT.shape), 'k')
+    plt.plot(area_bin_centers / 1e3, hist_area_gtruth_f_PAT, 'C0--')
+    plt.plot(area_bin_centers / 1e3, hist_area_gtruth_f_MAT, color='C0')
+    plt.plot(area_bin_centers / 1e3, hist_area_pipeline_gtruth_f_PAT, 'C1--')
+    plt.plot(area_bin_centers / 1e3, hist_area_pipeline_gtruth_f_MAT, 'C1')
+    plt.ylim((-0.0001, 0.0007))
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.ylabel('pdf', fontsize=14)
+
+    plt.subplot(222)
+    plt.plot(area_bin_centers / 1e3, np.zeros(hist_area_gtruth_f_MAT.shape), 'k')
+    plt.plot(area_bin_centers / 1e3, hist_area_gtruth_m_PAT, 'C0--')
+    plt.plot(area_bin_centers / 1e3, hist_area_gtruth_m_MAT, color='C0')
+    plt.plot(area_bin_centers / 1e3, hist_area_pipeline_gtruth_m_PAT, 'C1--')
+    plt.plot(area_bin_centers / 1e3, hist_area_pipeline_gtruth_m_MAT, 'C1')
+    plt.gca().axes.get_yaxis().set_visible(False)
+    plt.ylim((-0.0001, 0.0007))
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+    plt.subplot(223)
+    plt.plot(area_bin_centers / 1e3, np.zeros(hist_area_gtruth_f_MAT.shape), 'k')
+    plt.plot(area_bin_centers / 1e3, hist_area_gtruth_f_MAT - hist_area_gtruth_f_PAT, 'C0')
+    plt.plot(area_bin_centers / 1e3, hist_area_pipeline_gtruth_f_MAT - hist_area_pipeline_gtruth_f_PAT, 'C1')
+    plt.ylim((-0.00025, 0.00025))
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel(r'area ($\times$1000 $\mu m^2$)', fontsize=14)
+    plt.ylabel(r'$\Delta$pdf', fontsize=14)
+
+    plt.subplot(224)
+    plt.plot(area_bin_centers / 1e3, np.zeros(hist_area_gtruth_f_MAT.shape), 'k')
+    plt.plot(area_bin_centers / 1e3, hist_area_gtruth_m_MAT - hist_area_gtruth_m_PAT, 'C0')
+    plt.plot(area_bin_centers / 1e3, hist_area_pipeline_gtruth_m_MAT - hist_area_pipeline_gtruth_m_PAT, 'C1')
+    plt.ylim((-0.00025, 0.00025))
+    plt.gca().axes.get_yaxis().set_visible(False)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel(r'area ($\times$1000 $\mu m^2$)', fontsize=14)
+
+
+
+# error bars for histograms: http://scikit-hep.org/examples/visual/errorbars.html
