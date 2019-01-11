@@ -15,6 +15,10 @@
 # Y=sorted_data[Y_index]
 # 90% confidence interval is [X,Y]
 
+# Author: wfbradley
+# URL: https://github.com/wfbradley/CDF-confidence/blob/master/CDF_confidence.py
+# commit cb0fedcde83f6cede12f5b4ab7e8f05ec258d67a
+
 from scipy.stats import binom, beta
 from scipy import interpolate
 
