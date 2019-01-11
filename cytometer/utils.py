@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
 from scipy.sparse import dok_matrix
+from scipy import interpolate
 from skimage import measure
 from skimage.morphology import watershed
 from skimage.future.graph import rag_mean_color
@@ -19,6 +20,7 @@ import keras.backend as K
 import keras
 import tensorflow as tf
 from cytometer.models import change_input_size
+from cytometer.CDF_confidence import CDF_error_analytic_bootstrap, CDF_error_DKW_band, CDF_error_beta
 
 DEBUG = False
 
@@ -953,3 +955,103 @@ def rescale_intensity(im, ignore_value=None):
             plt.hist(im[i, :, :, :].flatten())
 
     return im
+
+
+def ecdf_confidence(data, num_quantile_regions=100, confidence=0.95, data_already_sorted=False,
+                    color='green', label='', estimator_name='beta', ax=None):
+    """
+    Compute empirical ECDF with confidence intervals.
+
+    Derived from plot_CDF_confidence (https://github.com/wfbradley/CDF-confidence/blob/master/CDF_confidence.py).
+    :param data: numpy.array with the 1D data to compute the histogram and CI for.
+    :param num_quantile_regions: (def 100) For 100, estimate confidence interval at 1%, 2%, 3%, ..., 99%.
+    :param confidence: (def 0.95) 0.95 = 95-CI means the confidence interval [2.5%, 97.5%].
+    :param data_already_sorted:
+    :param color:
+    :param label:
+    :param alpha:
+    :param estimator_name:
+    :param ax: (def None) Use default axes plt.gca().
+    :return:
+    """
+
+    if len(np.shape(data)) != 1:
+        raise NameError('Data must be 1 dimensional')
+    if num_quantile_regions > len(data) + 1:
+        num_quantile_regions = len(data) + 1
+    if len(data) < 2:
+        raise NameError('Need at least 2 data points')
+    if num_quantile_regions == 'all':
+        num_quantile_regions = len(data)
+    if num_quantile_regions < 2:
+        raise NameError('Need num_quantile_regions > 1')
+    if not data_already_sorted:
+        data = np.sort(data)
+    if ax == 'use default axes':
+        ax = plt.gca()
+    if confidence <= 0.0 or confidence >= 1.0:
+        raise NameError('"confidence" must be between 0.0 and 1.0')
+    low_conf = (1.0 - confidence) / 2.0
+    high_conf = 1.0 - low_conf
+
+    quantile_list = np.linspace(1.0 / float(num_quantile_regions), 1.0 - (1.0 / float(num_quantile_regions)),
+                                num=num_quantile_regions - 1)
+
+    # Some estimators give confidence intervals on the *quantiles*,
+    # others give intervals on the *data*; which do we have?
+    if estimator_name == 'analytic bootstrap':
+        estimator_type = 'data'
+        cdf_error_function = CDF_error_analytic_bootstrap
+    elif estimator_name == 'DKW':
+        estimator_type = 'quantile'
+        cdf_error_function = CDF_error_DKW_band
+    elif estimator_name == 'beta':
+        estimator_type = 'quantile'
+        cdf_error_function = CDF_error_beta
+    else:
+        raise NameError('Unknown error estimator name %s' % estimator_name)
+
+    emp_quantile_list = np.linspace(1.0 / float(len(data) + 1), 1.0 - (1.0 / float(len(data) + 1)), num=len(data))
+    if estimator_type == 'quantile':
+        if num_quantile_regions == len(data) + 1:
+            interpolated_quantile_list = data
+        else:
+            invCDF_interp = interpolate.interp1d(emp_quantile_list, data)
+            interpolated_quantile_list = invCDF_interp(quantile_list)
+
+    low = np.zeros(np.shape(quantile_list))
+    high = np.zeros(np.shape(quantile_list))
+    if estimator_type == 'quantile':
+        for i, q in enumerate(quantile_list):
+            low[i] = cdf_error_function(len(data), q, low_conf)
+            high[i] = cdf_error_function(len(data), q, high_conf)
+        ax.fill_between(interpolated_quantile_list, low, high, alpha=alpha, color=color)
+    elif estimator_type == 'data':
+        for i, q in enumerate(quantile_list):
+            low[i] = data[cdf_error_function(len(data), q, low_conf)]
+            high[i] = data[cdf_error_function(len(data), q, high_conf)]
+        ax.fill_betweenx(quantile_list, low, high, alpha=alpha, color=color)
+    else:
+        raise NameError('Unknown error estimator type %s' % estimator_type)
+
+    return data, emp_quantile_list
+
+
+def hist_confidence(data, num_quantile_regions=100, confidence=0.95, data_already_sorted=False,
+                    color='green', label='', alpha=0.3, estimator_name='beta', ax=None):
+    """
+    Plot empirical histogram with confidence intervals, as first difference of the ECDF.
+
+    Derived from plot_CDF_confidence (https://github.com/wfbradley/CDF-confidence/blob/master/CDF_confidence.py).
+    :param data: numpy.array with the 1D data to compute the histogram and CI for.
+    :param num_quantile_regions: (def 100) For 100, estimate confidence interval at 1%, 2%, 3%, ..., 99%.
+    :param confidence: (def 0.95) 0.95 = 95-CI means the confidence interval [2.5%, 97.5%].
+    :param data_already_sorted:
+    :param color:
+    :param label:
+    :param alpha:
+    :param estimator_name:
+    :param ax: (def None) Use default axes plt.gca().
+    :return:
+    """
+
