@@ -679,8 +679,8 @@ if DEBUG:
     plt.clf()
 
     plt.subplot(221)
-    plot_CDF_confidence(hist_area_gtruth_f_PAT, confidence=0.95, num_quantile_regions=100)
-    plot_CDF_confidence(hist_area_gtruth_f_MAT, confidence=0.95, num_quantile_regions=100, color='C1')
+    plot_CDF_confidence(area_pipeline_gtruth_f_PAT, confidence=0.95, num_quantile_regions=100)
+    plot_CDF_confidence(area_pipeline_gtruth_f_MAT, confidence=0.95, num_quantile_regions=100, color='C1')
     ax.fill_between(interpolated_quantile_list, low, high, alpha=alpha, color=color)
 
 # error bars for histograms: http://scikit-hep.org/examples/visual/errorbars.html
