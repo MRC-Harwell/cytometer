@@ -33,7 +33,7 @@ from skimage.measure import regionprops
 from cytometer.CDF_confidence import plot_CDF_confidence
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -681,5 +681,6 @@ if DEBUG:
     plt.subplot(221)
     plot_CDF_confidence(hist_area_gtruth_f_PAT, confidence=0.95, num_quantile_regions=100)
     plot_CDF_confidence(hist_area_gtruth_f_MAT, confidence=0.95, num_quantile_regions=100, color='C1')
+    ax.fill_between(interpolated_quantile_list, low, high, alpha=alpha, color=color)
 
 # error bars for histograms: http://scikit-hep.org/examples/visual/errorbars.html
