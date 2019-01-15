@@ -956,9 +956,9 @@ def rescale_intensity(im, ignore_value=None):
 
     return im
 
-
+# data = hist_area_gtruth_f_PAT
 def ecdf_confidence(data, num_quantile_regions=100, confidence=0.95, data_already_sorted=False,
-                    color='green', label='', estimator_name='beta', ax=None):
+                    estimator_name='beta'):
     """
     Compute empirical ECDF with confidence intervals.
 
@@ -967,11 +967,8 @@ def ecdf_confidence(data, num_quantile_regions=100, confidence=0.95, data_alread
     :param num_quantile_regions: (def 100) For 100, estimate confidence interval at 1%, 2%, 3%, ..., 99%.
     :param confidence: (def 0.95) 0.95 = 95-CI means the confidence interval [2.5%, 97.5%].
     :param data_already_sorted:
-    :param color:
-    :param label:
     :param alpha:
     :param estimator_name:
-    :param ax: (def None) Use default axes plt.gca().
     :return:
     """
 
@@ -987,8 +984,6 @@ def ecdf_confidence(data, num_quantile_regions=100, confidence=0.95, data_alread
         raise NameError('Need num_quantile_regions > 1')
     if not data_already_sorted:
         data = np.sort(data)
-    if ax == 'use default axes':
-        ax = plt.gca()
     if confidence <= 0.0 or confidence >= 1.0:
         raise NameError('"confidence" must be between 0.0 and 1.0')
     low_conf = (1.0 - confidence) / 2.0
@@ -1012,12 +1007,6 @@ def ecdf_confidence(data, num_quantile_regions=100, confidence=0.95, data_alread
         raise NameError('Unknown error estimator name %s' % estimator_name)
 
     emp_quantile_list = np.linspace(1.0 / float(len(data) + 1), 1.0 - (1.0 / float(len(data) + 1)), num=len(data))
-    if estimator_type == 'quantile':
-        if num_quantile_regions == len(data) + 1:
-            interpolated_quantile_list = data
-        else:
-            invCDF_interp = interpolate.interp1d(emp_quantile_list, data)
-            interpolated_quantile_list = invCDF_interp(quantile_list)
 
     low = np.zeros(np.shape(quantile_list))
     high = np.zeros(np.shape(quantile_list))
@@ -1025,12 +1014,10 @@ def ecdf_confidence(data, num_quantile_regions=100, confidence=0.95, data_alread
         for i, q in enumerate(quantile_list):
             low[i] = cdf_error_function(len(data), q, low_conf)
             high[i] = cdf_error_function(len(data), q, high_conf)
-        ax.fill_between(interpolated_quantile_list, low, high, alpha=alpha, color=color)
     elif estimator_type == 'data':
         for i, q in enumerate(quantile_list):
             low[i] = data[cdf_error_function(len(data), q, low_conf)]
             high[i] = data[cdf_error_function(len(data), q, high_conf)]
-        ax.fill_betweenx(quantile_list, low, high, alpha=alpha, color=color)
     else:
         raise NameError('Unknown error estimator type %s' % estimator_type)
 
