@@ -20,7 +20,8 @@ import keras.backend as K
 import keras
 import tensorflow as tf
 from cytometer.models import change_input_size
-from cytometer.CDF_confidence import CDF_error_analytic_bootstrap, CDF_error_DKW_band, CDF_error_beta
+from cytometer.CDF_confidence import CDF_error_DKW_band, CDF_error_beta
+from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
 
 DEBUG = False
 
@@ -956,72 +957,70 @@ def rescale_intensity(im, ignore_value=None):
 
     return im
 
-# data = hist_area_gtruth_f_PAT
-def ecdf_confidence(data, num_quantile_regions=100, confidence=0.95, data_already_sorted=False,
+# data = area_pipeline_gtruth_f_PAT
+def ecdf_confidence(data, num_quantiles=101, confidence=0.95, data_already_sorted=False,
                     estimator_name='beta'):
     """
     Compute empirical ECDF with confidence intervals.
 
     Derived from plot_CDF_confidence (https://github.com/wfbradley/CDF-confidence/blob/master/CDF_confidence.py).
+
     :param data: numpy.array with the 1D data to compute the histogram and CI for.
-    :param num_quantile_regions: (def 100) For 100, estimate confidence interval at 1%, 2%, 3%, ..., 99%.
+    :param num_quantiles: (def 101) For 101, estimate confidence interval at 0%, 1%, 2%, 3%, ..., 100%.
     :param confidence: (def 0.95) 0.95 = 95-CI means the confidence interval [2.5%, 97.5%].
-    :param data_already_sorted:
-    :param alpha:
-    :param estimator_name:
+    :param estimator_name: (def 'beta) 'DKW' (Dvoretzky-Kiefer-Wolfowitz confidence band) or 'beta'.
     :return:
     """
 
     if len(np.shape(data)) != 1:
         raise NameError('Data must be 1 dimensional')
-    if num_quantile_regions > len(data) + 1:
-        num_quantile_regions = len(data) + 1
+    if num_quantiles > len(data) + 1:
+        num_quantiles = len(data) + 1
     if len(data) < 2:
         raise NameError('Need at least 2 data points')
-    if num_quantile_regions == 'all':
-        num_quantile_regions = len(data)
-    if num_quantile_regions < 2:
-        raise NameError('Need num_quantile_regions > 1')
-    if not data_already_sorted:
-        data = np.sort(data)
+    if num_quantiles < 3:
+        raise NameError('Need num_quantiles > 2')
     if confidence <= 0.0 or confidence >= 1.0:
         raise NameError('"confidence" must be between 0.0 and 1.0')
     low_conf = (1.0 - confidence) / 2.0
     high_conf = 1.0 - low_conf
 
-    quantile_list = np.linspace(1.0 / float(num_quantile_regions), 1.0 - (1.0 / float(num_quantile_regions)),
-                                num=num_quantile_regions - 1)
+    # list of quantiles, e.g. 0%, ..., 100%
+    quantile_list = np.linspace(0.0, 1.0, num_quantiles)
+
+    # compute empirical cumulative distribution function
+    ecdf = ECDF(data)
+
+    # Note that ecdf values don't start at 0.0, but at some small value
+    ecdf_min = ecdf(np.min(data))
+    idx = quantile_list >= ecdf_min
+
+    # invert the ECDF so that we find the area values that correspond to the quantiles
+    area_by_quantile = np.full(shape=quantile_list.shape, fill_value=np.nan, dtype=np.float32)
+    ecdf_inv = monotone_fn_inverter(ecdf, data, vectorized=True)
+    area_by_quantile[idx] = ecdf_inv(quantile_list[idx])
 
     # Some estimators give confidence intervals on the *quantiles*,
     # others give intervals on the *data*; which do we have?
-    if estimator_name == 'analytic bootstrap':
-        estimator_type = 'data'
-        cdf_error_function = CDF_error_analytic_bootstrap
-    elif estimator_name == 'DKW':
+    if estimator_name == 'DKW':
         estimator_type = 'quantile'
         cdf_error_function = CDF_error_DKW_band
     elif estimator_name == 'beta':
         estimator_type = 'quantile'
         cdf_error_function = CDF_error_beta
     else:
-        raise NameError('Unknown error estimator name %s' % estimator_name)
+        raise NameError('Unknown error estimator name: ' + estimator_name)
 
-    emp_quantile_list = np.linspace(1.0 / float(len(data) + 1), 1.0 - (1.0 / float(len(data) + 1)), num=len(data))
-
-    low = np.zeros(np.shape(quantile_list))
-    high = np.zeros(np.shape(quantile_list))
+    area_ci_low = np.zeros(np.shape(quantile_list))
+    area_ci_high = np.zeros(np.shape(quantile_list))
     if estimator_type == 'quantile':
         for i, q in enumerate(quantile_list):
-            low[i] = cdf_error_function(len(data), q, low_conf)
-            high[i] = cdf_error_function(len(data), q, high_conf)
-    elif estimator_type == 'data':
-        for i, q in enumerate(quantile_list):
-            low[i] = data[cdf_error_function(len(data), q, low_conf)]
-            high[i] = data[cdf_error_function(len(data), q, high_conf)]
+            area_ci_low[i] = cdf_error_function(len(data), q, low_conf)
+            area_ci_high[i] = cdf_error_function(len(data), q, high_conf)
     else:
-        raise NameError('Unknown error estimator type %s' % estimator_type)
+        raise NameError('Unknown error estimator type: ' + estimator_type)
 
-    return data, emp_quantile_list
+    return quantile_list, area_by_quantile, area_ci_low, area_ci_high
 
 
 def hist_confidence(data, num_quantile_regions=100, confidence=0.95, data_already_sorted=False,
