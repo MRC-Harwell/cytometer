@@ -30,7 +30,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from skimage.morphology import watershed
 from skimage.measure import regionprops
-from cytometer.CDF_confidence import plot_CDF_confidence
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
