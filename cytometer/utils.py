@@ -958,18 +958,24 @@ def rescale_intensity(im, ignore_value=None):
     return im
 
 # data = area_pipeline_gtruth_f_PAT
-def ecdf_confidence(data, num_quantiles=101, confidence=0.95, data_already_sorted=False,
-                    estimator_name='beta'):
+def ecdf_confidence(data, num_quantiles=101, equispace='quantiles', confidence=0.95, estimator_name='beta'):
     """
-    Compute empirical ECDF with confidence intervals.
+    Compute empirical ECDF with confidence intervals/bands.
+
+    The ECDF is a function that maps quantiles = ECDF(data). The user can choose whether the output is
+    equispaced on the data axis or the quantiles axis.
 
     Derived from plot_CDF_confidence (https://github.com/wfbradley/CDF-confidence/blob/master/CDF_confidence.py).
 
-    :param data: numpy.array with the 1D data to compute the histogram and CI for.
-    :param num_quantiles: (def 101) For 101, estimate confidence interval at 0%, 1%, 2%, 3%, ..., 100%.
-    :param confidence: (def 0.95) 0.95 = 95-CI means the confidence interval [2.5%, 97.5%].
+    :param data: numpy.array with the 1D data to compute the ECDF for.
+    :param num_quantiles: (def 101). Number of points the quantiles/data axes are split into for the output.
+    :param equispace: 'quantiles' (def), 'data'. Choose which axis is equispaced for the output, data or quantiles.
+    :param confidence: (def 0.95) 0.95 = 95-CI means confidence intervals [2.5%, 97.5%].
     :param estimator_name: (def 'beta) 'DKW' (Dvoretzky-Kiefer-Wolfowitz confidence band) or 'beta'.
-    :return:
+    :return: data_out, quantile_out, quantile_ci_lo, quantile_ci_hi
+
+    (num_quantiles,) numpy.arrays with a mapping ECDF(data_out[i]) in [quantile_ci_lo[i], quantile_ci_hi[i]], and
+    ECDF(data_out[i])
     """
 
     if len(np.shape(data)) != 1:
@@ -982,26 +988,33 @@ def ecdf_confidence(data, num_quantiles=101, confidence=0.95, data_already_sorte
         raise NameError('Need num_quantiles > 2')
     if confidence <= 0.0 or confidence >= 1.0:
         raise NameError('"confidence" must be between 0.0 and 1.0')
-    low_conf = (1.0 - confidence) / 2.0
-    high_conf = 1.0 - low_conf
+    ci_lo = (1.0 - confidence) / 2.0
+    ci_hi = 1.0 - ci_lo
 
-    # list of quantiles, e.g. 0%, ..., 100%
-    quantile_list = np.linspace(0.0, 1.0, num_quantiles)
+    # sort the data, to make it more efficient looking for the min and max values
+    data = np.sort(data)
 
-    # compute empirical cumulative distribution function
+    # compute empirical cumulative distribution (the function, not the values)
     ecdf = ECDF(data)
 
-    # Note that ecdf values don't start at 0.0, but at some small value
-    ecdf_min = ecdf(np.min(data))
-    idx = quantile_list >= ecdf_min
+    # what are equispaced, the data axis or the quantile axis points?
+    if equispace == 'data':
+        # equispaced points in the data axis
+        data_out = np.linspace(data[0], data[-1], num_quantiles)
+        # corresponding quantile values
+        quantile_out = ecdf(data_out)
+    elif equispace == 'quantiles':
+        # inverse of the ECDF function
+        ecdf_inv = monotone_fn_inverter(ecdf, np.unique(data), vectorized=True)
+        # equispaced points in the quantile axis
+        quantile_out = np.linspace(ecdf(data[0]), 1.0, num_quantiles)
+        # corresponding data values
+        data_out = ecdf_inv(quantile_out)
+    else:
+        raise ValueError('"equispace" must be "data" or "quantile"')
 
-    # invert the ECDF so that we find the area values that correspond to the quantiles
-    area_by_quantile = np.full(shape=quantile_list.shape, fill_value=np.nan, dtype=np.float32)
-    ecdf_inv = monotone_fn_inverter(ecdf, data, vectorized=True)
-    area_by_quantile[idx] = ecdf_inv(quantile_list[idx])
-
-    # Some estimators give confidence intervals on the *quantiles*,
-    # others give intervals on the *data*; which do we have?
+    # some estimators give confidence intervals on the *quantiles*, others give intervals on the *data*;
+    # which do we have?
     if estimator_name == 'DKW':
         estimator_type = 'quantile'
         cdf_error_function = CDF_error_DKW_band
@@ -1011,33 +1024,14 @@ def ecdf_confidence(data, num_quantiles=101, confidence=0.95, data_already_sorte
     else:
         raise NameError('Unknown error estimator name: ' + estimator_name)
 
-    area_ci_low = np.zeros(np.shape(quantile_list))
-    area_ci_high = np.zeros(np.shape(quantile_list))
+    # compute interval for each output point
+    quantile_ci_lo = np.zeros(shape=(num_quantiles,), dtype=np.float32)
+    quantile_ci_hi = np.zeros(shape=(num_quantiles,), dtype=np.float32)
     if estimator_type == 'quantile':
-        for i, q in enumerate(quantile_list):
-            area_ci_low[i] = cdf_error_function(len(data), q, low_conf)
-            area_ci_high[i] = cdf_error_function(len(data), q, high_conf)
+        for i, q in enumerate(quantile_out):
+            quantile_ci_lo[i] = cdf_error_function(len(data), q, ci_lo)
+            quantile_ci_hi[i] = cdf_error_function(len(data), q, ci_hi)
     else:
         raise NameError('Unknown error estimator type: ' + estimator_type)
 
-    return quantile_list, area_by_quantile, area_ci_low, area_ci_high
-
-
-def hist_confidence(data, num_quantile_regions=100, confidence=0.95, data_already_sorted=False,
-                    color='green', label='', alpha=0.3, estimator_name='beta', ax=None):
-    """
-    Plot empirical histogram with confidence intervals, as first difference of the ECDF.
-
-    Derived from plot_CDF_confidence (https://github.com/wfbradley/CDF-confidence/blob/master/CDF_confidence.py).
-    :param data: numpy.array with the 1D data to compute the histogram and CI for.
-    :param num_quantile_regions: (def 100) For 100, estimate confidence interval at 1%, 2%, 3%, ..., 99%.
-    :param confidence: (def 0.95) 0.95 = 95-CI means the confidence interval [2.5%, 97.5%].
-    :param data_already_sorted:
-    :param color:
-    :param label:
-    :param alpha:
-    :param estimator_name:
-    :param ax: (def None) Use default axes plt.gca().
-    :return:
-    """
-
+    return data_out, quantile_out, quantile_ci_lo, quantile_ci_hi
