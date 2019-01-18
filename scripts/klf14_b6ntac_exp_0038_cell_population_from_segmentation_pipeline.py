@@ -675,11 +675,56 @@ if DEBUG:
 
 # plot ECDF with confidence internals
 if DEBUG:
-    plt.clf()
 
-    plt.subplot(221)
-    plot_CDF_confidence(area_pipeline_gtruth_f_PAT, confidence=0.95, num_quantile_regions=100)
-    plot_CDF_confidence(area_pipeline_gtruth_f_MAT, confidence=0.95, num_quantile_regions=100, color='C1')
-    ax.fill_between(interpolated_quantile_list, low, high, alpha=alpha, color=color)
+    # beta function
+    plt.clf()
+    alpha = 0.5
+
+    area_out, quantile_out, quantile_ci_lo, quantile_ci_hi = \
+        cytometer.utils.ecdf_confidence(area_pipeline_gtruth_f_PAT, num_quantiles=101, equispace='quantiles',
+                                        confidence=0.95, estimator_name='beta')
+    plt.plot(area_out, quantile_out, color='C0', label='PAT')
+    plt.gca().fill_between(area_out, quantile_ci_lo, quantile_ci_hi, alpha=alpha, color='C0')
+
+    area_out, quantile_out, quantile_ci_lo, quantile_ci_hi = \
+        cytometer.utils.ecdf_confidence(area_pipeline_gtruth_f_MAT, num_quantiles=101, equispace='quantiles',
+                                        confidence=0.95, estimator_name='beta')
+    plt.plot(area_out, quantile_out, color='C1', label='MAT')
+    plt.gca().fill_between(area_out, quantile_ci_lo, quantile_ci_hi, alpha=alpha, color='C1')
+
+    plt.legend()
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel(r'area ($\mu m^2$)', fontsize=14)
+    plt.ylabel('percentile', fontsize=14)
+    plt.title('ECDF with Beta function confidence bands')
+
+    if SAVE_FIGS:
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_ecdf_ci_beta.png'))
+
+    # Dvoretzky-Kiefer-Wolfowitz confidence band
+    plt.clf()
+    alpha = 0.5
+
+    area_out, quantile_out, quantile_ci_lo, quantile_ci_hi = \
+        cytometer.utils.ecdf_confidence(area_pipeline_gtruth_f_PAT, num_quantiles=101, equispace='quantiles',
+                                        confidence=0.95, estimator_name='DKW')
+    plt.plot(area_out, quantile_out, color='C0', label='PAT')
+    plt.gca().fill_between(area_out, quantile_ci_lo, quantile_ci_hi, alpha=alpha, color='C0')
+
+    area_out, quantile_out, quantile_ci_lo, quantile_ci_hi = \
+        cytometer.utils.ecdf_confidence(area_pipeline_gtruth_f_MAT, num_quantiles=101, equispace='quantiles',
+                                        confidence=0.95, estimator_name='DKW')
+    plt.plot(area_out, quantile_out, color='C1', label='MAT')
+    plt.gca().fill_between(area_out, quantile_ci_lo, quantile_ci_hi, alpha=alpha, color='C1')
+
+    plt.legend()
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel(r'area ($\mu m^2$)', fontsize=14)
+    plt.ylabel('percentile', fontsize=14)
+    plt.title('ECDF with Dvoretzky-Kiefer-Wolfowitz confidence bands')
+
+    if SAVE_FIGS:
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_ecdf_ci_dkw.png'))
+
 
 # error bars for histograms: http://scikit-hep.org/examples/visual/errorbars.html
