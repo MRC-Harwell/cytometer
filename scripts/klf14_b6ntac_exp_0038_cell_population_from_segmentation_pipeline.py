@@ -32,7 +32,7 @@ from skimage.morphology import watershed
 from skimage.measure import regionprops
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -732,54 +732,50 @@ if DEBUG:
 '''
 
 # female
-quantiles, pval = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_f_PAT, area_pipeline_gtruth_f_MAT,
-                                                num_quantiles=101, num_perms=10000)
+quantiles_gtruth_f_PAT, pval_gtruth_f_PAT = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_f_PAT, area_pipeline_gtruth_f_MAT,
+                                                                          num_quantiles=101, num_perms=10000)
 
 if DEBUG:
 
     plt.clf()
 
     # masked curve
-    ym = np.ma.masked_where(np.logical_or(pval > 0.05, np.isnan(pval)),
+    ym = np.ma.masked_where(np.logical_or(pval_gtruth_f_PAT > 0.05, np.isnan(pval_gtruth_f_PAT)),
                             (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100)
 
     ax = plt.subplot(211)
     plt.plot(perc, (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100,
              label='Hand traced')
     plt.plot(perc, ym, linewidth=4)
-    # plt.plot(perc, (
-    #             perc_area_pipeline_gtruth_f_MAT - perc_area_pipeline_gtruth_f_PAT) / perc_area_pipeline_gtruth_f_PAT * 100,
-    #          label='Pipeline HT Dice>=0.9')
-    # plt.plot(perc, (
-    #             perc_area_pipeline_quality_f_MAT - perc_area_pipeline_quality_f_PAT) / perc_area_pipeline_quality_f_PAT * 100,
-    #          label='Pipeline Quality>=0.9')
     ax.set_ylim(-50, 0)
     plt.title('Female', fontsize=16)
-    plt.xlabel('Population percentile', fontsize=14)
-    plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+    plt.ylabel('Area change from\n PAT to MAT (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     # plt.legend()
 
     ax = plt.subplot(212)
-    plt.plot(quantiles * 100, pval)
-    plt.plot([0, 100], [0.05, 0.05])
+    plt.plot(quantiles_gtruth_f_PAT * 100, pval_gtruth_f_PAT)
+    plt.semilogy([0, 100], [0.05, 0.05], label='p=0.05')
+    plt.semilogy([0, 100], [0.01, 0.01], label='p=0.01')
+    plt.semilogy([0, 100], [0.001, 0.001], label='p=0.001')
     plt.xlabel('Population percentile', fontsize=14)
     plt.ylabel('P-value', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend()
 
     if SAVE_FIGS:
         plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_permutation_testing_female.png'))
 
 # male
-quantiles, pval = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_m_PAT, area_pipeline_gtruth_m_MAT,
-                                                num_quantiles=101, num_perms=10000)
+quantiles_gtruth_m_PAT, pval_gtruth_m_PAT = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_m_PAT, area_pipeline_gtruth_m_MAT,
+                                                                          num_quantiles=101, num_perms=10000)
 
 if DEBUG:
 
     plt.clf()
 
     # masked curve
-    ym = np.ma.masked_where(np.logical_or(pval > 0.05, np.isnan(pval)),
+    ym = np.ma.masked_where(np.logical_or(pval_gtruth_m_PAT > 0.05, np.isnan(pval_gtruth_m_PAT)),
                             (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100)
 
     ax = plt.subplot(211)
@@ -787,18 +783,20 @@ if DEBUG:
              label='Hand traced')
     plt.plot(perc, ym, linewidth=4)
     ax.set_ylim(-50, 0)
-    plt.title('Male', fontsize=16)
-    plt.xlabel('Population percentile', fontsize=14)
-    plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+    plt.title('Female', fontsize=16)
+    plt.ylabel('Area change from\n PAT to MAT (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     # plt.legend()
 
     ax = plt.subplot(212)
-    plt.plot(quantiles * 100, pval)
-    plt.plot([0, 100], [0.05, 0.05])
+    plt.plot(quantiles_gtruth_m_PAT * 100, pval_gtruth_m_PAT)
+    plt.semilogy([0, 100], [0.05, 0.05], label='p=0.05')
+    plt.semilogy([0, 100], [0.01, 0.01], label='p=0.01')
+    plt.semilogy([0, 100], [0.001, 0.001], label='p=0.001')
     plt.xlabel('Population percentile', fontsize=14)
     plt.ylabel('P-value', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend()
 
     if SAVE_FIGS:
         plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_permutation_testing_male.png'))
