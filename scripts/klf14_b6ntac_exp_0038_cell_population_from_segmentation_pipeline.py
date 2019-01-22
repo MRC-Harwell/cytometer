@@ -676,6 +676,8 @@ if DEBUG:
 # plot ECDF with confidence internals
 if DEBUG:
 
+    # error bars for histograms: http://scikit-hep.org/examples/visual/errorbars.html
+
     # beta function
     plt.clf()
     alpha = 0.5
@@ -726,5 +728,78 @@ if DEBUG:
     if SAVE_FIGS:
         plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_ecdf_ci_dkw.png'))
 
+'''Permutation testing of histology differences
+'''
 
-# error bars for histograms: http://scikit-hep.org/examples/visual/errorbars.html
+# female
+quantiles, pval = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_f_PAT, area_pipeline_gtruth_f_MAT,
+                                                num_quantiles=101, num_perms=10000)
+
+if DEBUG:
+
+    plt.clf()
+
+    # masked curve
+    ym = np.ma.masked_where(np.logical_or(pval > 0.05, np.isnan(pval)),
+                            (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100)
+
+    ax = plt.subplot(211)
+    plt.plot(perc, (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100,
+             label='Hand traced')
+    plt.plot(perc, ym, linewidth=4)
+    # plt.plot(perc, (
+    #             perc_area_pipeline_gtruth_f_MAT - perc_area_pipeline_gtruth_f_PAT) / perc_area_pipeline_gtruth_f_PAT * 100,
+    #          label='Pipeline HT Dice>=0.9')
+    # plt.plot(perc, (
+    #             perc_area_pipeline_quality_f_MAT - perc_area_pipeline_quality_f_PAT) / perc_area_pipeline_quality_f_PAT * 100,
+    #          label='Pipeline Quality>=0.9')
+    ax.set_ylim(-50, 0)
+    plt.title('Female', fontsize=16)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    # plt.legend()
+
+    ax = plt.subplot(212)
+    plt.plot(quantiles * 100, pval)
+    plt.plot([0, 100], [0.05, 0.05])
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('P-value', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+    if SAVE_FIGS:
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_permutation_testing_female.png'))
+
+# male
+quantiles, pval = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_m_PAT, area_pipeline_gtruth_m_MAT,
+                                                num_quantiles=101, num_perms=10000)
+
+if DEBUG:
+
+    plt.clf()
+
+    # masked curve
+    ym = np.ma.masked_where(np.logical_or(pval > 0.05, np.isnan(pval)),
+                            (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100)
+
+    ax = plt.subplot(211)
+    plt.plot(perc, (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100,
+             label='Hand traced')
+    plt.plot(perc, ym, linewidth=4)
+    ax.set_ylim(-50, 0)
+    plt.title('Male', fontsize=16)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('Area change from PAT to MAT (%)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    # plt.legend()
+
+    ax = plt.subplot(212)
+    plt.plot(quantiles * 100, pval)
+    plt.plot([0, 100], [0.05, 0.05])
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('P-value', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+    if SAVE_FIGS:
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_permutation_testing_male.png'))
+
