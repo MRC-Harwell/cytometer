@@ -957,7 +957,7 @@ def rescale_intensity(im, ignore_value=None):
 
     return im
 
-# data = area_pipeline_gtruth_f_PAT
+
 def ecdf_confidence(data, num_quantiles=101, equispace='quantiles', confidence=0.95, estimator_name='beta'):
     """
     Compute empirical ECDF with confidence intervals/bands.
@@ -1035,3 +1035,77 @@ def ecdf_confidence(data, num_quantiles=101, equispace='quantiles', confidence=0
         raise NameError('Unknown error estimator type: ' + estimator_type)
 
     return data_out, quantile_out, quantile_ci_lo, quantile_ci_hi
+
+
+# permutation test
+#
+# Overview on permutation test: http://rasbt.github.io/mlxtend/user_guide/evaluate/permutation_test/#overview
+def compare_ecdfs(x, y, num_quantiles=101, num_perms=1000):
+
+    def compute_test_statistics(x, y, quantiles):
+        """
+        Compute test statistic for each quantile.
+
+        :param x: see compare_ecdfs().
+        :param y: see compare_ecdfs().
+        :param num_quantiles:
+        :return:
+        """
+
+        # compute ECDF functions for each bootstrap sampling
+        x_ecdf_func = ECDF(x)
+        y_ecdf_func = ECDF(y)
+
+        # inverse of the ECDF functions
+        x = np.unique(x)
+        y = np.unique(y)
+        x_ecdf_func_inv = monotone_fn_inverter(x_ecdf_func, x, vectorized=True)
+        y_ecdf_func_inv = monotone_fn_inverter(y_ecdf_func, y, vectorized=True)
+
+        # small quantile values are outside the interpolation range, so they cannot be used for computations
+        idx = quantiles >= np.max([x_ecdf_func(x[0]), y_ecdf_func(y[0])])
+
+        # data values that correspond to the quantiles
+        x_data = x_ecdf_func_inv(quantiles[idx])
+        y_data = y_ecdf_func_inv(quantiles[idx])
+
+        # compute test statistic for each quantile
+        ts = np.full(shape=(1, len(quantiles)), dtype=np.float32, fill_value=np.nan)
+        ts[0, idx] = np.abs(x_data - y_data)  # two-sided test
+
+        return ts
+
+    # number of samples
+    nx = len(x)
+    ny = len(y)
+
+    # equispaced points in the quantile axis
+    quantiles = np.linspace(0.0, 1.0, num_quantiles)
+
+    # merge data samples
+    xy = np.concatenate((x, y))
+
+    # compute test statistic for each quantile
+    t = compute_test_statistics(x, y, quantiles)
+
+    # allocate memory to keep the bootstrap samples of the test statistic
+    ts = np.full(shape=(num_perms, num_quantiles), dtype=np.float32, fill_value=np.nan)
+
+    # repeat bootstrap sampling
+    for b in range(num_perms):
+
+        # sample with replacement from the merged data vectors
+        xs = np.random.choice(xy, size=(nx,), replace=True)
+        ys = np.random.choice(xy, size=(ny,), replace=True)
+
+        # compute test statistic for each quantile
+        ts[b, :] = compute_test_statistics(xs, ys, quantiles)
+
+        # compare the test statistic of the input to the null-distribution created by the bootstrap sampling
+        idx = np.logical_not(np.isnan(ts[b, :]))
+        ts[b, idx] = ts[b, idx] >= t[0, idx]
+
+    # p-value = N_(ts >= t) / N_ts
+    pval = np.mean(ts, axis=0)
+
+    return quantiles, pval
