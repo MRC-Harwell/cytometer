@@ -22,6 +22,7 @@ import tensorflow as tf
 from cytometer.models import change_input_size
 from cytometer.CDF_confidence import CDF_error_DKW_band, CDF_error_beta
 from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
+from statsmodels.stats.multitest import multipletests
 
 DEBUG = False
 
@@ -1037,10 +1038,46 @@ def ecdf_confidence(data, num_quantiles=101, equispace='quantiles', confidence=0
     return data_out, quantile_out, quantile_ci_lo, quantile_ci_hi
 
 
-# permutation test
-#
-# Overview on permutation test: http://rasbt.github.io/mlxtend/user_guide/evaluate/permutation_test/#overview
-def compare_ecdfs(x, y, num_quantiles=101, num_perms=1000):
+def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest_method=None):
+    """
+    Compute p-values for the difference between each percentile point of the empirical cumulative distribution
+    functions (ECDFs) of two samples x, y.
+
+    This function allows multiple test adjustment of p-values using statsmodels.stats.multitest.multipletests.
+
+    This function is basically an implementation of permutation testing (see overview in
+    http://rasbt.github.io/mlxtend/user_guide/evaluate/permutation_test/#overview), but generating one p-value
+    for each percentile.
+
+    For example, if the median(x)=10, median(y)=7, this function computes the p-value, or probability
+    that the observed difference is due to mere chance. The median is the 50 percentile. This function
+    computes p-values for the differences between the 0, 1, 2, ..., 100 percentiles.
+
+    :param x: numpy.ndarray vector, data set 1.
+    :param y: numpy.ndarray vector, data set 2.
+    :param alpha: (def 0.05) float. Error rate. Confidence is 1-alpha.
+    :param num_quantiles: (def 101) Number of points the quantile range is split into. For 101, the
+    quantiles are the percentiles 0%, 1%, 2%, ..., 100%.
+    :param num_perms: (def 1000) Number of bootstrap permutations the p-values are estimated from.
+    :param multitest_method: (def None) Adjustment of p-values due to multitesting. These are the same
+    values as for statsmodels.stats.multitest.multipletests. Currently
+    (https://www.statsmodels.org/dev/_modules/statsmodels/stats/multitest.html),
+        - `bonferroni` : one-step correction
+        - `sidak` : one-step correction
+        - `holm-sidak` : step down method using Sidak adjustments
+        - `holm` : step-down method using Bonferroni adjustments
+        - `simes-hochberg` : step-up method  (independent)
+        - `hommel` : closed method based on Simes tests (non-negative)
+        - `fdr_bh` : Benjamini/Hochberg  (non-negative)
+        - `fdr_by` : Benjamini/Yekutieli (negative)
+        - `fdr_tsbh` : two stage fdr correction (non-negative)
+        - `fdr_tsbky` : two stage fdr correction (non-negative)
+    :return:
+    quantiles: numpy.ndarray vector with quantile values in [0.0, 1.0].
+    pval: corresponding p-values for each quantile, whether adjusted or not.
+    reject: boolean vector, pval <= alpha_c (where alpha_c is the corrected alpha value due to multiple test
+    adjustment).
+    """
 
     def compute_test_statistics(x, y, quantiles):
         """
@@ -1048,8 +1085,8 @@ def compare_ecdfs(x, y, num_quantiles=101, num_perms=1000):
 
         :param x: see compare_ecdfs().
         :param y: see compare_ecdfs().
-        :param num_quantiles:
-        :return:
+        :param quantiles: vector of quantile values, e.g. [0.00, 0.01, 0.02, ..., 1.00].
+        :return: ts (numpy.ndarray vector) with test statistic values, one per quantile.
         """
 
         # compute ECDF functions for each bootstrap sampling
@@ -1108,4 +1145,13 @@ def compare_ecdfs(x, y, num_quantiles=101, num_perms=1000):
     # p-value = N_(ts >= t) / N_ts
     pval = np.mean(ts, axis=0)
 
-    return quantiles, pval
+    # p-values under error rate
+    reject = pval <= alpha
+
+    # apply multiple test correction
+    if multitest_method is not None:
+        idx = np.logical_not(np.isnan(pval))
+        reject[idx], pval[idx], _, _ = multipletests(pval[idx], alpha=alpha, method=multitest_method,
+                                                     is_sorted=False, returnsorted=False)
+
+    return quantiles, pval, reject

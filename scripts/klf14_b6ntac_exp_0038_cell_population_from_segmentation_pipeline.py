@@ -731,30 +731,40 @@ if DEBUG:
 '''Permutation testing of histology differences
 '''
 
-# female
-quantiles_gtruth_f_PAT, pval_gtruth_f_PAT = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_f_PAT, area_pipeline_gtruth_f_MAT,
-                                                                          num_quantiles=101, num_perms=10000)
+# female, no multiple test correction
+quantiles_gtruth_f, pval_gtruth_f, _ = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_f_PAT,
+                                                                     area_pipeline_gtruth_f_MAT,
+                                                                     num_quantiles=101, num_perms=10000)
+
+# female, multiple test correction
+_, pvaladj_gtruth_f, _ = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_f_PAT,
+                                                       area_pipeline_gtruth_f_MAT,
+                                                       num_quantiles=101, num_perms=10000,
+                                                       multitest_method='fdr_tsbky')
 
 if DEBUG:
 
     plt.clf()
 
     # masked curve
-    ym = np.ma.masked_where(np.logical_or(pval_gtruth_f_PAT > 0.05, np.isnan(pval_gtruth_f_PAT)),
+    ym = np.ma.masked_where(np.logical_or(pval_gtruth_f > 0.05, np.isnan(pval_gtruth_f)),
+                            (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100)
+    ymadj = np.ma.masked_where(np.logical_or(pvaladj_gtruth_f > 0.05, np.isnan(pvaladj_gtruth_f)),
                             (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100)
 
     ax = plt.subplot(211)
     plt.plot(perc, (perc_area_gtruth_f_MAT - perc_area_gtruth_f_PAT) / perc_area_gtruth_f_PAT * 100,
              label='Hand traced')
-    plt.plot(perc, ym, linewidth=4)
+    plt.plot(perc, ym, linewidth=4, label=r'$p\leq 0.005$')
     ax.set_ylim(-50, 0)
     plt.title('Female', fontsize=16)
     plt.ylabel('Area change from\n PAT to MAT (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    # plt.legend()
+    plt.legend()
 
     ax = plt.subplot(212)
-    plt.plot(quantiles_gtruth_f_PAT * 100, pval_gtruth_f_PAT)
+    plt.plot(quantiles_gtruth_f * 100, pval_gtruth_f, label='uncorrected')
+    plt.plot(quantiles_gtruth_f * 100, pvaladj_gtruth_f, label='Benjamini/Yekutieli')
     plt.semilogy([0, 100], [0.05, 0.05], label='p=0.05')
     plt.semilogy([0, 100], [0.01, 0.01], label='p=0.01')
     plt.semilogy([0, 100], [0.001, 0.001], label='p=0.001')
@@ -766,30 +776,40 @@ if DEBUG:
     if SAVE_FIGS:
         plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0038_permutation_testing_female.png'))
 
-# male
-quantiles_gtruth_m_PAT, pval_gtruth_m_PAT = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_m_PAT, area_pipeline_gtruth_m_MAT,
-                                                                          num_quantiles=101, num_perms=10000)
+# male, no correction
+quantiles_gtruth_m, pval_gtruth_m, _ = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_m_PAT,
+                                                                     area_pipeline_gtruth_m_MAT,
+                                                                     num_quantiles=101, num_perms=10000)
+
+# male, multiple test correction
+_, pvaladj_gtruth_m, _ = cytometer.utils.compare_ecdfs(area_pipeline_gtruth_m_PAT,
+                                                       area_pipeline_gtruth_m_MAT,
+                                                       num_quantiles=101, num_perms=10000,
+                                                       multitest_method='fdr_tsbky')
 
 if DEBUG:
 
     plt.clf()
 
     # masked curve
-    ym = np.ma.masked_where(np.logical_or(pval_gtruth_m_PAT > 0.05, np.isnan(pval_gtruth_m_PAT)),
+    ym = np.ma.masked_where(np.logical_or(pval_gtruth_m > 0.05, np.isnan(pval_gtruth_m)),
                             (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100)
+    ymadj = np.ma.masked_where(np.logical_or(pvaladj_gtruth_m > 0.05, np.isnan(pvaladj_gtruth_m)),
+                               (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100)
 
     ax = plt.subplot(211)
     plt.plot(perc, (perc_area_gtruth_m_MAT - perc_area_gtruth_m_PAT) / perc_area_gtruth_m_PAT * 100,
              label='Hand traced')
-    plt.plot(perc, ym, linewidth=4)
+    plt.plot(perc, ym, linewidth=4, label=r'$p\leq 0.005$')
     ax.set_ylim(-50, 0)
-    plt.title('Female', fontsize=16)
+    plt.title('Male', fontsize=16)
     plt.ylabel('Area change from\n PAT to MAT (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    # plt.legend()
+    plt.legend()
 
     ax = plt.subplot(212)
-    plt.plot(quantiles_gtruth_m_PAT * 100, pval_gtruth_m_PAT)
+    plt.plot(quantiles_gtruth_m * 100, pval_gtruth_m, label='uncorrected')
+    plt.plot(quantiles_gtruth_m * 100, pvaladj_gtruth_m, label='Benjamini/Yekutieli')
     plt.semilogy([0, 100], [0.05, 0.05], label='p=0.05')
     plt.semilogy([0, 100], [0.01, 0.01], label='p=0.01')
     plt.semilogy([0, 100], [0.001, 0.001], label='p=0.001')
