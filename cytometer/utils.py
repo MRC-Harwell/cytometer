@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import six
 import matplotlib.pyplot as plt
+from statistics import mode
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
 from scipy.sparse import dok_matrix
@@ -44,84 +45,104 @@ def clear_mem():
     return
 
 
-# data_dir = '/home/rcasero/data/roger_data'
+# data_dir = '/home/rcasero/scan_srv2_cox/Maz Yon'
 # files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
 # filename = os.path.join(data_dir, files_list[0])
-def segment_foreground(filename, downsample_factor=8.0):
+def segment_foreground(filename, downsample_factor=8.0, dilation_size=25, component_size_threshold=1e5):
+    """
+    Rough segmentation of large segmentation objects in a microscope image with a format that can be read
+    by OpenSlice. The objects are darker than the background.
+
+    The function works by first estimating the colour of the background as the mode of all colours. This assumes
+    that background pixels are the most numerous and relatively consistent in colour.
+
+    Foreground pixels are selected as those that are one standard deviation darker than the background mode. Then,
+    morphological operators are applied to dilate and connect those pixels. Selected objects are those connected
+    components larger than a given threashold (1e5 pixels by default).
+
+    :param filename: Path and filename of the microscope image. This file must be in a format understood by OpenSlice.
+    :param downsample_factor: (def 8) For speed, the image will be loaded at this downsampled resolution. This
+    downsample factor must exist in the multilevel pyramid in the file.
+    :param dilation_size: (def 25) Thresholded foreground pixels will be dilated with a (dilation_size, dilation_size)
+    kernel.
+    :param component_size_threshold: (def 1e5) Minimum number of pixels to consider a connected component as a
+    foreground object.
+    :return:
+    """
 
     # load file
     im = openslide.OpenSlide(filename)
 
-    # level for a x8 downsample factor
-    level_8 = im.get_best_level_for_downsample(downsample_factor)
+    # level that corresponds to the downsample factor
+    downsample_level = im.get_best_level_for_downsample(downsample_factor)
 
-    assert(im.level_downsamples[level_8] == downsample_factor)
+    if im.level_downsamples[downsample_level] != downsample_factor:
+        raise ValueError('File does not contain level with downsample factor ' + str(downsample_factor)
+                         + '.\nAvailable levels: ' + str(im.level_downsamples))
 
     # get downsampled image
-    im_8 = im.read_region(location=(0, 0), level=level_8, size=im.level_dimensions[level_8])
-    im_8 = np.array(im_8)
-    im_8 = im_8[:, :, 0:3]
+    im_downsampled = im.read_region(location=(0, 0), level=downsample_level, size=im.level_dimensions[downsample_level])
+    im_downsampled = np.array(im_downsampled)
+    im_downsampled = im_downsampled[:, :, 0:3]
 
     if DEBUG:
         plt.clf()
-        plt.imshow(im_8)
-        plt.pause(.1)
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
 
     # reshape image to matrix with one column per colour channel
-    im_8_mat = im_8.copy()
-    im_8_mat = im_8_mat.reshape((im_8_mat.shape[0] * im_8_mat.shape[1], im_8_mat.shape[2]))
+    im_downsampled_mat = im_downsampled.copy()
+    im_downsampled_mat = im_downsampled_mat.reshape((im_downsampled_mat.shape[0] * im_downsampled_mat.shape[1],
+                                                     im_downsampled_mat.shape[2]))
 
     # background colour
     background_colour = []
     for i in range(3):
-        background_colour += [mode(im_8_mat[:, i]), ]
-    background_colour_std = np.std(im_8_mat, axis=0)
+        background_colour += [mode(im_downsampled_mat[:, i]), ]
+    background_colour_std = np.std(im_downsampled_mat, axis=0)
 
     # threshold segmentation
-    seg = np.ones(im_8.shape[0:2], dtype=bool)
+    seg = np.ones(im_downsampled.shape[0:2], dtype=bool)
     for i in range(3):
-        seg = np.logical_and(seg, im_8[:, :, i] < background_colour[i] - background_colour_std[i])
+        seg = np.logical_and(seg, im_downsampled[:, :, i] < background_colour[i] - background_colour_std[i])
     seg = seg.astype(dtype=np.uint8)
     seg[seg == 1] = 255
 
     # dilate the segmentation to fill gaps within tissue
-    kernel = np.ones((25, 25), np.uint8)
+    kernel = np.ones((dilation_size, dilation_size), np.uint8)
     seg = cv2.dilate(seg, kernel, iterations=1)
     seg = cv2.erode(seg, kernel, iterations=1)
 
     # find connected components
-    labels = seg.copy()
     nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
     lblareas = stats[:, cv2.CC_STAT_AREA]
 
     # labels of large components, that we assume correspond to tissue areas
-    labels_large = np.where(lblareas > 1e5)[0]
+    labels_large = np.where(lblareas > component_size_threshold)[0]
     labels_large = list(labels_large)
 
     # label=0 is the background, so we remove it
     labels_large.remove(0)
 
     # only set pixels that belong to the large components
-    seg = np.zeros(im_8.shape[0:2], dtype=np.uint8)
+    seg = np.zeros(im_downsampled.shape[0:2], dtype=np.uint8)
     for i in labels_large:
         seg[labels == i] = 255
 
-    # save segmentation as a tiff file (with ZLIB compression)
-    outfilename = os.path.basename(file)
-    outfilename = os.path.splitext(outfilename)[0] + '_seg'
-    outfilename = os.path.join(seg_dir, outfilename + '.tif')
-    tifffile.imsave(outfilename, seg,
-                    compress=9,
-                    resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
-                                int(im.properties["tiff.YResolution"]) / downsample_factor,
-                                im.properties["tiff.ResolutionUnit"].upper()))
+    # # save segmentation as a tiff file (with ZLIB compression)
+    # outfilename = os.path.basename(file)
+    # outfilename = os.path.splitext(outfilename)[0] + '_seg'
+    # outfilename = os.path.join(seg_dir, outfilename + '.tif')
+    # tifffile.imsave(outfilename, seg,
+    #                 compress=9,
+    #                 resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
+    #                             int(im.properties["tiff.YResolution"]) / downsample_factor,
+    #                             im.properties["tiff.ResolutionUnit"].upper()))
 
     # plot the segmentation
     if DEBUG:
-        plt.figure()
-        plt.clf()
+        plt.subplot(212)
         plt.imshow(seg)
-        plt.pause(.1)
 
 
 
