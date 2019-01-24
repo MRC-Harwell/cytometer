@@ -45,10 +45,8 @@ def clear_mem():
     return
 
 
-# data_dir = '/home/rcasero/scan_srv2_cox/Maz Yon'
-# files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
-# filename = os.path.join(data_dir, files_list[0])
-def segment_foreground(filename, downsample_factor=8.0, dilation_size=25, component_size_threshold=1e5):
+def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25, component_size_threshold=1e5,
+                          return_im=False):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
     by OpenSlice. The objects are darker than the background.
@@ -67,7 +65,10 @@ def segment_foreground(filename, downsample_factor=8.0, dilation_size=25, compon
     kernel.
     :param component_size_threshold: (def 1e5) Minimum number of pixels to consider a connected component as a
     foreground object.
+    :param return_im: (def False) Whether to return also the downsampled image in filename.
     :return:
+    seg: downsampled segmentation mask.
+    [im_downsampled]: if return_im=True, this is the downsampled image in filename.
     """
 
     # load file
@@ -144,6 +145,10 @@ def segment_foreground(filename, downsample_factor=8.0, dilation_size=25, compon
         plt.subplot(212)
         plt.imshow(seg)
 
+    if return_im:
+        return seg, im_downsampled
+    else:
+        return seg
 
 
 def principal_curvatures_range_image(img, sigma=10):
