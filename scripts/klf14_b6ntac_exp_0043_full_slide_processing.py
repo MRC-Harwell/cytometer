@@ -1,4 +1,14 @@
+# cross-platform home directory
+from pathlib import Path
+home = str(Path.home())
+
 import os
+
+# limit number of GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+
+os.environ['KERAS_BACKEND'] = 'tensorflow'
+
 import openslide
 import numpy as np
 from statistics import mode
@@ -7,99 +17,95 @@ import cv2
 from random import randint, seed
 import tifffile
 import glob
+from cytometer.utils import rough_foreground_mask
+from pysto.imgproc import block_split, block_stack, imfuse
 
 
 DEBUG = False
+SAVE_FIGS = False
 
-# cross-platform home directory
-from pathlib import Path
-home = str(Path.home())
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+data_dir = os.path.join(home, root_data_dir, 'Maz Yon')
+training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
+seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
+figures_dir = os.path.join(root_data_dir, 'figures')
 
-data_dir = os.path.join(home, 'Data/cytometer_data/klf14/Maz Yon')
-training_dir = os.path.join(home, 'Data/cytometer_data/klf14/klf14_b6ntac_training')
-seg_dir = os.path.join(home, 'Data/cytometer_data/klf14/klf14_b6ntac_seg')
+# full resolution image window and network expected receptive field parameters
+fullres_box_size = np.array([1001, 1001])
+receptive_field = 131
+
+# rough_foreground_mask() parameters
 downsample_factor = 8.0
+dilation_size = 25
+component_size_threshold = 1e5
 
-box_size = 1001
-box_half_size = int((box_size - 1) / 2)
-n_samples = 5
+# block_split() parameters in downsampled image
+block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
+block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
 
 files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
 
+# file_i = 10; file = files_list[file_i]
 for file_i, file in enumerate(files_list):
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
-    # load file
-    im = openslide.OpenSlide(os.path.join(data_dir, file))
+    # rough segmentation of the tissue in the image
+    seg, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
+                                                component_size_threshold=component_size_threshold, return_im=True)
 
-    # level for a x8 downsample factor
-    level_8 = im.get_best_level_for_downsample(downsample_factor)
+    # # save segmentation as a tiff file (with ZLIB compression)
+    # outfilename = os.path.basename(file)
+    # outfilename = os.path.splitext(outfilename)[0] + '_seg'
+    # outfilename = os.path.join(seg_dir, outfilename + '.tif')
+    # tifffile.imsave(outfilename, seg,
+    #                 compress=9,
+    #                 resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
+    #                             int(im.properties["tiff.YResolution"]) / downsample_factor,
+    #                             im.properties["tiff.ResolutionUnit"].upper()))
 
-    assert(im.level_downsamples[level_8] == downsample_factor)
+    # number of blocks. We want a number of blocks that will produce approximately blocks of size
+    # 1001x1001 in the full resolution image
+    nblocks = np.floor(np.array(seg.shape) / block_len).astype(np.int)
 
-    # get downsampled image
-    im_8 = im.read_region(location=(0, 0), level=level_8, size=im.level_dimensions[level_8])
-    im_8 = np.array(im_8)
-    im_8 = im_8[:, :, 0:3]
+    # split downsampled segmentation into overlapping blocks
+    block_slices, blocks, _ = block_split(seg, nblocks=nblocks, pad_width=block_overlap,
+                                          mode='constant', constant_values=0)
 
     if DEBUG:
-        plt.clf()
-        plt.imshow(im_8)
-        plt.pause(.1)
+        # copy of blocks to display selected blocks
+        blocks_filled = blocks.copy()
 
-    # reshape image to matrix with one column per colour channel
-    im_8_mat = im_8.copy()
-    im_8_mat = im_8_mat.reshape((im_8_mat.shape[0] * im_8_mat.shape[1], im_8_mat.shape[2]))
+    # blocks that contain some tissue
+    has_tissue = np.zeros(shape=(len(blocks)), dtype=np.bool)
+    for block_i in range(len(blocks)):
+        has_tissue[block_i] = np.any(blocks[block_i])
+        if DEBUG and has_tissue[block_i]:
+            blocks_filled[block_i].fill(1)
 
-    # background colour
-    background_colour = []
-    for i in range(3):
-        background_colour += [mode(im_8_mat[:, i]), ]
-    background_colour_std = np.std(im_8_mat, axis=0)
-
-    # threshold segmentation
-    seg = np.ones(im_8.shape[0:2], dtype=bool)
-    for i in range(3):
-        seg = np.logical_and(seg, im_8[:, :, i] < background_colour[i] - background_colour_std[i])
-    seg = seg.astype(dtype=np.uint8)
-    seg[seg == 1] = 255
-
-    # dilate the segmentation to fill gaps within tissue
-    kernel = np.ones((25, 25), np.uint8)
-    seg = cv2.dilate(seg, kernel, iterations=1)
-    seg = cv2.erode(seg, kernel, iterations=1)
-
-    # find connected components
-    labels = seg.copy()
-    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
-    lblareas = stats[:, cv2.CC_STAT_AREA]
-
-    # labels of large components, that we assume correspond to tissue areas
-    labels_large = np.where(lblareas > 1e5)[0]
-    labels_large = list(labels_large)
-
-    # label=0 is the background, so we remove it
-    labels_large.remove(0)
-
-    # only set pixels that belong to the large components
-    seg = np.zeros(im_8.shape[0:2], dtype=np.uint8)
-    for i in labels_large:
-        seg[labels == i] = 255
-
-    # save segmentation as a tiff file (with ZLIB compression)
-    outfilename = os.path.basename(file)
-    outfilename = os.path.splitext(outfilename)[0] + '_seg'
-    outfilename = os.path.join(seg_dir, outfilename + '.tif')
-    tifffile.imsave(outfilename, seg,
-                    compress=9,
-                    resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
-                                int(im.properties["tiff.YResolution"]) / downsample_factor,
-                                im.properties["tiff.ResolutionUnit"].upper()))
-
-    # plot the segmentation
     if DEBUG:
-        plt.figure()
+        # reassemble blocks
+        seg_filled, _ = block_stack(blocks_filled, block_slices, pad_width=block_overlap)
+
         plt.clf()
+
+        plt.subplot(221)
+        plt.imshow(im_downsampled)
+        plt.title('Histology')
+
+        plt.subplot(222)
         plt.imshow(seg)
-        plt.pause(.1)
+        plt.title('Rough tissue segmentation')
+
+        plt.subplot(223)
+        plt.imshow(seg_filled)
+        plt.title('Blocks to be processed by pipeline')
+
+        plt.subplot(224)
+        plt.imshow(imfuse(seg, seg_filled * 255))
+        plt.title('Overlap of segmentation and blocks')
+
+        if SAVE_FIGS:
+            plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0043_blocks_for_pipeline.png'))
+
+    print('Selected blocks: ' + "{:.1f}".format(100 * np.count_nonzero(has_tissue) / len(blocks_filled)) + '%')
