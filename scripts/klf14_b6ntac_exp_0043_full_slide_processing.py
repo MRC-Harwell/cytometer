@@ -72,15 +72,14 @@ for file_i, file in enumerate(files_list):
     block_slices, blocks, _ = block_split(seg, nblocks=nblocks, pad_width=block_overlap,
                                           mode='constant', constant_values=0)
 
-    if DEBUG:
-        # copy of blocks to display selected blocks
-        blocks_filled = blocks.copy()
+    # copy of blocks to display selected blocks
+    blocks_filled = blocks.copy()
 
     # blocks that contain some tissue
     has_tissue = np.zeros(shape=(len(blocks)), dtype=np.bool)
     for block_i in range(len(blocks)):
         has_tissue[block_i] = np.any(blocks[block_i])
-        if DEBUG and has_tissue[block_i]:
+        if has_tissue[block_i]:
             blocks_filled[block_i].fill(1)
 
     if DEBUG:
@@ -109,3 +108,17 @@ for file_i, file in enumerate(files_list):
             plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0043_blocks_for_pipeline.png'))
 
     print('Selected blocks: ' + "{:.1f}".format(100 * np.count_nonzero(has_tissue) / len(blocks_filled)) + '%')
+
+    # convert slice coordinates to full resolution
+    fullres_block_slices = []
+    for slice_i, (slice_row, slice_col) in enumerate(block_slices):
+        # row-slice
+        fullres_block_slices.append([
+            slice(
+                int(slice_row.start * downsample_factor),
+                int(slice_row.stop * downsample_factor),
+                slice_row.step),
+            slice(
+                int(slice_col.start * downsample_factor),
+                int(slice_col.stop * downsample_factor),
+                slice_col.step)])
