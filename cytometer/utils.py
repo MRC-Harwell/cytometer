@@ -378,7 +378,6 @@ def match_overlapping_labels(labels_ref, labels_test):
     Then test and ref and removed from the matrix, so that they cannot be selected again. The next maximum
     Dice value is selected, and so on.
 
-
     :param labels_ref: np.ndarray matrix, some integer type. All pixels with the same label
     correspond to the same object.
     :param labels_test: np.ndarray matrix, some integer type. All pixels with the same label
@@ -477,6 +476,7 @@ def match_overlapping_labels(labels_ref, labels_test):
     assert(all(out['dice'] >= 0.0) and all(out['dice'] <= 1.0))
 
     return out
+
 
 def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                         training_window_len=401, smallest_cell_area=804, clear_border_lab=False):
@@ -688,6 +688,7 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model, smallest_cell_area=804):
     """
     Instance segmentation of cells using the contour + distance transformation pipeline.
+
     :param im: numpy.ndarray (image, row, col, channel) with RGB histology images.
     :param contour_model: filename or keras model for the contour detection neural network. This is assumed to
     be a convolutional network where the output has the same (row, col) as the input.
