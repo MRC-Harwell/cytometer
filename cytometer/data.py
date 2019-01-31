@@ -15,8 +15,9 @@ import ast
 from mahotas import bwperim
 import pysto.imgproc as pystoim
 import re
-import csv
 import six
+from svgpathtools import svg2paths
+
 
 DEBUG = False
 
@@ -377,6 +378,52 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     dmap = dmap.reshape((dmap.shape + (1,)))
 
     return dmap, mask, seg
+
+
+def read_paths_from_svg_file(file, tag='Cell'):
+    """
+    Read a SVG file produced by Gimp that contains paths (contours), and return a list of paths, where each path
+    is a list of (X,Y) point coordinates.
+
+    Only paths that have a label that starts with the chosen tag are read. This allows having different types of
+    objects in the SVG file (e.g. cells, edge cells, background, etc), but only read one type of objects.
+
+    :param file: path and name of SVG file.
+    :param tag: (def 'Cell'). Only paths with a label that starts with this tag will be read.
+    :return: [ path0, path1, ...] = [ [(X0,Y0), (X1,Y1), ...], ...]
+    """
+
+    # extract contour as a list of (X,Y) coordinates
+    def extract_contour(path):
+
+        contour = []
+        for pt in path:
+
+            # (X, Y) for each point
+            contour.append((np.real(pt.start), np.imag(pt.start)))
+
+            if DEBUG:
+                plt.plot(*zip(*contour))
+
+        return contour
+
+    # extract all paths from the SVG file
+    paths, attributes = svg2paths(file)
+
+    # loop paths
+    paths_out = []
+    for path, attribute in zip(paths, attributes):
+
+        # skip if the countour is not a cell (we also skip edge cells, as they are incomplete, and thus their area
+        # is misleading)
+        if not attribute['id'].startswith(tag):
+            continue
+
+        # extract contour polygon from the path object, and compute area
+        contour = extract_contour(path)
+        paths_out.append(contour)
+
+    return paths_out
 
 
 def read_keras_training_output(filename):
