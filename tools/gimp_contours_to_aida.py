@@ -2,6 +2,7 @@
 
 import sys
 import getopt
+from cytometer.data import read_paths_from_svg_file
 
 
 def main(argv):
@@ -25,6 +26,11 @@ def main(argv):
             outdir = arg
 
     print("Number of SVG files: " + str(len(svg_files)))
+
+    for file in svg_files:
+        print(file)
+        foo = read_paths_from_svg_file(file, tag='Cell')
+        print(foo)
 
 
 if __name__ == "__main__":
