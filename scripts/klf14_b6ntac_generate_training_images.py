@@ -1,6 +1,8 @@
 """
 Read full .ndpi slides, rough segmentation of tissue areas, random selection of centroids, extract
-1001x1001 windows around centroids
+1001x1001 windows around centroids.
+
+The windows are saved with row_R_col_C, where R, C are the row, col offset of the image.
 """
 
 import os
@@ -138,7 +140,8 @@ for file_i, file in enumerate(files_list):
 
         # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
         outfilename = os.path.basename(file)
-        outfilename = os.path.splitext(outfilename)[0] + '_row_'+ str(row).zfill(6) + '_col_' + str(col).zfill(6)
+        outfilename = os.path.splitext(outfilename)[0] + '_row_' + str(box_corner_row).zfill(6) \
+                      + '_col_' + str(box_corner_col).zfill(6)
         outfilename = os.path.join(training_dir, outfilename + '.tif')
         tifffile.imsave(outfilename, tile,
                         compress=9,
