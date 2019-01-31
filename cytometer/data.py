@@ -380,7 +380,7 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     return dmap, mask, seg
 
 
-def read_paths_from_svg_file(file, tag='Cell'):
+def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False):
     """
     Read a SVG file produced by Gimp that contains paths (contours), and return a list of paths, where each path
     is a list of (X,Y) point coordinates.
@@ -390,17 +390,18 @@ def read_paths_from_svg_file(file, tag='Cell'):
 
     :param file: path and name of SVG file.
     :param tag: (def 'Cell'). Only paths with a label that starts with this tag will be read.
+    :param add_offset_from_filename: (def False)
     :return: [ path0, path1, ...] = [ [(X0,Y0), (X1,Y1), ...], ...]
     """
 
     # extract contour as a list of (X,Y) coordinates
-    def extract_contour(path):
+    def extract_contour(path, x_offset=0, y_offset=0):
 
         contour = []
         for pt in path:
 
             # (X, Y) for each point
-            contour.append((np.real(pt.start), np.imag(pt.start)))
+            contour.append((np.real(pt.start) + x_offset, np.imag(pt.start) + y_offset))
 
             if DEBUG:
                 plt.plot(*zip(*contour))
@@ -409,6 +410,19 @@ def read_paths_from_svg_file(file, tag='Cell'):
 
     # extract all paths from the SVG file
     paths, attributes = svg2paths(file)
+
+    # add offset to point coordinates from the file name
+    if add_offset_from_filename:
+        file_basename = os.path.basename(file)  # remove path from filename
+        file_basename, _ = os.path.splitext(file_basename)  # remove extension
+        file_basename = file_basename.split('_')
+        row_i = file_basename.index('row')
+        y_offset = float(file_basename[row_i + 1])
+        col_i = file_basename.index('col')
+        x_offset = float(file_basename[col_i + 1])
+    else:
+        x_offset = 0
+        y_offset = 0
 
     # loop paths
     paths_out = []
@@ -419,11 +433,82 @@ def read_paths_from_svg_file(file, tag='Cell'):
         if not attribute['id'].startswith(tag):
             continue
 
-        # extract contour polygon from the path object, and compute area
-        contour = extract_contour(path)
+        # extract contour polygon from the path object
+        contour = extract_contour(path, x_offset=x_offset, y_offset=y_offset)
         paths_out.append(contour)
 
     return paths_out
+
+
+# outfile = file.replace('.svg', '.json')
+# xs = contour.copy()
+def write_paths_to_aida_json_file(xs, outfile):
+
+    def write_path(x, fp):
+        fp.write('        {\n')
+        fp.write('          "class": "",\n')
+        fp.write('          "type": "path",\n')
+        fp.write('          "color": {\n')
+        fp.write('            "fill": {\n')
+        fp.write('              "hue": 170,\n')
+        fp.write('              "saturation": 0.44,\n')
+        fp.write('              "lightness": 0.69,\n')
+        fp.write('              "alpha": 0.7\n')
+        fp.write('            },\n')
+        fp.write('            "stroke": {\n')
+        fp.write('              "hue": 170,\n')
+        fp.write('              "saturation": 0.44,\n')
+        fp.write('              "lightness": 0.69,\n')
+        fp.write('              "alpha": 1.0\n')
+        fp.write('            }\n')
+        fp.write('          },\n')
+        fp.write('          "segments": [\n')
+        for i, pt in enumerate(x):
+            fp.write('            {\n')
+            fp.write('              "point": {\n')
+            fp.write('                "x": ' + str(pt[0]) + ',\n')
+            fp.write('                "y": ' + str(pt[1]) + '\n')
+            fp.write('              },\n')
+            fp.write('              "handleIn": {\n')
+            fp.write('                "x": 0.0,\n')
+            fp.write('                "y": 0.0\n')
+            fp.write('              },\n')
+            fp.write('              "handleOut": {\n')
+            fp.write('                "x": 0.0,\n')
+            fp.write('                "y": 0.0\n')
+            fp.write('              }\n')
+            if i == len(x) - 1:
+                fp.write('            }\n')  # last point in the contour
+            else:
+                fp.write('            },\n')  # any other point in the contour
+        fp.write('          ],\n')
+        fp.write('          "closed": true\n')
+        fp.write('        }')
+
+    # create output file
+    fp = open(outfile, 'w')
+
+    # write file header
+    fp.write('{\n')
+    fp.write('  "name": "Cytometer segmentation",\n')
+    fp.write('  "layers": [\n')
+    fp.write('    {\n')
+    fp.write('      "name": "Cell layer",\n')
+    fp.write('      "opacity": 1,\n')
+    fp.write('      "items": [\n')
+    for i, x in enumerate(xs):
+        write_path(x, fp)
+        if i == len(xs) - 1:
+            fp.write('\n')  # last path
+        else:
+            fp.write(',\n')  # any other path
+    fp.write('      ]\n')
+    fp.write('    }\n')
+    fp.write('  ]\n')
+    fp.write('}\n')
+
+    # close file
+    fp.close()
 
 
 def read_keras_training_output(filename):
