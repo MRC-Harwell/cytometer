@@ -5,7 +5,7 @@ home = str(Path.home())
 import os
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -54,6 +54,13 @@ for file_i, file in enumerate(files_list):
     seg, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
                                                 component_size_threshold=component_size_threshold, return_im=True)
 
+    if DEBUG:
+        plt.clf()
+        plt.subplot(121)
+        plt.imshow(im_downsampled)
+        plt.subplot(122)
+        plt.imshow(seg)
+
     # # save segmentation as a tiff file (with ZLIB compression)
     # outfilename = os.path.basename(file)
     # outfilename = os.path.splitext(outfilename)[0] + '_seg'
@@ -63,6 +70,67 @@ for file_i, file in enumerate(files_list):
     #                 resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
     #                             int(im.properties["tiff.YResolution"]) / downsample_factor,
     #                             im.properties["tiff.ResolutionUnit"].upper()))
+
+
+# downsample_factor=8.0
+# max_window_size=(1000, 1000)
+# receptive_field=(130, 130)
+def foo(seg, downsample_factor=1.0, max_window_size=(1001, 1001), receptive_field=(130, 130)):
+    """
+
+    :param seg:
+    :param max_window_size: this is the largest (row, col) image size that be can pass to the neural network (usually,
+    due to GPU memory limitations).
+    :param receptive_field:
+    :return:
+    """
+
+    # maximum size of the processing window without the overlapping edges
+    max_window_size_no_borders = (max_window_size[0] - receptive_field[0], max_window_size[1] - receptive_field[1])
+
+    # for convenience, receptive_field/2
+    receptive_field_2 = (np.ceil(receptive_field[0] / 2.0), np.ceil(receptive_field[1] / 2.0))
+
+    # rows with segmentation pixels
+    seg_rows = np.any(seg, axis=1)
+
+    # place the vertical side of a window without borders at the top
+    first_row = np.where(seg_rows)[0]
+    if len(first_row) == 0:
+        return
+    first_row = first_row[0]
+
+    # add a border on top of the window to account for receptive field
+    first_row = np.int(np.max([0, first_row - receptive_field_2[0]]))
+
+    # bottom of the window (we follow the python convention that e.g. 3:5 = [3, 4], i.e. last_row not included in window)
+    last_row = first_row + max_window_size[0]
+    last_row = np.min([len(seg_rows), last_row])
+    last_row = np.int(last_row)
+
+    # columns with segmentation pixels, within the vertical range of the window, not the whole image
+    seg_cols = np.any(seg[first_row:last_row, :], axis=0)
+
+    # place the horizontal side of a window without borders at the left
+    first_col = np.where(seg_cols)[0]
+    if len(first_col) == 0:
+        return
+    first_col = first_col[0]
+
+    # add a border on top of the window to account for receptive field
+    first_col = np.int(np.max([0, first_col - receptive_field_2[1]]))
+
+    # right side of the window (we follow the same python convention as for rows above
+    last_col = first_col + max_window_size[1]
+    last_col = np.min([len(seg_cols), last_col])
+    last_col = np.int(last_col)
+
+    # Note: at this point, the window with borders = seg[first_row:last_row, first_col:last_col]
+
+    # scale
+
+
+    ## OLD CODE
 
     # number of blocks. We want a number of blocks that will produce approximately blocks of size
     # 1001x1001 in the full resolution image
