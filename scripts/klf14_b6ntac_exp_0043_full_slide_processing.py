@@ -5,7 +5,7 @@ home = str(Path.home())
 import os
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1, 2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -75,7 +75,7 @@ for file_i, file in enumerate(files_list):
 # downsample_factor=8.0
 # max_window_size=(1000, 1000)
 # receptive_field=(130, 130)
-def foo(seg, downsample_factor=1.0, max_window_size=(1001, 1001), receptive_field=(130, 130)):
+def foo(seg, downsample_factor=1.0, max_window_size=(1000, 1000), receptive_field=(130, 130)):
     """
 
     :param seg:
@@ -85,11 +85,15 @@ def foo(seg, downsample_factor=1.0, max_window_size=(1001, 1001), receptive_fiel
     :return:
     """
 
+    # approximate measures in the downsampled image
+    lores_max_window_size = (max_window_size[0] / downsample_factor, max_window_size[1] / downsample_factor)
+    lores_receptive_field = (receptive_field[0] / downsample_factor, receptive_field[1] / downsample_factor)
+
     # maximum size of the processing window without the overlapping edges
-    max_window_size_no_borders = (max_window_size[0] - receptive_field[0], max_window_size[1] - receptive_field[1])
+    # max_window_size_no_borders = (max_window_size[0] - receptive_field[0], max_window_size[1] - receptive_field[1])
 
     # for convenience, receptive_field/2
-    receptive_field_2 = (np.ceil(receptive_field[0] / 2.0), np.ceil(receptive_field[1] / 2.0))
+    lores_receptive_field_2 = (np.ceil(lores_receptive_field[0] / 2.0), np.ceil(lores_receptive_field[1] / 2.0))
 
     # rows with segmentation pixels
     seg_rows = np.any(seg, axis=1)
@@ -101,7 +105,7 @@ def foo(seg, downsample_factor=1.0, max_window_size=(1001, 1001), receptive_fiel
     first_row = first_row[0]
 
     # add a border on top of the window to account for receptive field
-    first_row = np.int(np.max([0, first_row - receptive_field_2[0]]))
+    first_row = np.int(np.max([0, first_row - lores_receptive_field_2[0]]))
 
     # bottom of the window (we follow the python convention that e.g. 3:5 = [3, 4], i.e. last_row not included in window)
     last_row = first_row + max_window_size[0]
