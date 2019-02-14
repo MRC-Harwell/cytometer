@@ -1,3 +1,4 @@
+import warnings
 import openslide
 import cv2
 import numpy as np
@@ -149,6 +150,95 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25, com
         return seg, im_downsampled
     else:
         return seg
+
+
+def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1000, 1000], border=[65, 65]):
+    """
+    Find the coordinates of a window that contain the first pixels of a segmentation, starting from the top-left.
+
+    In order to process large histology images, first we create a rough segmentation of where the tissue is. Then,
+    we want to process a small window, extract some cells, delete them from the rough segmentation, and iterate.
+
+    This function finds the Region of Interest (ROI) = (first_row, last_row, first_col, last_col) of the next window
+    to process.
+
+    Note that the segmentation should be provided downsampled with respect to the image, but the indices returned
+    correspond to the full-size histology image.
+
+    In addition, the function can add a border around the segmentation pixels in the ROI. These borders ensure that
+    pixels close to the edge of the segmentation are processed correctly. The borders should have size N if the
+    window will be processed with a filter of size 2N+1. In particular, if the window is going to be processed with
+    a convolutional neural network, the border should have the size of effective receptive field / 2.
+
+
+    :param seg: np.ndarray with downsampled segmentation mask.
+    :param downsample_factor: (def 1.0) Scalar factor. seg is assumed to have been downsampled by this factor.
+    :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of output window. This is
+    a maximum size. If the window were to overflow the image, it gets cropped to the image size.
+    :param border: (def (65, 65)) Vector with how many (rows, columns) of the output window are a border around
+    the region of interest.
+    :return: (first_row, last_row, first_col, last_col). If the histology image is im, the ROI found is
+    im[first_row:last_row, first_col:last_col].
+
+    (lores_first_row, lores_last_row, lores_first_col, lores_last_col). ROI in the downsampled segmentation.
+    """
+
+    # conver to np.array so that we can use algebraic operators
+    max_window_size = np.array(max_window_size)
+    border = np.array(border)
+
+    # approximate measures in the downsampled image (we don't round them unless necessary)
+    lores_max_window_size = max_window_size / downsample_factor
+    lores_border = border / downsample_factor
+
+    # rows with segmentation pixels
+    lores_seg_rows = np.any(seg, axis=1)
+
+    # place the vertical side of the output window (borders removed) at the top
+    lores_first_row = np.where(lores_seg_rows)[0]
+    if len(lores_first_row) == 0:
+        warnings.warn('Empty segmentation')
+        return 0, 0, 0, 0
+    lores_first_row = lores_first_row[0]
+
+    # add a border on top of the window to account for receptive field
+    lores_first_row = np.max([0, lores_first_row - lores_border[0]])
+
+    # bottom of the window (we follow the python convention that e.g. 3:5 = [3, 4],
+    # i.e. last_row not included in window)
+    lores_last_row = lores_first_row + lores_max_window_size[0]
+    lores_last_row = np.min([len(lores_seg_rows), lores_last_row])
+
+    # columns with segmentation pixels, within the vertical range of the window, not the whole image
+    lores_seg_cols = np.any(seg[np.int(np.round(lores_first_row)):
+                                np.int(np.round(lores_last_row)), :], axis=0)
+
+    # place the horizontal side of a window without borders at the left
+    lores_first_col = np.where(lores_seg_cols)[0]
+    assert len(lores_first_col) > 0
+    lores_first_col = lores_first_col[0]
+
+    # add a border to the left of the window to account for receptive field
+    lores_first_col = np.max([0, lores_first_col - lores_border[1]])
+
+    # right side of the window (we follow the same python convention as for rows above
+    lores_last_col = lores_first_col + lores_max_window_size[1]
+    lores_last_col = np.min([len(lores_seg_cols), lores_last_col])
+
+    # convert low resolution indices to high resolution
+    first_row = np.int(np.round(lores_first_row * downsample_factor))
+    last_row = np.int(np.round(lores_last_row * downsample_factor))
+    first_col = np.int(np.round(lores_first_col * downsample_factor))
+    last_col = np.int(np.round(lores_last_col * downsample_factor))
+
+    # round down indices in downsampled segmentation
+    lores_first_row = int(lores_first_row)
+    lores_last_row = int(lores_last_row)
+    lores_first_col = int(lores_first_col)
+    lores_last_col = int(lores_last_col)
+
+    return (first_row, last_row, first_col, last_col), \
+           (lores_first_row, lores_last_row, lores_first_col, lores_last_col)
 
 
 def principal_curvatures_range_image(img, sigma=10):
