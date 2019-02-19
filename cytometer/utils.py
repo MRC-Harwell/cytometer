@@ -191,8 +191,15 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1000, 1
     lores_max_window_size = max_window_size / downsample_factor
     lores_border = border / downsample_factor
 
-    # location of first segmentation pixel
+    # location of first pixel (row-wise. If more than one pixel in first row, then left-most pixel in that row)
+    first_pixel_row = np.nonzero(np.any(seg, axis=1))
+    if len(first_pixel_row) == 0:
+        warnings.warn('Empty segmentation')
+        return 0, 0, 0, 0
+
+
     idx = np.nonzero(seg)
+    np.sort(idx[0]
     if len(idx[0]) == 0:
         warnings.warn('Empty segmentation')
         return 0, 0, 0, 0
