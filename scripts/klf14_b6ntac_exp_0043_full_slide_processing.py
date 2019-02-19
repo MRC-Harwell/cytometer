@@ -6,7 +6,7 @@ import os
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0, 2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -20,13 +20,19 @@ import tifffile
 import glob
 from cytometer.utils import rough_foreground_mask
 from pysto.imgproc import block_split, block_stack, imfuse
+import tensorflow as tf
 
+# limit GPU memory used
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.95
+set_session(tf.Session(config=config))
 
 DEBUG = False
 SAVE_FIGS = False
 
 root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-data_dir = os.path.join(home, root_data_dir, 'Maz Yon')
+data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
 seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 figures_dir = os.path.join(root_data_dir, 'figures')
@@ -44,9 +50,10 @@ component_size_threshold = 1e5
 block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
 block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
 
-files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
+files_list = glob.glob(os.path.join(data_dir, 'KLF14*.ndpi'))
 
 # file_i = 10; file = files_list[file_i]
+# "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
 for file_i, file in enumerate(files_list):
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
@@ -77,6 +84,15 @@ for file_i, file in enumerate(files_list):
 
     # keep extracting histology windows until we have finished
     while np.count_nonzero(seg) > 0:
+
+        from scipy import signal
+        from skimage.feature import peak_local_max
+        foo = signal.fftconvolve(seg, np.ones(shape=(131, 131)), mode='same')
+        coordinates = peak_local_max(foo, threshold_abs=1, min_distance=2)
+
+        plt.clf()
+        plt.imshow(foo)
+        plt.plot(coordinates[:, 1], coordinates[:, 0], 'r.')
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
