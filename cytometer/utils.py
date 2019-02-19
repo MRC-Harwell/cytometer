@@ -183,7 +183,7 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1000, 1
     (lores_first_row, lores_last_row, lores_first_col, lores_last_col). ROI in the downsampled segmentation.
     """
 
-    # conver to np.array so that we can use algebraic operators
+    # convert to np.array so that we can use algebraic operators
     max_window_size = np.array(max_window_size)
     border = np.array(border)
 
@@ -191,39 +191,26 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1000, 1
     lores_max_window_size = max_window_size / downsample_factor
     lores_border = border / downsample_factor
 
-    # rows with segmentation pixels
-    lores_seg_rows = np.any(seg, axis=1)
-
-    # place the vertical side of the output window (borders removed) at the top
-    lores_first_row = np.where(lores_seg_rows)[0]
-    if len(lores_first_row) == 0:
+    # location of first segmentation pixel
+    idx = np.nonzero(seg)
+    if len(idx[0]) == 0:
         warnings.warn('Empty segmentation')
         return 0, 0, 0, 0
-    lores_first_row = lores_first_row[0]
+    lores_first_row = idx[0][0]
+    lores_first_col = idx[1][0]
 
-    # add a border on top of the window to account for receptive field
+    # add a border to the top and left of the window
     lores_first_row = np.max([0, lores_first_row - lores_border[0]])
+    lores_first_col = np.max([0, lores_first_col - lores_border[1]])
 
     # bottom of the window (we follow the python convention that e.g. 3:5 = [3, 4],
     # i.e. last_row not included in window)
     lores_last_row = lores_first_row + lores_max_window_size[0]
-    lores_last_row = np.min([len(lores_seg_rows), lores_last_row])
+    lores_last_row = np.min([seg.shape[0], lores_last_row])
 
-    # columns with segmentation pixels, within the vertical range of the window, not the whole image
-    lores_seg_cols = np.any(seg[np.int(np.round(lores_first_row)):
-                                np.int(np.round(lores_last_row)), :], axis=0)
-
-    # place the horizontal side of a window without borders at the left
-    lores_first_col = np.where(lores_seg_cols)[0]
-    assert len(lores_first_col) > 0
-    lores_first_col = lores_first_col[0]
-
-    # add a border to the left of the window to account for receptive field
-    lores_first_col = np.max([0, lores_first_col - lores_border[1]])
-
-    # right side of the window (we follow the same python convention as for rows above
+    # right side of the window (we follow the same python convention as for rows above)
     lores_last_col = lores_first_col + lores_max_window_size[1]
-    lores_last_col = np.min([len(lores_seg_cols), lores_last_col])
+    lores_last_col = np.min([seg.shape[1], lores_last_col])
 
     # convert low resolution indices to high resolution
     first_row = np.int(np.round(lores_first_row * downsample_factor))
