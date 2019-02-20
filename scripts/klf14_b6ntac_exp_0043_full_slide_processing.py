@@ -85,15 +85,6 @@ for file_i, file in enumerate(files_list):
     # keep extracting histology windows until we have finished
     while np.count_nonzero(seg) > 0:
 
-        from scipy import signal
-        from skimage.feature import peak_local_max
-        foo = signal.fftconvolve(seg, np.ones(shape=(131, 131)), mode='same')
-        coordinates = peak_local_max(foo, threshold_abs=1, min_distance=2)
-
-        plt.clf()
-        plt.imshow(foo)
-        plt.plot(coordinates[:, 1], coordinates[:, 0], 'r.')
-
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
         (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
