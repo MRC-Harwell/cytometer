@@ -152,7 +152,7 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25, com
         return seg
 
 
-def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1000, 1000], border=[65, 65]):
+def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1001], border=[65, 65]):
     """
     Find the coordinates of a window that contain the first pixels of a segmentation, starting from the top-left.
 
@@ -191,19 +191,54 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1000, 1
     max_window_size = np.array(max_window_size)
     border = np.array(border)
 
+    # convert segmentation mask to [0, 1]
+    seg = (seg != 0).astype('int')
+
     # approximate measures in the downsampled image (we don't round them)
     lores_max_window_size = max_window_size / downsample_factor
     lores_border = border / downsample_factor
 
-    # location of anchor pixel (row-wise. If more than one pixel in first row, then left-most pixel in that row)
-    anchor_pixel_row = np.nonzero(np.any(seg, axis=1))
-    anchor_pixel_row = np.min(anchor_pixel_row)
-    anchor_pixel_col = np.nonzero(seg[anchor_pixel_row, :])
-    anchor_pixel_col = anchor_pixel_col[0][0]
+    # kernels with top line and left line
+    kernel_top = np.zeros(shape=np.round(lores_max_window_size).astype('int'))
+    kernel_top[0, :] = 1
+    kernel_left = np.zeros(shape=np.round(lores_max_window_size).astype('int'))
+    kernel_left[:, 0] = 1
 
-    # we place the center of the top of the window on the anchor pixel
-    lores_first_row = anchor_pixel_row
-    lores_first_col = anchor_pixel_col - (lores_max_window_size[1] - 1) / 2.0
+    from scipy.signal import fftconvolve
+    seg_top = np.round(fftconvolve(seg, kernel_top))
+    seg_left = np.round(fftconvolve(seg, kernel_left))
+
+    kernel_top = np.zeros(shape=(5, 5))
+    kernel_top[-1, :] = 1
+    kernel_left = np.zeros(shape=(5, 5))
+    kernel_left[:, -1] = 1
+    seg_top = np.round(fftconvolve(foo, kernel_top))
+    seg_left = np.round(fftconvolve(foo, kernel_left))
+
+    idx = np.nonzero(seg_left * seg_top)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(foo)
+        plt.subplot(222)
+        plt.imshow(seg_top)
+        plt.subplot(223)
+        plt.imshow(seg_left)
+        plt.subplot(224)
+        plt.imshow(seg_top * seg_left)
+
+
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(seg)
+        plt.plot([1168, 1292, 1292, 1168, 1168], [448, 448, 324, 324, 448], 'red')
+        plt.subplot(222)
+        plt.imshow(seg_top)
+        plt.subplot(223)
+        plt.imshow(seg_left)
+        plt.subplot(224)
+        plt.imshow(seg_top * seg_left)
 
     # add a border to the top and left of the window
     lores_first_row = np.max([0, lores_first_row - lores_border[0]])
