@@ -187,6 +187,11 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
         warnings.warn('Empty segmentation')
         return 0, 0, 0, 0
 
+    # DEBUG
+    # seg = np.zeros(shape=(50, 100))
+    # seg[20:30, 50:80] = 1
+    # max_window_size = [88, 88]
+
     # convert to np.array so that we can use algebraic operators
     max_window_size = np.array(max_window_size)
     border = np.array(border)
@@ -198,47 +203,37 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
     lores_max_window_size = max_window_size / downsample_factor
     lores_border = border / downsample_factor
 
-    # kernels with top line and left line
+    # kernels that flipped correspond to top line and left line. They need to be flipped
+    # because the convolution operation will flip them (two flips cancel each other)
     kernel_top = np.zeros(shape=np.round(lores_max_window_size).astype('int'))
-    kernel_top[0, :] = 1
+    kernel_top[int((kernel_top.shape[0] - 1) / 2), :] = 1
     kernel_left = np.zeros(shape=np.round(lores_max_window_size).astype('int'))
-    kernel_left[:, 0] = 1
+    kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
 
     from scipy.signal import fftconvolve
-    seg_top = np.round(fftconvolve(seg, kernel_top))
-    seg_left = np.round(fftconvolve(seg, kernel_left))
-
-    kernel_top = np.zeros(shape=(5, 5))
-    kernel_top[-1, :] = 1
-    kernel_left = np.zeros(shape=(5, 5))
-    kernel_left[:, -1] = 1
-    seg_top = np.round(fftconvolve(foo, kernel_top))
-    seg_left = np.round(fftconvolve(foo, kernel_left))
+    seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
+    seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
 
     idx = np.nonzero(seg_left * seg_top)
 
     if DEBUG:
         plt.clf()
         plt.subplot(221)
-        plt.imshow(foo)
-        plt.subplot(222)
-        plt.imshow(seg_top)
-        plt.subplot(223)
-        plt.imshow(seg_left)
-        plt.subplot(224)
-        plt.imshow(seg_top * seg_left)
-
-
-        plt.clf()
-        plt.subplot(221)
         plt.imshow(seg)
-        plt.plot([1168, 1292, 1292, 1168, 1168], [448, 448, 324, 324, 448], 'red')
+        plt.plot([idx[1][0], idx[1][0]+1001, idx[1][0]+1001, idx[1][0], idx[1][0]],
+                 [idx[0][0]+1001, idx[0][0]+1001, idx[0][0], idx[0][0], idx[0][0]+1001], 'red')
         plt.subplot(222)
         plt.imshow(seg_top)
         plt.subplot(223)
         plt.imshow(seg_left)
         plt.subplot(224)
         plt.imshow(seg_top * seg_left)
+        plt.plot([idx[1][0], idx[1][0]+1001, idx[1][0]+1001, idx[1][0], idx[1][0]],
+                 [idx[0][0]+1001, idx[0][0]+1001, idx[0][0], idx[0][0], idx[0][0]+1001], 'red')
+
+
+
+
 
     # add a border to the top and left of the window
     lores_first_row = np.max([0, lores_first_row - lores_border[0]])
