@@ -154,22 +154,27 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25, com
 
 def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1001], border=[65, 65]):
     """
-    Find the coordinates of a window that contain the first pixels of a segmentation, starting from the top-left.
+    Find a rectangular region of interest (ROI) within an irregularly-shaped mask to pass to a neural
+    network or some other processing algorithm. This function can be called repeatedly to process a whole image.
 
-    In order to process large histology images, first we create a rough segmentation of where the tissue is. Then,
-    we want to process a small window, extract some cells, delete them from the rough segmentation, and iterate.
+    The choice of the ROI follows several rules:
 
-    This function finds the Region of Interest (ROI) = (first_row, last_row, first_col, last_col) of the next window
-    to process.
+      * It cannot be larger than a certain size provided by the user.
+      * It will be located on the border of the mask (the ROI tends to go from lower rows to higher rows in the mask).
+      * It will contain as many mask pixels as possible.
+      * A border can be added, to account for the effective receptive field of the neural network, or the tails of a
+        filter.
 
-    Note that the segmentation should be provided downsampled with respect to the image, but the indices returned
-    correspond to the full-size histology image.
+    The ROI is given as a tuple of coordinates for the top-left and bottom-right corners
 
-    In addition, the function can add a border around the segmentation pixels in the ROI. These borders ensure that
-    pixels close to the edge of the segmentation are processed correctly. The borders should have size N if the
-    window will be processed with a filter of size 2N+1. In particular, if the window is going to be processed with
-    a convolutional neural network, the border should have the size of effective receptive field / 2.
+        (first_row, last_row, first_col, last_col)
 
+    The function also allows for the mask to be a downsampled version of a larger image. Coordinates for both
+    the low-resolution and high-resolution windows are then returned.
+
+    Technical note: In order to find candidates to be the top-left corner of the ROI, we convolve the mask (seg) with
+    a horizontal-line kernel (k1) and a vertical-line kernel (k2). We then compute the element-wise product
+    y = conv2d(seg, k1) * conv2d(seg, k2). Pixels with y > 0
 
     :param seg: np.ndarray with downsampled segmentation mask.
     :param downsample_factor: (def 1.0) Scalar factor. seg is assumed to have been downsampled by this factor.
@@ -187,11 +192,6 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
         warnings.warn('Empty segmentation')
         return 0, 0, 0, 0
 
-    # DEBUG
-    # seg = np.zeros(shape=(50, 100))
-    # seg[20:30, 50:80] = 1
-    # max_window_size = [88, 88]
-
     # convert to np.array so that we can use algebraic operators
     max_window_size = np.array(max_window_size)
     border = np.array(border)
@@ -203,50 +203,62 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
     lores_max_window_size = max_window_size / downsample_factor
     lores_border = border / downsample_factor
 
-    # kernels that flipped correspond to top line and left line. They need to be flipped
-    # because the convolution operation will flip them (two flips cancel each other)
-    kernel_top = np.zeros(shape=np.round(lores_max_window_size).astype('int'))
+    # kernels that flipped correspond to top line and left line. They need to be pre-flipped
+    # because the convolution operation internally flips them (two flips cancel each other)
+    kernel_top = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
     kernel_top[int((kernel_top.shape[0] - 1) / 2), :] = 1
-    kernel_left = np.zeros(shape=np.round(lores_max_window_size).astype('int'))
+    kernel_left = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
     kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
 
     from scipy.signal import fftconvolve
     seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
     seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
 
-    idx = np.nonzero(seg_left * seg_top)
+    # window detections
+    detection_idx = np.nonzero(seg_left * seg_top)
+
+    # set top-left corner of the box = top-left corner of first box detected
+    lores_first_row = detection_idx[0][0]
+    lores_first_col = detection_idx[1][0]
+
+    # first, we look within a window with the maximum size
+    lores_last_row = detection_idx[0][0] + lores_max_window_size[0] - 2 * lores_border[0]
+    lores_last_col = detection_idx[1][0] + lores_max_window_size[1] - 2 * lores_border[1]
+
+    # second, if the segmentation is smaller than the window, we reduce the window size
+    window = seg[lores_first_row:int(np.round(lores_last_row)), lores_first_col:int(np.round(lores_last_col))]
+
+    idx = np.any(window, axis=1)  # reduce rows size
+    last_segmented_pixel_len = np.max(np.where(idx))
+    lores_last_row = detection_idx[0][0] + np.min((lores_max_window_size[0] - 2 * lores_border[0],
+                                                   last_segmented_pixel_len))
+
+    idx = np.any(window, axis=0)  # reduce cols size
+    last_segmented_pixel_len = np.max(np.where(idx))
+    lores_last_col = detection_idx[1][0] + np.min((lores_max_window_size[1] - 2 * lores_border[1],
+                                                   last_segmented_pixel_len))
 
     if DEBUG:
         plt.clf()
         plt.subplot(221)
         plt.imshow(seg)
-        plt.plot([idx[1][0], idx[1][0]+1001, idx[1][0]+1001, idx[1][0], idx[1][0]],
-                 [idx[0][0]+1001, idx[0][0]+1001, idx[0][0], idx[0][0], idx[0][0]+1001], 'red')
+        plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
+                 [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'red')
         plt.subplot(222)
         plt.imshow(seg_top)
         plt.subplot(223)
         plt.imshow(seg_left)
         plt.subplot(224)
         plt.imshow(seg_top * seg_left)
-        plt.plot([idx[1][0], idx[1][0]+1001, idx[1][0]+1001, idx[1][0], idx[1][0]],
-                 [idx[0][0]+1001, idx[0][0]+1001, idx[0][0], idx[0][0], idx[0][0]+1001], 'red')
+        plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
+                 [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'red')
 
-
-
-
-
-    # add a border to the top and left of the window
+    # add a border around the window
     lores_first_row = np.max([0, lores_first_row - lores_border[0]])
     lores_first_col = np.max([0, lores_first_col - lores_border[1]])
 
-    # bottom of the window (we follow the python convention that e.g. 3:5 = [3, 4],
-    # i.e. last_row not included in window)
-    lores_last_row = lores_first_row + lores_max_window_size[0]
-    lores_last_row = np.min([seg.shape[0], lores_last_row])
-
-    # right side of the window (we follow the same python convention as for rows above)
-    lores_last_col = lores_first_col + lores_max_window_size[1]
-    lores_last_col = np.min([seg.shape[1], lores_last_col])
+    lores_last_row = np.min([seg.shape[0], lores_last_row + lores_border[0]])
+    lores_last_col = np.min([seg.shape[1], lores_last_col + lores_border[1]])
 
     # convert low resolution indices to high resolution
     first_row = np.int(np.round(lores_first_row * downsample_factor))

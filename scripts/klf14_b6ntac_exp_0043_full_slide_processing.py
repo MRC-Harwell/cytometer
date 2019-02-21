@@ -6,7 +6,7 @@ import os
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -60,7 +60,7 @@ for file_i, file in enumerate(files_list):
 
     # rough segmentation of the tissue in the image
     seg0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
-                                                component_size_threshold=component_size_threshold, return_im=True)
+                                                 component_size_threshold=component_size_threshold, return_im=True)
 
     if DEBUG:
         plt.clf()
@@ -83,7 +83,10 @@ for file_i, file in enumerate(files_list):
     #                             im.properties["tiff.ResolutionUnit"].upper()))
 
     # keep extracting histology windows until we have finished
+    step = 0
     while np.count_nonzero(seg) > 0:
+
+        step += 1
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
@@ -98,8 +101,18 @@ for file_i, file in enumerate(files_list):
         if DEBUG:
             plt.clf()
             plt.subplot(121)
-            plt.imshow(im_downsampled)
+            plt.imshow(seg)
+            plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
+                     [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'r')
+            plt.xlim(700, 1500)
+            plt.ylim(650, 300)
             plt.subplot(122)
             plt.imshow(imfuse(seg0, seg))
             plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
                      [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'r')
+            plt.xlim(700, 1500)
+            plt.ylim(650, 300)
+
+        if SAVE_FIGS:
+            plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0043_get_next_roi_to_process_' +
+                                     str(step).zfill(2) + '.png'))
