@@ -391,7 +391,7 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     """
     Segment cells from a distance transformation image, and optionally, a contour estimate image.
 
-    This function computes the normal curvate of the dmap seen as a Monge patch. The "valleys" in
+    This function computes the normal curvature of the dmap seen as a Monge patch. The "valleys" in
     the dmap (the cell contours) correspond to higher normal curvature values.
 
     If provided, the normal curvature is element-wise multiplied by a prior estimate of where the
