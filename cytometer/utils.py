@@ -414,7 +414,7 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     topographic map, etc.
     :param contour: (def None) numpy.ndarray matrix, same size as dmap, with an estimate of where the
     contours are.
-    :param sigma: (def 10) Standar deviation in pixels of Gaussian blurring applied to the dmap
+    :param sigma: (def 10) Standard deviation in pixels of Gaussian blurring applied to the dmap
     before computing the normal curvature. Because normal curvature is a function of second
     derivatives, slight noise in the dmap gets amplified, and produces poor curvature estimates.
     Gaussian blurring removes part of that noise.
