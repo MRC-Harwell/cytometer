@@ -6,7 +6,7 @@ import os
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -124,8 +124,11 @@ for file_i, file in enumerate(files_list):
                                                     max_window_size=[1000, 1000],
                                                     border=np.round((receptive_field-1)/2))
 
-        first_row += 2000
-        last_row += 2000
+        # DEBUG
+        first_row = int(2190 * downsample_factor)
+        last_row = first_row + 1001
+        first_col = int(2205 * downsample_factor)
+        last_col = first_col + 1001
 
         # load window from full resolution slide
         tile = im.read_region(location=(first_col, first_row), level=0,
@@ -133,10 +136,6 @@ for file_i, file in enumerate(files_list):
         tile = np.array(tile)
         tile = tile[:, :, 0:3]
         tile = np.reshape(tile, (1,) + tile.shape)
-
-        # set input layer to size of images
-        contour_model = cytometer.models.change_input_size(contour_model, batch_shape=tile.shape)
-        dmap_model = cytometer.models.change_input_size(dmap_model, batch_shape=tile.shape)
 
         # segment histology
         labels, labels_info = cytometer.utils.segmentation_pipeline(tile, contour_model, dmap_model, quality_model,
