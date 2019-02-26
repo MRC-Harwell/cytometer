@@ -870,6 +870,17 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, smallest
                                                                               contour=contour_pred[0, :, :, 0],
                                                                               border_dilation=0)
 
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(one_im[0, :, :, :])
+            plt.subplot(222)
+            plt.imshow(contour_pred[0, :, :, 0])
+            plt.subplot(223)
+            plt.imshow(dmap_pred[0, :, :, 0])
+            plt.subplot(224)
+            plt.imshow(contour_pred[0, :, :, 0] * dmap_pred[0, :, :, 0])
+
     # split histology images into individual segmented objects
     cell_im, cell_seg, cell_index = one_image_per_label(dataset_im=im,
                                                         dataset_lab_test=labels,
