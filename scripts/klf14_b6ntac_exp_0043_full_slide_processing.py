@@ -125,9 +125,9 @@ for file_i, file in enumerate(files_list):
                                                     border=np.round((receptive_field-1)/2))
 
         # DEBUG
-        first_row = int(2190 * downsample_factor)
+        first_row = int(3190 * downsample_factor)
         last_row = first_row + 1001
-        first_col = int(2205 * downsample_factor)
+        first_col = int(3205 * downsample_factor)
         last_col = first_col + 1001
 
         # load window from full resolution slide
@@ -136,10 +136,15 @@ for file_i, file in enumerate(files_list):
         tile = np.array(tile)
         tile = tile[:, :, 0:3]
         tile = np.reshape(tile, (1,) + tile.shape)
+        tile = tile.astype(np.float32)
+        tile /= 255
 
         # segment histology
         labels, labels_info = cytometer.utils.segmentation_pipeline(tile, contour_model, dmap_model, quality_model,
                                                                     smallest_cell_area=804)
+
+        # split labels into those that are good quality and those that are bad quality
+        idx_good = labels_info['quality'] >= 0.9
 
         if DEBUG:
             plt.clf()
