@@ -810,7 +810,8 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
         return training_windows_list, testlabel_windows_list, index_list, reflabel_windows_list, dice_list
 
 
-def segmentation_pipeline(im, contour_model, dmap_model, quality_model, smallest_cell_area=804):
+def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_model_type='0_1',
+                          smallest_cell_area=804):
     """
     Instance segmentation of cells using the contour + distance transformation pipeline.
 
@@ -819,8 +820,12 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, smallest
     be a convolutional network where the output has the same (row, col) as the input.
     :param dmap_model: filename or keras model for the distance transformation regression neural network.
     This is assumed to be a convolutional network where the output has the same (row, col) as the input.
-    :param quality_model: filename or keras model for the Dice coefficient estimation neural network. This
-    network.
+    :param quality_model: filename or keras model for the quality coefficient estimation neural network.
+    This network processes one cell at a time. Networks trained for different types of masking can be used
+    by setting the value of quality_model_type.
+    :param quality_model_type: (def '0_1') String with the type of masking used in the quality network.
+    * '0_1': the image inside the segmentation is multiplied by 1, and outside the segmentation, by 0.
+    * '-1_1': the image inside the segmentation is multiplied by 1, and outside the segmentation, by -1.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
     segmentation noise.
     :return: labels, labels_info
@@ -881,6 +886,16 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, smallest
             plt.subplot(224)
             plt.imshow(contour_pred[0, :, :, 0] * dmap_pred[0, :, :, 0])
 
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(one_im[0, :, :, :])
+            plt.subplot(222)
+            plt.imshow(labels[i, :, :, 0])
+            plt.subplot(223)
+            plt.imshow()
+            plt.subplot(224)
+            plt.imshow()
+
     # split histology images into individual segmented objects
     cell_im, cell_seg, cell_index = one_image_per_label(dataset_im=im,
                                                         dataset_lab_test=labels,
@@ -892,10 +907,38 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, smallest
     for j in range(cell_im.shape[0]):
 
         # mask histology with segmentation
-        aux = cell_im[j, :, :, :] * np.repeat(cell_seg[j, :, :, :], repeats=3, axis=2)
+        if quality_model_type == '0_1':
+            # within the segmentation mask is 1, and outside it's 0
+            masked_cell_im = cell_im[j, :, :, :] * np.repeat(cell_seg[j, :, :, :], repeats=3, axis=2)
+        elif quality_model_type == '-1_1':
+            # within the segmentation mask is 1, and outside it's -1
+            aux = 2 * (cell_seg[j, :, :, :].astype(np.float32) - 0.5)
+            aux = np.repeat(aux, repeats=cell_im.shape[3], axis=2)
+            masked_cell_im = cell_im[j, :, :, :] * aux
+        else:
+            raise ValueError('Unrecognised quality_model_type: ' + str(quality_model_type))
+
+        if DEBUG:
+            if quality_model_type == '0_1':
+                # TODO
+                plt.clf()
+            elif quality_model_type == '-1_1':
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(cell_im[j, :, :, :])
+                plt.subplot(222)
+                plt.imshow(cell_seg[j, :, :, 0])
+                plt.subplot(223)
+                plt.cla()
+                if np.count_nonzero(masked_cell_im >= 0):
+                    plt.imshow(masked_cell_im * (masked_cell_im >= 0))
+                plt.subplot(224)
+                plt.cla()
+                if np.count_nonzero(masked_cell_im < 0) > 0:
+                    plt.imshow(-masked_cell_im * (masked_cell_im < 0))
 
         # compute quality measure of each histology window
-        quality[j] = quality_model.predict(np.expand_dims(aux, axis=0))
+        quality[j] = quality_model.predict(np.expand_dims(masked_cell_im, axis=0))
 
     # prepare output as structured array
     labels_info = np.zeros((len(quality),), dtype=[('im', cell_index.dtype),
