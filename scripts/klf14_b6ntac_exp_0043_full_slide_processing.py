@@ -41,8 +41,8 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'
-saved_quality_model_basename = 'klf14_b6ntac_exp_0040_cnn_qualitynet_thresholded_sigmoid_masked_segmentation'
-# saved_quality_model_basename = 'klf14_b6ntac_exp_0041_cnn_qualitynet_thresholded_sigmoid_pm_1_masked_segmentation'
+# saved_quality_model_basename = 'klf14_b6ntac_exp_0040_cnn_qualitynet_thresholded_sigmoid_masked_segmentation'
+saved_quality_model_basename = 'klf14_b6ntac_exp_0041_cnn_qualitynet_thresholded_sigmoid_pm_1_masked_segmentation'
 
 contour_model_name = saved_contour_model_basename + '*.h5'
 dmap_model_name = saved_dmap_model_basename + '*.h5'
@@ -125,11 +125,11 @@ for file_i, file in enumerate(files_list):
                                                     max_window_size=[1000, 1000],
                                                     border=np.round((receptive_field-1)/2))
 
-        # # DEBUG
-        # first_row = int(3190 * downsample_factor)
-        # last_row = first_row + 1001
-        # first_col = int(3205 * downsample_factor)
-        # last_col = first_col + 1001
+        # DEBUG
+        first_row = int(3190 * downsample_factor)
+        last_row = first_row + 1001
+        first_col = int(3205 * downsample_factor)
+        last_col = first_col + 1001
 
         # load window from full resolution slide
         tile = im.read_region(location=(first_col, first_row), level=0,
@@ -141,7 +141,9 @@ for file_i, file in enumerate(files_list):
         tile /= 255
 
         # segment histology
-        labels, labels_info = cytometer.utils.segmentation_pipeline(tile, contour_model, dmap_model, quality_model,
+        labels, labels_info = cytometer.utils.segmentation_pipeline(tile,
+                                                                    contour_model, dmap_model, quality_model,
+                                                                    quality_model_type='-1_1',
                                                                     smallest_cell_area=804)
 
         # split labels into those that are good quality and those that are bad quality
