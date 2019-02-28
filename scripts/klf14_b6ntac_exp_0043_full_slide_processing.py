@@ -42,7 +42,8 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'
 # saved_quality_model_basename = 'klf14_b6ntac_exp_0040_cnn_qualitynet_thresholded_sigmoid_masked_segmentation'
-saved_quality_model_basename = 'klf14_b6ntac_exp_0041_cnn_qualitynet_thresholded_sigmoid_pm_1_masked_segmentation'
+# saved_quality_model_basename = 'klf14_b6ntac_exp_0041_cnn_qualitynet_thresholded_sigmoid_pm_1_masked_segmentation'
+saved_quality_model_basename = 'klf14_b6ntac_exp_0042_cnn_qualitynet_thresholded_sigmoid_pm_1_band_masked_segmentation'
 
 contour_model_name = saved_contour_model_basename + '*.h5'
 dmap_model_name = saved_dmap_model_basename + '*.h5'
@@ -143,7 +144,7 @@ for file_i, file in enumerate(files_list):
         # segment histology
         labels, labels_info = cytometer.utils.segmentation_pipeline(tile,
                                                                     contour_model, dmap_model, quality_model,
-                                                                    quality_model_type='-1_1',
+                                                                    quality_model_type='-1_1_band',
                                                                     smallest_cell_area=804)
 
         # split labels into those that are good quality and those that are bad quality

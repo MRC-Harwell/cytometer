@@ -22,9 +22,11 @@ import keras.backend as K
 import keras
 import tensorflow as tf
 from cytometer.models import change_input_size
+from cytometer.utils import paint_labels
 from cytometer.CDF_confidence import CDF_error_DKW_band, CDF_error_beta
 from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
 from statsmodels.stats.multitest import multipletests
+from pysto.imgproc import imfuse
 
 DEBUG = False
 
@@ -824,8 +826,9 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
     This network processes one cell at a time. Networks trained for different types of masking can be used
     by setting the value of quality_model_type.
     :param quality_model_type: (def '0_1') String with the type of masking used in the quality network.
-    * '0_1': the image inside the segmentation is multiplied by 1, and outside the segmentation, by 0.
-    * '-1_1': the image inside the segmentation is multiplied by 1, and outside the segmentation, by -1.
+    * '0_1': mask: 1 within the segmentation, 0 outside.
+    * '-1_1': mask: 1 within the segmentation, -1 outside.
+    * '-1_1_band': mask: 1 within the segmentation, -1 on outside band, 0 beyond the band.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
     segmentation noise.
     :return: labels, labels_info
@@ -887,14 +890,10 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
             plt.imshow(contour_pred[0, :, :, 0] * dmap_pred[0, :, :, 0])
 
             plt.clf()
-            plt.subplot(221)
+            plt.subplot(121)
             plt.imshow(one_im[0, :, :, :])
-            plt.subplot(222)
+            plt.subplot(122)
             plt.imshow(labels[i, :, :, 0])
-            plt.subplot(223)
-            plt.imshow()
-            plt.subplot(224)
-            plt.imshow()
 
     # split histology images into individual segmented objects
     cell_im, cell_seg, cell_index = one_image_per_label(dataset_im=im,
@@ -908,12 +907,20 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
 
         # mask histology with segmentation
         if quality_model_type == '0_1':
-            # within the segmentation mask is 1, and outside it's 0
+            # mask: 1 within the segmentation, 0 outside
             masked_cell_im = cell_im[j, :, :, :] * np.repeat(cell_seg[j, :, :, :], repeats=3, axis=2)
         elif quality_model_type == '-1_1':
-            # within the segmentation mask is 1, and outside it's -1
+            # mask: 1 within the segmentation, -1 outside
             aux = 2 * (cell_seg[j, :, :, :].astype(np.float32) - 0.5)
             aux = np.repeat(aux, repeats=cell_im.shape[3], axis=2)
+            masked_cell_im = cell_im[j, :, :, :] * aux
+        elif quality_model_type == '-1_1_band':
+            # mask: 1 within the segmentation, -1 on outside band, 0 beyond the band
+            aux = cv2.dilate(cell_seg[j, :, :, 0], kernel=np.ones(shape=(75, 75)))
+            aux = - aux.astype(np.float32)
+            aux[cell_seg[j, :, :, 0] == 1] = 1
+
+            aux = np.repeat(np.expand_dims(aux, axis=2), axis=2, repeats=3)
             masked_cell_im = cell_im[j, :, :, :] * aux
         else:
             raise ValueError('Unrecognised quality_model_type: ' + str(quality_model_type))
@@ -929,16 +936,38 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
                 plt.subplot(222)
                 plt.imshow(cell_seg[j, :, :, 0])
                 plt.subplot(223)
-                plt.cla()
                 if np.count_nonzero(masked_cell_im >= 0):
                     plt.imshow(masked_cell_im * (masked_cell_im >= 0))
                 plt.subplot(224)
-                plt.cla()
                 if np.count_nonzero(masked_cell_im < 0) > 0:
                     plt.imshow(-masked_cell_im * (masked_cell_im < 0))
+            elif quality_model_type == '-1_1_band':
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(cell_im[j, :, :, :])
+                plt.subplot(222)
+                plt.imshow(aux[:, :, 0])
+                plt.subplot(223)
+                if np.count_nonzero(aux[:, :, 0] > 0) > 0:
+                    plt.imshow(masked_cell_im * (aux == 1))
+                plt.subplot(224)
+                if np.count_nonzero(aux[:, :, 0] < 0) > 0:
+                    plt.imshow(-masked_cell_im * (aux == -1))
 
         # compute quality measure of each histology window
         quality[j] = quality_model.predict(np.expand_dims(masked_cell_im, axis=0))
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(one_im[i, :, :, :])
+        plt.subplot(222)
+        plt.imshow(labels[i, :, :, 0])
+        plt.subplot(223)
+        plt.boxplot(quality)
+        plt.subplot(224)
+        aux = paint_labels(labels, cell_index[:, 1], quality >= 0.9)
+        plt.imshow(aux[0, :, :, 0])
 
     # prepare output as structured array
     labels_info = np.zeros((len(quality),), dtype=[('im', cell_index.dtype),
