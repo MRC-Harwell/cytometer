@@ -961,32 +961,53 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
 
         if DEBUG:
             if quality_model_type == '0_1':
-                # TODO
                 plt.clf()
+                plt.subplot(221)
+                plt.imshow(cell_im[j, :, :, :])
+                plt.title('Single cell', fontsize=16)
+                plt.subplot(222)
+                plt.imshow(cell_seg[j, :, :, 0])
+                plt.title('Multiplicative mask', fontsize=16)
+                plt.subplot(223)
+                if np.count_nonzero(masked_cell_im >= 0) > 0:
+                    plt.imshow(masked_cell_im)
+                plt.title('Cell with mask = 1', fontsize=16)
+                plt.subplot(224)
+                if np.count_nonzero(masked_cell_im < 0) > 0:
+                    plt.imshow(cell_im[j, :, :, :] * np.repeat(1-cell_seg[j, :, :, :], repeats=3, axis=2))
+                plt.title('Cell with mask = 0', fontsize=16)
             elif quality_model_type == '-1_1':
                 plt.clf()
                 plt.subplot(221)
                 plt.imshow(cell_im[j, :, :, :])
+                plt.title('Single cell', fontsize=16)
                 plt.subplot(222)
                 plt.imshow(cell_seg[j, :, :, 0])
+                plt.title('Multiplicative mask', fontsize=16)
                 plt.subplot(223)
-                if np.count_nonzero(masked_cell_im >= 0):
+                if np.count_nonzero(masked_cell_im >= 0) > 0:
                     plt.imshow(masked_cell_im * (masked_cell_im >= 0))
+                plt.title('Cell with mask = 1', fontsize=16)
                 plt.subplot(224)
                 if np.count_nonzero(masked_cell_im < 0) > 0:
                     plt.imshow(-masked_cell_im * (masked_cell_im < 0))
+                plt.title('Cell with mask = -1', fontsize=16)
             elif quality_model_type == '-1_1_band':
                 plt.clf()
                 plt.subplot(221)
                 plt.imshow(cell_im[j, :, :, :])
+                plt.title('Single cell', fontsize=16)
                 plt.subplot(222)
                 plt.imshow(aux[:, :, 0])
+                plt.title('Multiplicative mask', fontsize=16)
                 plt.subplot(223)
                 if np.count_nonzero(aux[:, :, 0] > 0) > 0:
                     plt.imshow(masked_cell_im * (aux == 1))
+                plt.title('Cell with mask = 1', fontsize=16)
                 plt.subplot(224)
                 if np.count_nonzero(aux[:, :, 0] < 0) > 0:
                     plt.imshow(-masked_cell_im * (aux == -1))
+                plt.title('Cell with mask = -1', fontsize=16)
 
         # compute quality measure of each histology window
         quality[j] = quality_model.predict(np.expand_dims(masked_cell_im, axis=0))
