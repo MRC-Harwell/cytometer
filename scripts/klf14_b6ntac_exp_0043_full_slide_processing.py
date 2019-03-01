@@ -6,7 +6,7 @@ import os
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -154,13 +154,23 @@ for file_i, file in enumerate(files_list):
             plt.clf()
             plt.subplot(221)
             plt.imshow(tile[0, :, :, :])
+            plt.title('Histology', fontsize=16)
             plt.subplot(222)
-            plt.imshow(labels[0, :, :, 0])
+            plt.imshow(tile[0, :, :, :])
+            plt.contour(labels[0, :, :, 0], levels=labels_info['label'], colors='blue', linewidths=1)
+            plt.title('Full segmentation', fontsize=16)
             plt.subplot(223)
             plt.boxplot(labels_info['quality'])
+            plt.tick_params(labelbottom=False, bottom=False)
+            plt.title('Quality values', fontsize=16)
+            plt.xticks(fontsize=16)
+            plt.yticks(fontsize=16)
             plt.subplot(224)
             aux = cytometer.utils.paint_labels(labels, labels_info['label'], labels_info['quality'] >= 0.9)
-            plt.imshow(aux[0, :, :, 0])
+            plt.imshow(tile[0, :, :, :])
+            plt.contour(aux[0, :, :, 0] * labels[0, :, :, 0],
+                        levels=labels_info['label'], colors='blue', linewidths=1)
+            plt.title('Labels with quality >= 0.9', fontsize=16)
 
         # remove ROI from segmentation
         seg[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
