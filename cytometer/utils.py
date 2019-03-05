@@ -1491,3 +1491,30 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
                                                      is_sorted=False, returnsorted=False)
 
     return quantiles, pval, reject
+
+
+def edge_labels(labels):
+    """
+    Find which labels touch the borders of the image.
+
+    :param labels: 2D numpy.ndarray with segmentation labels.
+    :return:
+    edge_labels: numpy.ndarray with list of labels.
+    """
+
+    if labels.ndim != 2:
+        raise ValueError('labels must be a 2D array')
+
+    # labels that touch the top edge of the image
+    edge_labels = np.unique(labels[0, :])
+
+    # labels that touch the left edge
+    edge_labels = np.unique(np.concatenate((edge_labels, labels[:, 0].flat)))
+
+    # labels that touch the right edge
+    edge_labels = np.unique(np.concatenate((edge_labels, labels[:, -1].flat)))
+
+    # labels that touch the bottom edge
+    edge_labels = np.unique(np.concatenate((edge_labels, labels[-1, :].flat)))
+
+    return edge_labels

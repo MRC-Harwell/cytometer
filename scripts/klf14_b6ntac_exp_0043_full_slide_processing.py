@@ -147,9 +147,6 @@ for file_i, file in enumerate(files_list):
                                                                     quality_model_type='-1_1_band',
                                                                     smallest_cell_area=804)
 
-        # split labels into those that are good quality and those that are bad quality
-        idx_good = labels_info['quality'] >= 0.9
-
         if DEBUG:
             plt.clf()
             plt.subplot(221)
@@ -167,6 +164,37 @@ for file_i, file in enumerate(files_list):
             plt.yticks(fontsize=16)
             plt.subplot(224)
             aux = cytometer.utils.paint_labels(labels, labels_info['label'], labels_info['quality'] >= 0.9)
+            plt.imshow(tile[0, :, :, :])
+            plt.contour(aux[0, :, :, 0] * labels[0, :, :, 0],
+                        levels=labels_info['label'], colors='blue', linewidths=1)
+            plt.title('Labels with quality >= 0.9', fontsize=16)
+
+        # list of cells that are on the edges
+        edge_labels = cytometer.utils.edge_labels(labels[0, :, :, 0])
+
+        # list of cells that are OK'ed by quality network
+        good_labels = labels_info['label'][labels_info['quality'] >= 0.9]
+
+        # remove edge cells from the list of good cells
+        good_labels = np.setdiff1d(good_labels, edge_labels)
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(tile[0, :, :, :])
+            plt.title('Histology', fontsize=16)
+            plt.subplot(222)
+            plt.imshow(tile[0, :, :, :])
+            plt.contour(labels[0, :, :, 0], levels=labels_info['label'], colors='blue', linewidths=1)
+            plt.title('Full segmentation', fontsize=16)
+            plt.subplot(223)
+            plt.boxplot(labels_info['quality'])
+            plt.tick_params(labelbottom=False, bottom=False)
+            plt.title('Quality values', fontsize=16)
+            plt.xticks(fontsize=16)
+            plt.yticks(fontsize=16)
+            plt.subplot(224)
+            aux = cytometer.utils.paint_labels(labels, labels_info['label'], np.isin(labels_info['label'], good_labels))
             plt.imshow(tile[0, :, :, :])
             plt.contour(aux[0, :, :, 0] * labels[0, :, :, 0],
                         levels=labels_info['label'], colors='blue', linewidths=1)
