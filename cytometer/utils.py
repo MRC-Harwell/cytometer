@@ -912,6 +912,13 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
                                                                               contour=contour_pred[0, :, :, 0],
                                                                               border_dilation=0)
 
+        # remove labels that are too small
+        aux = labels[i, :, :, 0]
+        props = regionprops(aux)
+        for p in props:
+            if p.area < smallest_cell_area:
+                aux[aux == p.label] = 0
+
         if DEBUG:
             plt.clf()
             plt.subplot(221)
@@ -930,6 +937,7 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
             plt.imshow(labels[i, :, :, 0])
 
     # split histology images into individual segmented objects
+    # Note: smallest_cell_area should be redundant here, because small labels have been removed
     cell_im, cell_seg, cell_index = one_image_per_label(dataset_im=im,
                                                         dataset_lab_test=labels,
                                                         training_window_len=training_window_len,
