@@ -172,6 +172,9 @@ for file_i, file in enumerate(files_list):
         # list of cells that are on the edges
         edge_labels = cytometer.utils.edge_labels(labels[0, :, :, 0])
 
+        # list of cells that are not on the edges
+        non_edge_labels = np.setdiff1d(labels_info['label'], edge_labels)
+
         # list of cells that are OK'ed by quality network
         good_labels = labels_info['label'][labels_info['quality'] >= 0.9]
 
@@ -200,24 +203,27 @@ for file_i, file in enumerate(files_list):
                         levels=labels_info['label'], colors='blue', linewidths=1)
             plt.title('Labels with quality >= 0.9', fontsize=16)
 
-        # remove ROI from segmentation
-        seg[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+        # # remove ROI from segmentation
+        # seg[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+        #
+        # if DEBUG:
+        #     plt.clf()
+        #     plt.subplot(121)
+        #     plt.imshow(seg)
+        #     plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
+        #              [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'r')
+        #     plt.xlim(700, 1500)
+        #     plt.ylim(650, 300)
+        #     plt.subplot(122)
+        #     plt.imshow(imfuse(seg0, seg))
+        #     plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
+        #              [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'r')
+        #     plt.xlim(700, 1500)
+        #     plt.ylim(650, 300)
+        #
+        # if SAVE_FIGS:
+        #     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0043_get_next_roi_to_process_' +
+        #                              str(step).zfill(2) + '.png'))
 
-        if DEBUG:
-            plt.clf()
-            plt.subplot(121)
-            plt.imshow(seg)
-            plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
-                     [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'r')
-            plt.xlim(700, 1500)
-            plt.ylim(650, 300)
-            plt.subplot(122)
-            plt.imshow(imfuse(seg0, seg))
-            plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
-                     [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'r')
-            plt.xlim(700, 1500)
-            plt.ylim(650, 300)
-
-        if SAVE_FIGS:
-            plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0043_get_next_roi_to_process_' +
-                                     str(step).zfill(2) + '.png'))
+        # mark all cells not on the edges as "done"
+        np.isin(labels, non_edge_labels)
