@@ -1503,7 +1503,7 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
 
 def edge_labels(labels):
     """
-    Find which labels touch the borders of the image.
+    Find which labels touch the borders of the image. The background label (0) will be ignored.
 
     :param labels: 2D numpy.ndarray with segmentation labels.
     :return:
@@ -1524,5 +1524,8 @@ def edge_labels(labels):
 
     # labels that touch the bottom edge
     edge_labels = np.unique(np.concatenate((edge_labels, labels[-1, :].flat)))
+
+    # remove label=0, if present
+    edge_labels = np.setdiff1d(edge_labels, 0)
 
     return edge_labels
