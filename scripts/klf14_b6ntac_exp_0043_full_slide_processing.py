@@ -6,7 +6,7 @@ import os
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -19,6 +19,7 @@ from random import randint, seed
 import tifffile
 import glob
 from cytometer.utils import rough_foreground_mask
+import PIL
 from pysto.imgproc import block_split, block_stack, imfuse
 import tensorflow as tf
 import keras
@@ -87,18 +88,18 @@ for file_i, file in enumerate(files_list):
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
     # rough segmentation of the tissue in the image
-    seg0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
-                                                 component_size_threshold=component_size_threshold, return_im=True)
+    lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
+                                                            component_size_threshold=component_size_threshold, return_im=True)
 
     if DEBUG:
         plt.clf()
         plt.subplot(121)
         plt.imshow(im_downsampled)
         plt.subplot(122)
-        plt.imshow(seg0)
+        plt.imshow(lores_istissue0)
 
     # segmentation copy, to keep track of what's left to do
-    seg = seg0.copy()
+    lores_istissue = lores_istissue0.copy()
 
     # # save segmentation as a tiff file (with ZLIB compression)
     # outfilename = os.path.basename(file)
@@ -115,14 +116,14 @@ for file_i, file in enumerate(files_list):
 
     # keep extracting histology windows until we have finished
     step = 0
-    while np.count_nonzero(seg) > 0:
+    while np.count_nonzero(lores_istissue) > 0:
 
         step += 1
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
         (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
-            cytometer.utils.get_next_roi_to_process(seg, downsample_factor=downsample_factor,
+            cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
                                                     max_window_size=[1000, 1000],
                                                     border=np.round((receptive_field-1)/2))
 
@@ -131,6 +132,10 @@ for file_i, file in enumerate(files_list):
         last_row = first_row + 1001
         first_col = int(3205 * downsample_factor)
         last_col = first_col + 1001
+        lores_first_row = 3190
+        lores_last_row = lores_first_row + int(np.round(1001 / downsample_factor))
+        lores_first_col = 3205
+        lores_last_col = lores_first_col + int(np.round(1001 / downsample_factor))
 
         # load window from full resolution slide
         tile = im.read_region(location=(first_col, first_row), level=0,
@@ -141,10 +146,19 @@ for file_i, file in enumerate(files_list):
         tile = tile.astype(np.float32)
         tile /= 255
 
+        # interpolate coarse tissue segmentation to full resolution
+        istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
+        istissue_tile = PIL.Image.fromarray(istissue_tile)
+        istissue_tile = istissue_tile.resize((last_col - first_col, last_row - first_row), resample=PIL.Image.NEAREST)
+        istissue_tile = np.array(istissue_tile)
+        istissue_tile = np.reshape(istissue_tile, newshape=(1,) + istissue_tile.shape)
+        istissue_tile = (istissue_tile != 0).astype(np.uint8)
+
         # segment histology
         labels, labels_info = cytometer.utils.segmentation_pipeline(tile,
                                                                     contour_model, dmap_model, quality_model,
                                                                     quality_model_type='-1_1_band',
+                                                                    mask=istissue_tile,
                                                                     smallest_cell_area=804)
 
         if DEBUG:
@@ -215,7 +229,7 @@ for file_i, file in enumerate(files_list):
         #     plt.xlim(700, 1500)
         #     plt.ylim(650, 300)
         #     plt.subplot(122)
-        #     plt.imshow(imfuse(seg0, seg))
+        #     plt.imshow(imfuse(lores_istissue0, seg))
         #     plt.plot([lores_first_col, lores_last_col, lores_last_col, lores_first_col, lores_first_col],
         #              [lores_last_row, lores_last_row, lores_first_row, lores_first_row, lores_last_row], 'r')
         #     plt.xlim(700, 1500)
@@ -225,5 +239,31 @@ for file_i, file in enumerate(files_list):
         #     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0043_get_next_roi_to_process_' +
         #                              str(step).zfill(2) + '.png'))
 
-        # mark all cells not on the edges as "done"
-        np.isin(labels, non_edge_labels)
+        # mark all edge cells as "to do"
+        todo_labels = np.isin(labels[0, :, :, 0], edge_labels) * istissue_tile
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(tile[0, :, :, :])
+            plt.title('Histology', fontsize=16)
+            plt.subplot(222)
+            plt.imshow(istissue_tile[0, :, :])
+            plt.subplot(223)
+            aux = cytometer.utils.paint_labels(labels, labels_info['label'], np.isin(labels_info['label'], good_labels))
+            plt.imshow(tile[0, :, :, :])
+            plt.contour(aux[0, :, :, 0] * labels[0, :, :, 0],
+                        levels=labels_info['label'], colors='blue', linewidths=1)
+            plt.title('Non-edge labels with quality >= 0.9', fontsize=16)
+            plt.subplot(224)
+            plt.imshow(todo_labels)
+
+
+            plt.contour(labels[0, :, :, 0], levels=labels_info['label'], colors='blue', linewidths=1)
+            plt.title('Full segmentation', fontsize=16)
+            plt.subplot(223)
+            plt.boxplot(labels_info['quality'])
+            plt.tick_params(labelbottom=False, bottom=False)
+            plt.title('Quality values', fontsize=16)
+            plt.xticks(fontsize=16)
+            plt.yticks(fontsize=16)
