@@ -847,7 +847,7 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
 
 
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_model_type='0_1',
-                          smallest_cell_area=804):
+                          mask=None, smallest_cell_area=804):
     """
     Instance segmentation of cells using the contour + distance transformation pipeline.
 
@@ -863,6 +863,8 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
     * '0_1': mask: 1 within the segmentation, 0 outside.
     * '-1_1': mask: 1 within the segmentation, -1 outside.
     * '-1_1_band': mask: 1 within the segmentation, -1 on outside band, 0 beyond the band.
+    :param mask: (def None) If provided, labels that intersect less than 60% with the mask are ignored.
+    The mask can be used to skip segmenting background or another type of tissue.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
     segmentation noise.
     :return: labels, labels_info
@@ -918,6 +920,23 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
         for p in props:
             if p.area < smallest_cell_area:
                 aux[aux == p.label] = 0
+
+        # remove labels that are not substantially within the mask
+        if mask is not None:
+
+            # count number of pixels in each label after we multiply by the mask
+            props_masked = regionprops(aux * mask[i, :, :])
+
+            # create a lookup table for quick search of masked label area
+            max_label = np.max([p.label for p in props])
+            area_masked = np.zeros(shape=(max_label + 1,))
+            for p_masked in props_masked:
+                area_masked[p_masked.label] = p_masked.area
+
+            # check for each original label whether it is at least 60% covered by the mask
+            for p in props:
+                if area_masked[p.label] < p.area * 0.60:
+                    aux[aux == p.label] = 0
 
         if DEBUG:
             plt.clf()
