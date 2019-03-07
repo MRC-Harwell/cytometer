@@ -90,6 +90,7 @@ for file_i, file in enumerate(files_list):
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
                                                             component_size_threshold=component_size_threshold, return_im=True)
+    lores_istissue0 = (lores_istissue0 > 0).astype(np.uint8)
 
     if DEBUG:
         plt.clf()
@@ -127,15 +128,15 @@ for file_i, file in enumerate(files_list):
                                                     max_window_size=[1000, 1000],
                                                     border=np.round((receptive_field-1)/2))
 
-        # DEBUG
-        first_row = int(3190 * downsample_factor)
-        last_row = first_row + 1001
-        first_col = int(3205 * downsample_factor)
-        last_col = first_col + 1001
-        lores_first_row = 3190
-        lores_last_row = lores_first_row + int(np.round(1001 / downsample_factor))
-        lores_first_col = 3205
-        lores_last_col = lores_first_col + int(np.round(1001 / downsample_factor))
+        # # DEBUG
+        # first_row = int(3190 * downsample_factor)
+        # last_row = first_row + 1001
+        # first_col = int(3205 * downsample_factor)
+        # last_col = first_col + 1001
+        # lores_first_row = 3190
+        # lores_last_row = lores_first_row + int(np.round(1001 / downsample_factor))
+        # lores_first_col = 3205
+        # lores_last_col = lores_first_col + int(np.round(1001 / downsample_factor))
 
         # load window from full resolution slide
         tile = im.read_region(location=(first_col, first_row), level=0,
@@ -217,6 +218,7 @@ for file_i, file in enumerate(files_list):
                         levels=labels_info['label'], colors='blue', linewidths=1)
             plt.title('Labels with quality >= 0.9', fontsize=16)
 
+        # # DEBUG
         # # remove ROI from segmentation
         # seg[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
         #
@@ -242,28 +244,27 @@ for file_i, file in enumerate(files_list):
         # mark all edge cells as "to do"
         todo_labels = np.isin(labels[0, :, :, 0], edge_labels) * istissue_tile
 
+        # downsample "to do"
+        lores_todo_labels = PIL.Image.fromarray(todo_labels[0, :, :])
+        lores_todo_labels = lores_todo_labels.resize((lores_last_col - lores_first_col,
+                                                      lores_last_row - lores_first_row),
+                                                     resample=PIL.Image.NEAREST)
+        lores_todo_labels = np.array(lores_todo_labels)
+
         if DEBUG:
             plt.clf()
             plt.subplot(221)
-            plt.imshow(tile[0, :, :, :])
-            plt.title('Histology', fontsize=16)
+            plt.imshow(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col])
+            plt.title('Low res tissue mask', fontsize=16)
             plt.subplot(222)
             plt.imshow(istissue_tile[0, :, :])
+            plt.title('Full res tissue mask', fontsize=16)
             plt.subplot(223)
-            aux = cytometer.utils.paint_labels(labels, labels_info['label'], np.isin(labels_info['label'], good_labels))
-            plt.imshow(tile[0, :, :, :])
-            plt.contour(aux[0, :, :, 0] * labels[0, :, :, 0],
-                        levels=labels_info['label'], colors='blue', linewidths=1)
-            plt.title('Non-edge labels with quality >= 0.9', fontsize=16)
+            plt.imshow(todo_labels[0, :, :])
+            plt.title('Full res left over tissue', fontsize=16)
             plt.subplot(224)
-            plt.imshow(todo_labels)
+            plt.imshow(lores_todo_labels)
+            plt.title('Low res left over tissue', fontsize=16)
 
-
-            plt.contour(labels[0, :, :, 0], levels=labels_info['label'], colors='blue', linewidths=1)
-            plt.title('Full segmentation', fontsize=16)
-            plt.subplot(223)
-            plt.boxplot(labels_info['quality'])
-            plt.tick_params(labelbottom=False, bottom=False)
-            plt.title('Quality values', fontsize=16)
-            plt.xticks(fontsize=16)
-            plt.yticks(fontsize=16)
+        # update the tissue segmentation mask with the current window
+        lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_labels
