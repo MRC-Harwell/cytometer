@@ -51,6 +51,7 @@ conda install -y nose pytest
 pip install opencv-python pysto openslide-python
 pip install tifffile mahotas networkx
 conda install -y pandas
+pip install file_read_backwards
 
 ########################################################################
 ## python environment for DeepCell
