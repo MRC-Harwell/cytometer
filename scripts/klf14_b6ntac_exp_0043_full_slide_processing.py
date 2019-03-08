@@ -6,7 +6,7 @@ import os
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -23,6 +23,7 @@ import PIL
 from pysto.imgproc import block_split, block_stack, imfuse
 import tensorflow as tf
 import keras
+from skimage.measure import find_contours
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -39,6 +40,7 @@ training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
 seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 figures_dir = os.path.join(root_data_dir, 'figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'
@@ -81,11 +83,18 @@ contour_model = keras.models.load_model(contour_model_file)
 dmap_model = keras.models.load_model(dmap_model_file)
 quality_model = keras.models.load_model(quality_model_file)
 
-# file_i = 10; file = files_list[file_i]
 # "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
+# file_i = 10; file = files_list[file_i]
+# "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
+# file_i = 331; file = files_list[file_i]
 for file_i, file in enumerate(files_list):
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
+
+    # name of the annotations file
+    annotations_file = os.path.basename(file)
+    annotations_file = os.path.splitext(annotations_file)[0]
+    annotations_file = os.path.join(annotations_dir, annotations_file + '.json')
 
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
@@ -268,3 +277,19 @@ for file_i, file in enumerate(files_list):
 
         # update the tissue segmentation mask with the current window
         lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_labels
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(tile[0, :, :, :])
+            plt.title('Histology', fontsize=16)
+
+        # convert labels to contours (points) using marching squares
+        # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
+        contours = []
+        for lab in good_labels:
+            contours.append(find_contours(labels[0, :, :, 0] == lab, 0.5,
+                                          fully_connected='low', positive_orientation='low')[0])
+            if DEBUG:
+                plt.plot(contours[-1][:, 1], contours[-1][:, 0])
+
+        append_paths_to_aida_json_file(annotations_file, contours)
