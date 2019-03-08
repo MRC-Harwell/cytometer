@@ -17,7 +17,7 @@ import pysto.imgproc as pystoim
 import re
 import six
 from svgpathtools import svg2paths
-
+from file_read_backwards import FileReadBackwards
 
 DEBUG = False
 
@@ -513,6 +513,51 @@ def write_paths_to_aida_json_file(xs, outfile):
     fp.write('}\n')
 
     # close file
+    fp.close()
+
+
+# file = annotations_file
+# xs = contours
+def append_paths_to_aida_json_file(file, xs):
+    # truncate the tail of the annotations file:
+    #
+    # '          "closed": true'
+    # '        }'  ---------> end of last contour
+    # '      ]'    ---------> first line of tail (truncate this line and the rest)
+    # '    }'
+    # '  ]'
+    # '}'
+    #
+    # so that we can append a new contour like
+    #
+    # '          "closed": true'
+    # '        },'
+    # '        {'  ---------> beginning of new contour
+    # '          "class": "",'
+    # '          "type": "path",'
+    # '          ...'
+    # '          "closed": true'
+    # '        }'  ---------> end of last contour
+    # '      ]'    ---------> first line of tail
+    # '    }'
+    # '  ]'
+    # '}'
+    tail = '      ]\n' + \
+           '    }\n' + \
+           '  ]\n' + \
+           '}'
+    fp = open(file, 'a')
+    if not fp.seekable():
+        raise IOError('File does not support random access: ' + file)
+    # go to end of the file
+    fp.seek(0, os.SEEK_END)
+    # find the beginning of the tail, and move one extra position back, so that we can replace
+    # '        }' with '        },'
+    pos = fp.seek(fp.tell() - len(tail) - 2, os.SEEK_SET)
+    # truncate the tail
+    fp.truncate()
+    # add ',' to '        }', so that we can add a new contour
+    fp.write(',')
     fp.close()
 
 
