@@ -440,9 +440,14 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False):
     return paths_out
 
 
-# outfile = file.replace('.svg', '.json')
-# xs = contour.copy()
 def write_paths_to_aida_json_file(xs, outfile):
+    """
+    Write a list/tuple of contours to a JSON file in AIDA's annotation format.
+
+    :param xs: List of contours. Each contour is a list of points given as [x,y] or (x,y).
+    :param outfile: String with the path of the output file.
+    :return: Nothing returned.
+    """
 
     def write_path(x, fp):
         fp.write('        {\n')
