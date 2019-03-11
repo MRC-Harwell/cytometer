@@ -85,7 +85,9 @@ def main():
         # write the contours to AIDA annotations file format
         outfile = os.path.join(args.outdir, os.path.basename(im_file) + '.json')
         print('xxx Writing ' + outfile + '\n')
-        write_paths_to_aida_json_file(contours, outfile)
+        fp = open(outfile, 'w')
+        write_paths_to_aida_json_file(fp, contours)
+        fp.close()
 
 
 if __name__ == "__main__":
