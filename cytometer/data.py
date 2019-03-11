@@ -440,58 +440,67 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False):
     return paths_out
 
 
-def write_paths_to_aida_json_file(xs, outfile):
+def write_path_to_aida_json_file(fp, x):
+    """
+    Write single contour to a JSON file in AIDA's annotation format.
+
+    (This function only writes the XML code only for the contour, not a full JSON file).
+
+    :param fp: file pointer to text file that is open for writing/appending.
+    :param x: numpy.ndarray with two columns, for (x,y)-coordinates of the points of a polygonal contour.
+    :return: None.
+    """
+    fp.write('        {\n')
+    fp.write('          "class": "",\n')
+    fp.write('          "type": "path",\n')
+    fp.write('          "color": {\n')
+    fp.write('            "fill": {\n')
+    fp.write('              "hue": 170,\n')
+    fp.write('              "saturation": 0.44,\n')
+    fp.write('              "lightness": 0.69,\n')
+    fp.write('              "alpha": 0.7\n')
+    fp.write('            },\n')
+    fp.write('            "stroke": {\n')
+    fp.write('              "hue": 170,\n')
+    fp.write('              "saturation": 0.44,\n')
+    fp.write('              "lightness": 0.69,\n')
+    fp.write('              "alpha": 1.0\n')
+    fp.write('            }\n')
+    fp.write('          },\n')
+    fp.write('          "segments": [\n')
+    for i, pt in enumerate(x):
+        fp.write('            {\n')
+        fp.write('              "point": {\n')
+        fp.write('                "x": ' + str(pt[0]) + ',\n')
+        fp.write('                "y": ' + str(pt[1]) + '\n')
+        fp.write('              },\n')
+        fp.write('              "handleIn": {\n')
+        fp.write('                "x": 0.0,\n')
+        fp.write('                "y": 0.0\n')
+        fp.write('              },\n')
+        fp.write('              "handleOut": {\n')
+        fp.write('                "x": 0.0,\n')
+        fp.write('                "y": 0.0\n')
+        fp.write('              }\n')
+        if i == len(x) - 1:
+            fp.write('            }\n')  # last point in the contour
+        else:
+            fp.write('            },\n')  # any other point in the contour
+    fp.write('          ],\n')
+    fp.write('          "closed": true\n')
+    fp.write('        }')
+
+    return
+
+
+def write_paths_to_aida_json_file(fp, xs):
     """
     Write a list/tuple of contours to a JSON file in AIDA's annotation format.
 
+    :param fp: file pointer to text file that is open for writing/appending.
     :param xs: List of contours. Each contour is a list of points given as [x,y] or (x,y).
-    :param outfile: String with the path of the output file.
-    :return: Nothing returned.
+    :return: None.
     """
-
-    def write_path(x, fp):
-        fp.write('        {\n')
-        fp.write('          "class": "",\n')
-        fp.write('          "type": "path",\n')
-        fp.write('          "color": {\n')
-        fp.write('            "fill": {\n')
-        fp.write('              "hue": 170,\n')
-        fp.write('              "saturation": 0.44,\n')
-        fp.write('              "lightness": 0.69,\n')
-        fp.write('              "alpha": 0.7\n')
-        fp.write('            },\n')
-        fp.write('            "stroke": {\n')
-        fp.write('              "hue": 170,\n')
-        fp.write('              "saturation": 0.44,\n')
-        fp.write('              "lightness": 0.69,\n')
-        fp.write('              "alpha": 1.0\n')
-        fp.write('            }\n')
-        fp.write('          },\n')
-        fp.write('          "segments": [\n')
-        for i, pt in enumerate(x):
-            fp.write('            {\n')
-            fp.write('              "point": {\n')
-            fp.write('                "x": ' + str(pt[0]) + ',\n')
-            fp.write('                "y": ' + str(pt[1]) + '\n')
-            fp.write('              },\n')
-            fp.write('              "handleIn": {\n')
-            fp.write('                "x": 0.0,\n')
-            fp.write('                "y": 0.0\n')
-            fp.write('              },\n')
-            fp.write('              "handleOut": {\n')
-            fp.write('                "x": 0.0,\n')
-            fp.write('                "y": 0.0\n')
-            fp.write('              }\n')
-            if i == len(x) - 1:
-                fp.write('            }\n')  # last point in the contour
-            else:
-                fp.write('            },\n')  # any other point in the contour
-        fp.write('          ],\n')
-        fp.write('          "closed": true\n')
-        fp.write('        }')
-
-    # create output file
-    fp = open(outfile, 'w')
 
     # write file header
     fp.write('{\n')
@@ -502,7 +511,7 @@ def write_paths_to_aida_json_file(xs, outfile):
     fp.write('      "opacity": 1,\n')
     fp.write('      "items": [\n')
     for i, x in enumerate(xs):
-        write_path(x, fp)
+        write_path_to_aida_json_file(fp, x)
         if i == len(xs) - 1:
             fp.write('\n')  # last path
         else:
@@ -512,13 +521,21 @@ def write_paths_to_aida_json_file(xs, outfile):
     fp.write('  ]\n')
     fp.write('}\n')
 
-    # close file
-    fp.close()
+    return
 
 
-# file = annotations_file
-# xs = contours
 def append_paths_to_aida_json_file(file, xs):
+    """
+    Add contours to AIDA's annotation file in JSON format.
+
+    :param file: Path and filename of .json file with AIDA annotations.
+    :param xs: List of contours. Each contour is a list of points given as [x,y] or (x,y).
+    :return: None.
+    """
+
+    if len(xs) == 0:
+        return
+
     # truncate the tail of the annotations file:
     #
     # '          "closed": true'
@@ -531,7 +548,7 @@ def append_paths_to_aida_json_file(file, xs):
     # so that we can append a new contour like
     #
     # '          "closed": true'
-    # '        },'
+    # '        },' ---------> end of last contour
     # '        {'  ---------> beginning of new contour
     # '          "class": "",'
     # '          "type": "path",'
@@ -549,16 +566,34 @@ def append_paths_to_aida_json_file(file, xs):
     fp = open(file, 'a')
     if not fp.seekable():
         raise IOError('File does not support random access: ' + file)
+
     # go to end of the file
     fp.seek(0, os.SEEK_END)
+
     # find the beginning of the tail, and move one extra position back, so that we can replace
     # '        }' with '        },'
     pos = fp.seek(fp.tell() - len(tail) - 2, os.SEEK_SET)
+
     # truncate the tail
     fp.truncate()
+
     # add ',' to '        }', so that we can add a new contour
-    fp.write(',')
+    fp.write(',\n')
+
+    # append new contours to JSON file
+    for i, x in enumerate(xs):
+        write_path_to_aida_json_file(fp, x)
+        if i == len(xs) - 1:
+            fp.write('\n')  # last path
+        else:
+            fp.write(',\n')  # any other path
+
+    # append tail
+    fp.write(tail)
+
     fp.close()
+
+    return
 
 
 def read_keras_training_output(filename):

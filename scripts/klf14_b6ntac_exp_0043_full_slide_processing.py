@@ -19,6 +19,7 @@ from random import randint, seed
 import tifffile
 import glob
 from cytometer.utils import rough_foreground_mask
+from cytometer.data import append_paths_to_aida_json_file
 import PIL
 from pysto.imgproc import block_split, block_stack, imfuse
 import tensorflow as tf
@@ -287,9 +288,19 @@ for file_i, file in enumerate(files_list):
         # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
         contours = []
         for lab in good_labels:
-            contours.append(find_contours(labels[0, :, :, 0] == lab, 0.5,
-                                          fully_connected='low', positive_orientation='low')[0])
+            # load (row, col) coordinates
+            aux = find_contours(labels[0, :, :, 0] == lab, 0.5,
+                                fully_connected='low', positive_orientation='low')[0]
+            # convert to (x, y) coordinates
+            aux = aux[:, [1, 0]]
             if DEBUG:
-                plt.plot(contours[-1][:, 1], contours[-1][:, 0])
+                plt.plot(aux[:, 0], aux[:, 1])
+            # add window offset
+            aux[:, 0] = aux[:, 0] + first_col
+            aux[:, 1] = aux[:, 1] + first_row
+            # add to the list of contours
+            contours.append(aux)
 
+        # add segmented contours to annotations file
         append_paths_to_aida_json_file(annotations_file, contours)
+
