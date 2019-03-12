@@ -533,6 +533,25 @@ def append_paths_to_aida_json_file(file, xs):
     :return: None.
     """
 
+    def seek_character(fp, target):
+        """
+        Read file backwards until finding target character.
+        :param fp: File pointer.
+        :param target: Character that we are looking for.
+        :return:
+        c: Found character.
+        """
+
+        while fp.tell() > 0:
+            c = fp.read(1)
+            if c == target:
+                break
+            else:
+                fp.seek(fp.tell() - 2)
+        if fp.tell() == 0:
+            raise IOError('Beginning of file reached before finding "}"')
+        return c
+
     if len(xs) == 0:
         return
 
@@ -562,17 +581,26 @@ def append_paths_to_aida_json_file(file, xs):
     tail = '      ]\n' + \
            '    }\n' + \
            '  ]\n' + \
-           '}'
-    fp = open(file, 'a')
+           '}\n'
+    fp = open(file, 'r')
     if not fp.seekable():
         raise IOError('File does not support random access: ' + file)
 
     # go to end of the file
-    fp.seek(0, os.SEEK_END)
+    pos = fp.seek(0, os.SEEK_END)
 
-    # find the beginning of the tail, and move one extra position back, so that we can replace
-    # '        }' with '        },'
-    pos = fp.seek(fp.tell() - len(tail) - 2, os.SEEK_SET)
+    # find tail characters reading backwards from the end
+    c = seek_character(fp, '}')
+    c = seek_character(fp, ']')
+    c = seek_character(fp, '}')
+    c = seek_character(fp, ']')
+    c = seek_character(fp, '}')
+    pos = fp.tell()
+
+    # reopen file to append contours
+    fp.close()
+    fp = open(file, 'a')
+    fp.seek(pos)
 
     # truncate the tail
     fp.truncate()
