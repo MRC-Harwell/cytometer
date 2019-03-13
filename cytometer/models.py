@@ -34,10 +34,12 @@ def change_input_size(model, batch_shape):
     :param batch_shape: New input shape, e.g. (None, 500, 500, 3).
     :return: Keras model with modified input layer.
     """
+
     model.layers.pop(0)
     newInput = Input(batch_shape=batch_shape)
     newOutputs = model(newInput)
-    return Model(newInput, newOutputs)
+    model = Model(newInput, newOutputs)
+    return model
 
 
 def check_model(model):
