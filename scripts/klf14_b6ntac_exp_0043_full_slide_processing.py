@@ -10,21 +10,17 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
+import time
 import openslide
 import numpy as np
-from statistics import mode
 import matplotlib.pyplot as plt
-import cv2
-from random import randint, seed
-import tifffile
 import glob
 from cytometer.utils import rough_foreground_mask
 from cytometer.data import append_paths_to_aida_json_file
 import PIL
-from pysto.imgproc import block_split, block_stack, imfuse
 import tensorflow as tf
 import keras
-from skimage.measure import find_contours
+from skimage.measure import find_contours, regionprops
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -41,6 +37,7 @@ training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
 seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 figures_dir = os.path.join(root_data_dir, 'figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
@@ -92,10 +89,15 @@ for file_i, file in enumerate(files_list):
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
-    # name of the annotations file
+    # name of file to save annotations
     annotations_file = os.path.basename(file)
     annotations_file = os.path.splitext(annotations_file)[0]
     annotations_file = os.path.join(annotations_dir, annotations_file + '.json')
+
+    # name of file to save areas and contours
+    results_file = os.path.basename(file)
+    results_file = os.path.splitext(results_file)[0]
+    results_file = os.path.join(results_dir, results_file + '.npz')
 
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
@@ -125,11 +127,26 @@ for file_i, file in enumerate(files_list):
     # open full resolution histology slide
     im = openslide.OpenSlide(file)
 
+    # pixel size
+    assert(im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution'])
+    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+
+    # init empty list to store area values and contour coordinates
+    areas_all = []
+    contours_all = []
+
     # keep extracting histology windows until we have finished
-    step = 0
+    step = -1
     while np.count_nonzero(lores_istissue) > 0:
 
+        # next step
         step += 1
+
+        print('File ' + str(file_i) + '/' + str(len(files_list)) + ': step: ' +
+              str(step) + ': ' +
+              str(lores_istissue.size) + '/' + str(lores_istissue0.size) + ': ' +
+              "{0:.1f}".format(100.0 - lores_istissue.size / lores_istissue0.size * 100) + '% completed')
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
@@ -301,6 +318,20 @@ for file_i, file in enumerate(files_list):
             # add to the list of contours
             contours.append(aux)
 
+        # compute cell areas
+        props = regionprops(labels)
+        p_label = [p['label'] for p in props]
+        p_area = np.array([p['area'] for p in props])
+        areas = p_area[np.isin(p_label, good_labels)] * xres * yres  # (m^2)
+
         # add segmented contours to annotations file
         append_paths_to_aida_json_file(annotations_file, contours)
 
+        # add contours to list of all contours for the image
+        contours_all.append(contours)
+        areas_all.append(areas)
+
+        # save results after every window computation
+        np.savez(results_file, contours=contours_all, areas=areas_all)
+
+    # end of "keep extracting histology windows until we have finished"
