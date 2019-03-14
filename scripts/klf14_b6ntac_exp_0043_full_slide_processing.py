@@ -334,9 +334,6 @@ file_i = 331; file = files_list[file_i]
         contours_all.append(contours)
         areas_all.append(areas)
 
-        # save results after every window computation
-        np.savez(results_file, contours=contours_all, areas=areas_all)
-
         # update the tissue segmentation mask with the current window
         if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_labels):
             # if the mask remains identical, wipe out the whole window, as otherwise we'd have an
@@ -345,5 +342,8 @@ file_i = 331; file = files_list[file_i]
         else:
             # if the mask has been updated, use it to update the total tissue segmentation
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_labels
+
+        # save results after every window computation
+        np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
 
 # end of "keep extracting histology windows until we have finished"
