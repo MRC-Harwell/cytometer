@@ -21,6 +21,7 @@ import PIL
 import tensorflow as tf
 import keras
 from skimage.measure import find_contours, regionprops
+from scipy.interpolate import splprep
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -321,6 +322,12 @@ file_i = 331; file = files_list[file_i]
         p_label = [p['label'] for p in props]
         p_area = np.array([p['area'] for p in props])
         areas = p_area[np.isin(p_label, good_labels)] * xres * yres  # (m^2)
+
+        # # downsample contours for AIDA annotations file
+        # lores_contours = []
+        # for c in contours:
+        #     # tck, u = splprep([c[:, 0], c[:, 1]], k=1, s=0, per=c.shape[0])
+        #     tck, u = splprep([c[:, 0], c[:, 1]])
 
         # add segmented contours to annotations file
         if os.path.isfile(annotations_file):
