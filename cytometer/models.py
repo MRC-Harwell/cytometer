@@ -12,6 +12,7 @@ from cytometer.layers import DilatedMaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 import keras.backend as K
+import keras.engine
 import numpy as np
 
 
@@ -25,17 +26,25 @@ elif K.image_data_format() == 'channels_last':
 
 def change_input_size(model, batch_shape):
     """
-    Replace input layer of model to suit inputs of a different size.
+    Add an input layer to the model to suit a certain tensor size.
+
+    If the model already has an input layer, it's removed (Note: the
+    removal of the input layer is by reference, so it will change the
+    input model outside of the function).
 
     Note that after using this function model.summary() will display
-    the old model as a single layer.
+    a single input layer followed by the old model as a single layer.
 
     :param model: Keras model.
     :param batch_shape: New input shape, e.g. (None, 500, 500, 3).
     :return: Keras model with modified input layer.
     """
 
-    model.layers.pop(0)
+    if type(model.get_layer(index=0)) == keras.engine.input_layer.InputLayer:
+        # remove the input layer of the model
+        model.layers.pop(0)
+
+    # create new input to fit the requested tensor size
     newInput = Input(batch_shape=batch_shape)
     newOutputs = model(newInput)
     model = Model(newInput, newOutputs)
