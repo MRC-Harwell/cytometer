@@ -51,7 +51,7 @@ dmap_model_name = saved_dmap_model_basename + '*.h5'
 quality_model_name = saved_quality_model_basename + '*.h5'
 
 # full resolution image window and network expected receptive field parameters
-fullres_box_size = np.array([1001, 1001])
+fullres_box_size = np.array([1751, 1751])
 receptive_field = np.array([131, 131])
 
 # rough_foreground_mask() parameters
@@ -98,6 +98,10 @@ file_i = 331; file = files_list[file_i]
     results_file = os.path.basename(file)
     results_file = os.path.splitext(results_file)[0]
     results_file = os.path.join(results_dir, results_file + '.npz')
+
+    # delete annotations file, if an older one exists
+    if os.path.isfile(annotations_file):
+        os.remove(annotations_file)
 
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
@@ -148,13 +152,13 @@ file_i = 331; file = files_list[file_i]
               str(step) + ': ' +
               str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
               "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
-              '% completed: time ' + "{0:.1f}".format(time.time() - time0) + ' s')
+              '% completed: time ' + "{0:.2f}".format(time.time() - time0) + ' s')
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
         (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
             cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
-                                                    max_window_size=[1000, 1000],
+                                                    max_window_size=fullres_box_size,
                                                     border=np.round((receptive_field-1)/2))
 
         # # DEBUG
