@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 from cytometer.utils import rough_foreground_mask
-from cytometer.data import append_paths_to_aida_json_file
+from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_json_file
 import PIL
 import tensorflow as tf
 import keras
@@ -84,8 +84,8 @@ quality_model = keras.models.load_model(quality_model_file)
 # "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
 # file_i = 10; file = files_list[file_i]
 # "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
-# file_i = 331; file = files_list[file_i]
-for file_i, file in enumerate(files_list):
+file_i = 331; file = files_list[file_i]
+# for file_i, file in enumerate(files_list):
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
@@ -138,15 +138,17 @@ for file_i, file in enumerate(files_list):
 
     # keep extracting histology windows until we have finished
     step = -1
+    time0 = time.time()
     while np.count_nonzero(lores_istissue) > 0:
 
         # next step
         step += 1
 
-        print('File ' + str(file_i) + '/' + str(len(files_list)) + ': step: ' +
+        print('File ' + str(file_i) + '/' + str(len(files_list)) + ': step ' +
               str(step) + ': ' +
-              str(lores_istissue.size) + '/' + str(lores_istissue0.size) + ': ' +
-              "{0:.1f}".format(100.0 - lores_istissue.size / lores_istissue0.size * 100) + '% completed')
+              str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
+              "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
+              '% completed: time ' + "{0:.1f}".format(time.time() - time0) + ' s')
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
@@ -325,7 +327,12 @@ for file_i, file in enumerate(files_list):
         areas = p_area[np.isin(p_label, good_labels)] * xres * yres  # (m^2)
 
         # add segmented contours to annotations file
-        append_paths_to_aida_json_file(annotations_file, contours)
+        if os.path.isfile(annotations_file):
+            append_paths_to_aida_json_file(annotations_file, contours)
+        elif len(contours) > 0:
+            fp = open(annotations_file, 'w')
+            write_paths_to_aida_json_file(fp, contours)
+            fp.close()
 
         # add contours to list of all contours for the image
         contours_all.append(contours)
