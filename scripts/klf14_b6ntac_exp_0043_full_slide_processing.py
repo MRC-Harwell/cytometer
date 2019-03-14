@@ -295,14 +295,6 @@ file_i = 331; file = files_list[file_i]
             plt.imshow(lores_todo_labels)
             plt.title('Low res left over tissue', fontsize=16)
 
-        # update the tissue segmentation mask with the current window
-        lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_labels
-
-        if DEBUG:
-            plt.clf()
-            plt.imshow(tile[0, :, :, :])
-            plt.title('Histology', fontsize=16)
-
         # convert labels to contours (points) using marching squares
         # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
         contours = []
@@ -341,4 +333,13 @@ file_i = 331; file = files_list[file_i]
         # save results after every window computation
         np.savez(results_file, contours=contours_all, areas=areas_all)
 
-    # end of "keep extracting histology windows until we have finished"
+        # update the tissue segmentation mask with the current window
+        if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_labels):
+            # if the mask remains identical, wipe out the whole window, as otherwise we'd have an
+            # infinite loop
+            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+        else:
+            # if the mask has been updated, use it to update the total tissue segmentation
+            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_labels
+
+# end of "keep extracting histology windows until we have finished"
