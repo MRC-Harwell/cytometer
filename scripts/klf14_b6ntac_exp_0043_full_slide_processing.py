@@ -3,6 +3,8 @@ from pathlib import Path
 home = str(Path.home())
 
 import os
+import sys
+sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 
 # limit number of GPUs
@@ -21,6 +23,8 @@ import PIL
 import tensorflow as tf
 import keras
 from skimage.measure import find_contours, regionprops
+import shutil
+import inspect
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -49,6 +53,13 @@ saved_quality_model_basename = 'klf14_b6ntac_exp_0042_cnn_qualitynet_thresholded
 contour_model_name = saved_contour_model_basename + '*.h5'
 dmap_model_name = saved_dmap_model_basename + '*.h5'
 quality_model_name = saved_quality_model_basename + '*.h5'
+
+# script name to identify this experiment
+experiment_id = inspect.getfile(inspect.currentframe())
+if experiment_id == '<input>':
+    experiment_id = 'unknownscript'
+else:
+    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 # full resolution image window and network expected receptive field parameters
 fullres_box_size = np.array([1751, 1751])
@@ -364,3 +375,19 @@ for file_i, file in enumerate(['/users/rittscher/rcasero/scan_srv2_cox/Maz Yon/K
         np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
 
 # end of "keep extracting histology windows until we have finished"
+
+# if we run the script with qsub on the cluster, the standard output is in file
+# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
+# Save it to saved_models directory
+log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
+stdout_filename = glob.glob(stdout_filename)[0]
+if stdout_filename and os.path.isfile(stdout_filename):
+    shutil.copy2(stdout_filename, log_filename)
+else:
+    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
+    # Save it to saved_models directory
+    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+    if os.path.isfile(nohup_filename):
+        shutil.copy2(nohup_filename, log_filename)
