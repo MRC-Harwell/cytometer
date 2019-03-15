@@ -15,13 +15,12 @@ import openslide
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
-from cytometer.utils import rough_foreground_mask
+from cytometer.utils import rough_foreground_mask, bspline_resample
 from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_json_file
 import PIL
 import tensorflow as tf
 import keras
 from skimage.measure import find_contours, regionprops
-from scipy.interpolate import splprep
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -60,6 +59,10 @@ downsample_factor = 8.0
 dilation_size = 25
 component_size_threshold = 1e5
 
+# contour parameters
+contour_downsample_factor = 0.1
+bspline_k = 1
+
 # block_split() parameters in downsampled image
 block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
 block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
@@ -85,8 +88,12 @@ quality_model = keras.models.load_model(quality_model_file)
 # "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
 # file_i = 10; file = files_list[file_i]
 # "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
-file_i = 331; file = files_list[file_i]
+# file_i = 55; file = files_list[file_i]
+# "KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi"
+# file_i = 331; file = files_list[file_i]
 # for file_i, file in enumerate(files_list):
+for file_i, file in enumerate(['/users/rittscher/rcasero/scan_srv2_cox/Maz Yon/KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi',
+                               '/users/rittscher/rcasero/scan_srv2_cox/Maz Yon/KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi']):
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
@@ -323,22 +330,25 @@ file_i = 331; file = files_list[file_i]
         p_area = np.array([p['area'] for p in props])
         areas = p_area[np.isin(p_label, good_labels)] * xres * yres  # (m^2)
 
-        # # downsample contours for AIDA annotations file
-        # lores_contours = []
-        # for c in contours:
-        #     # tck, u = splprep([c[:, 0], c[:, 1]], k=1, s=0, per=c.shape[0])
-        #     tck, u = splprep([c[:, 0], c[:, 1]])
+        # downsample contours for AIDA annotations file
+        lores_contours = []
+        for c in contours:
+            lores_c = bspline_resample(c, factor=contour_downsample_factor, k=bspline_k, is_closed=True)
+            lores_contours.append(lores_c)
+            if DEBUG:
+                plt.plot(c[:, 0], c[:, 1], 'b')
+                plt.plot(lores_c[:, 0], lores_c[:, 1], 'r')
 
         # add segmented contours to annotations file
         if os.path.isfile(annotations_file):
-            append_paths_to_aida_json_file(annotations_file, contours)
+            append_paths_to_aida_json_file(annotations_file, lores_contours)
         elif len(contours) > 0:
             fp = open(annotations_file, 'w')
-            write_paths_to_aida_json_file(fp, contours)
+            write_paths_to_aida_json_file(fp, lores_contours)
             fp.close()
 
         # add contours to list of all contours for the image
-        contours_all.append(contours)
+        contours_all.append(lores_contours)
         areas_all.append(areas)
 
         # update the tissue segmentation mask with the current window
