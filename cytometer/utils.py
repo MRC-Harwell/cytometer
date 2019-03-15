@@ -8,6 +8,7 @@ from statistics import mode
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
 from scipy.sparse import dok_matrix
+from scipy.interpolate import splprep, splev
 from skimage import measure
 from skimage.morphology import watershed
 from skimage.future.graph import rag_mean_color
@@ -1548,3 +1549,57 @@ def edge_labels(labels):
     edge_labels = np.setdiff1d(edge_labels, 0)
 
     return edge_labels
+
+
+def bspline_resample(xy, factor=1.0, k=1, is_closed=True):
+    """
+    Resample a 2D curve using B-spline interpolation.
+
+    Note that repeated consecutive points will be removed, because otherwise splprep() raises an exception.
+
+    :param xy: (N, 2)-np.ndarray with (x,y)=coordinates
+    :param factor: (def 1.0) The number of output points is computed as round(N*factor).
+    :param k: (def 1) Degree of the spline, e.g. k=1 (linear), k=2 (quadratic), k=3 (cubic).
+    :param is_closed: (def True) Treat xy as a closed curve.
+    :return:
+    xy_out: (M, 2)-np.ndarray with coordinates of the resampled curve.
+    """
+
+    # check input
+    if type(xy) != np.ndarray or xy.shape[1] != 2:
+        raise ValueError('xy must be a 2-column np.ndarray')
+
+    # remove repeated consecutive points
+    idx = np.logical_or(np.diff(xy[:, 0]) != 0, np.diff(xy[:, 1]) != 0)
+    if is_closed:
+        idx = np.concatenate(([np.any(xy[0, :] - xy[-1, :] != 0), ], idx))
+    else:
+        idx = np.concatenate(([True, ], idx))
+    xy = xy[idx, :]
+
+    # for periodic contours, the last point will be ignored, so we need to add a duplicate
+    if is_closed:
+        xy = np.concatenate((xy, np.expand_dims(xy[0, :], axis=0)), axis=0)
+
+    # parameters for interpolator
+    if is_closed:
+        per = 1
+    else:
+        per = 0
+
+    # compute interpolating B-spline
+    tck, u = splprep([xy[:, 0], xy[:, 1]], k=k, s=0, per=per)
+
+    # number of output points
+    n = int(np.round(xy.shape[0] * factor))
+
+    # resample B-spline
+    x_out, y_out = splev(np.linspace(u[0], u[-1], n), tck)
+    xy_out = np.column_stack((x_out, y_out))
+
+    if DEBUG:
+        plt.clf()
+        plt.plot(xy[:, 0], xy[:, 1], 'b')
+        plt.plot(xy_out[:, 0], xy_out[:, 1], 'r')
+
+    return xy_out
