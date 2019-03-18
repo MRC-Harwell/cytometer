@@ -834,12 +834,17 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                 plt.contour(label_window[:, :, 0], levels=1, label='test')
 
     # convert list to array
-    training_windows_list = np.stack(training_windows_list)
-    testlabel_windows_list = np.stack(testlabel_windows_list)
-    index_list = np.stack(index_list)
+    if len(training_windows_list) > 0:
+        training_windows_list = np.stack(training_windows_list)
+    if len(testlabel_windows_list) > 0:
+        testlabel_windows_list = np.stack(testlabel_windows_list)
+    if len(index_list) > 0:
+        index_list = np.stack(index_list)
     if dataset_lab_ref is not None:
-        reflabel_windows_list = np.stack(reflabel_windows_list)
-        dice_list = np.stack(dice_list)
+        if len(reflabel_windows_list) > 0:
+            reflabel_windows_list = np.stack(reflabel_windows_list)
+        if len(dice_list) > 0:
+            dice_list = np.stack(dice_list)
 
     if dataset_lab_ref is None:
         return training_windows_list, testlabel_windows_list, index_list
@@ -962,6 +967,10 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
                                                         dataset_lab_test=labels,
                                                         training_window_len=training_window_len,
                                                         smallest_cell_area=smallest_cell_area)
+
+    # if no cells extracted
+    if len(cell_im) == 0:
+        return [], []
 
     # loop segmented objects
     quality = np.zeros(shape=(cell_im.shape[0], ), dtype=np.float32)

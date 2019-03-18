@@ -214,6 +214,14 @@ for file_i, file in enumerate(['/users/rittscher/rcasero/scan_srv2_cox/Maz Yon/K
                                                                     mask=istissue_tile,
                                                                     smallest_cell_area=804)
 
+        # if no cells found, wipe out current window from tissue segmentation, and go to next iteration
+        if len(labels) == 0:
+            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+            contours_all.append([])
+            areas_all.append([])
+            np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
+            continue
+
         if DEBUG:
             plt.clf()
             plt.subplot(221)
