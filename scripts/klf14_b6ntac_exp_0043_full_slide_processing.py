@@ -99,12 +99,10 @@ quality_model = keras.models.load_model(quality_model_file)
 # "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
 # file_i = 10; file = files_list[file_i]
 # "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
-# file_i = 55; file = files_list[file_i]
-# "KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi"
 # file_i = 331; file = files_list[file_i]
-# for file_i, file in enumerate(files_list):
-for file_i, file in enumerate(['/users/rittscher/rcasero/scan_srv2_cox/Maz Yon/KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi',
-                               '/users/rittscher/rcasero/scan_srv2_cox/Maz Yon/KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi']):
+# "KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi"
+# file_i = 55; file = files_list[file_i]
+for file_i, file in enumerate(files_list):
 
     print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
 
@@ -118,9 +116,9 @@ for file_i, file in enumerate(['/users/rittscher/rcasero/scan_srv2_cox/Maz Yon/K
     results_file = os.path.splitext(results_file)[0]
     results_file = os.path.join(results_dir, results_file + '.npz')
 
-    # delete annotations file, if an older one exists
-    if os.path.isfile(annotations_file):
-        os.remove(annotations_file)
+    # # delete annotations file, if an older one exists
+    # if os.path.isfile(annotations_file):
+    #     os.remove(annotations_file)
 
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
@@ -399,3 +397,8 @@ else:
     nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
     if os.path.isfile(nohup_filename):
         shutil.copy2(nohup_filename, log_filename)
+
+
+bar = 0
+for foo1 in foo['areas']:
+    bar += len(foo1)
