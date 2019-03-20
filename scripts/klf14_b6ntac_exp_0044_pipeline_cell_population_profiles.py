@@ -216,7 +216,7 @@ results_file = os.path.join(results_dir, results_file + '.npz')
 results = np.load(results_file)
 area_full_pipeline_f_MAT = np.concatenate(tuple(results['areas'])) * 1e12
 
-'''Compare populations
+'''Compare PAT and MAT populations
 '''
 
 # plot boxplots
