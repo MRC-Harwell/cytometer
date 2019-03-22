@@ -26,7 +26,6 @@ from cytometer.models import change_input_size
 from cytometer.CDF_confidence import CDF_error_DKW_band, CDF_error_beta
 from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
 from statsmodels.stats.multitest import multipletests
-from pysto.imgproc import imfuse
 
 DEBUG = False
 
@@ -42,9 +41,9 @@ def clear_mem():
     sess = K.get_session()
     sess.close()
     # limit mem
-    cfg = K.tf.ConfigProto()
+    cfg = tf.ConfigProto()
     cfg.gpu_options.allow_growth = True
-    K.set_session(K.tf.Session(config=cfg))
+    K.set_session(tf.Session(config=cfg))
     return
 
 
