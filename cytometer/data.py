@@ -812,7 +812,10 @@ def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to
         metainfo_row = metainfo_row[tags_to_keep]
 
     # repeat the row once per element in values
-    df = pd.concat([metainfo_row] * len(values), ignore_index=True)
+    if len(values) == 0:
+        df = pd.DataFrame(columns=metainfo_row.columns)
+    else:
+        df = pd.concat([metainfo_row] * len(values), ignore_index=True)
 
     # add the values as a new column
     df[values_tag] = values
