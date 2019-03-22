@@ -118,11 +118,7 @@ idx_orig_test_all = aux['idx_test_all']
 # for i_fold, idx_test in enumerate(idx_test_all):
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-    print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all)))
-
-    # hack: to restart training that died without recomputing finished folds
-    if i_fold <= 3:
-        continue
+    print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
 
     '''Load data
     '''
@@ -286,7 +282,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     train_onecell_testlab_dilated[train_onecell_testlab == 1] = 1
 
     # multiply histology by 0/-1/+1 segmentation mask
-    train_onecell_im *= np.repeat(train_onecell_testlab_dilated, repeats=train_onecell_im.shape[3], axis=3)
+    for chan in range(train_onecell_im.shape[3]):
+        train_onecell_im[:, :, :, chan:chan+1] *= train_onecell_testlab_dilated
     del train_onecell_testlab_dilated
 
     if DEBUG:
@@ -316,7 +313,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     test_onecell_testlab_dilated[test_onecell_testlab == 1] = 1
 
     # multiply histology by 0/-1/+1 segmentation mask
-    test_onecell_im *= np.repeat(test_onecell_testlab_dilated, repeats=test_onecell_im.shape[3], axis=3)
+    for chan in range(test_onecell_im.shape[3]):
+        test_onecell_im[:, :, :, chan:chan+1] *= test_onecell_testlab_dilated
     del test_onecell_testlab_dilated
 
     if DEBUG:
@@ -335,6 +333,12 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.title('Dice = ' + str("{:.2f}".format(test_onecell_dice[i])))
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
+
+    # clear memory
+    del train_onecell_reflab
+    del train_onecell_testlab
+    del test_onecell_reflab
+    del test_onecell_testlab
 
     '''Neural network training
     '''
