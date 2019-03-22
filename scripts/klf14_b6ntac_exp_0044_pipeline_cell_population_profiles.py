@@ -397,6 +397,10 @@ With this, we replicate the segmentation in exp 0036 + quality control as in 004
 ************************************************************************************************************************
 '''
 
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
 # list of images, and indices for training vs. testing indices
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
 with open(contour_model_kfold_filename, 'rb') as f:
@@ -414,7 +418,7 @@ contour_model_files = sorted(glob.glob(os.path.join(saved_models_dir, contour_mo
 dmap_model_files = sorted(glob.glob(os.path.join(saved_models_dir, dmap_model_name)))
 quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_model_name)))
 
-areas_all = []
+df_all = []
 
 for fold_i, idx_test in enumerate(idx_orig_test_all):
 
@@ -501,5 +505,16 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
         p_area = np.array([p['area'] for p in props])
         areas = p_area * xres * yres  # (m^2)
 
-        # save area values to exit list
-        areas_all += list(areas)
+        # create dataframe with mouse metainformation and area values
+        df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
+                                                       values=areas, values_tag='area',
+                                                       tags_to_keep=['id', 'ko', 'sex'])
+
+        # concatenate results
+        if len(df_all) == 0:
+            df_all = df
+        else:
+            df_all = pd.concat([df_all, df])
+
+plt.clf()
+plt.boxplot(areas_all)
