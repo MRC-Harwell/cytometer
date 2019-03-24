@@ -97,7 +97,7 @@ for i, file in enumerate(files_list):
 
 # HACK: only process two images
 files_list = [
-    os.path.join(data_dir, 'KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05.ndpi')
+    os.path.join(data_dir, 'KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33.ndpi')
 ]
 
 # trained models for all folds
