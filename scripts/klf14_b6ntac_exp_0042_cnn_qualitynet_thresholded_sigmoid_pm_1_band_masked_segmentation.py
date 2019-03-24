@@ -4,7 +4,7 @@ thresholded Dice coefficient (Dice >= 0.9). Here the loss is binary crossentropy
 
 The reason is to center the decision boundary on 0.9, to get finer granularity around that threshold.
 
-Mask one-cell histology windows with 0/-1/+1 mask.
+Mask one-cell histology windows with 0/-1/+1 mask. The band has a fixed width of (75-1)/2 pixels.
 
 It adds augmented training data to exp 0039.
 """
