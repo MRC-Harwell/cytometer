@@ -175,220 +175,7 @@ perc_area_gtruth_m_MAT = np.percentile(area_gtruth_m_MAT, perc)
 
 '''
 ************************************************************************************************************************
-Ground-truth pipeline segmentations with Quality >= 0.9, whether they overlap hand traced cells 
-or not.
-Cells were segmented in exp 0036. Here, we apply the quality network.
-************************************************************************************************************************
-'''
-
-quality_threshold = 0.9
-
-'''Inference using all folds
-'''
-
-model_name = 'klf14_b6ntac_exp_0041_cnn_qualitynet_thresholded_sigmoid_pm_1_masked_segmentation_model_fold_*.h5'
-
-saved_model_filename = os.path.join(saved_models_dir, model_name)
-
-# list of model files to inspect
-model_files = glob.glob(os.path.join(saved_models_dir, model_name))
-
-# list of images, and indices for training vs. testing indices
-contour_model_kfold_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0034_cnn_contour_info.pickle')
-with open(contour_model_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-im_orig_file_list = aux['file_list']
-idx_orig_test_all = aux['idx_test_all']
-
-n_folds = len(model_files)
-if (n_folds != len(idx_orig_test_all)):
-    raise Exception('Number of folds in dataset and model files don\'t coincide')
-
-# process test data from all folds
-n_cells = np.zeros((n_folds, ), np.float32)
-df_pipeline = None
-for i_fold, idx_test in enumerate(idx_orig_test_all):
-
-    # name of model's file
-    model_file = model_files[i_fold]
-
-    print('i_fold = ' + str(i_fold) + ', model = ' + model_file)
-
-    # load quality model
-    model = keras.models.load_model(model_file)
-
-    '''Load test data of pipeline segmentations
-    '''
-
-    # split the data list into training and testing lists
-    im_test_file_list, _ = cytometer.data.split_list(im_orig_file_list, idx_test)
-
-    # number of test images
-    n_im = len(im_test_file_list)
-
-    for i in range(n_im):
-
-        # load training dataset
-        datasets, _, _ = cytometer.data.load_datasets([im_test_file_list[i]], prefix_from='im',
-                                                      prefix_to=['im', 'predlab_kfold_' + str(i_fold).zfill(2)],
-                                                      nblocks=1)
-
-        test_im = datasets['im']
-        test_predlab = datasets['predlab_kfold_' + str(i_fold).zfill(2)]
-        del datasets
-
-        '''Split images into one-cell images, compute true Dice values, and prepare for inference
-        '''
-
-        # create one image per cell, and compute true Dice coefficient values, ignoring
-        # cells that touch the image borders
-        test_onecell_im, test_onecell_testlab, test_onecell_index_list = \
-            cytometer.utils.one_image_per_label(test_im, test_predlab,
-                                                training_window_len=training_window_len,
-                                                smallest_cell_area=smallest_cell_area,
-                                                clear_border_lab=True)
-
-        # multiply histology by -1/+1 mask as this is what the quality network expects
-        test_aux = 2 * (test_onecell_testlab.astype(np.float32) - 0.5)
-        masked_test_onecell_im = test_onecell_im * np.repeat(test_aux,
-                                                             repeats=test_onecell_im.shape[3], axis=3)
-
-        '''Assess quality of each cell's segmentation with Quality Network
-        '''
-
-        # quality score
-        qual = model.predict(masked_test_onecell_im)
-
-        # add number of cells to the total of this fold
-        n_cells[i_fold] += len(qual)
-
-        # area of each segmentation
-        area = np.sum(test_onecell_testlab, axis=(1, 2, 3)) * xres * yres
-
-        if DEBUG:
-            plt.clf()
-            plt.subplot(121)
-            j = 50
-            plt.imshow(test_onecell_im[j, :, :, :])
-            plt.contour(test_onecell_testlab[j, :, :, 0], levels=1, colors='green')
-            plt.title('Qual = ' + str("{:.2f}".format(qual[j, 0]))
-                      + ', area = ' + str("{:.1f}".format(area[j])) + ' $\mu m^2$')
-            plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
-            plt.text(100, 75, '-1', fontsize=14, verticalalignment='top', color='black')
-            plt.subplot(122)
-            i = 80
-            plt.imshow(test_onecell_im[j, :, :, :])
-            plt.contour(test_onecell_testlab[j, :, :, 0], levels=1, colors='red')
-            plt.title('Qual = ' + str("{:.2f}".format(qual[j, 0]))
-                      + ', area = ' + str("{:.1f}".format(area[j])) + ' $\mu m^2$')
-            plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
-            plt.text(100, 75, '-1', fontsize=14, verticalalignment='top', color='black')
-
-        # create dataframe with metainformation from mouse
-        df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
-                                                              area,
-                                                              values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
-
-        # add a column with the quality values
-        df_window['quality'] = qual
-
-        # add a column with the window filename. This is later used in the linear models
-        df_window['file'] = os.path.basename(im_test_file_list[i])
-
-        # accumulate results
-        if df_pipeline is None:
-            df_pipeline = df_window
-
-            # make sure that in the boxplots PAT comes before MAT
-            df_pipeline['ko'] = df_pipeline['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
-                                                                                       ordered=True))
-        else:
-            df_pipeline = pd.concat([df_pipeline, df_window], axis=0, ignore_index=True)
-
-'''
-************************************************************************************************************************
-Pipeline automatic extraction applied to full slides (both female, one MAT and one PAT).
-Areas computed with exp 0043.
-************************************************************************************************************************
-'''
-
-'''Load area data
-'''
-
-# list of histology files
-files_list = glob.glob(os.path.join(data_dir, 'KLF14*.ndpi'))
-
-# "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
-# file_i = 10; file = files_list[file_i]
-
-# "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
-file_i = 331
-file = files_list[file_i]
-
-print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
-
-# name of file to save annotations
-annotations_file = os.path.basename(file)
-annotations_file = os.path.splitext(annotations_file)[0]
-annotations_file = os.path.join(annotations_dir, annotations_file + '.json')
-
-# name of file to save areas and contours
-results_file = os.path.basename(file)
-results_file = os.path.splitext(results_file)[0]
-results_file = os.path.join(results_dir, results_file + '.npz')
-
-# load areas
-results = np.load(results_file)
-area_full_pipeline_f_PAT = np.concatenate(tuple(results['areas'])) * 1e12
-
-# "KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi"
-file_i = 55
-file = files_list[file_i]
-
-print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
-
-# name of file to save annotations
-annotations_file = os.path.basename(file)
-annotations_file = os.path.splitext(annotations_file)[0]
-annotations_file = os.path.join(annotations_dir, annotations_file + '.json')
-
-# name of file to save areas and contours
-results_file = os.path.basename(file)
-results_file = os.path.splitext(results_file)[0]
-results_file = os.path.join(results_dir, results_file + '.npz')
-
-# load areas
-results = np.load(results_file)
-area_full_pipeline_f_MAT = np.concatenate(tuple(results['areas'])) * 1e12
-
-'''Compare PAT and MAT populations
-'''
-
-# plot boxplots
-plt.clf()
-plt.boxplot((area_full_pipeline_f_PAT, area_full_pipeline_f_MAT), notch=True, labels=('PAT', 'MAT'))
-
-'''
-************************************************************************************************************************
-Compare ground truth to pipeline cells
-************************************************************************************************************************
-'''
-
-plt.clf()
-plt.subplot(121)
-plt.boxplot((area_gtruth_f_PAT, area_full_pipeline_f_PAT), notch=True, labels=('GT', 'Pipeline'))
-plt.title('Female PAT')
-plt.ylabel('area (um^2)', fontsize=14)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.subplot(122)
-plt.boxplot((area_gtruth_f_MAT, area_full_pipeline_f_MAT), notch=True, labels=('GT', 'Pipeline'))
-plt.title('Female MAT')
-plt.tick_params(axis='both', which='major', labelsize=14)
-
-
-'''
-************************************************************************************************************************
-Segment folds of the training data, using the pipeline function.
+Segment all folds of the training data, using the pipeline function.
 
 Here, we take training images as inputs, and pass them to cytometer.utils.segmentation_pipeline().
 
@@ -418,7 +205,7 @@ contour_model_files = sorted(glob.glob(os.path.join(saved_models_dir, contour_mo
 dmap_model_files = sorted(glob.glob(os.path.join(saved_models_dir, dmap_model_name)))
 quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_model_name)))
 
-df_all = []
+df_gtruth_pipeline = []
 
 for fold_i, idx_test in enumerate(idx_orig_test_all):
 
@@ -511,10 +298,107 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
                                                        tags_to_keep=['id', 'ko', 'sex'])
 
         # concatenate results
-        if len(df_all) == 0:
-            df_all = df
+        if len(df_gtruth_pipeline) == 0:
+            df_gtruth_pipeline = df
         else:
-            df_all = pd.concat([df_all, df])
+            df_gtruth_pipeline = pd.concat([df_gtruth_pipeline, df])
+
+# split data into groups
+area_gtruth_pipeline_f_PAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'f', df_gtruth_pipeline['ko'] == 'PAT'))]
+area_gtruth_pipeline_f_MAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'f', df_gtruth_pipeline['ko'] == 'MAT'))]
+area_gtruth_pipeline_m_PAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'm', df_gtruth_pipeline['ko'] == 'PAT'))]
+area_gtruth_pipeline_m_MAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'm', df_gtruth_pipeline['ko'] == 'MAT'))]
+
+# plot results
+if DEBUG:
+    plt.clf()
+    plt.subplot(121)
+    plt.boxplot((area_gtruth_f_PAT, area_gtruth_pipeline_f_PAT, area_gtruth_f_MAT, area_gtruth_pipeline_f_MAT),
+                notch=True, labels=('PAT$_{GT}$', 'PAT$_{P}$', 'MAT$_{GT}$', 'MAT$_{P}$'),
+                positions=(0, 1, 3, 4))
+    plt.ylabel('area  ($\mu m^2)$')
+    plt.title('Female')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.subplot(122)
+    plt.boxplot((area_gtruth_pipeline_m_PAT, area_gtruth_pipeline_m_MAT), notch=True, labels=('PAT', 'MAT'))
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+'''
+************************************************************************************************************************
+Pipeline automatic extraction applied to full slides (both female, one MAT and one PAT).
+Areas computed with exp 0043.
+************************************************************************************************************************
+'''
+
+'''Load area data
+'''
+
+# list of histology files
+files_list = glob.glob(os.path.join(data_dir, 'KLF14*.ndpi'))
+
+# "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
+# file_i = 10; file = files_list[file_i]
+
+# "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
+file_i = 331
+file = files_list[file_i]
+
+print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
+
+# name of file to save annotations
+annotations_file = os.path.basename(file)
+annotations_file = os.path.splitext(annotations_file)[0]
+annotations_file = os.path.join(annotations_dir, annotations_file + '.json')
+
+# name of file to save areas and contours
+results_file = os.path.basename(file)
+results_file = os.path.splitext(results_file)[0]
+results_file = os.path.join(results_dir, results_file + '.npz')
+
+# load areas
+results = np.load(results_file)
+area_full_pipeline_f_PAT = np.concatenate(tuple(results['areas'])) * 1e12
+
+# "KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi"
+file_i = 55
+file = files_list[file_i]
+
+print('File ' + str(file_i) + '/' + str(len(files_list)) + ': ' + file)
+
+# name of file to save annotations
+annotations_file = os.path.basename(file)
+annotations_file = os.path.splitext(annotations_file)[0]
+annotations_file = os.path.join(annotations_dir, annotations_file + '.json')
+
+# name of file to save areas and contours
+results_file = os.path.basename(file)
+results_file = os.path.splitext(results_file)[0]
+results_file = os.path.join(results_dir, results_file + '.npz')
+
+# load areas
+results = np.load(results_file)
+area_full_pipeline_f_MAT = np.concatenate(tuple(results['areas'])) * 1e12
+
+'''Compare PAT and MAT populations
+'''
+
+# plot boxplots
+plt.clf()
+plt.boxplot((area_full_pipeline_f_PAT, area_full_pipeline_f_MAT), notch=True, labels=('PAT', 'MAT'))
+
+'''
+************************************************************************************************************************
+Compare ground truth to pipeline cells
+************************************************************************************************************************
+'''
 
 plt.clf()
-plt.boxplot(areas_all)
+plt.subplot(121)
+plt.boxplot((area_gtruth_f_PAT, area_full_pipeline_f_PAT), notch=True, labels=('GT', 'Pipeline'))
+plt.title('Female PAT')
+plt.ylabel('area (um^2)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.subplot(122)
+plt.boxplot((area_gtruth_f_MAT, area_full_pipeline_f_MAT), notch=True, labels=('GT', 'Pipeline'))
+plt.title('Female MAT')
+plt.tick_params(axis='both', which='major', labelsize=14)
