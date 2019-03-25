@@ -205,7 +205,8 @@ contour_model_files = sorted(glob.glob(os.path.join(saved_models_dir, contour_mo
 dmap_model_files = sorted(glob.glob(os.path.join(saved_models_dir, dmap_model_name)))
 quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_model_name)))
 
-df_gtruth_pipeline = []
+df_gtruth_pipeline_good = []
+df_gtruth_pipeline_bad = []
 
 for fold_i, idx_test in enumerate(idx_orig_test_all):
 
@@ -275,6 +276,12 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
         idx_bad = np.logical_and(labels_info['im'] == i, labels_info['quality'] < quality_threshold)
         lab_bad = labels_info['label'][idx_bad]
 
+        # compute cell areas
+        props = regionprops(labels[i, :, :, 0])
+        p_label = [p['label'] for p in props]
+        p_area = np.array([p['area'] for p in props])
+        areas = p_area * xres * yres  # (m^2)
+
         # delete bad labels from labels_info
         labels_info = np.delete(labels_info, idx_bad)
 
@@ -286,41 +293,66 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
             plt.imshow(im[i, :, :, :])
             plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C0')
 
-        # compute cell areas
-        props = regionprops(labels[i, :, :, 0])
-        p_label = [p['label'] for p in props]
-        p_area = np.array([p['area'] for p in props])
-        areas = p_area * xres * yres  # (m^2)
+        # split areas into good objects and bad objects
+        idx_bad = np.isin(p_label, lab_bad)
+        idx_good = np.logical_not(idx_bad)
 
         # create dataframe with mouse metainformation and area values
-        df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
-                                                       values=areas, values_tag='area',
-                                                       tags_to_keep=['id', 'ko', 'sex'])
+        df_bad = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
+                                                           values=areas[idx_bad], values_tag='area',
+                                                           tags_to_keep=['id', 'ko', 'sex'])
+        df_good = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
+                                                            values=areas[idx_good], values_tag='area',
+                                                            tags_to_keep=['id', 'ko', 'sex'])
 
         # concatenate results
-        if len(df_gtruth_pipeline) == 0:
-            df_gtruth_pipeline = df
+        if len(df_gtruth_pipeline_good) == 0:
+            df_gtruth_pipeline_good = df_good
         else:
-            df_gtruth_pipeline = pd.concat([df_gtruth_pipeline, df])
+            df_gtruth_pipeline_good = pd.concat([df_gtruth_pipeline_good, df_good])
+        if len(df_gtruth_pipeline_bad) == 0:
+            df_gtruth_pipeline_bad = df_bad
+        else:
+            df_gtruth_pipeline_bad = pd.concat([df_gtruth_pipeline_bad, df_bad])
 
 # split data into groups
-area_gtruth_pipeline_f_PAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'f', df_gtruth_pipeline['ko'] == 'PAT'))]
-area_gtruth_pipeline_f_MAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'f', df_gtruth_pipeline['ko'] == 'MAT'))]
-area_gtruth_pipeline_m_PAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'm', df_gtruth_pipeline['ko'] == 'PAT'))]
-area_gtruth_pipeline_m_MAT = df_gtruth_pipeline['area'][(np.logical_and(df_gtruth_pipeline['sex'] == 'm', df_gtruth_pipeline['ko'] == 'MAT'))]
+area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
+                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
+area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
+                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
+area_gtruth_pipeline_good_m_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
+                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
+area_gtruth_pipeline_good_m_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
+                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
+
+area_gtruth_pipeline_bad_f_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
+                                                                                df_gtruth_pipeline_bad['ko'] == 'PAT'))]
+area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
+                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
+area_gtruth_pipeline_bad_m_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
+                                                                                  df_gtruth_pipeline_bad['ko'] == 'PAT'))]
+area_gtruth_pipeline_bad_m_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
+                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
 
 # plot results
 if DEBUG:
     plt.clf()
-    plt.subplot(121)
-    plt.boxplot((area_gtruth_f_PAT, area_gtruth_pipeline_f_PAT, area_gtruth_f_MAT, area_gtruth_pipeline_f_MAT),
-                notch=True, labels=('PAT$_{GT}$', 'PAT$_{P}$', 'MAT$_{GT}$', 'MAT$_{P}$'),
-                positions=(0, 1, 3, 4))
-    plt.ylabel('area  ($\mu m^2)$')
+    plt.boxplot((area_gtruth_f_PAT, area_gtruth_pipeline_good_f_PAT, area_gtruth_pipeline_bad_f_PAT,
+                 area_gtruth_f_MAT, area_gtruth_pipeline_good_f_MAT, area_gtruth_pipeline_bad_f_MAT),
+                notch=True, labels=('PAT$_{GT}$', 'PAT$_{GT/P,good}$', 'PAT$_{GT/P,bad}$',
+                                    'MAT$_{GT}$', 'MAT$_{GT/P,good}$', 'MAT$_{GT/P,bad}$'),
+                positions=(0, 1, 2, 4, 5, 6))
+    plt.ylabel('area  ($\mu m^2)$', fontsize=14)
     plt.title('Female')
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.subplot(122)
-    plt.boxplot((area_gtruth_pipeline_m_PAT, area_gtruth_pipeline_m_MAT), notch=True, labels=('PAT', 'MAT'))
+
+    plt.clf()
+    plt.boxplot((area_gtruth_m_PAT, area_gtruth_pipeline_good_m_PAT, area_gtruth_pipeline_bad_m_PAT,
+                 area_gtruth_m_MAT, area_gtruth_pipeline_good_m_MAT, area_gtruth_pipeline_bad_m_MAT),
+                notch=True, labels=('PAT$_{GT}$', 'PAT$_{GT/P,good}$', 'PAT$_{GT/P,bad}$',
+                                    'MAT$_{GT}$', 'MAT$_{GT/P,good}$', 'MAT$_{GT/P,bad}$'),
+                positions=(0, 1, 2, 4, 5, 6))
+    plt.title('Male')
     plt.tick_params(axis='both', which='major', labelsize=14)
 
 '''
