@@ -1,3 +1,11 @@
+"""
+Processing full slides with
+
+* klf14_b6ntac_exp_0034_cnn_contour
+* klf14_b6ntac_exp_0035_cnn_dmap
+* klf14_b6ntac_exp_0042_cnn_qualitynet_thresholded_sigmoid_pm_1_band_masked_segmentation
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
