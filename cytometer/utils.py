@@ -867,7 +867,8 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
     :param quality_model_type: (def '0_1') String with the type of masking used in the quality network.
     * '0_1': mask: 1 within the segmentation, 0 outside.
     * '-1_1': mask: 1 within the segmentation, -1 outside.
-    * '-1_1_band': mask: 1 within the segmentation, -1 on outside band, 0 beyond the band.
+    * '-1_1_band': mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel band, 0 beyond the band.
+    * '-1_1_prop_band': mask: 1 within the segmentation, -1 on outside 20% equivalent radius thick band, 0 beyond the band.
     :param mask: (def None) If provided, labels that intersect less than 60% with the mask are ignored.
     The mask can be used to skip segmenting background or another type of tissue.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
@@ -985,8 +986,20 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
             aux = np.repeat(aux, repeats=cell_im.shape[3], axis=2)
             masked_cell_im = cell_im[j, :, :, :] * aux
         elif quality_model_type == '-1_1_band':
-            # mask: 1 within the segmentation, -1 on outside band, 0 beyond the band
+            # mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel thick band, 0 beyond the band
             aux = cv2.dilate(cell_seg[j, :, :, 0], kernel=np.ones(shape=(75, 75)))
+            aux = - aux.astype(np.float32)
+            aux[cell_seg[j, :, :, 0] == 1] = 1
+
+            aux = np.repeat(np.expand_dims(aux, axis=2), axis=2, repeats=3)
+            masked_cell_im = cell_im[j, :, :, :] * aux
+        elif quality_model_type == '-1_1_prop_band':
+            # mask: 1 within the segmentation, -1 on outside 20% equivalent radius band, 0 beyond the band
+            a = np.count_nonzero(cell_seg[j, :, :, 0])  # segmentation area (pix^2)
+            r = np.sqrt(a / np.pi)  # equivalent circle's radius
+            len_kernel = int(np.ceil(2 * r * 0.20 + 1))
+
+            aux = cv2.dilate(cell_seg[j, :, :, 0], kernel=np.ones(shape=(len_kernel, len_kernel)))
             aux = - aux.astype(np.float32)
             aux[cell_seg[j, :, :, 0] == 1] = 1
 
@@ -1028,7 +1041,7 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
                 if np.count_nonzero(masked_cell_im < 0) > 0:
                     plt.imshow(-masked_cell_im * (masked_cell_im < 0))
                 plt.title('Cell with mask = -1', fontsize=16)
-            elif quality_model_type == '-1_1_band':
+            elif quality_model_type in ['-1_1_band', '-1_1_prop_band']:
                 plt.clf()
                 plt.subplot(221)
                 plt.imshow(cell_im[j, :, :, :])
