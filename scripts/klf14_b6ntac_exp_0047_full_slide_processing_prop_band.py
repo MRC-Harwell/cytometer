@@ -1,5 +1,5 @@
 """
-Processing full slides with
+Processing full slides with Fold 0 of
 
 * klf14_b6ntac_exp_0034_cnn_contour
 * klf14_b6ntac_exp_0035_cnn_dmap
@@ -16,7 +16,7 @@ sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -108,6 +108,7 @@ files_list = [
     os.path.join(data_dir, 'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi'),   # female PAT
     os.path.join(data_dir, 'KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi')   # female MAT
 ]
+files_list = files_list[::-1]
 
 # trained models for all folds
 contour_model_files = sorted(glob.glob(os.path.join(saved_models_dir, contour_model_name)))
