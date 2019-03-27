@@ -20,11 +20,12 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
-from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_json_file
+from cytometer.data import append_paths_to_aida_json_file
 import PIL
 import tensorflow as tf
 from skimage.measure import regionprops
 from skimage.morphology import watershed
+from sklearn.metrics import confusion_matrix
 import inspect
 import pandas as pd
 
@@ -605,6 +606,8 @@ quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_mo
 
 df_gtruth_pipeline_good = []
 df_gtruth_pipeline_bad = []
+labels_info_all = []
+labels_info_dice_all = []
 
 for fold_i, idx_test in enumerate(idx_orig_test_all):
 
@@ -674,10 +677,17 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
         dice_lut = np.zeros(shape=(np.max(labels[i, :, :, 0]) + 1, ))
         dice_lut[dice['lab_test']] = dice['dice']
 
-        # copy Dice coefficients to labels_info, according to their corresponding cells
+        # get Dice value for each non-edge automatic segmentation. These Dice values are
+        # computed by comparing the automatic segmentation to the manual segmentation. When there's no manual
+        # segmentation to compare with, we assume Dice = 0. This is not a perfect choice, as sometimes the pipeline may
+        # spot a cell that the human operator didn't, but in general we are going to assume that if the human operator
+        # didn't hand-traced an object it's because it was not a well formed white adipocyte
         idx = labels_info['im'] == i
-        d = dice_lut[labels_info[idx]['label']]
-        labels_info[idx]['dice'] =
+        labels_info_dice = dice_lut[labels_info[idx]['label']]
+
+        # store dice/quality values for confusion matrices
+        labels_info_dice_all.append(labels_info_dice)
+        labels_info_all.append(labels_info[idx])
 
         if DEBUG:
             plt.subplot(223)
@@ -776,6 +786,17 @@ if DEBUG:
     if SAVE_FIGS:
         plt.savefig(
             os.path.join(figures_dir, 'klf14_b6ntac_exp_0044_area_boxplots_quality_rejection_bias_male_quality_prop_band_focal_loss.png'))
+
+# Compute confusion matrix
+y_true = np.concatenate(labels_info_dice_all) >= 0.9
+y_pred = np.concatenate(labels_info_all)['quality'] >= quality_threshold
+
+cytometer.utils.plot_confusion_matrix(y_true, y_pred,
+                                      normalize=True,
+                                      title=None,
+                                      xlabel='Predict Quality $\geq$ 0.5',
+                                      ylabel='Ground-truth Dice $\geq$ 0.9',
+                                      cmap=plt.cm.Blues)
 
 '''
 ************************************************************************************************************************
