@@ -27,7 +27,7 @@ import glob
 import numpy as np
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 # limit GPU memory used
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -70,15 +70,6 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'  # contour
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'  # dmap
 
-contour_model_name = saved_contour_model_basename + '*.h5'
-dmap_model_name = saved_dmap_model_basename + '*.h5'
-
-# filenames of models of each k-fold
-contour_model_files = glob.glob(os.path.join(saved_models_dir, contour_model_name))
-dmap_model_files = glob.glob(os.path.join(saved_models_dir, dmap_model_name))
-contour_n_folds = len(contour_model_files)
-dmap_n_folds = len(dmap_model_files)
-
 # list of images, and indices for training vs. testing indices
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
 with open(contour_model_kfold_filename, 'rb') as f:
@@ -91,10 +82,6 @@ idx_orig_test_all = aux['idx_test_all']
 
 # data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
 augment_factor = 10
-
-# trained models for all folds
-contour_model_files = sorted(glob.glob(os.path.join(saved_models_dir, contour_model_name)))
-dmap_model_files = sorted(glob.glob(os.path.join(saved_models_dir, dmap_model_name)))
 
 for fold_i, idx_test in enumerate(idx_orig_test_all):
 
@@ -116,8 +103,9 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
     n_im = im.shape[0]
 
     # select the models that correspond to current fold
-    contour_model_file = contour_model_files[fold_i]
-    dmap_model_file = dmap_model_files[fold_i]
+
+    contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(fold_i) + '.h5')
 
     # load models
     contour_model = keras.models.load_model(contour_model_file)
