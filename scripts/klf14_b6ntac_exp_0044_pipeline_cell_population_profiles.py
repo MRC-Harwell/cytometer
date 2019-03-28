@@ -577,7 +577,7 @@ Quality trained with focal loss.
 '''
 
 # quality network
-saved_quality_model_basename = 'klf14_b6ntac_exp_0046_cnn_qualitynet_thresholded_sigmoid_pm_1_prop_band_masked_segmentation'
+saved_quality_model_basename = 'klf14_b6ntac_exp_0046_cnn_qualitynet_thresholded_sigmoid_pm_1_prop_band_masked_segmentation_focal_loss'
 quality_model_name = saved_quality_model_basename + '*.h5'
 
 # CSV file with metainformation of all mice
@@ -598,7 +598,7 @@ yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
 df_gtruth_pipeline = []
 
-for fold_i, idx_test in enumerate(idx_orig_test_all):
+for fold_i, idx_test in enumerate(idx_orig_test_all[0:5]):
 
     print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
 
@@ -735,7 +735,7 @@ area_gtruth_pipeline_good_m_PAT = df_gtruth_pipeline['area'][idx_good * ~idx_f *
 area_gtruth_pipeline_good_m_MAT = df_gtruth_pipeline['area'][idx_good * ~idx_f * ~idx_pat]
 
 area_gtruth_pipeline_bad_f_PAT = df_gtruth_pipeline['area'][~idx_good * idx_f * idx_pat]
-area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline['area'][(~idx_good) * idx_f * (~idx_pat)]
+area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline['area'][~idx_good * idx_f * ~idx_pat]
 area_gtruth_pipeline_bad_m_PAT = df_gtruth_pipeline['area'][~idx_good * ~idx_f * idx_pat]
 area_gtruth_pipeline_bad_m_MAT = df_gtruth_pipeline['area'][~idx_good * ~idx_f * ~idx_pat]
 
@@ -750,6 +750,7 @@ if DEBUG:
     plt.ylabel('area  ($\mu m^2)$', fontsize=14)
     plt.title('Female')
     plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.ylim((0, 15000))
 
     if SAVE_FIGS:
         plt.savefig(
@@ -764,21 +765,90 @@ if DEBUG:
     plt.ylabel('area  ($\mu m^2)$', fontsize=14)
     plt.title('Male')
     plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.ylim((0, 15000))
 
     if SAVE_FIGS:
         plt.savefig(
             os.path.join(figures_dir, 'klf14_b6ntac_exp_0044_area_boxplots_quality_rejection_bias_male_quality_prop_band_focal_loss.png'))
 
-# Compute confusion matrix
-y_true = np.concatenate(labels_info_dice_all) >= 0.9
-y_pred = np.concatenate(labels_info_all)['quality'] >= quality_threshold
+# Compute confusion matrix for all cells together
+if DEBUG:
+    y_true = df_gtruth_pipeline['dice'] >= 0.9
+    y_pred = df_gtruth_pipeline['quality'] >= quality_threshold
 
-cytometer.utils.plot_confusion_matrix(y_true, y_pred,
-                                      normalize=True,
-                                      title=None,
-                                      xlabel='Predict Quality $\geq$ 0.5',
-                                      ylabel='Ground-truth Dice $\geq$ 0.9',
-                                      cmap=plt.cm.Blues)
+    cytometer.utils.plot_confusion_matrix(y_true, y_pred,
+                                          normalize=True,
+                                          title='All cells',
+                                          xlabel='Predict Quality $\geq$ 0.5',
+                                          ylabel='Ground-truth Dice $\geq$ 0.9',
+                                          cmap=plt.cm.Blues)
+
+    # confusion matrix for females
+    df_gtruth_pipeline_female = df_gtruth_pipeline.loc[df_gtruth_pipeline['sex'] == 'f', :]
+    y_true = df_gtruth_pipeline_female['dice'] >= 0.9
+    y_pred = df_gtruth_pipeline_female['quality'] >= quality_threshold
+
+    cytometer.utils.plot_confusion_matrix(y_true, y_pred,
+                                          normalize=True,
+                                          title='Female',
+                                          xlabel='Predict Quality $\geq$ 0.5',
+                                          ylabel='Ground-truth Dice $\geq$ 0.9',
+                                          cmap=plt.cm.Blues)
+
+    # confusion matrix for males
+    df_gtruth_pipeline_male = df_gtruth_pipeline.loc[df_gtruth_pipeline['sex'] == 'm', :]
+    y_true = df_gtruth_pipeline_male['dice'] >= 0.9
+    y_pred = df_gtruth_pipeline_male['quality'] >= quality_threshold
+
+    cytometer.utils.plot_confusion_matrix(y_true, y_pred,
+                                          normalize=True,
+                                          title='Male',
+                                          xlabel='Predict Quality $\geq$ 0.5',
+                                          ylabel='Ground-truth Dice $\geq$ 0.9',
+                                          cmap=plt.cm.Blues)
+
+# compute sensitivity and specificity over intervals of cell area
+area_intervals = list(range(0, 8000, 250)) + [np.Inf, ]
+sensitivity = np.zeros(shape=(len(area_intervals) - 1, ))
+specificity = np.zeros(shape=(len(area_intervals) - 1, ))
+for i in range(len(area_intervals) - 1):
+
+    df = df_gtruth_pipeline.loc[np.logical_and(df_gtruth_pipeline['area'] >= area_intervals[i],
+                                               df_gtruth_pipeline['area'] < area_intervals[i + 1]), :]
+
+    # sensitivity = TP / P
+    #  TP = Dice >= 0.9 & quality >= 0.5
+    #  P  = Dice >= 0.9
+    TP = np.count_nonzero(np.logical_and(df['dice'] >= 0.9, df['quality'] >= 0.5))
+    P = np.count_nonzero(df['dice'] >= 0.9)
+    if P == 0:
+        sensitivity[i] = np.nan
+    else:
+        sensitivity[i] = TP / P
+
+    # specificity = TN / N
+    #  TN = Dice < 0.9 & quality < 0.5
+    #  N  = Dice < 0.9
+    TN = np.count_nonzero(np.logical_and(df['dice'] < 0.9, df['quality'] < 0.5))
+    N = np.count_nonzero(df['dice'] < 0.9)
+    if N == 0:
+        specificity[i] = np.nan
+    else:
+        specificity[i] = TN / N
+
+if DEBUG:
+    plt.clf()
+    area_midpoints = (np.array(area_intervals[0:-1]) + np.array(area_intervals[1:]))/2.0
+    plt.plot(area_midpoints, sensitivity, label='Sensitivity')
+    plt.plot(area_midpoints, specificity, label='Specificity')
+    plt.legend()
+    plt.xlabel('area ($\mu m^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+    if SAVE_FIGS:
+        plt.savefig(
+            os.path.join(figures_dir, 'klf14_b6ntac_exp_0044_pipeline_sensitivity_specificity.png'))
+
 
 '''
 ************************************************************************************************************************
