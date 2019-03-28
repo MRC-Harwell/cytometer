@@ -16,7 +16,7 @@ sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -56,10 +56,6 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'
 saved_quality_model_basename = 'klf14_b6ntac_exp_0045_cnn_qualitynet_thresholded_sigmoid_pm_1_prop_band_masked_segmentation'
-
-contour_model_name = saved_contour_model_basename + '*.h5'
-dmap_model_name = saved_dmap_model_basename + '*.h5'
-quality_model_name = saved_quality_model_basename + '*.h5'
 
 # script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
@@ -110,16 +106,11 @@ files_list = [
 ]
 files_list = files_list[::-1]
 
-# trained models for all folds
-contour_model_files = sorted(glob.glob(os.path.join(saved_models_dir, contour_model_name)))
-dmap_model_files = sorted(glob.glob(os.path.join(saved_models_dir, dmap_model_name)))
-quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_model_name)))
-
 # select the models that correspond to current fold
 fold_i = 0
-contour_model_file = contour_model_files[fold_i]
-dmap_model_file = dmap_model_files[fold_i]
-quality_model_file = quality_model_files[fold_i]
+contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_model_fold_' + str(fold_i) + '.h5')
 
 # load models
 contour_model = keras.models.load_model(contour_model_file)

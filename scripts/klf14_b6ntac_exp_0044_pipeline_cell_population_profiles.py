@@ -53,9 +53,6 @@ saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 
-contour_model_name = saved_contour_model_basename + '*.h5'
-dmap_model_name = saved_dmap_model_basename + '*.h5'
-
 # script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
@@ -599,14 +596,7 @@ im = PIL.Image.open(im_orig_file_list[0])
 xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
 yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
-# trained models for all folds
-contour_model_files = sorted(glob.glob(os.path.join(saved_models_dir, contour_model_name)))
-dmap_model_files = sorted(glob.glob(os.path.join(saved_models_dir, dmap_model_name)))
-quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_model_name)))
-
 df_gtruth_pipeline = []
-labels_info_all = []
-labels_info_dice_all = []
 
 for fold_i, idx_test in enumerate(idx_orig_test_all):
 
@@ -629,9 +619,9 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
     n_im = im.shape[0]
 
     # select the models that correspond to current fold
-    contour_model_file = contour_model_files[fold_i]
-    dmap_model_file = dmap_model_files[fold_i]
-    quality_model_file = quality_model_files[fold_i]
+    contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_model_fold_' + str(fold_i) + '.h5')
 
     # load models
     contour_model = keras.models.load_model(contour_model_file)
@@ -685,33 +675,37 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
                                                        values=areas, values_tag='area',
                                                        tags_to_keep=['id', 'ko', 'sex'])
 
-        # add to dataframe: 
+        # add to dataframe: image index and cell label
+        df['im'] = i
+        df['label'] = p_label
 
-        # compute quality measure of estimated labels
-        dice = cytometer.utils.match_overlapping_labels(labels_test=labels[i, :, :, 0],
-                                                        labels_ref=reflab[i, :, :, 0])
-
-        # look up table for Dice coefficient values
-        dice_lut = np.zeros(shape=(np.max(labels[i, :, :, 0]) + 1, ))
-        dice_lut[dice['lab_test']] = dice['dice']
-
+        # add to dataframe: Dice coefficients
         # get Dice value for each non-edge automatic segmentation. These Dice values are
         # computed by comparing the automatic segmentation to the manual segmentation. When there's no manual
         # segmentation to compare with, we assume Dice = 0. This is not a perfect choice, as sometimes the pipeline may
         # spot a cell that the human operator didn't, but in general we are going to assume that if the human operator
-        # didn't hand-traced an object it's because it was not a well formed white adipocyte
+        # didn't hand-traced an object it's because it was not a well formed white adipocyte.
+        #
+        # We then create a look up table (LUT) so that we can sort the values according to the labels in labels_info
+        # efficiently.
+        dice_info = cytometer.utils.match_overlapping_labels(labels_test=labels[i, :, :, 0],
+                                                             labels_ref=reflab[i, :, :, 0])
+
+        dice_lut = np.zeros(shape=(np.max(labels[i, :, :, 0]) + 1, ))
+        dice_lut[dice_info['lab_test']] = dice_info['dice']
+
+        df['dice'] = dice_lut[p_label]
+
+        # add to dataframe: quality scores
         idx = labels_info['im'] == i
-        labels_info_dice = dice_lut[labels_info[idx]['label']]
+        assert(np.all(p_label == labels_info[idx]['label']))
+        df['quality'] = labels_info[idx]['quality']
 
-        # store dice/quality values for confusion matrices
-        labels_info_dice_all.append(labels_info_dice)
-        labels_info_all.append(labels_info[idx])
-
+        ## Delete bad segmentations: this is only for display
 
         # list of labels that the quality network rejects
         idx_bad = np.logical_and(labels_info['im'] == i, labels_info['quality'] < quality_threshold)
         lab_bad = labels_info['label'][idx_bad]
-
 
         # delete bad labels from labels_info
         labels_info = np.delete(labels_info, idx_bad)
@@ -724,46 +718,26 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
             plt.imshow(im[i, :, :, :])
             plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C0')
 
-        # split areas into good objects and bad objects
-        idx_bad = np.isin(p_label, lab_bad)
-        idx_good = np.logical_not(idx_bad)
-
-        # create dataframe with mouse metainformation and area values
-        df_bad = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
-                                                           values=areas[idx_bad], values_tag='area',
-                                                           tags_to_keep=['id', 'ko', 'sex'])
-        df_good = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
-                                                            values=areas[idx_good], values_tag='area',
-                                                            tags_to_keep=['id', 'ko', 'sex'])
-
         # concatenate results
-        if len(df_gtruth_pipeline_good) == 0:
-            df_gtruth_pipeline_good = df_good
+        if len(df_gtruth_pipeline) == 0:
+            df_gtruth_pipeline = df
         else:
-            df_gtruth_pipeline_good = pd.concat([df_gtruth_pipeline_good, df_good])
-        if len(df_gtruth_pipeline_bad) == 0:
-            df_gtruth_pipeline_bad = df_bad
-        else:
-            df_gtruth_pipeline_bad = pd.concat([df_gtruth_pipeline_bad, df_bad])
+            df_gtruth_pipeline = pd.concat([df_gtruth_pipeline, df])
 
 # split data into groups
-area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
-area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
-area_gtruth_pipeline_good_m_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
-area_gtruth_pipeline_good_m_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
+idx_good = np.array(df_gtruth_pipeline['quality'] >= 0.5)
+idx_f = np.array(df_gtruth_pipeline['sex'] == 'f')
+idx_pat = np.array(df_gtruth_pipeline['ko'] == 'PAT')
 
-area_gtruth_pipeline_bad_f_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
-                                                                                df_gtruth_pipeline_bad['ko'] == 'PAT'))]
-area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
-area_gtruth_pipeline_bad_m_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'PAT'))]
-area_gtruth_pipeline_bad_m_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
+area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline['area'][idx_good * idx_f * idx_pat]
+area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline['area'][idx_good * idx_f * ~idx_pat]
+area_gtruth_pipeline_good_m_PAT = df_gtruth_pipeline['area'][idx_good * ~idx_f * idx_pat]
+area_gtruth_pipeline_good_m_MAT = df_gtruth_pipeline['area'][idx_good * ~idx_f * ~idx_pat]
+
+area_gtruth_pipeline_bad_f_PAT = df_gtruth_pipeline['area'][~idx_good * idx_f * idx_pat]
+area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline['area'][(~idx_good) * idx_f * (~idx_pat)]
+area_gtruth_pipeline_bad_m_PAT = df_gtruth_pipeline['area'][~idx_good * ~idx_f * idx_pat]
+area_gtruth_pipeline_bad_m_MAT = df_gtruth_pipeline['area'][~idx_good * ~idx_f * ~idx_pat]
 
 # plot results
 if DEBUG:
