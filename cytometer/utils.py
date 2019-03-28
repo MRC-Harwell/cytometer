@@ -1667,19 +1667,22 @@ def plot_confusion_matrix(y_true, y_pred,
 
     fig, ax = plt.subplots()
     im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    ax.figure.colorbar(im, ax=ax)
+    cb = ax.figure.colorbar(im, ax=ax)
+    for cbi in cb.ax.yaxis.get_ticklabels():
+        cbi.set_size(14)
     # We want to show all ticks...
     ax.set(xticks=np.arange(cm.shape[1]),
            yticks=np.arange(cm.shape[0]),
            # ... and label them with the respective list entries
-           xticklabels=classes, yticklabels=classes,
-           title=title,
-           ylabel=ylabel,
-           xlabel=xlabel)
+           xticklabels=classes, yticklabels=classes)
+    plt.title(title, fontsize=16)
+    plt.xlabel(xlabel, fontsize=14)
+    plt.ylabel(ylabel, fontsize=14)
 
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
              rotation_mode="anchor")
+    plt.tick_params(axis='both', which='major', labelsize=14)
 
     # Loop over data dimensions and create text annotations.
     fmt = '.2f' if normalize else 'd'
@@ -1688,6 +1691,7 @@ def plot_confusion_matrix(y_true, y_pred,
         for j in range(cm.shape[1]):
             ax.text(j, i, format(cm[i, j], fmt),
                     ha="center", va="center",
-                    color="white" if cm[i, j] > thresh else "black")
+                    color="white" if cm[i, j] > thresh else "black",
+                    fontsize=14)
     fig.tight_layout()
     return ax
