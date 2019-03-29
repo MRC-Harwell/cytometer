@@ -38,7 +38,7 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -353,11 +353,11 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # row = Y, col = X
     center = ((train_onecell_im.shape[2] - 1) / 2.0, (train_onecell_im.shape[1] - 1) / 2.0)
     maxRadius = np.sqrt(train_onecell_im.shape[2]**2 + train_onecell_im.shape[1]**2) / 2
-    for i in train_onecell_im.shape[0]:
+    for i in range(train_onecell_im.shape[0]):
         train_onecell_im[i, :, :, :] = cv2.linearPolar(train_onecell_im[i, :, :, :], center=center, maxRadius=maxRadius,
                                                        flags=cv2.INTER_LINEAR+cv2.WARP_FILL_OUTLIERS)
 
-    for i in test_onecell_im.shape[0]:
+    for i in range(test_onecell_im.shape[0]):
         test_onecell_im[i, :, :, :] = cv2.linearPolar(test_onecell_im[i, :, :, :], center=center, maxRadius=maxRadius,
                                                       flags=cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS)
 
