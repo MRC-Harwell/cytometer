@@ -38,7 +38,7 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -60,7 +60,7 @@ import tensorflow as tf
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.95
+config.gpu_options.per_process_gpu_memory_fraction = 0.97
 set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
@@ -452,6 +452,6 @@ else:
     # if we ran the script with nohup in linux, the standard output is in file nohup.out.
     # Save it to saved_models directory
     log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup_foo.out')
+    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
     if os.path.isfile(nohup_filename):
         shutil.copy2(nohup_filename, log_filename)
