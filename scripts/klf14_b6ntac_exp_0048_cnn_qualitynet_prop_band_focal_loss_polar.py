@@ -38,7 +38,7 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -452,6 +452,6 @@ else:
     # if we ran the script with nohup in linux, the standard output is in file nohup.out.
     # Save it to saved_models directory
     log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
+    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup_foo.out')
     if os.path.isfile(nohup_filename):
         shutil.copy2(nohup_filename, log_filename)
