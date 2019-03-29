@@ -598,7 +598,7 @@ yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
 df_gtruth_pipeline = []
 
-for fold_i, idx_test in enumerate(idx_orig_test_all[0:5]):
+for fold_i, idx_test in enumerate(idx_orig_test_all[0:7]):
 
     print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
 
@@ -929,3 +929,22 @@ plt.subplot(122)
 plt.boxplot((area_gtruth_f_MAT, area_full_pipeline_f_MAT), notch=True, labels=('GT', 'Pipeline'))
 plt.title('Female MAT')
 plt.tick_params(axis='both', which='major', labelsize=14)
+
+'''
+************************************************************************************************************************
+Distribution of cell areas in the training data set
+************************************************************************************************************************
+'''
+
+# we assume that we have computed the areas in the training dataset at the beginning of this script, creating the
+# dataframe df_gtruth
+
+area_intervals = list(range(0, 8000, 250)) + [np.Inf, ]
+area_midpoints = (np.array(area_intervals[0:-1]) + np.array(area_intervals[1:]))/2.0
+
+if DEBUG:
+    plt.clf()
+    plt.hist(df_gtruth['area'], bins=area_intervals, density=False)
+    plt.xlabel('area ($\mu m^2$)', fontsize=14)
+    plt.ylabel('number of cells', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
