@@ -60,7 +60,7 @@ import tensorflow as tf
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.97
+config.gpu_options.per_process_gpu_memory_fraction = 0.95
 set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
@@ -81,7 +81,7 @@ smallest_cell_area = 804
 training_window_len = 401
 
 # segmentations with Dice >= threshold are accepted
-quality_threshold = 0.9
+dice_threshold = 0.9
 
 # batch size for training
 batch_size = 16
@@ -404,9 +404,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # train model
         tic = datetime.datetime.now()
         parallel_model.fit(train_onecell_im,
-                           {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
+                           {'fc1': (train_onecell_dice >= dice_threshold).astype(np.float32)},
                            validation_data=(test_onecell_im,
-                                            {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
+                                            {'fc1': (test_onecell_dice >= dice_threshold).astype(np.float32)}),
                            batch_size=batch_size, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -426,9 +426,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # train model
         tic = datetime.datetime.now()
         model.fit(train_onecell_im,
-                  {'fc1': (train_onecell_dice >= quality_threshold).astype(np.float32)},
+                  {'fc1': (train_onecell_dice >= dice_threshold).astype(np.float32)},
                   validation_data=(test_onecell_im,
-                                   {'fc1': (test_onecell_dice >= quality_threshold).astype(np.float32)}),
+                                   {'fc1': (test_onecell_dice >= dice_threshold).astype(np.float32)}),
                   batch_size=16, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
