@@ -646,7 +646,7 @@ def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
 
 def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                         training_window_len=401, smallest_cell_area=804, clear_border_lab=False,
-                        allow_repeat_ref=False):
+                        smallest_dice=0.0, allow_repeat_ref=False):
     """
     Extract a small image centered on each cell of a dataset according to segmentation labels.
 
@@ -665,8 +665,11 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as segmentation
     noise.
     :param clear_border_lab: (def False) Ignore labels that touch the edges of the image.
-    :param allow_repeat_ref: (def False) Flag to allow that reference labels can be assigned multiple times. When False,
-    each returned pair is unique. When True, 2+ test labels can correspond to the same ref label.
+    :param smallest_dice: (def 0.0) Only when dataset_lab_ref != None. Cells that don't achieve minimum Dice value will
+    be ignored. By default, smallest_dice=0.0, so this option will be ignored.
+    :param allow_repeat_ref: (def False) Only when dataset_lab_ref != None. Flag to allow that reference labels can be
+    assigned multiple times. When False, each returned pair is unique. When True, 2+ test labels can correspond to the
+    same ref label.
     :return: If dataset_lab_ref is provided,
     (training_windows, testlabel_windows, reflabel_windows, dice)
 
@@ -715,9 +718,9 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                                                           allow_repeat_ref=allow_repeat_ref)
 
         # compute bounding boxes for the testing labels (note that the background 0 label is ignored)
-        props = regionprops(dataset_lab_test[i, :, :, 0], coordinates='rc')
+        props_test = regionprops(dataset_lab_test[i, :, :, 0], coordinates='rc')
 
-        for p in props:
+        for p in props_test:
 
             if DEBUG:
                 print('p[\'label\'] = ' + str(p['label']))  # DEBUG
@@ -734,6 +737,10 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                 assert(len(dice) == 1)  # the test label shouldn't be repeated. Thus, we should get only one Dice coeff here
                 lab_ref = lab_ref[0]
                 dice = dice[0]
+
+                # ignore test labels that don't have a good enough overlap with a reference label
+                if dice < smallest_dice:
+                    continue
 
             # we ignore tiny labels as artifacts, as well as tests labels that have no corresponding ground truth
             if p['area'] < smallest_cell_area or (dataset_lab_ref is not None and lab_ref == 0):
@@ -832,7 +839,8 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                          [lbox_min_row, lbox_min_row, lbox_max_row, lbox_max_row, lbox_min_row], 'g')
                 plt.subplot(222)
                 plt.imshow(training_window)
-                plt.contour(label_window[:, :, 0], levels=1)
+                plt.contour(reflabel_window[:, :, 0], levels=1, colors='green', label='ref')
+                plt.contour(label_window[:, :, 0], levels=1, label='test')
                 plt.title('Dice = ' + str(round(dice_list[-1], 2)))
                 plt.subplot(223)
                 plt.imshow(dataset_lab_test[i, :, :, 0] == lab_test)
