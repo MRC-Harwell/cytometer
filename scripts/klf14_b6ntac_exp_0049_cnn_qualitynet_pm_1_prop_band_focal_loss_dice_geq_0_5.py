@@ -7,10 +7,10 @@ The reason is to center the decision boundary on 0.9, to get finer granularity a
 Mask one-cell histology windows with 0/-1/+1 mask. The mask has a band with a width of 20% the equivalent radius
 of the cell (equivalent radius is the radius of a circle with the same area as the cell).
 
-The difference of this one with 0046 is that here we remove segmentations with Dice = 0.0 (automatic segmentations that
-have no ground truth) from the training dataset.
+The difference of this one with 0046 is that here we remove segmentations with Dice < 0.5 (automatic segmentations that
+have poor ground truth) from the training dataset.
 
-This is part of a series of experiments with different types of masks: 0039, 0040, 0041, 0042 and 0045.
+This is part of a series of experiments with different types of masks: 0039, 0040, 0041, 0042, 0045, 0046, 0048.
 """
 
 # cross-platform home directory
@@ -40,7 +40,7 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -81,6 +81,9 @@ smallest_cell_area = 804
 
 # training window length
 training_window_len = 401
+
+# remove from training cells that don't have a good enough overlap with a reference label
+smallest_dice = 0.5
 
 # segmentations with Dice >= threshold are accepted
 quality_threshold = 0.9
@@ -173,7 +176,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         cytometer.utils.one_image_per_label(train_im, train_predlab,
                                             dataset_lab_ref=train_reflab,
                                             training_window_len=training_window_len,
-                                            smallest_cell_area=smallest_cell_area)
+                                            smallest_cell_area=smallest_cell_area,
+                                            clear_border_lab=True,
+                                            smallest_dice=smallest_dice,
+                                            allow_repeat_ref=True)
 
     # clear memory
     del train_im
@@ -239,7 +245,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         cytometer.utils.one_image_per_label(test_im, test_predlab,
                                             dataset_lab_ref=test_reflab,
                                             training_window_len=training_window_len,
-                                            smallest_cell_area=smallest_cell_area)
+                                            smallest_cell_area=smallest_cell_area,
+                                            clear_border_lab=True,
+                                            smallest_dice=smallest_dice,
+                                            allow_repeat_ref=True)
 
     # clear memory
     del test_im
