@@ -504,7 +504,7 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     return labels, labels_borders
 
 
-def match_overlapping_labels(labels_ref, labels_test):
+def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
     """
     Match estimated segmentations to ground truth segmentations and compute Dice coefficients.
 
@@ -545,6 +545,8 @@ def match_overlapping_labels(labels_ref, labels_test):
     correspond to the same object.
     :param labels_test: np.ndarray matrix, some integer type. All pixels with the same label
     correspond to the same object.
+    :param allow_repeat_ref: (def False) Flag to allow that reference labels can be assigned multiple times. When False,
+    each returned pair is unique. When True, 2+ test labels can correspond to the same ref label.
     :return: structured array out:
      out['lab_test']: (N,) np.ndarray with unique list of labels in the test image.
      out['lab_ref']: (N,) np.ndarray with labels that best align with the test labels.
@@ -633,7 +635,8 @@ def match_overlapping_labels(labels_ref, labels_test):
 
         # remove the labels from the matrix so that they cannot be selected again
         dice[lab_test, :] = 0
-        dice[:, lab_ref] = 0
+        if not allow_repeat_ref:
+            dice[:, lab_ref] = 0
 
     # check that all Dice values are in [0.0, 1.0]
     assert(all(out['dice'] >= 0.0) and all(out['dice'] <= 1.0))
@@ -642,7 +645,8 @@ def match_overlapping_labels(labels_ref, labels_test):
 
 
 def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
-                        training_window_len=401, smallest_cell_area=804, clear_border_lab=False):
+                        training_window_len=401, smallest_cell_area=804, clear_border_lab=False,
+                        allow_repeat_ref=False):
     """
     Extract a small image centered on each cell of a dataset according to segmentation labels.
 
@@ -661,6 +665,8 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as segmentation
     noise.
     :param clear_border_lab: (def False) Ignore labels that touch the edges of the image.
+    :param allow_repeat_ref: (def False) Flag to allow that reference labels can be assigned multiple times. When False,
+    each returned pair is unique. When True, 2+ test labels can correspond to the same ref label.
     :return: If dataset_lab_ref is provided,
     (training_windows, testlabel_windows, reflabel_windows, dice)
 
@@ -705,7 +711,8 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
         # compute overlap between estimated and ground truth labels
         if dataset_lab_ref is not None:
             lab_correspondence = match_overlapping_labels(labels_ref=dataset_lab_ref[i, :, :, 0],
-                                                          labels_test=dataset_lab_test[i, :, :, 0])
+                                                          labels_test=dataset_lab_test[i, :, :, 0],
+                                                          allow_repeat_ref=allow_repeat_ref)
 
         # compute bounding boxes for the testing labels (note that the background 0 label is ignored)
         props = regionprops(dataset_lab_test[i, :, :, 0], coordinates='rc')
