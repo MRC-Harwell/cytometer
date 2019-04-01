@@ -12,7 +12,7 @@ sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -66,7 +66,8 @@ smallest_cell_area = 804
 # training window length
 training_window_len = 401
 
-# threshold for quality network
+# thresholds for quality network
+dice_threshold = 0.9
 quality_threshold = 0.5
 
 
@@ -591,6 +592,11 @@ with open(contour_model_kfold_filename, 'rb') as f:
 im_orig_file_list = aux['file_list']
 idx_orig_test_all = aux['idx_test_all']
 
+# change home directory
+im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, home_path_from='/users/rittscher/rcasero',
+                                                         home_path_to=home,
+                                                         check_isfile=False)
+
 # read pixel size information
 im = PIL.Image.open(im_orig_file_list[0])
 xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
@@ -598,7 +604,7 @@ yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
 df_gtruth_pipeline = []
 
-for fold_i, idx_test in enumerate(idx_orig_test_all[0:7]):
+for fold_i, idx_test in enumerate(idx_orig_test_all):
 
     print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
 
@@ -724,8 +730,10 @@ for fold_i, idx_test in enumerate(idx_orig_test_all[0:7]):
         else:
             df_gtruth_pipeline = pd.concat([df_gtruth_pipeline, df])
 
+#np.savez('/tmp/foo.npz', df_gtruth_pipeline=df_gtruth_pipeline)
+
 # split data into groups
-idx_good = np.array(df_gtruth_pipeline['quality'] >= 0.5)
+idx_good = np.array(df_gtruth_pipeline['quality'] >= quality_threshold)
 idx_f = np.array(df_gtruth_pipeline['sex'] == 'f')
 idx_pat = np.array(df_gtruth_pipeline['ko'] == 'PAT')
 
@@ -773,7 +781,7 @@ if DEBUG:
 
 # Compute confusion matrix for all cells together
 if DEBUG:
-    y_true = df_gtruth_pipeline['dice'] >= 0.9
+    y_true = df_gtruth_pipeline['dice'] >= dice_threshold
     y_pred = df_gtruth_pipeline['quality'] >= quality_threshold
 
     cytometer.utils.plot_confusion_matrix(y_true, y_pred,
@@ -785,7 +793,7 @@ if DEBUG:
 
     # confusion matrix for females
     df_gtruth_pipeline_female = df_gtruth_pipeline.loc[df_gtruth_pipeline['sex'] == 'f', :]
-    y_true = df_gtruth_pipeline_female['dice'] >= 0.9
+    y_true = df_gtruth_pipeline_female['dice'] >= dice_threshold
     y_pred = df_gtruth_pipeline_female['quality'] >= quality_threshold
 
     cytometer.utils.plot_confusion_matrix(y_true, y_pred,
@@ -797,7 +805,7 @@ if DEBUG:
 
     # confusion matrix for males
     df_gtruth_pipeline_male = df_gtruth_pipeline.loc[df_gtruth_pipeline['sex'] == 'm', :]
-    y_true = df_gtruth_pipeline_male['dice'] >= 0.9
+    y_true = df_gtruth_pipeline_male['dice'] >= dice_threshold
     y_pred = df_gtruth_pipeline_male['quality'] >= quality_threshold
 
     cytometer.utils.plot_confusion_matrix(y_true, y_pred,
@@ -819,8 +827,8 @@ for i in range(len(area_intervals) - 1):
     # sensitivity = TP / P
     #  TP = Dice >= 0.9 & quality >= 0.5
     #  P  = Dice >= 0.9
-    TP = np.count_nonzero(np.logical_and(df['dice'] >= 0.9, df['quality'] >= 0.5))
-    P = np.count_nonzero(df['dice'] >= 0.9)
+    TP = np.count_nonzero(np.logical_and(df['dice'] >= dice_threshold, df['quality'] >= quality_threshold))
+    P = np.count_nonzero(df['dice'] >= dice_threshold)
     if P == 0:
         sensitivity[i] = np.nan
     else:
@@ -829,8 +837,8 @@ for i in range(len(area_intervals) - 1):
     # specificity = TN / N
     #  TN = Dice < 0.9 & quality < 0.5
     #  N  = Dice < 0.9
-    TN = np.count_nonzero(np.logical_and(df['dice'] < 0.9, df['quality'] < 0.5))
-    N = np.count_nonzero(df['dice'] < 0.9)
+    TN = np.count_nonzero(np.logical_and(df['dice'] < dice_threshold, df['quality'] < quality_threshold))
+    N = np.count_nonzero(df['dice'] < dice_threshold)
     if N == 0:
         specificity[i] = np.nan
     else:
@@ -849,6 +857,48 @@ if DEBUG:
         plt.savefig(
             os.path.join(figures_dir, 'klf14_b6ntac_exp_0044_pipeline_sensitivity_specificity.png'))
 
+# compute plot of cell area vs. Dice/quality value
+
+if DEBUG:
+
+
+    plt.clf()
+    plt.subplot(121)
+    plt.plot(df_gtruth_pipeline['area'][df_gtruth_pipeline['dice'] < dice_threshold],
+             df_gtruth_pipeline['dice'][df_gtruth_pipeline['dice'] < dice_threshold], '.C0')
+    plt.plot(df_gtruth_pipeline['area'][df_gtruth_pipeline['dice'] >= dice_threshold],
+             df_gtruth_pipeline['dice'][df_gtruth_pipeline['dice'] >= dice_threshold], '.C1')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Cell area', fontsize=14)
+    plt.ylabel('Dice', fontsize=14)
+
+    plt.subplot(122)
+
+    # quality < 0.5, dice < 0.9
+    idx = (df_gtruth_pipeline['quality'] < quality_threshold) * (df_gtruth_pipeline['dice'] < dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C0', label="D<0.9, Q<0.5")
+    # quality >= 0.5, dice < 0.9
+    idx = (df_gtruth_pipeline['quality'] >= quality_threshold) * (df_gtruth_pipeline['dice'] < dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C1', label="D<0.9, Q$\geq$0.5")
+    # quality < 0.5, dice >= 0.9
+    idx = (df_gtruth_pipeline['quality'] < quality_threshold) * (df_gtruth_pipeline['dice'] >= dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C2', label="D$\geq$0.9, Q<0.5")
+    # quality >= 0.5, dice >= 0.9
+    idx = (df_gtruth_pipeline['quality'] >= quality_threshold) * (df_gtruth_pipeline['dice'] >= dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C3', label="D$\geq$0.9, Q$\geq$0.5")
+
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend()
+    plt.xlabel('Dice', fontsize=14)
+    plt.ylabel('Quality', fontsize=14)
+
+    # plot Dice vs. quality, and colour according to size
+    plt.clf()
+    plt.scatter(df_gtruth_pipeline['dice'], df_gtruth_pipeline['quality'], c=np.log(df_gtruth_pipeline['area']+1), s=5)
+    plt.colorbar()
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Dice', fontsize=14)
+    plt.ylabel('Quality', fontsize=14)
 
 '''
 ************************************************************************************************************************
