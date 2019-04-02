@@ -902,6 +902,345 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
+Training all folds of DenseNet for quality assessement of individual cells based on classification of
+thresholded Dice coefficient (Dice >= 0.9). Here the loss is binary focal loss.
+
+The reason is to center the decision boundary on 0.9, to get finer granularity around that threshold.
+
+Mask one-cell histology windows with 0/-1/+1 mask. The mask has a band with a width of 20% the equivalent radius
+of the cell (equivalent radius is the radius of a circle with the same area as the cell).
+
+We then convert the images to polar coordinates before training.
+
+This is part of a series of experiments with different types of masks: 0039, 0040, 0041, 0042 and 0045.
+************************************************************************************************************************
+'''
+
+# quality network
+saved_quality_model_basename = 'klf14_b6ntac_exp_0048_cnn_qualitynet_prop_band_focal_loss_polar'
+quality_model_name = saved_quality_model_basename + '*.h5'
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+im_orig_file_list = aux['file_list']
+idx_orig_test_all = aux['idx_test_all']
+
+# change home directory
+im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, home_path_from='/users/rittscher/rcasero',
+                                                         home_path_to=home,
+                                                         check_isfile=False)
+
+# read pixel size information
+im = PIL.Image.open(im_orig_file_list[0])
+xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+df_gtruth_pipeline = []
+
+for fold_i, idx_test in enumerate(idx_orig_test_all):
+
+    print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
+
+    '''Load data 
+    '''
+
+    # split the data into training and testing datasets
+    im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
+
+    # load training dataset
+    datasets, _, _ = cytometer.data.load_datasets(im_test_file_list, prefix_from='im',
+                                                  prefix_to=['im', 'lab'], nblocks=1)
+    im = datasets['im']
+    reflab = datasets['lab']
+    del datasets
+
+    # number of images
+    n_im = im.shape[0]
+
+    # select the models that correspond to current fold
+    contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+
+    # load models
+    contour_model = keras.models.load_model(contour_model_file)
+    dmap_model = keras.models.load_model(dmap_model_file)
+    quality_model = keras.models.load_model(quality_model_file)
+
+    '''Cell segmentation with quality control
+    '''
+
+    # segment histology
+    labels, labels_info = \
+        cytometer.utils.segmentation_pipeline(im,
+                                              contour_model, dmap_model, quality_model,
+                                              quality_model_type='-1_1_prop_band',
+                                              smallest_cell_area=smallest_cell_area)
+
+    for i in range(im.shape[0]):
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im[i, :, :, :])
+            plt.subplot(222)
+            plt.imshow(im[i, :, :, :])
+            plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C0')
+
+        # list of labels that are on the edges
+        lab_edge = cytometer.utils.edge_labels(labels[i, :, :, 0])
+
+        # delete edge cell labels from labels_info
+        idx_delete = np.where(np.logical_and(labels_info['im'] == i, np.isin(labels_info['label'], lab_edge)))[0]
+        labels_info = np.delete(labels_info, idx_delete)
+
+        # delete edge cells from the segmentation
+        labels[i, :, :, 0] = np.logical_not(np.isin(labels[i, :, :, 0], lab_edge)) * labels[i, :, :, 0]
+
+        if DEBUG:
+            plt.subplot(223)
+            plt.imshow(im[i, :, :, :])
+            plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C0')
+            plt.contour(reflab[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C1')
+
+        # compute cell areas from non-edge cells
+        props = regionprops(labels[i, :, :, 0])
+        p_label = [p['label'] for p in props]
+        p_area = np.array([p['area'] for p in props])
+        areas = p_area * xres * yres  # (m^2)
+
+        # create dataframe: one cell per row, tagged with mouse metainformation
+        df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
+                                                       values=areas, values_tag='area',
+                                                       tags_to_keep=['id', 'ko', 'sex'])
+
+        # add to dataframe: image index and cell label
+        df['im'] = i
+        df['label'] = p_label
+
+        # add to dataframe: Dice coefficients
+        # get Dice value for each non-edge automatic segmentation. These Dice values are
+        # computed by comparing the automatic segmentation to the manual segmentation. When there's no manual
+        # segmentation to compare with, we assume Dice = 0. This is not a perfect choice, as sometimes the pipeline may
+        # spot a cell that the human operator didn't, but in general we are going to assume that if the human operator
+        # didn't hand-traced an object it's because it was not a well formed white adipocyte.
+        #
+        # We then create a look up table (LUT) so that we can sort the values according to the labels in labels_info
+        # efficiently.
+        dice_info = cytometer.utils.match_overlapping_labels(labels_test=labels[i, :, :, 0],
+                                                             labels_ref=reflab[i, :, :, 0])
+
+        dice_lut = np.zeros(shape=(np.max(labels[i, :, :, 0]) + 1, ))
+        dice_lut[dice_info['lab_test']] = dice_info['dice']
+
+        df['dice'] = dice_lut[p_label]
+
+        # add to dataframe: quality scores
+        idx = labels_info['im'] == i
+        assert(np.all(p_label == labels_info[idx]['label']))
+        df['quality'] = labels_info[idx]['quality']
+
+        ## Delete bad segmentations: this is only for display
+
+        # list of labels that the quality network rejects
+        idx_bad = np.logical_and(labels_info['im'] == i, labels_info['quality'] < quality_threshold)
+        lab_bad = labels_info['label'][idx_bad]
+
+        # delete bad labels from labels_info
+        labels_info = np.delete(labels_info, idx_bad)
+
+        # delete bad cells from the segmentation
+        labels[i, :, :, 0] = np.logical_not(np.isin(labels[i, :, :, 0], lab_bad)) * labels[i, :, :, 0]
+
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(im[i, :, :, :])
+            plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C0')
+
+        # concatenate results
+        if len(df_gtruth_pipeline) == 0:
+            df_gtruth_pipeline = df
+        else:
+            df_gtruth_pipeline = pd.concat([df_gtruth_pipeline, df])
+
+#np.savez('/tmp/foo.npz', df_gtruth_pipeline=df_gtruth_pipeline)
+
+# split data into groups
+idx_good = np.array(df_gtruth_pipeline['quality'] >= quality_threshold)
+idx_f = np.array(df_gtruth_pipeline['sex'] == 'f')
+idx_pat = np.array(df_gtruth_pipeline['ko'] == 'PAT')
+
+area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline['area'][idx_good * idx_f * idx_pat]
+area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline['area'][idx_good * idx_f * ~idx_pat]
+area_gtruth_pipeline_good_m_PAT = df_gtruth_pipeline['area'][idx_good * ~idx_f * idx_pat]
+area_gtruth_pipeline_good_m_MAT = df_gtruth_pipeline['area'][idx_good * ~idx_f * ~idx_pat]
+
+area_gtruth_pipeline_bad_f_PAT = df_gtruth_pipeline['area'][~idx_good * idx_f * idx_pat]
+area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline['area'][~idx_good * idx_f * ~idx_pat]
+area_gtruth_pipeline_bad_m_PAT = df_gtruth_pipeline['area'][~idx_good * ~idx_f * idx_pat]
+area_gtruth_pipeline_bad_m_MAT = df_gtruth_pipeline['area'][~idx_good * ~idx_f * ~idx_pat]
+
+# plot results
+if DEBUG:
+    plt.clf()
+    plt.boxplot((area_gtruth_f_PAT, area_gtruth_pipeline_good_f_PAT, area_gtruth_pipeline_bad_f_PAT,
+                 area_gtruth_f_MAT, area_gtruth_pipeline_good_f_MAT, area_gtruth_pipeline_bad_f_MAT),
+                notch=True, labels=('PAT$_{GT}$', 'PAT$_{GT/P,good}$', 'PAT$_{GT/P,bad}$',
+                                    'MAT$_{GT}$', 'MAT$_{GT/P,good}$', 'MAT$_{GT/P,bad}$'),
+                positions=(0, 1, 2, 4, 5, 6))
+    plt.ylabel('area  ($\mu m^2)$', fontsize=14)
+    plt.title('Female')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.ylim((0, 15000))
+
+    if SAVE_FIGS:
+        plt.savefig(
+            os.path.join(figures_dir, 'klf14_b6ntac_exp_0048_area_boxplots_quality_rejection_bias_female_quality_prop_band_focal_loss.png'))
+
+    plt.clf()
+    plt.boxplot((area_gtruth_m_PAT, area_gtruth_pipeline_good_m_PAT, area_gtruth_pipeline_bad_m_PAT,
+                 area_gtruth_m_MAT, area_gtruth_pipeline_good_m_MAT, area_gtruth_pipeline_bad_m_MAT),
+                notch=True, labels=('PAT$_{GT}$', 'PAT$_{GT/P,good}$', 'PAT$_{GT/P,bad}$',
+                                    'MAT$_{GT}$', 'MAT$_{GT/P,good}$', 'MAT$_{GT/P,bad}$'),
+                positions=(0, 1, 2, 4, 5, 6))
+    plt.ylabel('area  ($\mu m^2)$', fontsize=14)
+    plt.title('Male')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.ylim((0, 15000))
+
+    if SAVE_FIGS:
+        plt.savefig(
+            os.path.join(figures_dir, 'klf14_b6ntac_exp_0048_area_boxplots_quality_rejection_bias_male_quality_prop_band_focal_loss.png'))
+
+# Compute confusion matrix for all cells together
+if DEBUG:
+    y_true = df_gtruth_pipeline['dice'] >= dice_threshold
+    y_pred = df_gtruth_pipeline['quality'] >= quality_threshold
+
+    cytometer.utils.plot_confusion_matrix(y_true, y_pred,
+                                          normalize=True,
+                                          title='All cells',
+                                          xlabel='Predict Quality $\geq$ 0.5',
+                                          ylabel='Ground-truth Dice $\geq$ 0.9',
+                                          cmap=plt.cm.Blues)
+
+    # confusion matrix for females
+    df_gtruth_pipeline_female = df_gtruth_pipeline.loc[df_gtruth_pipeline['sex'] == 'f', :]
+    y_true = df_gtruth_pipeline_female['dice'] >= dice_threshold
+    y_pred = df_gtruth_pipeline_female['quality'] >= quality_threshold
+
+    cytometer.utils.plot_confusion_matrix(y_true, y_pred,
+                                          normalize=True,
+                                          title='Female',
+                                          xlabel='Predict Quality $\geq$ 0.5',
+                                          ylabel='Ground-truth Dice $\geq$ 0.9',
+                                          cmap=plt.cm.Blues)
+
+    # confusion matrix for males
+    df_gtruth_pipeline_male = df_gtruth_pipeline.loc[df_gtruth_pipeline['sex'] == 'm', :]
+    y_true = df_gtruth_pipeline_male['dice'] >= dice_threshold
+    y_pred = df_gtruth_pipeline_male['quality'] >= quality_threshold
+
+    cytometer.utils.plot_confusion_matrix(y_true, y_pred,
+                                          normalize=True,
+                                          title='Male',
+                                          xlabel='Predict Quality $\geq$ 0.5',
+                                          ylabel='Ground-truth Dice $\geq$ 0.9',
+                                          cmap=plt.cm.Blues)
+
+# compute sensitivity and specificity over intervals of cell area
+area_intervals = list(range(0, 8000, 250)) + [np.Inf, ]
+sensitivity = np.zeros(shape=(len(area_intervals) - 1, ))
+specificity = np.zeros(shape=(len(area_intervals) - 1, ))
+for i in range(len(area_intervals) - 1):
+
+    df = df_gtruth_pipeline.loc[np.logical_and(df_gtruth_pipeline['area'] >= area_intervals[i],
+                                               df_gtruth_pipeline['area'] < area_intervals[i + 1]), :]
+
+    # sensitivity = TP / P
+    #  TP = Dice >= 0.9 & quality >= 0.5
+    #  P  = Dice >= 0.9
+    TP = np.count_nonzero(np.logical_and(df['dice'] >= dice_threshold, df['quality'] >= quality_threshold))
+    P = np.count_nonzero(df['dice'] >= dice_threshold)
+    if P == 0:
+        sensitivity[i] = np.nan
+    else:
+        sensitivity[i] = TP / P
+
+    # specificity = TN / N
+    #  TN = Dice < 0.9 & quality < 0.5
+    #  N  = Dice < 0.9
+    TN = np.count_nonzero(np.logical_and(df['dice'] < dice_threshold, df['quality'] < quality_threshold))
+    N = np.count_nonzero(df['dice'] < dice_threshold)
+    if N == 0:
+        specificity[i] = np.nan
+    else:
+        specificity[i] = TN / N
+
+if DEBUG:
+    plt.clf()
+    area_midpoints = (np.array(area_intervals[0:-1]) + np.array(area_intervals[1:]))/2.0
+    plt.plot(area_midpoints, sensitivity, label='Sensitivity')
+    plt.plot(area_midpoints, specificity, label='Specificity')
+    plt.legend()
+    plt.xlabel('area ($\mu m^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+    if SAVE_FIGS:
+        plt.savefig(
+            os.path.join(figures_dir, 'klf14_b6ntac_exp_0048_pipeline_sensitivity_specificity.png'))
+
+# compute plot of cell area vs. Dice/quality value
+
+if DEBUG:
+
+
+    plt.clf()
+    plt.subplot(121)
+    plt.plot(df_gtruth_pipeline['area'][df_gtruth_pipeline['dice'] < dice_threshold],
+             df_gtruth_pipeline['dice'][df_gtruth_pipeline['dice'] < dice_threshold], '.C0')
+    plt.plot(df_gtruth_pipeline['area'][df_gtruth_pipeline['dice'] >= dice_threshold],
+             df_gtruth_pipeline['dice'][df_gtruth_pipeline['dice'] >= dice_threshold], '.C1')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Cell area', fontsize=14)
+    plt.ylabel('Dice', fontsize=14)
+
+    plt.subplot(122)
+
+    # quality < 0.5, dice < 0.9
+    idx = (df_gtruth_pipeline['quality'] < quality_threshold) * (df_gtruth_pipeline['dice'] < dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C0', label="D<0.9, Q<0.5")
+    # quality >= 0.5, dice < 0.9
+    idx = (df_gtruth_pipeline['quality'] >= quality_threshold) * (df_gtruth_pipeline['dice'] < dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C1', label="D<0.9, Q$\geq$0.5")
+    # quality < 0.5, dice >= 0.9
+    idx = (df_gtruth_pipeline['quality'] < quality_threshold) * (df_gtruth_pipeline['dice'] >= dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C2', label="D$\geq$0.9, Q<0.5")
+    # quality >= 0.5, dice >= 0.9
+    idx = (df_gtruth_pipeline['quality'] >= quality_threshold) * (df_gtruth_pipeline['dice'] >= dice_threshold)
+    plt.plot(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], '.C3', label="D$\geq$0.9, Q$\geq$0.5")
+
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend()
+    plt.xlabel('Dice', fontsize=14)
+    plt.ylabel('Quality', fontsize=14)
+
+    # plot Dice vs. quality, and colour according to size
+    plt.clf()
+    plt.scatter(df_gtruth_pipeline['dice'], df_gtruth_pipeline['quality'], c=np.log(df_gtruth_pipeline['area']+1), s=5)
+    plt.colorbar()
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Dice', fontsize=14)
+    plt.ylabel('Quality', fontsize=14)
+
+'''
+************************************************************************************************************************
 Pipeline automatic extraction applied to full slides (both female, one MAT and one PAT).
 Areas computed with exp 0043.
 ************************************************************************************************************************
