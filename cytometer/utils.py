@@ -868,6 +868,125 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
         return training_windows_list, testlabel_windows_list, index_list, reflabel_windows_list, dice_list
 
 
+def quality_model_mask(seg, im=None, quality_model_type='0_1'):
+    """
+    Compute masks to apply to cell images for quality network.
+
+    :param seg: np.ndarray with one or more segmentations. The expected shape is one of
+    (row, col), (row, col, 1), (n_im, row, col, 1), where n_im=number of images.
+    :param im: (def None) np.ndarray with one or more images. The expected shape is one of
+    (row, col, n_chan), (row, col, n_chan), (n_im, row, col, n_chan), where n_im=number of images,
+    n_chan=number of channels (e.g. for RGB, n_chan=3).
+    :param quality_model_type: (def '0_1') String with the type of masking used in the quality network.
+    * '0_1': mask: 1 within the segmentation, 0 outside.
+    * '-1_1': mask: 1 within the segmentation, -1 outside.
+    * '-1_1_band': mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel band, 0 beyond the band.
+    * '-1_1_prop_band': mask: 1 within the segmentation, -1 on outside 20% equivalent radius thick band, 0 beyond the band.
+    :return:
+    If im is None, return masks.
+    If im is not None, return masked_im.
+    """
+
+    # if images have shape (row, col, chan), reshape as (1, row, col, chan), so that we can
+    # write code for the general case (nim, row, col, chan)
+    if seg.ndim == 2:
+        seg = np.expand_dims(seg, axis=0)
+        seg = np.expand_dims(seg, axis=3)
+    elif seg.ndim == 3:
+        seg = np.expand_dims(seg, axis=0)
+    if (im is not None) and im.ndim == 3:
+        im = np.expand_dims(im, axis=0)
+
+    # number of segmentations
+    n_seg = seg.shape[0]
+    if (im is not None) and im.shape[0] != n_seg:
+        raise ValueError('im has different number of images than seg')
+
+    # allocate memory for output masked image
+    if im is not None:
+        masked_im = im.copy()
+
+    # loop images
+    for j in range(n_seg):
+
+        # compute mask
+        if quality_model_type == '0_1':
+            # mask: 1 within the segmentation, 0 outside
+            mask = seg[j, :, :, 0]
+        elif quality_model_type == '-1_1':
+            # mask: 1 within the segmentation, -1 outside
+            mask = 2 * (seg[j, :, :, 0].astype(np.float32) - 0.5)
+        elif quality_model_type == '-1_1_band':
+            # mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel thick band, 0 beyond the band
+            mask = cv2.dilate(seg[j, :, :, 0], kernel=np.ones(shape=(75, 75)))
+            mask = - mask.astype(np.float32)
+            mask[seg[j, :, :, 0] == 1] = 1
+        elif quality_model_type == '-1_1_prop_band':
+            # mask: 1 within the segmentation, -1 on outside 20% equivalent radius band, 0 beyond the band
+            a = np.count_nonzero(seg[j, :, :, 0])  # segmentation area (pix^2)
+            r = np.sqrt(a / np.pi)  # equivalent circle's radius
+            len_kernel = int(np.ceil(2 * r * 0.20 + 1))
+
+            mask = cv2.dilate(seg[j, :, :, 0], kernel=np.ones(shape=(len_kernel, len_kernel)))
+            mask = - mask.astype(np.float32)
+            mask[seg[j, :, :, 0] == 1] = 1
+        else:
+            raise ValueError('Unrecognised quality_model_type: ' + str(quality_model_type))
+
+        # mask image with segmentation
+        if im is not None:
+            mask = np.expand_dims(mask, axis=2)
+            masked_im[j, :, :, :] = im[j, :, :, :] * np.repeat(mask, repeats=im.shape[3], axis=2)
+
+        if DEBUG:
+            if quality_model_type == '0_1':
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(im[j, :, :, :])
+                plt.title('Single cell', fontsize=16)
+                plt.subplot(222)
+                plt.imshow(seg[j, :, :, 0])
+                plt.title('Multiplicative mask', fontsize=16)
+                plt.subplot(223)
+                if np.count_nonzero(masked_im[j, :, :, :] >= 0) > 0:
+                    plt.imshow(masked_im[j, :, :, :])
+                plt.title('Masked cell', fontsize=16)
+            elif quality_model_type == '-1_1':
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(im[j, :, :, :])
+                plt.title('Single cell', fontsize=16)
+                plt.subplot(222)
+                plt.imshow(seg[j, :, :, 0])
+                plt.title('Multiplicative mask', fontsize=16)
+                plt.subplot(223)
+                if np.count_nonzero(masked_im[j, :, :, :] >= 0) > 0:
+                    plt.imshow(masked_im[j, :, :, :] * (masked_im[j, :, :, :] >= 0))
+                plt.title('Cell with mask = 1', fontsize=16)
+                plt.subplot(224)
+                if np.count_nonzero(masked_im[j, :, :, :] < 0) > 0:
+                    plt.imshow(-masked_im[j, :, :, :] * (masked_im[j, :, :, :] < 0))
+                plt.title('Cell with mask = -1', fontsize=16)
+            elif quality_model_type in ['-1_1_band', '-1_1_prop_band']:
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(im[j, :, :, :])
+                plt.title('Single cell', fontsize=16)
+                plt.subplot(222)
+                plt.imshow(mask[:, :, 0])
+                plt.title('Multiplicative mask', fontsize=16)
+                plt.subplot(223)
+                if np.count_nonzero(mask[:, :, 0] > 0) > 0:
+                    plt.imshow(masked_im[j, :, :, :] * (np.repeat(mask, repeats=im.shape[3], axis=2) == 1))
+                plt.title('Cell with mask = 1', fontsize=16)
+                plt.subplot(224)
+                if np.count_nonzero(mask[:, :, 0] < 0) > 0:
+                    plt.imshow(-masked_im[j, :, :, :] * (np.repeat(mask, repeats=im.shape[3], axis=2) == -1))
+                plt.title('Cell with mask = -1', fontsize=16)
+
+    return masked_im
+
+
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_model_type='0_1',
                           mask=None, smallest_cell_area=804):
     """
