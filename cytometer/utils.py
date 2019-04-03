@@ -1046,7 +1046,7 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
     one_im_shape = (1,) + im.shape[1:]
     for i in range(im.shape[0]):
 
-        # process histology image through the two pipeline branches
+        # process one histology image through the two pipeline branches
         one_im = im[i, :, :, :].reshape(one_im_shape)
         contour_pred = contour_model.predict(one_im)
         dmap_pred = dmap_model.predict(one_im)
@@ -1108,106 +1108,28 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
     if len(cell_im) == 0:
         return [], []
 
-    # loop segmented objects
-    quality = np.zeros(shape=(cell_im.shape[0], ), dtype=np.float32)
-    for j in range(cell_im.shape[0]):
+    # compute mask from segmentation, and mask histology images
+    cell_im = quality_model_mask(cell_seg, im=cell_im, quality_model_type=quality_model_type)
+    if cell_im.ndim == 3:
+        cell_im = np.expand_dims(cell_im, axis=0)
 
-        # mask histology with segmentation
-        if quality_model_type == '0_1':
-            # mask: 1 within the segmentation, 0 outside
-            masked_cell_im = cell_im[j, :, :, :] * np.repeat(cell_seg[j, :, :, :], repeats=3, axis=2)
-        elif quality_model_type == '-1_1':
-            # mask: 1 within the segmentation, -1 outside
-            aux = 2 * (cell_seg[j, :, :, :].astype(np.float32) - 0.5)
-            aux = np.repeat(aux, repeats=cell_im.shape[3], axis=2)
-            masked_cell_im = cell_im[j, :, :, :] * aux
-        elif quality_model_type == '-1_1_band':
-            # mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel thick band, 0 beyond the band
-            aux = cv2.dilate(cell_seg[j, :, :, 0], kernel=np.ones(shape=(75, 75)))
-            aux = - aux.astype(np.float32)
-            aux[cell_seg[j, :, :, 0] == 1] = 1
-
-            aux = np.repeat(np.expand_dims(aux, axis=2), axis=2, repeats=3)
-            masked_cell_im = cell_im[j, :, :, :] * aux
-        elif quality_model_type == '-1_1_prop_band':
-            # mask: 1 within the segmentation, -1 on outside 20% equivalent radius band, 0 beyond the band
-            a = np.count_nonzero(cell_seg[j, :, :, 0])  # segmentation area (pix^2)
-            r = np.sqrt(a / np.pi)  # equivalent circle's radius
-            len_kernel = int(np.ceil(2 * r * 0.20 + 1))
-
-            aux = cv2.dilate(cell_seg[j, :, :, 0], kernel=np.ones(shape=(len_kernel, len_kernel)))
-            aux = - aux.astype(np.float32)
-            aux[cell_seg[j, :, :, 0] == 1] = 1
-
-            aux = np.repeat(np.expand_dims(aux, axis=2), axis=2, repeats=3)
-            masked_cell_im = cell_im[j, :, :, :] * aux
-        else:
-            raise ValueError('Unrecognised quality_model_type: ' + str(quality_model_type))
-
-        if DEBUG:
-            if quality_model_type == '0_1':
-                plt.clf()
-                plt.subplot(221)
-                plt.imshow(cell_im[j, :, :, :])
-                plt.title('Single cell', fontsize=16)
-                plt.subplot(222)
-                plt.imshow(cell_seg[j, :, :, 0])
-                plt.title('Multiplicative mask', fontsize=16)
-                plt.subplot(223)
-                if np.count_nonzero(masked_cell_im >= 0) > 0:
-                    plt.imshow(masked_cell_im)
-                plt.title('Cell with mask = 1', fontsize=16)
-                plt.subplot(224)
-                if np.count_nonzero(masked_cell_im < 0) > 0:
-                    plt.imshow(cell_im[j, :, :, :] * np.repeat(1-cell_seg[j, :, :, :], repeats=3, axis=2))
-                plt.title('Cell with mask = 0', fontsize=16)
-            elif quality_model_type == '-1_1':
-                plt.clf()
-                plt.subplot(221)
-                plt.imshow(cell_im[j, :, :, :])
-                plt.title('Single cell', fontsize=16)
-                plt.subplot(222)
-                plt.imshow(cell_seg[j, :, :, 0])
-                plt.title('Multiplicative mask', fontsize=16)
-                plt.subplot(223)
-                if np.count_nonzero(masked_cell_im >= 0) > 0:
-                    plt.imshow(masked_cell_im * (masked_cell_im >= 0))
-                plt.title('Cell with mask = 1', fontsize=16)
-                plt.subplot(224)
-                if np.count_nonzero(masked_cell_im < 0) > 0:
-                    plt.imshow(-masked_cell_im * (masked_cell_im < 0))
-                plt.title('Cell with mask = -1', fontsize=16)
-            elif quality_model_type in ['-1_1_band', '-1_1_prop_band']:
-                plt.clf()
-                plt.subplot(221)
-                plt.imshow(cell_im[j, :, :, :])
-                plt.title('Single cell', fontsize=16)
-                plt.subplot(222)
-                plt.imshow(aux[:, :, 0])
-                plt.title('Multiplicative mask', fontsize=16)
-                plt.subplot(223)
-                if np.count_nonzero(aux[:, :, 0] > 0) > 0:
-                    plt.imshow(masked_cell_im * (aux == 1))
-                plt.title('Cell with mask = 1', fontsize=16)
-                plt.subplot(224)
-                if np.count_nonzero(aux[:, :, 0] < 0) > 0:
-                    plt.imshow(-masked_cell_im * (aux == -1))
-                plt.title('Cell with mask = -1', fontsize=16)
-
-        # compute quality measure of each histology window
-        quality[j] = quality_model.predict(np.expand_dims(masked_cell_im, axis=0))
+    # compute quality of segmented labels
+    quality = quality_model.predict(cell_im)
 
     if DEBUG:
+        i = 4
+
         plt.clf()
         plt.subplot(221)
-        plt.imshow(one_im[i, :, :, :])
+        plt.imshow(im[i, :, :, :].reshape(one_im_shape)[0, :, :, :])
         plt.subplot(222)
         plt.imshow(labels[i, :, :, 0])
         plt.subplot(223)
         plt.boxplot(quality)
         plt.subplot(224)
-        aux = paint_labels(labels, cell_index[:, 1], quality >= 0.9)
-        plt.imshow(aux[0, :, :, 0])
+        aux = paint_labels(labels[i, :, :, 0], cell_index[cell_index[:, 0] == i, 1],
+                           quality[cell_index[:, 0] == i, 0] >= 0.5)
+        plt.imshow(aux)
 
     # prepare output as structured array
     labels_info = np.zeros((len(quality),), dtype=[('im', cell_index.dtype),
@@ -1215,7 +1137,7 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
                                                    ('quality', quality.dtype)])
     labels_info['im'] = cell_index[:, 0]
     labels_info['label'] = cell_index[:, 1]
-    labels_info['quality'] = quality
+    labels_info['quality'] = quality[:, 0]
 
     return labels, labels_info
 
