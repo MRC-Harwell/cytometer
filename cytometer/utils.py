@@ -987,7 +987,8 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1'):
     return masked_im
 
 
-def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_model_type='0_1',
+def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
+                          quality_model_type='0_1', quality_model_preprocessing=None,
                           mask=None, smallest_cell_area=804):
     """
     Instance segmentation of cells using the contour + distance transformation pipeline.
@@ -1004,7 +1005,11 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
     * '0_1': mask: 1 within the segmentation, 0 outside.
     * '-1_1': mask: 1 within the segmentation, -1 outside.
     * '-1_1_band': mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel band, 0 beyond the band.
-    * '-1_1_prop_band': mask: 1 within the segmentation, -1 on outside 20% equivalent radius thick band, 0 beyond the band.
+    * '-1_1_prop_band': mask: 1 within the segmentation, -1 on outside 20% equivalent radius thick band, 0 beyond the
+      band.
+    :param quality_model_preprocessing: (def None) Apply a preprocessing step to the single-cell images before they are
+    passed to the Quality Network.
+    * 'polar': Convert image from (x,y) to polar (rho, theta)=(cols, rows) coordinates.
     :param mask: (def None) If provided, labels that intersect less than 60% with the mask are ignored.
     The mask can be used to skip segmenting background or another type of tissue.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
@@ -1112,6 +1117,22 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model, quality_
     cell_im = quality_model_mask(cell_seg, im=cell_im, quality_model_type=quality_model_type)
     if cell_im.ndim == 3:
         cell_im = np.expand_dims(cell_im, axis=0)
+
+    # preprocess images before feeding to quality network
+    if quality_model_preprocessing == 'polar':
+
+        # convert input images to polar coordinates
+        # shape = (im, row, col, chan)
+        # row = Y, col = X
+        center = ((cell_im.shape[2] - 1) / 2.0, (cell_im.shape[1] - 1) / 2.0)
+        maxRadius = np.sqrt(cell_im.shape[2] ** 2 + cell_im.shape[1] ** 2) / 2
+        for i in range(cell_im.shape[0]):
+            cell_im[i, :, :, :] = cv2.linearPolar(cell_im[i, :, :, :], center=center, maxRadius=maxRadius,
+                                                  flags=cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS)
+
+    elif quality_model_preprocessing is not None:
+
+        raise ValueError('Unknown quality_model_preprocessing')
 
     # compute quality of segmented labels
     quality = quality_model.predict(cell_im)
