@@ -33,7 +33,6 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.morphology import watershed
-import cv2
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -290,22 +289,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.hist(test_onecell_im[i, :, :, 1].flatten(), histtype='step', color='green')
         plt.hist(test_onecell_im[i, :, :, 2].flatten(), histtype='step', color='blue')
 
-    # create a mask that is +1 within the cell segmentation, -1 on a band around the segmentation, and 0 beyond that
-    train_onecell_testlab = train_onecell_testlab.astype(np.float32)
-    train_onecell_testlab_dilated = train_onecell_testlab.copy()
-    for i in range(train_onecell_im.shape[0]):
-        a = np.count_nonzero(train_onecell_testlab[i, :, :, 0])  # segmentation area (pix^2)
-        r = np.sqrt(a / np.pi)  # equivalent circle's radius
-        len_kernel = int(np.ceil(2 * r * 0.20 + 1))
-        train_onecell_testlab_dilated[i, :, :, 0] = cv2.dilate(train_onecell_testlab[i, :, :, 0],
-                                                               kernel=np.ones(shape=(len_kernel, len_kernel)))
-    train_onecell_testlab_dilated = -train_onecell_testlab_dilated
-    train_onecell_testlab_dilated[train_onecell_testlab == 1] = 1
-
-    # multiply histology by 0/-1/+1 segmentation mask
-    for chan in range(train_onecell_im.shape[3]):
-        train_onecell_im[:, :, :, chan:chan+1] *= train_onecell_testlab_dilated
-    del train_onecell_testlab_dilated
+    # mask cell images with 0/-1/+1 mask with 20% radius band
+    train_onecell_im = cytometer.utils.quality_model_mask(train_onecell_testlab, im=train_onecell_im,
+                                                          quality_model_type='-1_1_prop_band')
 
     if DEBUG:
         plt.clf()
@@ -324,22 +310,9 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
 
-    # create a mask that is +1 within the cell segmentation, -1 on a band around the segmentation, and 0 beyond that
-    test_onecell_testlab = test_onecell_testlab.astype(np.float32)
-    test_onecell_testlab_dilated = test_onecell_testlab.copy()
-    for i in range(test_onecell_im.shape[0]):
-        a = np.count_nonzero(test_onecell_testlab[i, :, :, 0])  # segmentation area (pix^2)
-        r = np.sqrt(a / np.pi)  # equivalent circle's radius
-        len_kernel = int(np.ceil(2 * r * 0.20 + 1))
-        test_onecell_testlab_dilated[i, :, :, 0] = cv2.dilate(test_onecell_testlab[i, :, :, 0],
-                                                              kernel=np.ones(shape=(len_kernel, len_kernel)))
-    test_onecell_testlab_dilated = -test_onecell_testlab_dilated
-    test_onecell_testlab_dilated[test_onecell_testlab == 1] = 1
-
-    # multiply histology by 0/-1/+1 segmentation mask
-    for chan in range(test_onecell_im.shape[3]):
-        test_onecell_im[:, :, :, chan:chan+1] *= test_onecell_testlab_dilated
-    del test_onecell_testlab_dilated
+    # mask cell images with 0/-1/+1 mask with 20% radius band
+    test_onecell_im = cytometer.utils.quality_model_mask(test_onecell_testlab, im=test_onecell_im,
+                                                         quality_model_type='-1_1_prop_band')
 
     if DEBUG:
         plt.clf()
