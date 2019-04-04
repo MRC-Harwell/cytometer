@@ -211,9 +211,9 @@ quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_mo
 df_gtruth_pipeline_good = []
 df_gtruth_pipeline_bad = []
 
-for fold_i, idx_test in enumerate(idx_orig_test_all):
+for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-    print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
+    print('Fold = ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
 
     '''Load data 
     '''
@@ -231,9 +231,9 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
     n_im = im.shape[0]
 
     # select the models that correspond to current fold
-    contour_model_file = contour_model_files[fold_i]
-    dmap_model_file = dmap_model_files[fold_i]
-    quality_model_file = quality_model_files[fold_i]
+    contour_model_file = contour_model_files[i_fold]
+    dmap_model_file = dmap_model_files[i_fold]
+    quality_model_file = quality_model_files[i_fold]
 
     # load models
     contour_model = keras.models.load_model(contour_model_file)
@@ -408,9 +408,9 @@ quality_model_files = sorted(glob.glob(os.path.join(saved_models_dir, quality_mo
 df_gtruth_pipeline_good = []
 df_gtruth_pipeline_bad = []
 
-for fold_i, idx_test in enumerate(idx_orig_test_all):
+for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-    print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
+    print('Fold = ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
 
     '''Load data 
     '''
@@ -428,9 +428,9 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
     n_im = im.shape[0]
 
     # select the models that correspond to current fold
-    contour_model_file = contour_model_files[fold_i]
-    dmap_model_file = dmap_model_files[fold_i]
-    quality_model_file = quality_model_files[fold_i]
+    contour_model_file = contour_model_files[i_fold]
+    dmap_model_file = dmap_model_files[i_fold]
+    quality_model_file = quality_model_files[i_fold]
 
     # load models
     contour_model = keras.models.load_model(contour_model_file)
@@ -604,9 +604,9 @@ yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
 df_gtruth_pipeline = []
 
-for fold_i, idx_test in enumerate(idx_orig_test_all):
+for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-    print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
+    print('Fold = ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
 
     '''Load data 
     '''
@@ -625,9 +625,9 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
     n_im = im.shape[0]
 
     # select the models that correspond to current fold
-    contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(fold_i) + '.h5')
-    dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(fold_i) + '.h5')
-    quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # load models
     contour_model = keras.models.load_model(contour_model_file)
@@ -943,9 +943,9 @@ yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
 df_gtruth_pipeline = []
 
-for fold_i, idx_test in enumerate(idx_orig_test_all):
+for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-    print('Fold = ' + str(fold_i) + '/' + str(len(idx_orig_test_all) - 1))
+    print('Fold = ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
 
     '''Load data 
     '''
@@ -964,9 +964,9 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
     n_im = im.shape[0]
 
     # select the models that correspond to current fold
-    contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(fold_i) + '.h5')
-    dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(fold_i) + '.h5')
-    quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # load models
     contour_model = keras.models.load_model(contour_model_file)
@@ -1071,6 +1071,12 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
 
 #np.savez('/tmp/foo.npz', df_gtruth_pipeline=df_gtruth_pipeline)
 
+# delete segmentations with Dice < 0.4, because those don't really have a ground truth. For example,
+# the segmentation itself may be a good segmentation of a cell, but that cell had no ground truth.
+# So instead, the segmentation is just touching the edge of the ground truth of a neighbour cell
+idx = df_gtruth_pipeline['dice'] >= 0.2
+df_gtruth_pipeline = df_gtruth_pipeline.loc[idx, :]
+
 # split data into groups
 idx_good = np.array(df_gtruth_pipeline['quality'] >= quality_threshold)
 idx_f = np.array(df_gtruth_pipeline['sex'] == 'f')
@@ -1097,7 +1103,7 @@ if DEBUG:
     plt.ylabel('area  ($\mu m^2)$', fontsize=14)
     plt.title('Female')
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.ylim((0, 15000))
+    plt.ylim((0, 9000))
 
     if SAVE_FIGS:
         plt.savefig(
