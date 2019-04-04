@@ -24,7 +24,6 @@ import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
 import inspect
-import re
 
 # other imports
 import glob
@@ -116,7 +115,7 @@ with open(contour_model_kfold_filename, 'rb') as f:
 im_orig_file_list = aux['file_list']
 idx_orig_test_all = aux['idx_test_all']
 
-# change home directory
+# correct home directory, if necessary
 im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, home_path_from='/users/rittscher/rcasero',
                                                          home_path_to=home,
                                                          check_isfile=False)
