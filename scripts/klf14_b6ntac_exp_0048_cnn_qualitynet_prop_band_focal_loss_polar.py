@@ -274,7 +274,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.hist(test_onecell_im[i, :, :, 1].flatten(), histtype='step', color='green')
         plt.hist(test_onecell_im[i, :, :, 2].flatten(), histtype='step', color='blue')
 
-    # mask cell images with 0/-1/+1 mask
+    # mask cell images with 0/-1/+1 mask with 20% radius band
     train_onecell_im = cytometer.utils.quality_model_mask(train_onecell_testlab, im=train_onecell_im,
                                                           quality_model_type='-1_1_prop_band')
 
@@ -295,7 +295,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         plt.text(175, 180, '+1', fontsize=14, verticalalignment='top')
         plt.text(100, 75, '0', fontsize=14, verticalalignment='top', color='white')
 
-    # mask cell images with 0/-1/+1 mask
+    # mask cell images with 0/-1/+1 mask with 20% radius band
     test_onecell_im = cytometer.utils.quality_model_mask(test_onecell_testlab, im=test_onecell_im,
                                                          quality_model_type='-1_1_prop_band')
 
