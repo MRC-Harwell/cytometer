@@ -902,8 +902,11 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1'):
     if (im is not None) and im.shape[0] != n_seg:
         raise ValueError('im has different number of images than seg')
 
-    # allocate memory for output masked image
-    if im is not None:
+    # allocate memory for outputs (we only keep a copy of all the masks if we are going to return
+    # them; otherwise, if the output is the masked outputs, we don't need to keep them)
+    if im is None:
+        mask_all = np.zeros(shape=seg.shape, dtype=np.float32)
+    else:
         masked_im = im.copy()
 
     # loop images
@@ -933,8 +936,11 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1'):
         else:
             raise ValueError('Unrecognised quality_model_type: ' + str(quality_model_type))
 
-        # mask image with segmentation
-        if im is not None:
+        if im is None:
+            # save current mask for the output
+            mask_all[j, :, :, 0] = mask
+        else:
+            # mask image with segmentation
             mask = np.expand_dims(mask, axis=2)
             masked_im[j, :, :, :] = im[j, :, :, :] * np.repeat(mask, repeats=im.shape[3], axis=2)
 
@@ -984,7 +990,10 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1'):
                     plt.imshow(-masked_im[j, :, :, :] * (np.repeat(mask, repeats=im.shape[3], axis=2) == -1))
                 plt.title('Cell with mask = -1', fontsize=16)
 
-    return masked_im
+    if im is None:
+        return mask_all
+    else:
+        return masked_im
 
 
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
