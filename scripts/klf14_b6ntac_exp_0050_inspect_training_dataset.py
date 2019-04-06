@@ -1,6 +1,6 @@
 """
 Using exp 0049 as starting point, examine the training dataset, to try to figure out why the
-pipeline can't get right small cells.
+quality network rejects small cells.
 """
 
 # cross-platform home directory
@@ -64,7 +64,7 @@ training_window_len = 401
 smallest_dice = 0.5
 
 # segmentations with Dice >= threshold are accepted
-quality_threshold = 0.9
+dice_threshold = 0.9
 
 # batch size for training
 batch_size = 16
