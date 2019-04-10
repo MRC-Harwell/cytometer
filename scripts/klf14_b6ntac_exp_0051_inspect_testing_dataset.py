@@ -228,7 +228,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         df['im'] = i
 
         # look up table for quality values assigned by the pipeline to automatic segmentations
-        quality_lut = np.zeros(shape=(np.max(labels[i, :, :, 0]) + 1, ))
+        quality_lut = np.zeros(shape=(np.max(i_labels_info['label']) + 1, ))
         quality_lut[:] = np.nan
         i_labels_info = labels_info[labels_info['im'] == i]
         quality_lut[i_labels_info['label']] = i_labels_info['quality']
@@ -237,6 +237,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         if DEBUG:
             plt.subplot(224)
+            plt.cla()
             plt.scatter(df['dice'], df['quality'])
             plt.xlabel('dice')
             plt.ylabel('quality')
