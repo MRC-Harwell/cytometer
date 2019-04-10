@@ -25,7 +25,7 @@ from skimage.morphology import watershed
 import pandas as pd
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -228,7 +228,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         df['im'] = i
 
         # look up table for quality values assigned by the pipeline to automatic segmentations
-        quality_lut = np.zeros(shape=(np.max(i_labels_info['label']) + 1, ))
+        quality_lut = np.zeros(shape=(np.max(labels_info['label']) + 1, ))
         quality_lut[:] = np.nan
         i_labels_info = labels_info[labels_info['im'] == i]
         quality_lut[i_labels_info['label']] = i_labels_info['quality']
@@ -291,10 +291,10 @@ idx_d0_q1 = np.logical_and(df_gtruth_pipeline['dice'] < dice_threshold,
 idx_d0_q0 = np.logical_and(df_gtruth_pipeline['dice'] < dice_threshold,
                            df_gtruth_pipeline['quality'] < quality_threshold)
 
-np.count_nonzero(idx_d1_q1)
-np.count_nonzero(idx_d1_q0)
-np.count_nonzero(idx_d0_q1)
-np.count_nonzero(idx_d0_q0)
+print(np.count_nonzero(idx_d1_q1))
+print(np.count_nonzero(idx_d1_q0))
+print(np.count_nonzero(idx_d0_q1))
+print(np.count_nonzero(idx_d0_q0))
 
 plt.clf()
 plt.boxplot((df_gtruth_pipeline['area_ref'],
@@ -317,9 +317,28 @@ if SAVE_FIGS:
 
 # indices of missed detections with area <= 7000 um^2
 idx = np.logical_and(idx_d1_q0, df_gtruth_pipeline['area_test'] <= 7000)
-np.count_nonzero(df_gtruth_pipeline['area_test'] <= 7000)
-np.count_nonzero(idx_d1_q0)
-np.count_nonzero(idx)
+print(np.count_nonzero(df_gtruth_pipeline['area_test'] <= 7000))
+print(np.count_nonzero(idx_d1_q0))
+print(np.count_nonzero(idx))
+
+df_gtruth_pipeline.loc[idx, :]
+
+for j in np.where(idx)[0]:
+
+    # plot cell and label
+    plt.clf()
+    plt.imshow(cell_im_all[j, :, :, :])
+    plt.contour(quality_mask[j, :, :, 0], linewidths=1, colors='black')
+    plt.contour(train_onecell_reflab[j, :, :, 0], linewidths=1, colors='red')
+    plt.tick_params(
+        axis='both',  # changes apply to the x-axis
+        which='both',  # both major and minor ticks are affected
+        left=False,  # ticks along the left edge are off
+        bottom=False,  # ticks along the bottom edge are off
+        top=False,  # labels along the bottom edge are off
+        labelbottom=False, labelleft=False)
+
+
 
 '''Save log for later use
 '''
