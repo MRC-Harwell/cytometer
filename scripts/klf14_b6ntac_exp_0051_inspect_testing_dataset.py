@@ -25,7 +25,7 @@ from skimage.morphology import watershed
 import pandas as pd
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -64,8 +64,9 @@ training_window_len = 401
 # remove from training cells that don't have a good enough overlap with a reference label
 smallest_dice = 0.5
 
-# segmentations with Dice >= threshold are accepted
+# segmentations with Dice/quality >= threshold are accepted
 dice_threshold = 0.9
+quality_threshold = 0.5
 
 # batch size for training
 batch_size = 16
@@ -122,6 +123,7 @@ yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
+df_gtruth_pipeline = []
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
@@ -186,7 +188,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
             plt.subplot(223)
             plt.imshow(im[i, :, :, :])
             plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C0')
-            plt.contour(reflab[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C1')
+            plt.contour(reflab[i, :, :, 0], levels=np.unique(reflab[i, :, :, 0]), colors='C1')
 
         # find correspondence between segmented cells and ground truth
         match_info = cytometer.utils.match_overlapping_labels(labels_ref=reflab[i, :, :, 0],
@@ -201,6 +203,15 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # remove background label
         idx = match_info['lab_test'] != 0
         match_info = match_info[idx]
+
+        # delete labels of removed cells
+        labels[i, :, :, 0] = np.isin(labels[i, :, :, 0], match_info['lab_test']) * labels[i, :, :, 0]
+
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(im[i, :, :, :])
+            plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='C0')
+            plt.contour(reflab[i, :, :, 0], levels=np.unique(reflab[i, :, :, 0]), colors='C1')
 
         # create dataframe: one cell per row, tagged with mouse metainformation
         df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
@@ -236,6 +247,81 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         else:
             df_gtruth_pipeline = pd.concat([df_gtruth_pipeline, df])
 
+    # split histology images into individual segmented objects
+    # Note: smallest_cell_area should be redundant here, because small labels have been removed
+    cell_im, cell_seg, cell_index = cytometer.utils.one_image_per_label(dataset_im=im,
+                                                                        dataset_lab_test=labels,
+                                                                        training_window_len=training_window_len,
+                                                                        smallest_cell_area=smallest_cell_area)
+
+    if i_fold == 0:
+        cell_im_all = cell_im
+    else:
+        cell_im_all = np.concatenate((cell_im_all, cell_im))
+
+
+'''Inspect quality vs Dice values
+'''
+
+# Scatter plot of dice vs quality (correctly detected, false alarm, missed detection)
+plt.clf()
+plt.scatter(df_gtruth_pipeline['dice'], df_gtruth_pipeline['quality'], color='green', label='Correct', s=1)
+idx = np.logical_and(df_gtruth_pipeline['dice'] < dice_threshold,
+                     df_gtruth_pipeline['quality'] >= quality_threshold)
+plt.scatter(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], color='red',
+            label='False alarm', s=1)
+idx = np.logical_and(df_gtruth_pipeline['dice'] >= dice_threshold,
+                     df_gtruth_pipeline['quality'] < quality_threshold)
+plt.scatter(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], color='blue',
+            label='Missed detection', s=1)
+
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.xlabel('Dice', fontsize=14)
+plt.ylabel('Quality', fontsize=14)
+plt.legend()
+
+# show area histograms split into correctly detected, false alarm and missed detection
+idx_d1_q1 = np.logical_and(df_gtruth_pipeline['dice'] >= dice_threshold,
+                           df_gtruth_pipeline['quality'] >= quality_threshold)
+idx_d1_q0 = np.logical_and(df_gtruth_pipeline['dice'] >= dice_threshold,
+                           df_gtruth_pipeline['quality'] < quality_threshold)
+idx_d0_q1 = np.logical_and(df_gtruth_pipeline['dice'] < dice_threshold,
+                           df_gtruth_pipeline['quality'] >= quality_threshold)
+idx_d0_q0 = np.logical_and(df_gtruth_pipeline['dice'] < dice_threshold,
+                           df_gtruth_pipeline['quality'] < quality_threshold)
+
+np.count_nonzero(idx_d1_q1)
+np.count_nonzero(idx_d1_q0)
+np.count_nonzero(idx_d0_q1)
+np.count_nonzero(idx_d0_q0)
+
+plt.clf()
+plt.boxplot((df_gtruth_pipeline['area_ref'],
+             df_gtruth_pipeline['area_test'][idx_d1_q1],
+             df_gtruth_pipeline['area_test'][idx_d1_q0],
+             df_gtruth_pipeline['area_test'][idx_d0_q1],
+             df_gtruth_pipeline['area_test'][idx_d0_q0]),
+            labels=('Ground\ntruth', 'Correctly\ndetected', 'Missed\ndetection',
+                    'False\ndetection', 'Correctly\nrejected'),
+            notch=True)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.ylim(-10, 40e3)
+plt.ylabel('area ($\mu$m$^2$)', fontsize=14)
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0051_area_boxplots_accepted_vs_rejected.png'))
+
+'''Save images of small cells that are missed detections
+'''
+
+# indices of missed detections with area <= 7000 um^2
+idx = np.logical_and(idx_d1_q0, df_gtruth_pipeline['area_test'] <= 7000)
+np.count_nonzero(df_gtruth_pipeline['area_test'] <= 7000)
+np.count_nonzero(idx_d1_q0)
+np.count_nonzero(idx)
+
+'''Save log for later use
+'''
 
 # if we run the script with qsub on the cluster, the standard output is in file
 # klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
