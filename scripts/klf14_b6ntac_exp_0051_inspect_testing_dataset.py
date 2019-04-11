@@ -47,7 +47,7 @@ set_session(tf.Session(config=config))
 K.set_image_data_format('channels_last')
 
 DEBUG = False
-SAVE_FIGS = True
+SAVE_FIGS = False
 
 # number of folds for k-fold cross validation
 n_folds = 11
@@ -70,6 +70,9 @@ quality_threshold = 0.5
 
 # batch size for training
 batch_size = 16
+
+# maximum size for 75-percentile of cell population (approx)
+largest_typical_cell = 2200  # um^2
 
 '''Directories and filenames
 '''
@@ -206,6 +209,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # delete labels of removed cells
         labels[i, :, :, 0] = np.isin(labels[i, :, :, 0], match_info['lab_test']) * labels[i, :, :, 0]
+        reflab[i, :, :, 0] = np.isin(reflab[i, :, :, 0], match_info['lab_ref']) * reflab[i, :, :, 0]
 
         if DEBUG:
             plt.subplot(224)
@@ -248,20 +252,41 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         else:
             df_gtruth_pipeline = pd.concat([df_gtruth_pipeline, df])
 
+    # end: for i in range(im.shape[0]):
+
     # split histology images into individual segmented objects
     # Note: smallest_cell_area should be redundant here, because small labels have been removed
-    cell_im, cell_seg, cell_index = cytometer.utils.one_image_per_label(dataset_im=im,
-                                                                        dataset_lab_test=labels,
-                                                                        training_window_len=training_window_len,
-                                                                        smallest_cell_area=smallest_cell_area)
+    cell_im, cell_seg, cell_index, cell_reflab, _ = \
+        cytometer.utils.one_image_per_label(dataset_im=im,
+                                            dataset_lab_test=labels,
+                                            dataset_lab_ref=reflab,
+                                            training_window_len=training_window_len,
+                                            smallest_cell_area=smallest_cell_area)
+
+    # quality masks
+    cell_mask = cytometer.utils.quality_model_mask(cell_seg, im=None, quality_model_type='-1_1_prop_band')
 
     if i_fold == 0:
         cell_im_all = cell_im
+        cell_seg_all = cell_seg
+        cell_reflab_all = cell_reflab
+        cell_mask_all = cell_mask
     else:
         cell_im_all = np.concatenate((cell_im_all, cell_im))
+        cell_seg_all = np.concatenate((cell_seg_all, cell_seg))
+        cell_reflab_all = np.concatenate((cell_reflab_all, cell_reflab))
+        cell_mask_all = np.concatenate((cell_mask_all, cell_mask))
 
+# end: for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-'''Inspect quality vs Dice values
+# reset the list of indices in the frame
+df_gtruth_pipeline = df_gtruth_pipeline.reset_index()
+
+# convert areas from pixels to um^2
+df_gtruth_pipeline['area_test'] *= xres * yres
+df_gtruth_pipeline['area_ref'] *= xres * yres
+
+'''Inspect quality vs Dice values in all cells
 '''
 
 # Scatter plot of dice vs quality (correctly detected, false alarm, missed detection)
@@ -306,30 +331,78 @@ plt.boxplot((df_gtruth_pipeline['area_ref'],
                     'False\ndetection', 'Correctly\nrejected'),
             notch=True)
 plt.tick_params(axis='both', which='major', labelsize=14)
-plt.ylim(-10, 40e3)
+plt.ylim(-10, 9000)
 plt.ylabel('area ($\mu$m$^2$)', fontsize=14)
 
 if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0051_area_boxplots_accepted_vs_rejected.png'))
 
-'''Save images of small cells that are missed detections
+'''Inspect quality vs Dice values in typical size cells, area <= 2200 um^2
 '''
 
-# indices of missed detections with area <= 7000 um^2
-idx = np.logical_and(idx_d1_q0, df_gtruth_pipeline['area_test'] <= 7000)
-print(np.count_nonzero(df_gtruth_pipeline['area_test'] <= 7000))
-print(np.count_nonzero(idx_d1_q0))
-print(np.count_nonzero(idx))
+# Scatter plot of dice vs quality (correctly detected, false alarm, missed detection)
+plt.clf()
+idx = df_gtruth_pipeline['area_test'] <= largest_typical_cell
+plt.scatter(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], color='green', label='Correct', s=1)
+idx = np.array(df_gtruth_pipeline['dice'] < dice_threshold) \
+      * np.array(df_gtruth_pipeline['quality'] >= quality_threshold) \
+      * np.array(df_gtruth_pipeline['area_test'] <= largest_typical_cell)
+plt.scatter(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], color='red',
+            label='False alarm', s=1)
+idx = np.array(df_gtruth_pipeline['dice'] >= dice_threshold) \
+      * np.array(df_gtruth_pipeline['quality'] < quality_threshold) \
+      * np.array(df_gtruth_pipeline['area_test'] <= largest_typical_cell)
+plt.scatter(df_gtruth_pipeline['dice'][idx], df_gtruth_pipeline['quality'][idx], color='blue',
+            label='Missed detection', s=1)
+
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.xlabel('Dice', fontsize=14)
+plt.ylabel('Quality', fontsize=14)
+plt.legend()
+
+# boxplots of quality values for Dice < 0.9 and Dice >= 0.9
+plt.clf()
+idx = np.array(df_gtruth_pipeline['area_test'] <= largest_typical_cell)
+plt.boxplot((df_gtruth_pipeline['quality'][idx * np.array(df_gtruth_pipeline['dice'] < dice_threshold)],
+             df_gtruth_pipeline['quality'][idx * np.array(df_gtruth_pipeline['dice'] >= dice_threshold)]),
+            labels=('Dice<0.9', 'Dice$\geq$0.9'),
+            notch=True)
+plt.plot([0, 3], [0.5, 0.5], 'red')
+plt.ylabel('Quality', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+
+
+'''Save images of typical cells that are missed detections
+'''
+
+# indices of missed detections with area <= 2200 um^2
+idx = np.where(np.logical_and(idx_d1_q0, df_gtruth_pipeline['area_test'] <= largest_typical_cell))[0]
+print('# cells with area <= ' + str(largest_typical_cell) + ' um^2: ' + str(np.count_nonzero(df_gtruth_pipeline['area_test'] <= largest_typical_cell)))
+print('# cells with Dice>=0.9, Quality<0.5: ' + str(np.count_nonzero(idx_d1_q0)))
+print('# cells with both: ' + str(len(idx)))
 
 df_gtruth_pipeline.loc[idx, :]
 
-for j in np.where(idx)[0]:
+# check there's one cell image per row in the summary table
+assert(cell_im_all.shape[0] == df_gtruth_pipeline.shape[0])
+assert(cell_seg_all.shape[0] == df_gtruth_pipeline.shape[0])
+assert(cell_reflab_all.shape[0] == df_gtruth_pipeline.shape[0])
+
+for j in idx:
 
     # plot cell and label
     plt.clf()
+    plt.subplot(121)
     plt.imshow(cell_im_all[j, :, :, :])
-    plt.contour(quality_mask[j, :, :, 0], linewidths=1, colors='black')
-    plt.contour(train_onecell_reflab[j, :, :, 0], linewidths=1, colors='red')
+    plt.title('Fold = ' + str(df_gtruth_pipeline['fold'][j])
+              + ', im = ' + str(df_gtruth_pipeline['im'][j])
+              + ', cell = ' + str(df_gtruth_pipeline['lab_test'][j]),
+              fontsize=14)
+    plt.subplot(122)
+    plt.imshow(cell_im_all[j, :, :, :])
+    plt.contour(cell_seg_all[j, :, :, 0], linewidths=1, colors='black')
+    plt.contour(cell_mask_all[j, :, :, 0], linewidths=1, colors='black')
+    plt.contour(cell_reflab_all[j, :, :, 0], linewidths=1, colors='red')
     plt.tick_params(
         axis='both',  # changes apply to the x-axis
         which='both',  # both major and minor ticks are affected
@@ -337,6 +410,11 @@ for j in np.where(idx)[0]:
         bottom=False,  # ticks along the bottom edge are off
         top=False,  # labels along the bottom edge are off
         labelbottom=False, labelleft=False)
+    plt.title('Dice = ' + str("{:.2f}".format(df_gtruth_pipeline['dice'][j]))
+              + ', quality = ' + str("{:.2f}".format(df_gtruth_pipeline['quality'][j]))
+              + ', area = ' + str("{:.0f}".format(df_gtruth_pipeline['area_test'][j])) + ' $\mu$m$^2$',
+              fontsize=14)
+
 
 
 
