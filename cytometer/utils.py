@@ -671,18 +671,19 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     assigned multiple times. When False, each returned pair is unique. When True, 2+ test labels can correspond to the
     same ref label.
     :return: If dataset_lab_ref is provided,
-    (training_windows, testlabel_windows, reflabel_windows, dice)
+    (training_windows, testlabel_windows, index_list, reflabel_windows, dice)
 
     Otherwise,
-    (training_windows, testlabel_windows)
+    (training_windows, testlabel_windows, index_list)
 
-    training_windows: numpy.ndarray (N, training_window_len, training_window_len, channel). Small windows extracted from
-    the histology. Each window is centered around one of N labelled cells.
-    reflabel_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The ground truth segmentation
+    * training_windows: numpy.ndarray (N, training_window_len, training_window_len, channel). Small windows extracted
+    from the histology. Each window is centered around one of N labelled cells.
+    * reflabel_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The ground truth segmentation
     label or mask for the cell in the training window.
-    testlabel_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The test segmentation label or
+    * testlabel_windows: numpy.ndarray (N, training_window_len, training_window_len, 1). The test segmentation label or
     mask for the cell in the training window.
-    dice: numpy.ndarray (N,). dice[i] is the Dice coefficient between corresponding each label_windows[i, ...] and its
+    * index_list: list of (i, lab_test), where i is the image index, and lab_test is the segmentation label.
+    * dice: numpy.ndarray (N,). dice[i] is the Dice coefficient between corresponding each label_windows[i, ...] and its
     corresponding ground truth label.
     """
 
