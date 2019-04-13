@@ -33,13 +33,14 @@ from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.measure import regionprops
+import cv2
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -159,7 +160,6 @@ for i, file_svg in enumerate(file_list):
 
     if DEBUG:
         plt.clf()
-        plt.subplot(221)
         plt.imshow(im)
 
     # read the cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1] where each
@@ -173,6 +173,9 @@ for i, file_svg in enumerate(file_list):
         xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
 
         if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im)
             plt.plot([p[0] for p in contour], [p[1] for p in contour])
             plt.scatter(xy_c[0], xy_c[1])
 
@@ -186,76 +189,87 @@ for i, file_svg in enumerate(file_list):
             plt.subplot(222)
             plt.imshow(cell_seg_gtruth)
 
-        # compute mask
-        cell_mask = cytometer.utils.quality_model_mask(cell_seg_gtruth, quality_model_type='-1_1_prop_band')[0, :, :, 0]
-        cell_mask = cell_mask.astype(np.int32)
+        # equivalent radius of the mask
+        a = np.count_nonzero(cell_seg_gtruth)  # segmentation area (pix^2)
+        r = np.sqrt(a / np.pi)  # equivalent circle's radius
 
-        # compute bounding box that contains the mask
-        props = regionprops((cell_mask != 0).astype(np.uint8))
-        assert(len(props) == 1)
-        bbox = props[0]['bbox']
+        # loop different perturbations in the mask to have a collection of better and worse
+        # segmentations
+        for inc in [-0.10, -.07, -0.05, -0.03, -0.01, 0.0, 0.01, 0.03, 0.05, 0.07, 0.10]:
 
-        bbox_x0 = bbox[1]
-        bbox_xend = bbox[3] - 1
-        bbox_y0 = bbox[0]
-        bbox_yend = bbox[2] - 1
+            # kernel for dilation or erosion of the mask
+            len_kernel = int(np.ceil(2 * r * np.abs(inc) + 1))
+            kernel = np.ones(shape=(len_kernel, len_kernel))
 
-        if DEBUG:
-            plt.subplot(223)
-            plt.cla()
-            plt.imshow(im)
-            plt.contour(cell_mask, linewidths=1)
-            plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
-                     (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
+            if inc < 0:
+                cell_seg = cv2.erode(cell_seg_gtruth, kernel=kernel)
+            elif inc == 0:
+                cell_seg = cell_seg_gtruth.copy()
+            else:  # inc > 0
+                cell_seg = cv2.dilate(cell_seg_gtruth, kernel=kernel)
 
-        # largest dimension of the bounding box (the training window is going to be a square, so we have to make the
-        # bounding box square too)
-        bbox_len = np.max((bbox_xend - bbox_x0 + 1, bbox_yend - bbox_y0 + 1))
+            # compute bounding box that contains the mask
+            props = regionprops(cell_seg)
+            assert(len(props) == 1)
+            bbox = props[0]['bbox']
 
-        # extract training image / segmentation / mask
-        train_im, train_label, _ = \
-            cytometer.utils.one_image_per_label(np.expand_dims(im_array, axis=0),
-                                                np.expand_dims(np.expand_dims(cell_seg_gtruth, axis=0), axis=3),
-                                                dataset_lab_ref=None, training_window_len=bbox_len,
-                                                smallest_cell_area=smallest_cell_area, clear_border_lab=True)
-        train_mask, _, _ = \
-            cytometer.utils.one_image_per_label(np.expand_dims(np.expand_dims(cell_mask, axis=0), axis=3),
-                                                np.expand_dims(np.expand_dims(cell_seg_gtruth, axis=0), axis=3),
-                                                dataset_lab_ref=None, training_window_len=bbox_len,
-                                                smallest_cell_area=smallest_cell_area, clear_border_lab=True)
+            bbox_x0 = bbox[1]
+            bbox_xend = bbox[3] - 1
+            bbox_y0 = bbox[0]
+            bbox_yend = bbox[2] - 1
 
-        if DEBUG:
-            plt.subplot(224)
-            plt.cla()
-            plt.imshow(train_im[0, :, :, :])
-            plt.contour(train_mask[0, :, :, 0], linewidths=1)
+            if DEBUG:
+                plt.subplot(223)
+                plt.cla()
+                plt.imshow(im)
+                plt.contour(cell_seg_gtruth, linewidths=1)
+                plt.contour(cell_seg, linewidths=1)
+                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
-        # resize the training image to training window size
-        assert(train_im.dtype == np.uint8)
-        assert(train_label.dtype == np.uint8)
-        assert(train_mask.dtype == np.int32)
-        train_im = Image.fromarray(train_im[0, :, :, :])
-        train_label = Image.fromarray(train_label[0, :, :, 0])
-        train_mask = Image.fromarray(train_mask[0, :, :, 0], mode='I')
+            # largest dimension of the bounding box (the training window is going to be a square, so we have to make the
+            # bounding box square too)
+            bbox_len = np.max((bbox_xend - bbox_x0 + 1, bbox_yend - bbox_y0 + 1))
 
-        train_im = train_im.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
-        train_label = train_label.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
-        train_mask = train_mask.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
+            # extract training image / segmentation / mask
+            train_im, train_seg, _ = \
+                cytometer.utils.one_image_per_label(np.expand_dims(im_array, axis=0),
+                                                    np.expand_dims(np.expand_dims(cell_seg, axis=0), axis=3),
+                                                    dataset_lab_ref=None, training_window_len=bbox_len,
+                                                    smallest_cell_area=smallest_cell_area, clear_border_lab=True)
 
-        train_im = np.array(train_im)
-        train_label = np.array(train_label)
-        train_mask = np.array(train_mask)
+            if DEBUG:
+                plt.subplot(224)
+                plt.cla()
+                plt.imshow(train_im[0, :, :, :])
+                plt.contour(train_seg[0, :, :, 0], linewidths=1)
 
-        if DEBUG:
-            plt.subplot(224)
-            plt.cla()
-            plt.imshow(train_im)
-            plt.contour(train_mask, linewidths=1)
+            # resize the training image to training window size
+            assert(train_im.dtype == np.uint8)
+            assert(train_seg.dtype == np.uint8)
+            assert(train_mask.dtype == np.int32)
+            train_im = Image.fromarray(train_im[0, :, :, :])
+            train_seg = Image.fromarray(train_seg[0, :, :, 0])
+            train_mask = Image.fromarray(train_mask[0, :, :, 0], mode='I')
 
-        # multiply the image by the mask
-        train_im[:, :, 0] * train_im[:, :, 0] * train_mask
-        train_im[:, :, 1] * train_im[:, :, 1] * train_mask
-        train_im[:, :, 2] * train_im[:, :, 2] * train_mask
+            train_im = train_im.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
+            train_seg = train_seg.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
+            train_mask = train_mask.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
+
+            train_im = np.array(train_im)
+            train_seg = np.array(train_seg)
+            train_mask = np.array(train_mask)
+
+            if DEBUG:
+                plt.subplot(224)
+                plt.cla()
+                plt.imshow(train_im)
+                plt.contour(train_mask, linewidths=1)
+
+            # multiply the image by the mask
+            train_im[:, :, 0] * train_im[:, :, 0] * train_mask
+            train_im[:, :, 1] * train_im[:, :, 1] * train_mask
+            train_im[:, :, 2] * train_im[:, :, 2] * train_mask
 
 
 
