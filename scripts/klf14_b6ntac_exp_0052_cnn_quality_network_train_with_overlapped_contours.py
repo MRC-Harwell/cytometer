@@ -40,7 +40,7 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -195,7 +195,7 @@ for i, file_svg in enumerate(file_list):
 
         # loop different perturbations in the mask to have a collection of better and worse
         # segmentations
-        for inc in [-0.10, -.07, -0.05, -0.03, -0.01, 0.0, 0.01, 0.03, 0.05, 0.07, 0.10]:
+        for inc in [-0.15, -0.10, -.07, -0.05, -0.03, 0.0, 0.03, 0.05, 0.07, 0.10, 0.15]:
 
             # kernel for dilation or erosion of the mask
             len_kernel = int(np.ceil(2 * r * np.abs(inc) + 1))
@@ -222,8 +222,8 @@ for i, file_svg in enumerate(file_list):
                 plt.subplot(223)
                 plt.cla()
                 plt.imshow(im)
-                plt.contour(cell_seg_gtruth, linewidths=1)
-                plt.contour(cell_seg, linewidths=1)
+                plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5)
+                plt.contour(cell_seg, linewidths=1, levels=0.5)
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
@@ -242,7 +242,7 @@ for i, file_svg in enumerate(file_list):
                 plt.subplot(224)
                 plt.cla()
                 plt.imshow(train_im[0, :, :, :])
-                plt.contour(train_seg[0, :, :, 0], linewidths=1)
+                plt.contour(train_seg[0, :, :, 0], linewidths=1, levels=0.5)
 
             # resize the training image to training window size
             assert(train_im.dtype == np.uint8)
@@ -264,7 +264,7 @@ for i, file_svg in enumerate(file_list):
                 plt.subplot(224)
                 plt.cla()
                 plt.imshow(train_im)
-                plt.contour(train_mask, linewidths=1)
+                plt.contour(train_mask, linewidths=1, levels=0.5)
 
             # multiply the image by the mask
             train_im[:, :, 0] * train_im[:, :, 0] * train_mask
