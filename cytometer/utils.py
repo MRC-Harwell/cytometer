@@ -869,7 +869,7 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
         return training_windows_list, testlabel_windows_list, index_list, reflabel_windows_list, dice_list
 
 
-def quality_model_mask(seg, im=None, quality_model_type='0_1'):
+def quality_model_mask(seg, im=None, quality_model_type='0_1', quality_model_type_param=None):
     """
     Compute masks to apply to cell images for quality network.
 
@@ -880,9 +880,25 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1'):
     n_chan=number of channels (e.g. for RGB, n_chan=3).
     :param quality_model_type: (def '0_1') String with the type of masking used in the quality network.
     * '0_1': mask: 1 within the segmentation, 0 outside.
+    * '0_1_prop_band': mask: 1 within the segmentation, 0 outside. The mask gets eroded or dilated with a band with
+        thickness proportional to the equivalent radius of the segmentation.
     * '-1_1': mask: 1 within the segmentation, -1 outside.
     * '-1_1_band': mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel band, 0 beyond the band.
-    * '-1_1_prop_band': mask: 1 within the segmentation, -1 on outside 20% equivalent radius thick band, 0 beyond the band.
+    * '-1_1_prop_band': mask: 1 within the segmentation, -1 on outside 20% equivalent radius thick band, 0 beyond the
+        band.
+    :param quality_model_type_param: (def None) Parameter for some mask types. If the mask type doesn't require a
+    parameter, the parameter will be ignored.
+    * '0_1':
+        No parameter.
+    * '0_1_prop_band':
+        Scalar with the relative size of the erosion (inc<0.0) or dilation (inc>0.0) of the mask. E.g. inc=-0.15
+        corresponds to an erosion of 15% of the equivalent radius.
+    * '-1_1':
+        No parameter.
+    * '-1_1_band':
+        No parameter.
+    * '-1_1_prop_band':
+        No parameter.
     :return:
     If im is None, return masks.
     If im is not None, return masked_im.
@@ -915,8 +931,28 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1'):
 
         # compute mask
         if quality_model_type == '0_1':
+
             # mask: 1 within the segmentation, 0 outside
             mask = seg[j, :, :, 0]
+
+        elif quality_model_type == '0_1_prop_band':
+            # mask: 1 within the segmentation, 0 outside
+            mask = seg[j, :, :, 0]
+
+            # erode or dilate the mask, if parameter provided
+            if quality_model_type_param is not None:
+                a = np.count_nonzero(seg[j, :, :, 0])  # segmentation area (pix^2)
+                r = np.sqrt(a / np.pi)  # equivalent circle's radius
+                len_kernel = int(np.ceil(2 * r * np.abs(quality_model_type_param) + 1))
+
+                kernel = np.ones(shape=(len_kernel, len_kernel))
+                if quality_model_type_param < 0:
+                    mask = cv2.erode(mask, kernel=kernel)
+                elif quality_model_type_param == 0:
+                    mask = mask.copy()
+                else:  # quality_model_type_param > 0
+                    mask = cv2.dilate(mask, kernel=kernel)
+
         elif quality_model_type == '-1_1':
             # mask: 1 within the segmentation, -1 outside
             mask = 2 * (seg[j, :, :, 0].astype(np.float32) - 0.5)
