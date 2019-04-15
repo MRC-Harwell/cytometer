@@ -1033,6 +1033,80 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1', quality_model_typ
         return masked_im
 
 
+def bounding_box_with_margin(label, inc=0.0, coordinates='xy'):
+    """
+    Create a square bounding box around a segmentation mask, with optional enlargement/reduction.
+    The output is given as (x0, y0, xend, yend) for plotting or (r0, c0, rend, cend) for indexing arrays.
+
+    :param label: 2D numpy.array with segmentation mask.
+    :param inc: (def 0.0) Scalar. The size of the box will be increased (or decreased with negative value) 100*inc%.
+    E.g. if inc=0.20, the size of the box will be increased by 20% with respect to the smallest box that encloses the
+    segmentation.
+    :param coordinates: (def 'xy') 'xy' or 'rc'.
+    :return: Coordinates of the bottom left and top right corners of the box.
+    If coordinates=='xy': (x0, y0, xend, yend): These are the true coordinates of the box corners, and these values
+    can be directly used for plotting.
+    If coordinates=='rc': (r0, c0, rend, cend): These are rounded row/column indices that can be used for indexing
+    an array, e.g. x[r0:rend, c0:cend]. Note that
+        cend = np.round(xend+1)
+        rend = np.round(yend+1)
+    (the +1 is necessary because python drops the last index when slicing an array).
+    """
+
+    # compute region properties
+    props = regionprops((label != 0).astype(np.uint8))
+    assert (len(props) == 1)
+
+    # box enclosing segmentation
+    bbox = props[0]['bbox']
+
+    # ease nomenclature of box corners. Note that we have to remove 1 from the end, because regionprops() returns row+1
+    # col+1
+    bbox_x0 = bbox[1]
+    bbox_xend = bbox[3] - 1
+    bbox_y0 = bbox[0]
+    bbox_yend = bbox[2] - 1
+
+    # length of each side of the box
+    bbox_x_len = bbox_xend - bbox_x0
+    bbox_y_len = bbox_yend - bbox_y0
+
+    # centroid of the box
+    cx = (bbox_xend + bbox_x0) / 2.0
+    cy = (bbox_yend + bbox_y0) / 2.0
+
+    # make the bbox square, if necessary
+    if cx < cy:
+        bbox_x0 = cx - bbox_y_len / 2.0
+        bbox_xend = cx + bbox_y_len / 2.0
+        bbox_x_len = bbox_xend - bbox_x0
+    elif cy < cx:
+        bbox_y0 = cy - bbox_x_len / 2.0
+        bbox_yend = cy + bbox_x_len / 2.0
+        bbox_y_len = bbox_yend - bbox_y0
+
+    assert(bbox_x_len == bbox_y_len)
+
+    if inc != 0.0:
+        # increase or decrease the box size by the scalar
+        bbox_x_len *= 1 + inc
+        bbox_y_len *= 1 + inc
+
+        # recompute the box's corners
+        bbox_x0 = cx - bbox_x_len / 2.0
+        bbox_xend = cx + bbox_x_len / 2.0
+        bbox_y0 = cy - bbox_y_len / 2.0
+        bbox_yend = cy + bbox_y_len / 2.0
+
+    if coordinates == 'xy':
+        return bbox_x0, bbox_y0, bbox_xend, bbox_yend
+    elif coordinates == 'rc':
+        return np.int64(bbox_y0), np.int64(bbox_x0), \
+               np.int64(np.round(bbox_yend + 1)), np.int64(np.round(bbox_xend + 1))
+    else:
+        raise ValueError('Unknown "coordinates" value.')
+
+
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
                           quality_model_type='0_1', quality_model_preprocessing=None,
                           mask=None, smallest_cell_area=804):
