@@ -162,11 +162,11 @@ for i, file_svg in enumerate(file_list):
         plt.clf()
         plt.imshow(im)
 
-    # read the cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1] where each
-    # contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
     contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False)
 
-    # loop cell contours
+    # loop ground truth cell contours
     for j, contour in enumerate(contours):
 
         # centre of current cell
@@ -179,7 +179,7 @@ for i, file_svg in enumerate(file_list):
             plt.plot([p[0] for p in contour], [p[1] for p in contour])
             plt.scatter(xy_c[0], xy_c[1])
 
-        # rasterise current cell
+        # rasterise current ground truth segmentation
         cell_seg_gtruth = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
         draw = ImageDraw.Draw(cell_seg_gtruth)
         draw.polygon(contour, outline="white", fill="white")
@@ -189,60 +189,51 @@ for i, file_svg in enumerate(file_list):
             plt.subplot(222)
             plt.imshow(cell_seg_gtruth)
 
-        # equivalent radius of the mask
-        a = np.count_nonzero(cell_seg_gtruth)  # segmentation area (pix^2)
-        r = np.sqrt(a / np.pi)  # equivalent circle's radius
+        # equivalent radius of the ground truth segmentation
+        a_gtruth = np.count_nonzero(cell_seg_gtruth)  # segmentation area (pix^2)
+        r_gtruth = np.sqrt(a_gtruth / np.pi)  # equivalent circle's radius
 
         # loop different perturbations in the mask to have a collection of better and worse
         # segmentations
-        for inc in [-0.15, -0.10, -.07, -0.05, -0.03, 0.0, 0.03, 0.05, 0.07, 0.10, 0.15]:
+        for inc in [-0.20, -0.15, -0.10, -.07, -0.03, 0.0, 0.03, 0.07, 0.10, 0.15, 0.20]:
 
-            # kernel for dilation or erosion of the mask
-            len_kernel = int(np.ceil(2 * r * np.abs(inc) + 1))
-            kernel = np.ones(shape=(len_kernel, len_kernel))
+            # erode or dilate the ground truth mask to create the segmentation mask
+            cell_seg = cytometer.utils.quality_model_mask(cell_seg_gtruth, quality_model_type='0_1_prop_band',
+                                                          quality_model_type_param=inc)[0, :, :, 0].astype(np.int8)
 
-            if inc < 0:
-                cell_seg = cv2.erode(cell_seg_gtruth, kernel=kernel)
-            elif inc == 0:
-                cell_seg = cell_seg_gtruth.copy()
-            else:  # inc > 0
-                cell_seg = cv2.dilate(cell_seg_gtruth, kernel=kernel)
-
-            # compute bounding box that contains the mask
-            props = regionprops(cell_seg)
-            assert(len(props) == 1)
-            bbox = props[0]['bbox']
-
-            bbox_x0 = bbox[1]
-            bbox_xend = bbox[3] - 1
-            bbox_y0 = bbox[0]
-            bbox_yend = bbox[2] - 1
+            # compute bounding box that contains the mask, and leaves some margin
+            bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth + cell_seg, coordinates='xy', inc=0.40)
+            bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth + cell_seg, coordinates='rc', inc=0.40)
 
             if DEBUG:
                 plt.subplot(223)
                 plt.cla()
                 plt.imshow(im)
-                plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5)
-                plt.contour(cell_seg, linewidths=1, levels=0.5)
+                plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='blue')
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
-
-            # largest dimension of the bounding box (the training window is going to be a square, so we have to make the
-            # bounding box square too)
-            bbox_len = np.max((bbox_xend - bbox_x0 + 1, bbox_yend - bbox_y0 + 1))
+                plt.xlim(405, 655)
+                plt.ylim(285, 35)
 
             # extract training image / segmentation / mask
             train_im, train_seg, _ = \
                 cytometer.utils.one_image_per_label(np.expand_dims(im_array, axis=0),
                                                     np.expand_dims(np.expand_dims(cell_seg, axis=0), axis=3),
-                                                    dataset_lab_ref=None, training_window_len=bbox_len,
-                                                    smallest_cell_area=smallest_cell_area, clear_border_lab=True)
+                                                    training_window_len=bbox_rend - bbox_r0)
+            _, train_seg_gtruth, _ = \
+                cytometer.utils.one_image_per_label(np.expand_dims(im_array, axis=0),
+                                                    np.expand_dims(np.expand_dims(cell_seg_gtruth, axis=0), axis=3),
+                                                    training_window_len=bbox_rend - bbox_r0)
 
             if DEBUG:
                 plt.subplot(224)
                 plt.cla()
                 plt.imshow(train_im[0, :, :, :])
-                plt.contour(train_seg[0, :, :, 0], linewidths=1, levels=0.5)
+                plt.contour(train_seg_gtruth[0, :, :, 0], linewidths=1, levels=0.5, colors='green')
+                plt.contour(train_seg[0, :, :, 0], linewidths=1, levels=0.5, colors='blue')
 
             # resize the training image to training window size
             assert(train_im.dtype == np.uint8)
