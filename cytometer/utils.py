@@ -1038,6 +1038,9 @@ def bounding_box_with_margin(label, inc=0.0, coordinates='xy'):
     Create a square bounding box around a segmentation mask, with optional enlargement/reduction.
     The output is given as (x0, y0, xend, yend) for plotting or (r0, c0, rend, cend) for indexing arrays.
 
+    Note that because we need integers for indexing, the bounding box may not be completely centered on the segmentation
+    mask.
+
     :param label: 2D numpy.array with segmentation mask.
     :param inc: (def 0.0) Scalar. The size of the box will be increased (or decreased with negative value) 100*inc%.
     E.g. if inc=0.20, the size of the box will be increased by 20% with respect to the smallest box that encloses the
@@ -1048,63 +1051,59 @@ def bounding_box_with_margin(label, inc=0.0, coordinates='xy'):
     can be directly used for plotting.
     If coordinates=='rc': (r0, c0, rend, cend): These are rounded row/column indices that can be used for indexing
     an array, e.g. x[r0:rend, c0:cend]. Note that
-        cend = np.round(xend+1)
-        rend = np.round(yend+1)
+        cend = xend+1
+        rend = yend+1
     (the +1 is necessary because python drops the last index when slicing an array).
     """
 
     # compute region properties
-    props = regionprops((label != 0).astype(np.uint8))
+    props = regionprops((label != 0).astype(np.uint8), coordinates='rc')
     assert (len(props) == 1)
 
     # box enclosing segmentation
     bbox = props[0]['bbox']
 
-    # ease nomenclature of box corners. Note that we have to remove 1 from the end, because regionprops() returns row+1
-    # col+1
-    bbox_x0 = bbox[1]
-    bbox_xend = bbox[3] - 1
-    bbox_y0 = bbox[0]
-    bbox_yend = bbox[2] - 1
+    # ease nomenclature of box corners
+    (bbox_r0, bbox_c0, bbox_rend, bbox_cend) = bbox
 
-    # length of each side of the box
-    bbox_x_len = bbox_xend - bbox_x0
-    bbox_y_len = bbox_yend - bbox_y0
-
-    # centroid of the box
-    cx = (bbox_xend + bbox_x0) / 2.0
-    cy = (bbox_yend + bbox_y0) / 2.0
-
-    # make the bbox square, if necessary
-    if cx < cy:
-        bbox_x0 = cx - bbox_y_len / 2.0
-        bbox_xend = cx + bbox_y_len / 2.0
-        bbox_x_len = bbox_xend - bbox_x0
-    elif cy < cx:
-        bbox_y0 = cy - bbox_x_len / 2.0
-        bbox_yend = cy + bbox_x_len / 2.0
-        bbox_y_len = bbox_yend - bbox_y0
-
-    assert(bbox_x_len == bbox_y_len)
+    # make the box square
+    bbox_r_len = bbox_rend - bbox_r0
+    bbox_c_len = bbox_cend - bbox_c0
+    bbox_len = np.max((bbox_r_len, bbox_c_len))
 
     if inc != 0.0:
         # increase or decrease the box size by the scalar
-        bbox_x_len *= 1 + inc
-        bbox_y_len *= 1 + inc
+        bbox_len = np.round(bbox_len * (1 + inc))
 
-        # recompute the box's corners
-        bbox_x0 = cx - bbox_x_len / 2.0
-        bbox_xend = cx + bbox_x_len / 2.0
-        bbox_y0 = cy - bbox_y_len / 2.0
-        bbox_yend = cy + bbox_y_len / 2.0
+    # bottom left corner of the box
+    bbox_r0 -= np.round((bbox_len - bbox_r_len) / 2.0)
+    bbox_c0 -= np.round((bbox_len - bbox_c_len) / 2.0)
+
+    # top right corner of the box (+1 so that we can use it for indexing)
+    bbox_rend = bbox_r0 + bbox_len
+    bbox_cend = bbox_c0 + bbox_len
 
     if coordinates == 'xy':
-        return bbox_x0, bbox_y0, bbox_xend, bbox_yend
+        return np.float64(bbox_c0), np.float64(bbox_r0), np.float64(bbox_cend - 1), np.float64(bbox_rend - 1)
     elif coordinates == 'rc':
-        return np.int64(bbox_y0), np.int64(bbox_x0), \
-               np.int64(np.round(bbox_yend + 1)), np.int64(np.round(bbox_xend + 1))
+        return np.int64(bbox_r0), np.int64(bbox_c0), np.int64(bbox_rend), np.int64(bbox_cend)
     else:
         raise ValueError('Unknown "coordinates" value.')
+
+
+# bbox = (bbox_r0, bbox_c0, bbox_rend, bbox_cend)
+# im = cell_mask_loss
+def extract_bbox(im, bbox):
+
+    # for simplify code, consider 2D images as images with 1 channel
+    if im.ndim == 2:
+        im = np.expand_dims(im, axis=2)
+
+    # easier nomenclature
+    r0, c0, rend, cend = bbox
+
+    # initialise output
+    out = np.zeros(shape=(rend - r0, cend - c0, im.shape[2]), dtype=im.dtype)
 
 
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
