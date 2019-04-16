@@ -1041,6 +1041,8 @@ def bounding_box_with_margin(label, inc=0.0, coordinates='xy'):
     Note that because we need integers for indexing, the bounding box may not be completely centered on the segmentation
     mask.
 
+    Note also that the bounding box may have negative indices, or indices beyond the image size.
+
     :param label: 2D numpy.array with segmentation mask.
     :param inc: (def 0.0) Scalar. The size of the box will be increased (or decreased with negative value) 100*inc%.
     E.g. if inc=0.20, the size of the box will be increased by 20% with respect to the smallest box that encloses the
@@ -1091,19 +1093,63 @@ def bounding_box_with_margin(label, inc=0.0, coordinates='xy'):
         raise ValueError('Unknown "coordinates" value.')
 
 
-# bbox = (bbox_r0, bbox_c0, bbox_rend, bbox_cend)
-# im = cell_mask_loss
 def extract_bbox(im, bbox):
+    """
+    Crop bounding box from an image. Note that bounding boxes that go beyond the image boundaries are allowed. In that
+    case, external pixels will be set to zero.
+
+    :param im: (row, col) or (row, col, channels) np.ndarray image.
+    :param bbox: (r0, c0, rend, cend)-tuple with bottom left and top right vertices of the bounding box.
+    :return:
+    * out: Cropping of the image, as numpy.ndarray with the same number of channels as im.
+    """
 
     # for simplify code, consider 2D images as images with 1 channel
-    if im.ndim == 2:
+    if im.ndim < 2 or im.ndim > 3:
+        raise ValueError('im must be a (row, col) or (row, col, channel) array')
+    elif im.ndim == 2:
+        DIM2 = True
         im = np.expand_dims(im, axis=2)
+    else:
+        DIM2 = False
 
     # easier nomenclature
     r0, c0, rend, cend = bbox
 
     # initialise output
     out = np.zeros(shape=(rend - r0, cend - c0, im.shape[2]), dtype=im.dtype)
+
+    # if indices are beyond the image limits, we have to account for that when cropping the input
+    if r0 < 0:
+        r0_out = -r0
+        r0 = 0
+    else:
+        r0_out = 0
+    if c0 < 0:
+        c0_out = -c0
+        c0 = 0
+    else:
+        c0_out = 0
+
+    if rend > im.shape[0]:
+        rend_out = out.shape[0] - (rend - im.shape[0])
+        rend = im.shape[0]
+    else:
+        rend_out = out.shape[0]
+    if cend > im.shape[1]:
+        cend_out = out.shape[1] - (cend - im.shape[1])
+        cend = im.shape[1]
+    else:
+        cend_out = out.shape[1]
+
+    # crop the image
+    out[r0_out:rend_out, c0_out:cend_out, :] = im[r0:rend, c0:cend, :]
+
+    # output has the same number of dimensions as the input
+    if DIM2:
+        return out[:, :, 0]
+    else:
+        return out
 
 
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
