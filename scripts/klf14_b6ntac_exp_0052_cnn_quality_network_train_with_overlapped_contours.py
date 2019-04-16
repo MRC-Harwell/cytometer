@@ -189,86 +189,109 @@ for i, file_svg in enumerate(file_list):
             plt.subplot(222)
             plt.imshow(cell_seg_gtruth)
 
-        # equivalent radius of the ground truth segmentation
-        a_gtruth = np.count_nonzero(cell_seg_gtruth)  # segmentation area (pix^2)
-        r_gtruth = np.sqrt(a_gtruth / np.pi)  # equivalent circle's radius
-
         # loop different perturbations in the mask to have a collection of better and worse
         # segmentations
         for inc in [-0.20, -0.15, -0.10, -.07, -0.03, 0.0, 0.03, 0.07, 0.10, 0.15, 0.20]:
 
             # erode or dilate the ground truth mask to create the segmentation mask
             cell_seg = cytometer.utils.quality_model_mask(cell_seg_gtruth, quality_model_type='0_1_prop_band',
-                                                          quality_model_type_param=inc)[0, :, :, 0].astype(np.int8)
-
-            # compute bounding box that contains the mask, and leaves some margin
-            bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth + cell_seg, coordinates='xy', inc=0.40)
-            bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth + cell_seg, coordinates='rc', inc=0.40)
+                                                          quality_model_type_param=inc)[0, :, :, 0].astype(np.uint8)
 
             if DEBUG:
                 plt.subplot(223)
-                plt.cla()
-                plt.imshow(im_array)
-                plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='blue')
-                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
-                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
-                plt.xlim(405, 655)
-                plt.ylim(285, 35)
+                plt.imshow(cell_seg)
 
-            train_im = np.expand_dims(im_array[bbox_r0:bbox_rend, bbox_c0:bbox_cend, :], axis=0)
-            train_seg = np.expand_dims(np.expand_dims(cell_seg[bbox_r0:bbox_rend, bbox_c0:bbox_cend], axis=0), axis=3)
-            train_seg_gtruth = np.expand_dims(np.expand_dims(cell_seg_gtruth[bbox_r0:bbox_rend, bbox_c0:bbox_cend], axis=0), axis=3)
+            # create the loss mask. This will be the largest mask too, so we use it to decide the size of the bounding
+            # box to crop
 
-            # extract training image / segmentation / mask
-            train_im, train_seg, _ = \
-                cytometer.utils.one_image_per_label(np.expand_dims(im_array, axis=0),
-                                                    np.expand_dims(np.expand_dims(cell_seg, axis=0), axis=3),
-                                                    training_window_len=bbox_rend - bbox_r0)
-            _, train_seg_gtruth, _ = \
-                cytometer.utils.one_image_per_label(np.expand_dims(im_array, axis=0),
-                                                    np.expand_dims(np.expand_dims(cell_seg_gtruth, axis=0), axis=3),
-                                                    training_window_len=bbox_rend - bbox_r0)
+            #   all space covered by either the ground truth or segmentation
+            cell_mask_loss = np.logical_or(cell_seg_gtruth, cell_seg).astype(np.uint8)
+
+            #   dilate loss mask so that it also covers part of the background
+            cell_mask_loss = cytometer.utils.quality_model_mask(cell_mask_loss, quality_model_type='0_1_prop_band',
+                                                                quality_model_type_param=0.30)[0, :, :, 0]
+
+            # compute bounding box that contains the mask, and leaves some margin
+            bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
+                cytometer.utils.bounding_box_with_margin(cell_mask_loss, coordinates='xy', inc=0.40)
+            bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
+                cytometer.utils.bounding_box_with_margin(cell_mask_loss, coordinates='rc', inc=0.40)
 
             if DEBUG:
                 plt.subplot(224)
                 plt.cla()
-                plt.imshow(train_im[0, :, :, :])
-                plt.contour(train_seg_gtruth[0, :, :, 0], linewidths=1, levels=0.5, colors='green')
-                plt.contour(train_seg[0, :, :, 0], linewidths=1, levels=0.5, colors='blue')
+                plt.imshow(cell_mask_loss)
+                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
+            train_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            train_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            train_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            train_mask_loss = cytometer.utils.extract_bbox(cell_mask_loss, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+
+            if DEBUG:
+                plt.clf()
+                plt.subplot(221)
+                plt.cla()
+                plt.imshow(im_array)
+                plt.contour(cell_mask_loss, linewidths=1, levels=0.5, colors='blue')
+                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0), 'black')
+
+                plt.subplot(222)
+                plt.cla()
+                plt.imshow(train_im)
+                plt.contour(train_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(train_seg, linewidths=1, levels=0.5, colors='blue')
+                plt.contour(train_mask_loss, linewidths=1, levels=0.5, colors='red')
 
 
 
             # resize the training image to training window size
             assert(train_im.dtype == np.uint8)
+            assert(train_seg_gtruth.dtype == np.uint8)
             assert(train_seg.dtype == np.uint8)
-            assert(train_mask.dtype == np.int32)
-            train_im = Image.fromarray(train_im[0, :, :, :])
-            train_seg = Image.fromarray(train_seg[0, :, :, 0])
-            train_mask = Image.fromarray(train_mask[0, :, :, 0], mode='I')
+            train_im = Image.fromarray(train_im)
+            train_seg_gtruth = Image.fromarray(train_seg_gtruth)
+            train_seg = Image.fromarray(train_seg)
 
             train_im = train_im.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
+            train_seg_gtruth = train_seg_gtruth.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
             train_seg = train_seg.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
-            train_mask = train_mask.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
 
             train_im = np.array(train_im)
+            train_seg_gtruth = np.array(train_seg_gtruth)
             train_seg = np.array(train_seg)
-            train_mask = np.array(train_mask)
 
             if DEBUG:
                 plt.subplot(224)
                 plt.cla()
                 plt.imshow(train_im)
-                plt.contour(train_mask, linewidths=1, levels=0.5)
+                plt.contour(train_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(train_seg, linewidths=1, levels=0.5, colors='blue')
 
-            # multiply the image by the mask
-            train_im[:, :, 0] * train_im[:, :, 0] * train_mask
-            train_im[:, :, 1] * train_im[:, :, 1] * train_mask
-            train_im[:, :, 2] * train_im[:, :, 2] * train_mask
+            if DEBUG:
+                plt.clf()
+                plt.subplot(221)
+                plt.cla()
+                plt.imshow(train_im)
+                plt.contour(train_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(train_seg, linewidths=1, levels=0.5, colors='blue')
 
+            # create masks that are used for training
+            train_mask_diff = train_seg.astype('int8') - train_seg_gtruth.astype('int8')
+            train_mask_or = np.logical_or(train_seg_gtruth, train_seg).astype(np.uint8)
+
+            if DEBUG:
+                plt.subplot(222)
+                plt.cla()
+                plt.imshow(train_mask_diff)
+                plt.title('Seg - GT')
+
+                plt.subplot(223)
+                plt.cla()
+                plt.imshow(train_mask_or)
+                plt.title('Seg OR GT')
 
 
 
