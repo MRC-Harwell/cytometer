@@ -210,13 +210,17 @@ for i, file_svg in enumerate(file_list):
             if DEBUG:
                 plt.subplot(223)
                 plt.cla()
-                plt.imshow(im)
+                plt.imshow(im_array)
                 plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
                 plt.contour(cell_seg, linewidths=1, levels=0.5, colors='blue')
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
                 plt.xlim(405, 655)
                 plt.ylim(285, 35)
+
+            train_im = np.expand_dims(im_array[bbox_r0:bbox_rend, bbox_c0:bbox_cend, :], axis=0)
+            train_seg = np.expand_dims(np.expand_dims(cell_seg[bbox_r0:bbox_rend, bbox_c0:bbox_cend], axis=0), axis=3)
+            train_seg_gtruth = np.expand_dims(np.expand_dims(cell_seg_gtruth[bbox_r0:bbox_rend, bbox_c0:bbox_cend], axis=0), axis=3)
 
             # extract training image / segmentation / mask
             train_im, train_seg, _ = \
@@ -234,6 +238,9 @@ for i, file_svg in enumerate(file_list):
                 plt.imshow(train_im[0, :, :, :])
                 plt.contour(train_seg_gtruth[0, :, :, 0], linewidths=1, levels=0.5, colors='green')
                 plt.contour(train_seg[0, :, :, 0], linewidths=1, levels=0.5, colors='blue')
+
+
+
 
             # resize the training image to training window size
             assert(train_im.dtype == np.uint8)
