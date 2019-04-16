@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import six
 import matplotlib.pyplot as plt
+from PIL import Image
 from statistics import mode
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
@@ -20,7 +21,6 @@ from skimage.transform import SimilarityTransform, AffineTransform
 from skimage.color import rgb2hsv, hsv2rgb
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
-from sklearn.utils.multiclass import unique_labels
 import keras.backend as K
 import keras
 import tensorflow as tf
@@ -30,6 +30,26 @@ from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_i
 from statsmodels.stats.multitest import multipletests
 
 DEBUG = False
+
+
+def resize(x, size, resample=Image.NEAREST):
+    """
+    Resize an image in numpy.ndarray format. PIL is used internally for the resizing.
+
+    :param x: numpy.ndarray (row, col) or (row, col, chan) for colour images.
+    :param size: (row, col)-tuple with the output size.
+    :param resample:
+    :return:
+    """
+
+    # convert to PIL image
+    x = Image.fromarray(x)
+
+    # resize image
+    x = x.resize(size=size, resample=resample)
+
+    # convert back to numpy array
+    return np.array(x)
 
 
 def clear_mem():
