@@ -38,15 +38,31 @@ def resize(x, size, resample=Image.NEAREST):
 
     :param x: numpy.ndarray (row, col) or (row, col, chan) for colour images.
     :param size: (row, col)-tuple with the output size.
-    :param resample:
-    :return:
+    :param resample: (def Image.NEAREST) An optional resampling filter. This can be one of PIL.Image.NEAREST (use
+    nearest neighbour), PIL.Image.BILINEAR (linear interpolation), PIL.Image.BICUBIC (cubic spline interpolation), or
+    PIL.Image.LANCZOS (a high-quality downsampling filter).
+    :return: numpy.ndarray with the resized image.
     """
 
-    # convert to PIL image
-    x = Image.fromarray(x)
+    if x.ndim < 2 or x.ndim > 3:
+        raise ValueError('x.ndims must be 2 or 3')
 
-    # resize image
-    x = x.resize(size=size, resample=resample)
+    if x.dtype == np.float32:
+        if x.ndim == 2:
+            # convert to PIL image
+            x = Image.fromarray(x)
+
+            # resize image
+            x = x.resize(size=size, resample=resample)
+        else:
+            y = np.zeros(shape=size + (x.shape[2],), dtype=x.dtype)
+            for chan in range(x.shape[2]):
+                # convert to PIL image
+                aux = Image.fromarray(x[:, :, chan])
+
+                # resize image
+                y[:, :, chan] = aux.resize(size=size, resample=resample)
+            x = y
 
     # convert back to numpy array
     return np.array(x)
