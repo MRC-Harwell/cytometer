@@ -35,10 +35,6 @@ import matplotlib.pyplot as plt
 import time
 import random
 
-# use CPU for testing on laptop
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '1,3'
 
@@ -349,12 +345,11 @@ for i, file_svg in enumerate(file_list):
             window_out = np.expand_dims(window_out, axis=3)
 
             window_mask_loss = np.expand_dims(window_mask_loss, axis=0)
-            window_mask_loss = np.expand_dims(window_mask_loss, axis=3)
 
             # check sizes and types
             assert(window_im.ndim == 4 and window_im.dtype == np.float32)
             assert(window_out.ndim == 4 and window_out.dtype == np.float32)
-            assert(window_mask_loss.ndim == 4 and window_mask_loss.dtype == np.float32)
+            assert(window_mask_loss.ndim == 3 and window_mask_loss.dtype == np.float32)
 
             # append images to use for training
             window_im_all.append(window_im)
@@ -401,16 +396,12 @@ for k_fold in range(n_folds):
     # split data into training and testing
     window_im_train = window_im_all[idx_train, :, :, :]
     window_im_test = window_im_all[idx_test, :, :, :]
-    del window_im_all
-    window_seg_gtruth_train = window_seg_gtruth_all[idx_train, :, :]
-    window_seg_gtruth_test = window_seg_gtruth_all[idx_test, :, :]
-    del window_seg_gtruth_all
-    window_seg_train = window_seg_all[idx_train, :, :]
-    window_seg_test = window_seg_all[idx_test, :, :]
-    del window_seg_all
-    window_mask_loss_train = window_mask_loss_all[idx_train, :, :]
-    window_mask_loss_test = window_mask_loss_all[idx_test, :, :]
-    del window_mask_loss_all
+
+    window_out_train = window_out_all[idx_train, :, :]
+    window_out_test = window_out_all[idx_test, :, :]
+
+    window_mask_loss_train = window_mask_loss_all[idx_train, :]
+    window_mask_loss_test = window_mask_loss_all[idx_test, :]
 
     # instantiate model
     with tf.device('/cpu:0'):
@@ -432,12 +423,12 @@ for k_fold in range(n_folds):
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'],
-                           {'regression_output': train_dataset['dmap']},
-                           sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                           validation_data=(test_dataset['im'],
-                                            {'regression_output': test_dataset['dmap']},
-                                            {'regression_output': test_dataset['mask'][..., 0]}),
+        parallel_model.fit(window_im_train,
+                           {'regression_output': window_out_train},
+                           sample_weight={'regression_output': window_mask_loss_train},
+                           validation_data=(window_im_test,
+                                            {'regression_output': window_out_test},
+                                            {'regression_output': window_mask_loss_test}),
                            batch_size=10, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
@@ -457,18 +448,16 @@ for k_fold in range(n_folds):
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_dataset['im'],
-                  {'regression_output': train_dataset['dmap']},
-                  sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                  validation_data=(test_dataset['im'],
-                                   {'regression_output': test_dataset['dmap']},
-                                   {'regression_output': test_dataset['mask'][..., 0]}),
+        model.fit(window_im_train,
+                  {'regression_output': window_out_train},
+                  sample_weight={'regression_output': window_mask_loss_train},
+                  validation_data=(window_im_test,
+                                   {'regression_output': window_out_test},
+                                   {'regression_output': window_mask_loss_test}),
                   batch_size=10, epochs=epochs, initial_epoch=0,
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
-
-
 
 
 '''Save the log of computations
