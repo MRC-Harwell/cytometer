@@ -85,21 +85,6 @@ dice_threshold = 0.9
 # batch size for training
 batch_size = 16
 
-# data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
-augment_factor = 10
-
-# generator of random transformations
-data_gen_args_float32 = dict(
-    rotation_range=90,     # randomly rotate images up to 90 degrees
-    fill_mode="constant",  # fill points outside boundaries with zeros
-    cval=0,                #
-    zoom_range=.1,         # [1-zoom_range, 1+zoom_range]
-    horizontal_flip=True,  # randomly flip images
-    vertical_flip=True,    # randomly flip images
-    dtype=np.float32       # explicit type out
-)
-datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args_float32)
-
 
 '''CNN Model
 '''
