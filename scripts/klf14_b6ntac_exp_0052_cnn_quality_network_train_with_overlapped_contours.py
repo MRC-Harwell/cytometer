@@ -34,8 +34,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import random
-from skimage.measure import regionprops
-import cv2
 
 # use CPU for testing on laptop
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -203,10 +201,8 @@ file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 
 # init output
 window_im_all = []
-window_seg_gtruth_all = []
-window_seg_all = []
+window_out_all = []
 window_mask_loss_all = []
-
 for i, file_svg in enumerate(file_list):
 
     print('file ' + str(i) + '/' + str(len(file_list) - 1))
@@ -286,6 +282,7 @@ for i, file_svg in enumerate(file_list):
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
+            # crop image and masks according to bounding box
             window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
             window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
             window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
@@ -309,33 +306,66 @@ for i, file_svg in enumerate(file_list):
                 plt.contour(window_seg, linewidths=1, levels=0.5, colors='blue')
                 plt.contour(window_mask_loss, linewidths=1, levels=0.5, colors='red')
 
-            # resize the training image to training window size
-            training_size = (training_window_len, training_window_len)
-            window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
-            window_seg_gtruth = cytometer.utils.resize(window_seg_gtruth, size=training_size, resample=Image.NEAREST)
-            window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
-            window_mask_loss = cytometer.utils.resize(window_mask_loss, size=training_size, resample=Image.NEAREST)
+            # input to the CNN: multiply histology by +1/-1 segmentation mask
+            window_im = \
+                cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
+                                                   quality_model_type='-1_1')[0, :, :, :]
+
+            # output of the CNN: segmentation - ground truth
+            window_out = window_seg.astype(np.float32) - window_seg_gtruth.astype(np.float32)
+
+            # output mask for the CNN: loss mask
+            # window_mask_loss
 
             if DEBUG:
                 plt.subplot(223)
                 plt.cla()
-                plt.imshow(window_im)
-                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(window_seg, linewidths=1, levels=0.5, colors='blue')
+                aux = 0.2989 * window_im[:, :, 0] + 0.5870 * window_im[:, :, 1] + 0.1140 * window_im[:, :, 2]
+                plt.imshow(aux)
+                plt.title('CNN input: histology * +1/-1 segmentation mask')
+
+                plt.subplot(224)
+                plt.cla()
+                plt.imshow(window_out)
+
+            # resize the training image to training window size
+            training_size = (training_window_len, training_window_len)
+            window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
+            window_out = cytometer.utils.resize(window_out, size=training_size, resample=Image.NEAREST)
+            window_mask_loss = cytometer.utils.resize(window_mask_loss, size=training_size, resample=Image.NEAREST)
+
+            if DEBUG:
+                plt.subplot(224)
+                plt.cla()
+                aux = 0.2989 * window_im[:, :, 0] + 0.5870 * window_im[:, :, 1] + 0.1140 * window_im[:, :, 2]
+                plt.imshow(aux)
+                plt.contour(window_out, linewidths=1, levels=(-0.5, 0.5), colors='white')
                 plt.contour(window_mask_loss, linewidths=1, levels=0.5, colors='red')
 
+            # add dummy dimensions for keras
+            window_im = np.expand_dims(window_im, axis=0)
+
+            window_out = np.expand_dims(window_out, axis=0)
+            window_out = np.expand_dims(window_out, axis=3)
+
+            window_mask_loss = np.expand_dims(window_mask_loss, axis=0)
+            window_mask_loss = np.expand_dims(window_mask_loss, axis=3)
+
+            # check sizes and types
+            assert(window_im.ndim == 4 and window_im.dtype == np.float32)
+            assert(window_out.ndim == 4 and window_out.dtype == np.float32)
+            assert(window_mask_loss.ndim == 4 and window_mask_loss.dtype == np.float32)
+
             # append images to use for training
-            window_im_all.append(np.expand_dims(window_im, axis=0))
-            window_seg_gtruth_all.append(np.expand_dims(window_seg_gtruth, axis=0))
-            window_seg_all.append(np.expand_dims(window_seg, axis=0))
-            window_mask_loss_all.append(np.expand_dims(window_mask_loss, axis=0))
+            window_im_all.append(window_im)
+            window_out_all.append(window_out)
+            window_mask_loss_all.append(window_mask_loss)
 
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
 # collapse lists into arrays
 window_im_all = np.concatenate(window_im_all)
-window_seg_gtruth_all = np.concatenate(window_seg_gtruth_all)
-window_seg_all = np.concatenate(window_seg_all)
+window_out_all = np.concatenate(window_out_all)
 window_mask_loss_all = np.concatenate(window_mask_loss_all)
 
 '''Split data into training and testing for k-folds
