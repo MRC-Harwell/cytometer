@@ -32,6 +32,8 @@ import datetime
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+import random
 from skimage.measure import regionprops
 import cv2
 
@@ -40,16 +42,14 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 
-from keras.applications import densenet
-# from keras_applications.densenet import DenseNet
 from keras.models import Model
-from keras.layers import Dense
+from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -71,7 +71,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of folds for k-fold cross validation
-n_folds = 11
+n_folds = 10
 
 # number of epochs for training
 epochs = 40
@@ -105,6 +105,60 @@ data_gen_args_float32 = dict(
     dtype=np.float32       # explicit type out
 )
 datagen = keras.preprocessing.image.ImageDataGenerator(**data_gen_args_float32)
+
+
+'''CNN Model
+'''
+
+
+def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
+
+    cnn_input = Input(shape=input_shape, dtype='float32', name='input_image')
+
+    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(cnn_input)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+        x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
+    else:
+        x = Activation('relu')(x)
+        x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
+
+    x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
+
+    # regression output
+    regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+                               name='regression_output')(x)
+
+    return Model(inputs=cnn_input, outputs=[regression_output])
+
 
 '''Directories and filenames
 '''
@@ -141,9 +195,17 @@ else:
 '''Process the data
 '''
 
+# start timer
+t0 = time.time()
 
 # we are interested only in .tif files for which we created hand segmented contours
 file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
+
+# init output
+window_im_all = []
+window_seg_gtruth_all = []
+window_seg_all = []
+window_mask_loss_all = []
 
 for i, file_svg in enumerate(file_list):
 
@@ -224,75 +286,157 @@ for i, file_svg in enumerate(file_list):
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
-            train_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            train_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            train_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            train_mask_loss = cytometer.utils.extract_bbox(cell_mask_loss, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            window_mask_loss = cytometer.utils.extract_bbox(cell_mask_loss, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
 
             if DEBUG:
                 plt.clf()
                 plt.subplot(221)
                 plt.cla()
                 plt.imshow(im_array)
-                plt.contour(cell_mask_loss, linewidths=1, levels=0.5, colors='blue')
+                plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='blue')
+                plt.contour(cell_mask_loss, linewidths=1, levels=0.5, colors='red')
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0), 'black')
 
                 plt.subplot(222)
                 plt.cla()
-                plt.imshow(train_im)
-                plt.contour(train_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(train_seg, linewidths=1, levels=0.5, colors='blue')
-                plt.contour(train_mask_loss, linewidths=1, levels=0.5, colors='red')
-
-
+                plt.imshow(window_im)
+                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(window_seg, linewidths=1, levels=0.5, colors='blue')
+                plt.contour(window_mask_loss, linewidths=1, levels=0.5, colors='red')
 
             # resize the training image to training window size
-            assert(train_im.dtype == np.uint8)
-            assert(train_seg_gtruth.dtype == np.uint8)
-            assert(train_seg.dtype == np.uint8)
-            train_im = Image.fromarray(train_im)
-            train_seg_gtruth = Image.fromarray(train_seg_gtruth)
-            train_seg = Image.fromarray(train_seg)
-
-            train_im = train_im.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
-            train_seg_gtruth = train_seg_gtruth.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
-            train_seg = train_seg.resize(size=(training_window_len, training_window_len), resample=Image.NEAREST)
-
-            train_im = np.array(train_im)
-            train_seg_gtruth = np.array(train_seg_gtruth)
-            train_seg = np.array(train_seg)
+            training_size = (training_window_len, training_window_len)
+            window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
+            window_seg_gtruth = cytometer.utils.resize(window_seg_gtruth, size=training_size, resample=Image.NEAREST)
+            window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
+            window_mask_loss = cytometer.utils.resize(window_mask_loss, size=training_size, resample=Image.NEAREST)
 
             if DEBUG:
-                plt.subplot(224)
-                plt.cla()
-                plt.imshow(train_im)
-                plt.contour(train_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(train_seg, linewidths=1, levels=0.5, colors='blue')
-
-            if DEBUG:
-                plt.clf()
-                plt.subplot(221)
-                plt.cla()
-                plt.imshow(train_im)
-                plt.contour(train_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(train_seg, linewidths=1, levels=0.5, colors='blue')
-
-            # create masks that are used for training
-            train_mask_diff = train_seg.astype('int8') - train_seg_gtruth.astype('int8')
-            train_mask_or = np.logical_or(train_seg_gtruth, train_seg).astype(np.uint8)
-
-            if DEBUG:
-                plt.subplot(222)
-                plt.cla()
-                plt.imshow(train_mask_diff)
-                plt.title('Seg - GT')
-
                 plt.subplot(223)
                 plt.cla()
-                plt.imshow(train_mask_or)
-                plt.title('Seg OR GT')
+                plt.imshow(window_im)
+                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(window_seg, linewidths=1, levels=0.5, colors='blue')
+                plt.contour(window_mask_loss, linewidths=1, levels=0.5, colors='red')
 
+            # append images to use for training
+            window_im_all.append(np.expand_dims(window_im, axis=0))
+            window_seg_gtruth_all.append(np.expand_dims(window_seg_gtruth, axis=0))
+            window_seg_all.append(np.expand_dims(window_seg, axis=0))
+            window_mask_loss_all.append(np.expand_dims(window_mask_loss, axis=0))
+
+    print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
+
+# collapse lists into arrays
+window_im_all = np.concatenate(window_im_all)
+window_seg_gtruth_all = np.concatenate(window_seg_gtruth_all)
+window_seg_all = np.concatenate(window_seg_all)
+window_mask_loss_all = np.concatenate(window_mask_loss_all)
+
+'''Split data into training and testing for k-folds
+'''
+
+# number of images
+n_im = window_im_all.shape[0]
+
+# create k-fold sets to split the data into training vs. testing
+kfold_seed = 0
+random.seed(kfold_seed)
+idx_all = random.sample(range(n_im), n_im)
+idx_test_all = np.array_split(idx_all, n_folds)
+
+'''Convolutional neural network training
+
+    Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
+    function
+    '''
+
+# list all CPUs and GPUs
+device_list = K.get_session().list_devices()
+
+# number of GPUs
+gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
+
+for k_fold in range(n_folds):
+
+    # test and training indices
+    idx_test = idx_test_all[k_fold]
+    idx_train = list(set(idx_all) - set(idx_test))
+
+    # split data into training and testing
+    window_im_train = window_im_all[idx_train, :, :, :]
+    window_im_test = window_im_all[idx_test, :, :, :]
+    del window_im_all
+    window_seg_gtruth_train = window_seg_gtruth_all[idx_train, :, :]
+    window_seg_gtruth_test = window_seg_gtruth_all[idx_test, :, :]
+    del window_seg_gtruth_all
+    window_seg_train = window_seg_all[idx_train, :, :]
+    window_seg_test = window_seg_all[idx_test, :, :]
+    del window_seg_all
+    window_mask_loss_train = window_mask_loss_all[idx_train, :, :]
+    window_mask_loss_test = window_mask_loss_all[idx_test, :, :]
+    del window_mask_loss_all
+
+    # instantiate model
+    with tf.device('/cpu:0'):
+        model = fcn_sherrah2016_regression(input_shape=window_im_train.shape[1:])
+
+    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(k_fold) + '.h5')
+
+    if gpu_number > 1:  # compile and train model: Multiple GPUs
+
+        # checkpoint to save model after each epoch
+        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
+                                                                           verbose=1, save_best_only=True)
+        # compile model
+        parallel_model = multi_gpu_model(model, gpus=gpu_number)
+        parallel_model.compile(loss={'regression_output': 'mse'},
+                               optimizer='Adadelta',
+                               metrics={'regression_output': ['mse', 'mae']},
+                               sample_weight_mode='element')
+
+        # train model
+        tic = datetime.datetime.now()
+        parallel_model.fit(train_dataset['im'],
+                           {'regression_output': train_dataset['dmap']},
+                           sample_weight={'regression_output': train_dataset['mask'][..., 0]},
+                           validation_data=(test_dataset['im'],
+                                            {'regression_output': test_dataset['dmap']},
+                                            {'regression_output': test_dataset['mask'][..., 0]}),
+                           batch_size=10, epochs=epochs, initial_epoch=0,
+                           callbacks=[checkpointer])
+        toc = datetime.datetime.now()
+        print('Training duration: ' + str(toc - tic))
+
+    else:  # compile and train model: One GPU
+
+        # checkpoint to save model after each epoch
+        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
+                                                       verbose=1, save_best_only=True)
+
+        # compile model
+        model.compile(loss={'regression_output': 'mse'},
+                      optimizer='Adadelta',
+                      metrics={'regression_output': ['mse', 'mae']},
+                      sample_weight_mode='element')
+
+        # train model
+        tic = datetime.datetime.now()
+        model.fit(train_dataset['im'],
+                  {'regression_output': train_dataset['dmap']},
+                  sample_weight={'regression_output': train_dataset['mask'][..., 0]},
+                  validation_data=(test_dataset['im'],
+                                   {'regression_output': test_dataset['dmap']},
+                                   {'regression_output': test_dataset['mask'][..., 0]}),
+                  batch_size=10, epochs=epochs, initial_epoch=0,
+                  callbacks=[checkpointer])
+        toc = datetime.datetime.now()
+        print('Training duration: ' + str(toc - tic))
 
 
 
