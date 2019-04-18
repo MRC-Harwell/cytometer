@@ -36,7 +36,7 @@ import time
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -68,7 +68,7 @@ DEBUG = False
 n_folds = 10
 
 # number of epochs for training
-epochs = 40
+epochs = 25
 
 # area (pixel**2) of the smallest object we accept as a cell (pi * (16 pixel)**2 = 804.2 pixel**2)
 smallest_cell_area = 804
