@@ -1,16 +1,20 @@
 """
-Training all folds of DenseNet for quality assessement of individual cells based on classification of
-thresholded Dice coefficient (Dice >= 0.9). Here the loss is binary focal loss.
+New approach to Quality Network, using sherrah2016 CNN.
 
-The reason is to center the decision boundary on 0.9, to get finer granularity around that threshold.
+Use original hand traced cells (with overlaps) for training.
 
-Mask one-cell histology windows with 0/-1/+1 mask. The mask has a band with a width of 20% the equivalent radius
-of the cell (equivalent radius is the radius of a circle with the same area as the cell).
+We create a ground truth segmentation, and then a series of eroded and dilated segmentations for training.
 
-The difference of this one with 0046 is that here we remove segmentations with Dice < 0.5 (automatic segmentations that
-have poor ground truth) from the training dataset.
+We create a bounding box to crop the images, and the scale everything to the same training window size, to remove
+differences between cell sizes.
 
-This is part of a series of experiments with different types of masks: 0039, 0040, 0041, 0042, 0045, 0046, 0048.
+Training/test datasets created by random selection of individual cell images. Note: this could be misleading, because
+the network will be trained with similar cells to test cells.
+
+Training for the CNN:
+* Input: histology multiplied by segmentation.
+* Output: mask = segmentation - ground truth.
+* Other: mask for the loss function, to avoid looking too far from the cell.
 """
 
 # cross-platform home directory
