@@ -6,8 +6,10 @@ Functions to load, save and pre-process data related to the cytometer project.
 
 import os
 import glob
+import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
+
 import numpy as np
 from scipy import ndimage
 import pandas as pd
@@ -17,7 +19,7 @@ import pysto.imgproc as pystoim
 import re
 import six
 from svgpathtools import svg2paths
-from file_read_backwards import FileReadBackwards
+import random
 
 DEBUG = False
 
@@ -65,6 +67,122 @@ def split_list(x, idx):
     idx = list(idx)
 
     return list(np.array(x)[idx]), list(np.array(x)[idx_2])
+
+
+def split_file_list_kfolds(file_list, n_folds, ignore_str='', fold_seed=0, save_filename=None):
+    """
+    Split file list into k-folds for training and testing a neural network.
+
+    If there are N files, each fold gets N/k files for testing, and N*(k-1)/k files for training. If N
+    is not divisible by k, the split follows the rules of numpy.array_split().
+
+    :param file_list: List of filenames.
+    :param n_folds: Number of folds to split the list into.
+    :param ignore_str: (def '') String. This substring will be ignored when making a list of files to be shuffled.
+    The string format is the one you'd use in re.sub(ignore_str, '', file_list[i]).
+    This is useful if you have several files from the same histology slice, but you want to make sure that
+    the network tests run with data from histology slices that haven't been seen at training. For example,
+
+    histo_01_win_01.ndpi
+    histo_01_win_02.ndpi
+    histo_02_win_01.ndpi
+    histo_02_win_02.ndpi
+
+    Using ignore_str='_win_.*' will reduce the file list to
+
+    histo_01
+    histo_02
+
+    Thus, both files from histo_01 will be assigned together either to the train or test sets.
+
+    :param fold_seed: Scalar. Seed for the pseudo-random number generator to shuffle the file indices.
+    :param save_filename: (def None). If provided, save results to pickle file (*.pickle).
+        * 'file_list'
+        * 'idx_train'
+        * 'idx_test'
+        * 'fold_seed'
+    :return:
+        * idx_train: list of 1D arrays. idx_train[i] are the train indices for training files in the ith-fold.
+        * idx_test: list of 1D arrays. idx_train[i] are the train indices for test files in the ith-fold.
+    """
+
+    # starting file list
+    #
+    # im_1_row_4.ndpi
+    # im_2_row_8.ndpi
+    # im_1_row_2.ndpi
+    # im_2_row_3.ndpi
+    # im_1_row_1.ndpi
+
+    # create second file list removing the ignore_from* substring
+    #
+    # im_1
+    # im_2
+    # im_1
+    # im_2
+    # im_1
+    file_list_reduced = [re.sub(ignore_str, '', x) for x in file_list]
+
+    # create third file list, without duplicates
+    #
+    # im_1
+    # im_2
+    file_list_unique = np.unique(file_list_reduced)
+
+    # look up table (LUT) to map back to the full list
+    #
+    # [[0, 2, 4], [1, 3]]
+    file_list_lut = []
+    for i, f in enumerate(file_list_unique):
+        file_list_lut.append(np.array([j for j, f_all in enumerate(file_list_reduced) if f == f_all]))
+    file_list_lut = np.array(file_list_lut)
+
+    # number of reduced files
+    n_file = len(file_list_unique)
+
+    # split data into training and testing for k-folds.
+    # Here the indices refer to file_list_unique
+    #
+    # idx_train_all = [[0]]  # im_1
+    # idx_test_all = [[1]]   # im_2
+    random.seed(fold_seed)
+    idx_unique = random.sample(range(n_file), n_file)
+    idx_test_all = np.array_split(idx_unique, n_folds)
+    idx_train_all = []
+    for k_fold in range(n_folds):
+        # test and training image indices
+        idx_test = idx_test_all[k_fold]
+        idx_train = list(set(idx_unique) - set(idx_test))
+        random.shuffle(idx_train)
+        idx_train_all.append(np.array(idx_train))
+
+    # map reduced indices to full list
+    # Here we change the indices to refer to file_list
+    #
+    # idx_train_all = [[0, 2, 4]]  # im_1_*
+    # idx_test_all = [[1, 3]]   # im_2_*
+    for i, idx_train in enumerate(idx_train_all):  # loop folds
+        # file_list indices
+        idx = np.concatenate(file_list_lut[idx_train])
+        idx_train_all[i] = idx
+
+    for i, idx_test in enumerate(idx_test_all):  # loop folds
+        # file_list indices
+        idx = np.concatenate(file_list_lut[idx_test])
+        idx_test_all[i] = idx
+
+    # check that there's no overlap between training and test datasets, and that each fold contains
+    # all the images
+    for i, idx_train in enumerate(idx_train_all):
+        assert(set(idx_train).intersection(idx_test_all[i]) == set())
+        assert (len(np.concatenate((idx_test_all[i], idx_train))) == len(file_list))
+
+    if save_filename is not None:
+        with open(save_filename, 'wb') as f:
+            x = {'file_list': file_list, 'idx_train': idx_train_all, 'idx_test': idx_test_all, 'fold_seed': fold_seed}
+            pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
+
+    return idx_train_all, idx_test_all
 
 
 def change_home_directory(file_list, home_path_from, home_path_to, check_isfile=False):
