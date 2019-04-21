@@ -39,10 +39,9 @@ from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -156,8 +155,6 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'  # contour
-
 # script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
@@ -165,26 +162,22 @@ if experiment_id == '<input>':
 else:
     experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
-# # list of images, and indices for training vs. testing indices
-# contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_info.pickle')
-# with open(contour_model_kfold_filename, 'rb') as f:
-#     aux = pickle.load(f)
-# im_orig_file_list = aux['file_list']
-# idx_orig_test_all = aux['idx_test_all']
-#
-# # correct home directory, if necessary
-# im_orig_file_list = cytometer.data.change_home_directory(im_orig_file_list, home_path_from='/users/rittscher/rcasero',
-#                                                          home_path_to=home,
-#                                                          check_isfile=False)
+# we are interested only in .tif files for which we created hand segmented contours
+file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
+
+# number of images
+n_im = len(file_list)
+
+# split data into training and testing for k-folds
+kfold_info_filename = os.path.join(saved_models_dir, experiment_id + '_kfold_info.pickle')
+idx_train_all, idx_test_all = cytometer.data.split_file_list_kfolds(
+    file_list, n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=kfold_info_filename)
 
 '''Process the data
 '''
 
 # start timer
 t0 = time.time()
-
-# we are interested only in .tif files for which we created hand segmented contours
-file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 
 # init output
 window_im_all = []
@@ -356,18 +349,6 @@ window_im_all = np.concatenate(window_im_all)
 window_out_all = np.concatenate(window_out_all)
 window_mask_loss_all = np.concatenate(window_mask_loss_all)
 window_idx_all = np.vstack(window_idx_all)
-
-'''Split data into training and testing for k-folds
-'''
-
-# number of images
-n_im = len(file_list)
-
-# create k-fold sets to split the data into training vs. testing
-kfold_seed = 0
-random.seed(kfold_seed)
-idx_im_all = random.sample(range(n_im), n_im)
-idx_im_test_all = np.array_split(idx_im_all, n_folds)
 
 '''Convolutional neural network training
 
