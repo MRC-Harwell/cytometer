@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 import time
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -208,10 +208,10 @@ for i, file_svg in enumerate(file_list):
     # loop ground truth cell contours
     for j, contour in enumerate(contours):
 
-        # centre of current cell
-        xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
-
         if DEBUG:
+            # centre of current cell
+            xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+
             plt.clf()
             plt.subplot(221)
             plt.imshow(im)
@@ -236,12 +236,20 @@ for i, file_svg in enumerate(file_list):
             cell_seg = cytometer.utils.quality_model_mask(cell_seg_gtruth, quality_model_type='0_1_prop_band',
                                                           quality_model_type_param=inc)[0, :, :, 0].astype(np.uint8)
 
+            # compute bounding box that contains the mask, and leaves some margin
+            bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+            bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+
             if DEBUG:
                 plt.subplot(223)
+                plt.cla()
                 plt.imshow(cell_seg)
+                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
-            # create the loss mask. This will be the largest mask too, so we use it to decide the size of the bounding
-            # box to crop
+            # create the loss mask
 
             #   all space covered by either the ground truth or segmentation
             cell_mask_loss = np.logical_or(cell_seg_gtruth, cell_seg).astype(np.uint8)
@@ -249,12 +257,6 @@ for i, file_svg in enumerate(file_list):
             #   dilate loss mask so that it also covers part of the background
             cell_mask_loss = cytometer.utils.quality_model_mask(cell_mask_loss, quality_model_type='0_1_prop_band',
                                                                 quality_model_type_param=0.30)[0, :, :, 0]
-
-            # compute bounding box that contains the mask, and leaves some margin
-            bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
-                cytometer.utils.bounding_box_with_margin(cell_mask_loss, coordinates='xy', inc=0.40)
-            bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
-                cytometer.utils.bounding_box_with_margin(cell_mask_loss, coordinates='rc', inc=0.40)
 
             if DEBUG:
                 plt.subplot(224)
@@ -362,15 +364,20 @@ device_list = K.get_session().list_devices()
 # number of GPUs
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
-for k_fold in range(n_folds):
+for i_fold in range(n_folds):
+
+    print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
 
     # test and training image indices
-    idx_im_test = idx_im_test_all[k_fold]
-    idx_im_train = list(set(idx_im_all) - set(idx_im_test))
+    idx_test = idx_test_all[i_fold]
+    idx_train = idx_train_all[i_fold]
 
     # get cell indices for test and training, based on the image indices
-    idx_test = np.where([x in idx_im_test for x in window_idx_all[:, 0]])[0]
-    idx_train = np.where([x in idx_im_train for x in window_idx_all[:, 0]])[0]
+    idx_test = np.where([x in idx_test for x in window_idx_all[:, 0]])[0]
+    idx_train = np.where([x in idx_train for x in window_idx_all[:, 0]])[0]
+
+    print('## len(idx_train) = ' + str(len(idx_train)))
+    print('## len(idx_test) = ' + str(len(idx_test)))
 
     # split data into training and testing
     window_im_train = window_im_all[idx_train, :, :, :]
@@ -386,7 +393,7 @@ for k_fold in range(n_folds):
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_regression(input_shape=window_im_train.shape[1:])
 
-    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(k_fold) + '.h5')
+    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
 
     if gpu_number > 1:  # compile and train model: Multiple GPUs
 
@@ -437,6 +444,14 @@ for k_fold in range(n_folds):
                   callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+
+        cytometer.utils.clear_mem()
+        del window_im_train
+        del window_im_test
+        del window_out_train
+        del window_out_test
+        del window_mask_loss_train
+        del window_mask_loss_test
 
 
 '''Save the log of computations
