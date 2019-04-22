@@ -63,6 +63,12 @@ def resize(x, size, resample=Image.NEAREST):
                 # resize image
                 y[:, :, chan] = aux.resize(size=size, resample=resample)
             x = y
+    else:
+        # convert to PIL image
+        x = Image.fromarray(x)
+
+        # resize image
+        x = x.resize(size=size, resample=resample)
 
     # convert back to numpy array
     return np.array(x)
