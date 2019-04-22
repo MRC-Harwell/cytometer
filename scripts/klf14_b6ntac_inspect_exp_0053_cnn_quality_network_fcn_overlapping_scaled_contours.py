@@ -91,59 +91,6 @@ dice_threshold = 0.9
 batch_size = 16
 
 
-'''CNN Model
-'''
-
-
-def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
-
-    cnn_input = Input(shape=input_shape, dtype='float32', name='input_image')
-
-    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(cnn_input)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
-
-    x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-    else:
-        x = Activation('relu')(x)
-
-    # regression output
-    regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
-                               name='regression_output')(x)
-
-    return Model(inputs=cnn_input, outputs=[regression_output])
-
-
 '''Directories and filenames
 '''
 
