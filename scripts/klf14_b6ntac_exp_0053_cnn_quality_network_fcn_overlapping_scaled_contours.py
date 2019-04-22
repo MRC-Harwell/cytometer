@@ -364,7 +364,8 @@ device_list = K.get_session().list_devices()
 # number of GPUs
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
-for i_fold in range(n_folds):
+# HACK: skip first fold, already computed
+for i_fold in range(1, n_folds):
 
     print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
 
