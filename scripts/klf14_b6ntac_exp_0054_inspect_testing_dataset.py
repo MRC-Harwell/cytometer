@@ -12,16 +12,11 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
-import inspect
 
 # other imports
-import glob
-import shutil
-import datetime
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
@@ -30,13 +25,6 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
-
-# for data parallelism in keras models
-from keras.utils import multi_gpu_model
-
-import cytometer.model_checkpoint_parallel
 import cytometer.utils
 import cytometer.data
 import tensorflow as tf
