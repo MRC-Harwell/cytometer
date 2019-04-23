@@ -498,7 +498,7 @@ def load_watershed_seg_and_compute_dmap(seg_file_list, background_label=1):
     return dmap, mask, seg
 
 
-def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False):
+def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, minimum_npoints=3):
     """
     Read a SVG file produced by Gimp that contains paths (contours), and return a list of paths, where each path
     is a list of (X,Y) point coordinates.
@@ -509,6 +509,7 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False):
     :param file: path and name of SVG file.
     :param tag: (def 'Cell'). Only paths with a label that starts with this tag will be read.
     :param add_offset_from_filename: (def False)
+    :param minimum_npoints: (def 3) Contours with less than this number of points will be ignored.
     :return: [ path0, path1, ...] = [ [(X0,Y0), (X1,Y1), ...], ...]
     """
 
@@ -546,14 +547,16 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False):
     paths_out = []
     for path, attribute in zip(paths, attributes):
 
-        # skip if the countour is not a cell (we also skip edge cells, as they are incomplete, and thus their area
-        # is misleading)
+        # skip if the contour's name doesn't start with the required tag, e.g. 'Cell'
         if not attribute['id'].startswith(tag):
             continue
 
         # extract contour polygon from the path object
         contour = extract_contour(path, x_offset=x_offset, y_offset=y_offset)
-        paths_out.append(contour)
+
+        # if the contour has enough points, append to the output
+        if len(contour) >= minimum_npoints:
+            paths_out.append(contour)
 
     return paths_out
 
