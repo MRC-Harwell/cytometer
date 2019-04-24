@@ -104,6 +104,8 @@ n_im = len(file_list)
 contour_type_all = []
 cell_features_all = []
 window_idx_all = []
+cell_seg_gtruth_all = []
+cell_im_all = []
 
 # loop files with hand traced contours
 for i, file_svg in enumerate(file_list):
@@ -182,13 +184,18 @@ for i, file_svg in enumerate(file_list):
         # append results to total vectors
         cell_features_all.append(cell_features)
         window_idx_all.append(np.array([i, j]))
+        cell_seg_gtruth_all.append(np.expand_dims(cell_seg_gtruth, axis=0))
+        im_array_all.append(np.expand_dims(im_array, axis=0))
 
 # collapse lists into arrays
 contour_type_all = np.concatenate(contour_type_all)
 cell_features_all = np.vstack(cell_features_all)
 window_idx_all = np.vstack(window_idx_all)
+cell_seg_gtruth_all = np.concatenate(cell_seg_gtruth_all)
+im_array_all = np.concatenate(im_array_all)
 
-'''Feature classification
+
+'''t-SNE embedding
 '''
 
 for i_fold in range(0, n_folds):
@@ -217,3 +224,42 @@ for i_fold in range(0, n_folds):
                     cmap=plt.cm.Spectral, s=2)
 
         plt.show()
+
+'''Validate classifier network
+'''
+
+for i_fold in range(0, n_folds):
+
+    print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+
+    # test and training image indices
+    idx_test = idx_test_all[i_fold]
+    idx_train = idx_train_all[i_fold]
+
+    # get cell indices for test and training, based on the image indices
+    idx_test = np.where([x in idx_test for x in window_idx_all[:, 0]])[0]
+    idx_train = np.where([x in idx_train for x in window_idx_all[:, 0]])[0]
+
+    print('## len(idx_train) = ' + str(len(idx_train)))
+    print('## len(idx_test) = ' + str(len(idx_test)))
+
+    # extract test arrays
+    contour_type_test = contour_type_all[idx_test]
+    window_idx_test = window_idx_all[idx_test, :]
+    cell_seg_gtruth_test = cell_seg_gtruth_all[idx_test, :, :]
+    im_array_test = im_array_all[idx_test, :, :, :]
+
+    # prepare arrays for CNN
+    im_array_test = im_array_test.astype(np.float32)
+    im_array_test /= 255
+
+    # load classifier network
+    classifier_model_filename = os.path.join(saved_models_dir,
+                                             classifier_model_basename + '_fold_' + str(i_fold) + '.h5')
+    classifier_model = keras.models.load_model(classifier_model_filename)
+
+    # apply classification network to cell histology
+    cell_ = classifier_model.predict(im_array_test[j, :, :, :], batch_size=batch_size)
+
+    for j in range(len(idx_test)):
+
