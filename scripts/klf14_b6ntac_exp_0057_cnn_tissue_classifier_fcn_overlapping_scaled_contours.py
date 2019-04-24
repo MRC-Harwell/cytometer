@@ -131,7 +131,7 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
 
     # output
-    output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+    output = Conv2D(filters=3, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
                     activation='softmax', name='output')(x)
 
     return Model(inputs=cnn_input, outputs=[output])
@@ -178,6 +178,8 @@ window_seg_gtruth_all = []
 window_idx_all = []
 window_out_all = []
 contour_type_all = []
+
+# loop files with hand traced contours
 for i, file_svg in enumerate(file_list):
 
     print('file ' + str(i) + '/' + str(len(file_list) - 1))
@@ -205,9 +207,9 @@ for i, file_svg in enumerate(file_list):
                                                                minimum_npoints=3)
 
     # make a list with the type of cell each contour is classified as
-    contour_type = [np.ones(shape=(len(cell_contours),), dtype=np.uint8),
-                    np.zeros(shape=(len(other_contours),), dtype=np.uint8),
-                    2 * np.zeros(shape=(len(damaged_contours),), dtype=np.uint8)]
+    contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),
+                    np.ones(shape=(len(other_contours),), dtype=np.uint8),
+                    2 * np.ones(shape=(len(damaged_contours),), dtype=np.uint8)]
     contour_type = np.concatenate(contour_type)
     contour_type_all.append(contour_type)
 
@@ -282,6 +284,9 @@ for i, file_svg in enumerate(file_list):
         window_im = window_im.astype(np.float32)
         window_out = window_out.astype(np.float32)
         window_seg_gtruth = window_seg_gtruth.astype(np.float32)
+
+        # scale image intensities from [0, 255] to [0.0, 1.0]
+        window_im /= 255
 
         # check sizes and types
         assert(window_im.ndim == 4 and window_im.dtype == np.float32)
@@ -360,6 +365,7 @@ for i_fold in range(0, n_folds):
 
         # train model
         tic = datetime.datetime.now()
+
         parallel_model.fit(window_im_train,
                            {'output': window_out_train},
                            sample_weight={'output': window_seg_gtruth_train},
