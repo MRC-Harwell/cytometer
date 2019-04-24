@@ -167,10 +167,10 @@ for i_fold in range(n_folds):
         if DEBUG:
             plt.clf()
 
-            plt.subplot(221)
+            plt.subplot(121)
             plt.imshow(im)
 
-            plt.subplot(222)
+            plt.subplot(122)
             plt.imshow(labels)
 
         # loop labels
@@ -186,6 +186,13 @@ for i_fold in range(n_folds):
                 cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
 
             if DEBUG:
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(im)
+
+                plt.subplot(222)
+                plt.imshow(labels)
+
                 plt.subplot(223)
                 plt.cla()
                 plt.imshow(cell_seg)
@@ -194,7 +201,6 @@ for i_fold in range(n_folds):
 
             # crop image and masks according to bounding box
             window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            # window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
             window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
 
             if DEBUG:
@@ -202,7 +208,6 @@ for i_fold in range(n_folds):
                 plt.subplot(221)
                 plt.cla()
                 plt.imshow(im_array)
-                # plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
                 plt.contour(cell_seg, linewidths=1, levels=0.5, colors='blue')
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0), 'black')
@@ -210,7 +215,6 @@ for i_fold in range(n_folds):
                 plt.subplot(222)
                 plt.cla()
                 plt.imshow(window_im)
-                # plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
                 plt.contour(window_seg, linewidths=1, levels=0.5, colors='blue')
 
             # input to the CNN: multiply histology by +1/-1 segmentation mask
@@ -243,9 +247,6 @@ for i_fold in range(n_folds):
             # assert(window_out_gtruth.ndim == 3 and window_out_gtruth.dtype == np.float32)
 
             # process histology * mask for quality
-            window_classifier_out = quality_model.predict(window_im, batch_size=batch_size)
-
-            # process histology for classification
             window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
 
             # correction for segmentation
@@ -259,6 +260,7 @@ for i_fold in range(n_folds):
             window_seg_corrected[window_quality_out[0, :, :, 0] <= -0.5] = 1  # the segmentation fell short
 
             if DEBUG:
+                # plot segmentation correction
                 plt.clf()
 
                 plt.subplot(221)
@@ -267,7 +269,6 @@ for i_fold in range(n_folds):
                       + 0.5870 * window_masked_im[0, :, :, 1] \
                       + 0.1140 * window_masked_im[0, :, :, 2]
                 plt.imshow(aux)
-                # plt.contour(window_out_gtruth_all[j, :, :], linewidths=1, colors='green')
 
                 plt.subplot(222)
                 plt.cla()
@@ -281,3 +282,37 @@ for i_fold in range(n_folds):
                 plt.cla()
                 plt.imshow(window_seg_corrected)
                 plt.contour(window_seg[0, :, :], linewidths=1, colors='white')
+
+            # process histology for classification
+            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
+
+            # get classification label for each pixel
+            window_classifier_class = np.argmax(window_classifier_out, axis=3)
+
+            if DEBUG:
+                # plot classification
+                plt.clf()
+
+                plt.subplot(221)
+                plt.cla()
+                plt.imshow(window_im[0, :, :, :])
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='blue', linestyles='dotted')
+
+                plt.subplot(222)
+                plt.cla()
+                plt.imshow(window_classifier_class[0, :, :])
+
+                plt.subplot(234)
+                plt.cla()
+                plt.imshow(window_classifier_out[0, :, :, 0])
+                plt.title('Cell')
+
+                plt.subplot(235)
+                plt.cla()
+                plt.imshow(window_classifier_out[0, :, :, 1])
+                plt.title('Other')
+
+                plt.subplot(236)
+                plt.cla()
+                plt.imshow(window_classifier_out[0, :, :, 2])
+                plt.title('Damaged')
