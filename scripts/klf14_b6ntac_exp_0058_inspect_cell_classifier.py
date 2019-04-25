@@ -1,5 +1,7 @@
 """
-Load testing data from each fold according to exp 0053, apply segmentation and quality network.
+Validate exp 0057 (tissue classifier).
+
+Load testing data from each fold, and apply both t-SNE embedding and the classifier from exp 0057.
 """
 
 # cross-platform home directory
@@ -102,10 +104,11 @@ n_im = len(file_list)
 
 # init output
 contour_type_all = []
-cell_features_all = []
+window_features_all = []
 window_idx_all = []
-cell_seg_gtruth_all = []
-cell_im_all = []
+window_seg_gtruth_all = []
+window_im_all = []
+window_masked_im_all = []
 
 # loop files with hand traced contours
 for i, file_svg in enumerate(file_list):
@@ -117,6 +120,10 @@ for i, file_svg in enumerate(file_list):
 
     # open histology training image
     im = Image.open(file_tif)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
     # make array copy
     im_array = np.array(im)
@@ -174,26 +181,97 @@ for i, file_svg in enumerate(file_list):
             plt.cla()
             plt.imshow(cell_masked_im)
 
+        # compute bounding box that contains the mask, and leaves some margin
+        bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
+            cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='xy', inc=1.00)
+        bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
+            cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='rc', inc=1.00)
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im)
+            plt.plot([p[0] for p in contour], [p[1] for p in contour])
+
+            plt.subplot(222)
+            plt.cla()
+            plt.imshow(cell_seg_gtruth)
+            plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                     (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
+
+        # crop image and masks according to bounding box
+        window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+        window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.cla()
+            plt.imshow(im)
+            plt.plot([p[0] for p in contour], [p[1] for p in contour])
+
+            plt.subplot(222)
+            plt.cla()
+            plt.imshow(window_im)
+            plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='blue')
+
+        # input to the CNN: multiply histology by +1/-1 segmentation mask
+        window_masked_im = \
+            cytometer.utils.quality_model_mask(window_seg_gtruth.astype(np.float32), im=window_im.astype(np.float32),
+                                               quality_model_type='-1_1')[0, :, :, :]
+
+        # scaling factors for the training image
+        training_size = (training_window_len, training_window_len)
+        scaling_factor = np.array(training_size) / np.array(window_masked_im.shape[0:2])
+        window_pixel_size = np.array([xres, yres]) / scaling_factor  # (um, um)
+
+        # resize the images to training window size
+        window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
+        window_masked_im = cytometer.utils.resize(window_masked_im, size=training_size, resample=Image.LINEAR)
+        window_seg_gtruth = cytometer.utils.resize(window_seg_gtruth, size=training_size, resample=Image.NEAREST)
+
         # compute texture vectors per channel
-        cell_features = (haralick(cell_masked_im[:, :, 0], ignore_zeros=True),
-                         haralick(cell_masked_im[:, :, 1], ignore_zeros=True),
-                         haralick(cell_masked_im[:, :, 2], ignore_zeros=True))
-        cell_features = np.vstack(cell_features)
-        cell_features = cell_features.flatten()
+        window_features = (haralick(window_masked_im[:, :, 0].astype(np.uint8), ignore_zeros=True),
+                           haralick(window_masked_im[:, :, 1].astype(np.uint8), ignore_zeros=True),
+                           haralick(window_masked_im[:, :, 2].astype(np.uint8), ignore_zeros=True))
+        window_features = np.vstack(window_features)
+        window_features = window_features.flatten()
+
+        # add dummy dimensions for keras
+        window_im = np.expand_dims(window_im, axis=0)
+        window_masked_im = np.expand_dims(window_masked_im, axis=0)
+        window_seg_gtruth = np.expand_dims(window_seg_gtruth, axis=0)
+
+        # scale image values to float [0, 1]
+        window_im = window_im.astype(np.float32)
+        window_im /= 255
+        window_masked_im = window_masked_im.astype(np.float32)
+        window_masked_im /= 255
+
+        # check sizes and types
+        assert(window_im.ndim == 4 and window_im.dtype == np.float32)
+        assert(window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32)
+
 
         # append results to total vectors
-        cell_features_all.append(cell_features)
+        window_features_all.append(window_features)
         window_idx_all.append(np.array([i, j]))
-        cell_seg_gtruth_all.append(np.expand_dims(cell_seg_gtruth, axis=0))
-        im_array_all.append(np.expand_dims(im_array, axis=0))
+        window_seg_gtruth_all.append(window_seg_gtruth)
+        window_im_all.append(window_im)
+        window_masked_im_all.append(window_masked_im)
 
 # collapse lists into arrays
 contour_type_all = np.concatenate(contour_type_all)
-cell_features_all = np.vstack(cell_features_all)
+window_features_all = np.vstack(window_features_all)
 window_idx_all = np.vstack(window_idx_all)
-cell_seg_gtruth_all = np.concatenate(cell_seg_gtruth_all)
-im_array_all = np.concatenate(im_array_all)
+window_seg_gtruth_all = np.concatenate(window_seg_gtruth_all)
+window_im_all = np.concatenate(window_im_all)
+window_masked_im_all = np.concatenate(window_masked_im_all)
 
+if DEBUG:
+    np.savez('/tmp/foo.npz', contour_type_all=contour_type_all, window_features_all=window_features_all,
+             window_idx_all=window_idx_all, window_seg_gtruth_all=window_seg_gtruth_all, window_im_all=window_im_all,
+             window_masked_im_all=window_masked_im_all)
 
 '''t-SNE embedding
 '''
@@ -215,12 +293,12 @@ for i_fold in range(0, n_folds):
 
     # embedding
     tsne = manifold.TSNE(n_components=3, init='pca', random_state=0)
-    cell_features_embedding = tsne.fit_transform(cell_features_all)
+    window_features_embedding = tsne.fit_transform(window_features_all)
 
     if DEBUG:
         color = np.array(['C0', 'C1', 'C2'])
         plt.clf()
-        plt.scatter(cell_features_embedding[:, 0], cell_features_embedding[:, 1], c=color[contour_type_all],
+        plt.scatter(window_features_embedding[:, 0], window_features_embedding[:, 1], c=color[contour_type_all],
                     cmap=plt.cm.Spectral, s=2)
 
         plt.show()
@@ -246,12 +324,8 @@ for i_fold in range(0, n_folds):
     # extract test arrays
     contour_type_test = contour_type_all[idx_test]
     window_idx_test = window_idx_all[idx_test, :]
-    cell_seg_gtruth_test = cell_seg_gtruth_all[idx_test, :, :]
-    im_array_test = im_array_all[idx_test, :, :, :]
-
-    # prepare arrays for CNN
-    im_array_test = im_array_test.astype(np.float32)
-    im_array_test /= 255
+    window_seg_gtruth_test = window_seg_gtruth_all[idx_test, :, :]
+    window_im_test = window_im_all[idx_test, :, :]
 
     # load classifier network
     classifier_model_filename = os.path.join(saved_models_dir,
@@ -259,7 +333,35 @@ for i_fold in range(0, n_folds):
     classifier_model = keras.models.load_model(classifier_model_filename)
 
     # apply classification network to cell histology
-    cell_ = classifier_model.predict(im_array_test[j, :, :, :], batch_size=batch_size)
+    window_classifier_softmax = classifier_model.predict(window_im_test, batch_size=batch_size)
 
-    for j in range(len(idx_test)):
+    # label each pixel as "Cell", "Other" or "Damaged" according to the channel with the maximum softmax output
+    window_classifier_class = np.argmax(window_classifier_softmax, axis=3)
+
+    if DEBUG:
+        j = 0
+
+        plt.clf()
+
+        plt.subplot(221)
+        plt.imshow(window_im_test[j, :, :, :])
+        plt.contour(window_seg_gtruth_test[j, :, :], linewidths=1, levels=0.5, colors='blue')
+
+        plt.subplot(222)
+        plt.imshow(window_classifier_class[j, :, :])
+        cbar = plt.colorbar(ticks=(0, 1, 2))
+        cbar.ax.set_yticklabels(['Cell', 'Other', 'Damaged'])
+        plt.contour(window_seg_gtruth_test[j, :, :], linewidths=2, levels=0.5, colors='white')
+
+        plt.subplot(234)
+        plt.imshow(window_classifier_softmax[j, :, :, 0])
+        plt.title('Cell')
+
+        plt.subplot(235)
+        plt.imshow(window_classifier_softmax[j, :, :, 1])
+        plt.title('Other')
+
+        plt.subplot(236)
+        plt.imshow(window_classifier_softmax[j, :, :, 2])
+        plt.title('Damaged')
 
