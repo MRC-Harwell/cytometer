@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 import time
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -353,6 +353,11 @@ window_im_all = np.concatenate(window_im_all)
 window_out_all = np.concatenate(window_out_all)
 window_mask_loss_all = np.concatenate(window_mask_loss_all)
 window_idx_all = np.vstack(window_idx_all)
+
+if DEBUG:
+    np.savez(os.path.join(saved_models_dir, experiment_id + '_data.npz'),
+             window_im_all=window_im_all, window_out_all=window_out_all,
+             window_mask_loss_all=window_mask_loss_all, window_idx_all=window_idx_all)
 
 '''Convolutional neural network training
 
