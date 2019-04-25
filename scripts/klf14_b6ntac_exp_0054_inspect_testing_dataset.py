@@ -1,4 +1,6 @@
 """
+Validation of exp 0053 (segmentation quality network).
+
 Load testing data from each fold according to exp 0053, apply segmentation and quality network.
 """
 
