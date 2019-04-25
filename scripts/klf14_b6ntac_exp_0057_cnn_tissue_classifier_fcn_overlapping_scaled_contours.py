@@ -1,12 +1,15 @@
 """
 Tissue classifier, using sherrah2016 CNN.
 
-Use original hand traced cells (with overlaps) for training, as well as non-white adipocytes.
+Use hand traced areas of white adipocytes and "other" tissues to train classifier to differentiate.
+
+.svg labels:
+  * 0: "Cell" = white adipocyte
+  * 1: "Other" = other types of tissue
+  * 2: "Damaged" = damaged tips of adipocytes
 
 We create a bounding box to crop the images, and the scale everything to the same training window size, to remove
 differences between cell sizes.
-
-Training/test datasets created by random selection of individual cell images.
 
 We assign cells to train or test sets grouped by image. This way, we guarantee that at testing time, the
 network has not seen neighbour cells to the ones used for training.
