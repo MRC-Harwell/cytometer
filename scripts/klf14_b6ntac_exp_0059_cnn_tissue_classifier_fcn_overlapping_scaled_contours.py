@@ -65,9 +65,6 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
-# number of folds for k-fold cross validation
-n_folds = 10
-
 # number of epochs for training
 epochs = 25
 
@@ -325,9 +322,9 @@ device_list = K.get_session().list_devices()
 # number of GPUs
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
-for i_fold in range(0, n_folds):
+for i_fold in range(0, len(idx_test_all)):
 
-    print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]

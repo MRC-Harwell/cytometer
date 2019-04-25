@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -44,9 +44,6 @@ set_session(tf.Session(config=config))
 K.set_image_data_format('channels_last')
 
 DEBUG = False
-
-# number of folds for k-fold cross validation
-n_folds = 10
 
 # number of epochs for training
 epochs = 25
@@ -273,13 +270,22 @@ if DEBUG:
              contour_type_all=contour_type_all, window_features_all=window_features_all,
              window_idx_all=window_idx_all, window_seg_gtruth_all=window_seg_gtruth_all, window_im_all=window_im_all,
              window_masked_im_all=window_masked_im_all)
+if DEBUG:
+    result = np.load(os.path.join(saved_models_dir, experiment_id + '_data.npz'))
+    contour_type_all = result['contour_type_all']
+    window_features_all = result['window_features_all']
+    window_idx_all = result['window_idx_all']
+    window_seg_gtruth_all = result['window_seg_gtruth_all']
+    window_im_all = result['window_im_all']
+    window_masked_im_all = result['window_masked_im_all']
+    del result
 
 '''t-SNE embedding
 '''
 
-for i_fold in range(0, n_folds):
+for i_fold in range(0, len(idx_test_all)):
 
-    print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]
@@ -307,9 +313,9 @@ for i_fold in range(0, n_folds):
 '''Validate classifier network
 '''
 
-for i_fold in range(0, n_folds):
+for i_fold in range(0, len(idx_test_all)):
 
-    print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]
