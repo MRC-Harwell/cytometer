@@ -155,6 +155,8 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
+saved_contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour'
+
 # script name to identify this experiment
 experiment_id = inspect.getfile(inspect.currentframe())
 if experiment_id == '<input>':
@@ -162,16 +164,16 @@ if experiment_id == '<input>':
 else:
     experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
-# we are interested only in .tif files for which we created hand segmented contours
-file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
+# load list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_kfold_info.pickle')
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_list = aux['file_list']
+idx_test_all = aux['idx_test']
+idx_train_all = aux['idx_train']
 
 # number of images
 n_im = len(file_list)
-
-# split data into training and testing for k-folds
-kfold_info_filename = os.path.join(saved_models_dir, experiment_id + '_kfold_info.pickle')
-idx_train_all, idx_test_all = cytometer.data.split_file_list_kfolds(
-    file_list, n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=kfold_info_filename)
 
 '''Process the data
 '''
