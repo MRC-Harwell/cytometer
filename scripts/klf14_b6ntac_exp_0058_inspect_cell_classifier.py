@@ -44,9 +44,6 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
-# number of folds for k-fold cross validation
-n_folds = 10
-
 # number of epochs for training
 epochs = 25
 
@@ -276,9 +273,9 @@ if DEBUG:
 '''t-SNE embedding
 '''
 
-for i_fold in range(0, n_folds):
+for i_fold in range(0, len(idx_test_all)):
 
-    print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]
@@ -306,9 +303,9 @@ for i_fold in range(0, n_folds):
 '''Validate classifier network
 '''
 
-for i_fold in range(0, n_folds):
+for i_fold in range(0, len(idx_test_all)):
 
-    print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]
