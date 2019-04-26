@@ -15,10 +15,9 @@ from skimage.morphology import watershed
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
 from skimage.segmentation import clear_border
-from skimage.transform import warp
 from mahotas.labeled import borders
 import networkx as nx
-from skimage.transform import SimilarityTransform, AffineTransform
+from skimage.transform import SimilarityTransform, AffineTransform, warp, matrix_transform
 from skimage.color import rgb2hsv, hsv2rgb
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
@@ -1596,6 +1595,37 @@ def keras_transform(im, transform, order=1):
     im_out = im_out.astype(im.dtype)
 
     return im_out
+
+
+def keras_transform_coords(coords, transform, shape):
+    """
+    Apply a keras transformation to a set of point coordinates.
+
+    The transformations applied to point coordinates in this function are consistent to transformations applied to
+    an image with keras_transform().
+
+    :param coords: (P, 2) np.array, each row has the (x, y) coordinates of a point.
+                    Alternatively, list of (x, y) coordinates.
+    :param transform: dict with a keras transformation created by the ImageDataGenerator class.
+    :return:
+    * coords_out: (P, 2) np.array or list of (x, y) coordinates of the transformed points.
+    """
+
+    is_list = type(coords) == list
+    if is_list:
+        coords = np.vstack(coords)
+
+    # convert transform from keras to skimage format
+    transform_skimage = keras2skimage_transform(transform, shape=shape)
+
+    # apply transformation to coordinates
+    coords_out = matrix_transform(coords, transform_skimage.params)
+
+    # cast to input type
+    if is_list:
+        coords_out = [tuple(x) for x in coords_out]
+
+    return coords_out
 
 
 def focal_loss(gamma=2., alpha=.25):
