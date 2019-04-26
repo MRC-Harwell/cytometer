@@ -15,6 +15,7 @@ from skimage.morphology import watershed
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
 from skimage.segmentation import clear_border
+from skimage.transform import warp
 from mahotas.labeled import borders
 import networkx as nx
 from skimage.transform import SimilarityTransform, AffineTransform
@@ -1557,6 +1558,44 @@ def keras2skimage_transform(transform, shape):
     transform_skimage = transform_skimage_center_inv + (transform_skimage_affine + transform_skimage_center)
 
     return transform_skimage
+
+
+def keras_transform(im, transform, order=1):
+    """
+    Apply a keras transformation to an image.
+
+    The reason for this function is because keras apply_transform() doesn't enable nearest neighbour interpolation.
+    Thus, when applied to label or segmentation images, it
+
+    :param im: (row, col, channel) or (row, col)-np.array image.
+    :param transform: dict with a keras transformation created by the ImageDataGenerator class.
+    :param order: (def 1) interpolation order. 0: nearest neighbour, 1: bi-linear, 2: bi-quadratic, ..., 5: bi-quintic.
+    :return:
+    * im_out: np.array with the same shape and dtype as im.
+    """
+
+    # convert transform from keras to skimage format
+    transform_skimage = keras2skimage_transform(transform, shape=im.shape)
+
+    # apply transformation to image
+    im_out = warp(im, transform_skimage.inverse, order=order, preserve_range=True)
+
+    # apply flips
+    if transform['flip_horizontal'] == 1:
+        if im_out.ndim == 2:
+            im_out = im_out[:, ::-1]
+        elif im_out.ndim == 3:
+            im_out = im_out[:, ::-1, :]
+    if transform['flip_vertical'] == 1:
+        if im_out.ndim == 2:
+            im_out = im_out[::-1, :]
+        elif im_out.ndim == 3:
+            im_out = im_out[::-1, :, :]
+
+    # correct output type
+    im_out = im_out.astype(im.dtype)
+
+    return im_out
 
 
 def focal_loss(gamma=2., alpha=.25):
