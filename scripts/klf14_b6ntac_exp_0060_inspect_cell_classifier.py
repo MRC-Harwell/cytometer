@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -33,6 +33,7 @@ import tensorflow as tf
 from sklearn import manifold
 from mahotas.features import haralick
 from scipy import stats
+from sklearn.metrics import roc_curve, auc
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -280,6 +281,35 @@ if DEBUG:
     window_masked_im_all = result['window_masked_im_all']
     del result
 
+'''Check how many "Other" objects we have for the training/testing of each fold
+'''
+
+for i_fold in range(0, len(idx_test_all)):
+
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+
+    # test and training image indices
+    idx_test = idx_test_all[i_fold]
+    idx_train = idx_train_all[i_fold]
+
+    # get cell indices for test and training, based on the image indices
+    idx_test = np.where([x in idx_test for x in window_idx_all[:, 0]])[0]
+    idx_train = np.where([x in idx_train for x in window_idx_all[:, 0]])[0]
+
+    print('   len(idx_train) = ' + str(len(idx_train)))
+    print('   len(idx_test) = ' + str(len(idx_test)))
+
+    # extract test arrays
+    contour_type_train = contour_type_all[idx_train]
+    contour_type_test = contour_type_all[idx_test]
+
+    # number of Other vs Cell in training
+    print('   Cells: ' + str(np.count_nonzero(contour_type_train == 0))
+          + ', Other: ' + str(np.count_nonzero(contour_type_train == 1))
+          + ', Prop Other: ' + str("{:.0f}".format(np.count_nonzero(contour_type_train == 1)
+                                                   / contour_type_train.shape[0] * 100)) + '%')
+
+
 '''t-SNE embedding
 '''
 
@@ -313,6 +343,9 @@ for i_fold in range(0, len(idx_test_all)):
 '''Validate classifier network
 '''
 
+# get proportion of predicter "Other" pixels to size of segmentation for every test image from every fold
+contour_type_test_all = []
+window_other_prop_all = []
 for i_fold in range(0, len(idx_test_all)):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
@@ -345,10 +378,18 @@ for i_fold in range(0, len(idx_test_all)):
     # label each pixel as "Cell" or "Other" according to the channel with the maximum softmax output
     window_classifier_class = np.argmax(window_classifier_softmax, axis=3)
 
-    print('Cell:')
+    print('Cell index:')
     print(str(np.where(contour_type_test == 0)[0]))
-    print('Other:')
+    print('Other index:')
     print(str(np.where(contour_type_test == 1)[0]))
+
+    # proportion of "Other" pixels in the mask
+    window_other_prop = np.count_nonzero(window_seg_gtruth_test * window_classifier_class, axis=(1, 2)) \
+                        / np.count_nonzero(window_seg_gtruth_test, axis=(1, 2))
+
+    # append this fold's results for fold aggregate
+    contour_type_test_all.append(contour_type_test)
+    window_other_prop_all.append(window_other_prop)
 
     if DEBUG:
 
@@ -362,13 +403,14 @@ for i_fold in range(0, len(idx_test_all)):
         plt.imshow(window_im_test[j, :, :, :])
         plt.contour(window_seg_gtruth_test[j, :, :], linewidths=1, levels=0.5, colors='blue')
         plt.axis('off')
+        plt.title('True class = ' + class_labels[contour_type_test[j]])
 
         plt.subplot(222)
         aux = window_classifier_class[j, :, :]
         chosen_class = stats.mode(aux[window_seg_gtruth_test[j, :, :] == 1])
         plt.imshow(aux)
         plt.contour(window_seg_gtruth_test[j, :, :], linewidths=2, levels=0.5, colors='white')
-        plt.title('Chosen class = ' + class_labels[chosen_class.mode[0]])
+        plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop[j] * 100)) + '%')
         plt.axis('off')
 
         plt.subplot(223)
@@ -381,3 +423,36 @@ for i_fold in range(0, len(idx_test_all)):
         plt.title('Other')
         plt.axis('off')
 
+# aggregate all folds together
+contour_type_test_all = np.concatenate(contour_type_test_all)
+window_other_prop_all = np.concatenate(window_other_prop_all)
+
+# compute ROC
+fpr, tpr, thresholds = roc_curve(contour_type_test_all, window_other_prop_all)
+roc_auc = auc(fpr, tpr)
+
+# confusion matrix
+other_prop_threshold = 0.01
+
+cytometer.utils.plot_confusion_matrix(contour_type_test_all, window_other_prop_all >= other_prop_threshold,
+                                      normalize=True,
+                                      title='Threshold of "Other" pixels = ' + str("{:.0f}".format(other_prop_threshold * 100)) + '%',
+                                      xlabel='Predicted label',
+                                      ylabel='True label')
+
+if DEBUG:
+    # ROC
+    plt.clf()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [1, 1], color='navy', lw=1, linestyle='--')
+    plt.xlim([-0.025, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic')
+    plt.legend(loc="lower right")
+
+    # boxplots
+    plt.clf()
+    plt.boxplot((window_other_prop_all[contour_type_test_all == 0], window_other_prop_all[contour_type_test_all == 1]),
+                labels=('Cell', 'Other'), notch=True)
