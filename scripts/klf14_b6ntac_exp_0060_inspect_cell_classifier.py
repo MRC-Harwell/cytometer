@@ -98,7 +98,7 @@ del kfold_info
 n_im = len(file_list)
 
 
-'''Load the texture of each cell in each image
+'''Create train/test data for t-SNE and CNN 
 '''
 
 # init output
