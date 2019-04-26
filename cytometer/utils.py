@@ -1537,8 +1537,8 @@ def keras2skimage_transform(transform, shape):
     Convert an affine transform from keras to skimage format. This can then be used to apply a transformation
     to an image with skimage.transform.warp.
 
-    Note: Currently, only scaling ('zx', 'zy') and rotation ('theta') are considered. Translation, flips, etc are
-    ignored.
+    Note: Currently, only scaling ('zx', 'zy'), rotation ('theta') and shear ('shear' in counter-clockwise degrees)
+    are considered. Translation, flips, etc are ignored.
 
     Note 2: This function takes into account that rotations in keras are referred to the centre of the image, but
     skimage rotates around the centre of coordinates.
@@ -1551,7 +1551,8 @@ def keras2skimage_transform(transform, shape):
     transform_skimage_center = SimilarityTransform(translation=(shape[1] / 2, shape[0] / 2))
     transform_skimage_center_inv = SimilarityTransform(translation=(-shape[1] / 2, -shape[0] / 2))
     transform_skimage_affine = AffineTransform(matrix=None, scale=(transform['zx'], transform['zy']),
-                                               rotation=transform['theta'] / 180.0 * np.pi, shear=None,
+                                               rotation=transform['theta'] / 180.0 * np.pi,
+                                               shear=transform['shear'] / 180.0 * np.pi,
                                                translation=None)
     transform_skimage = transform_skimage_center_inv + (transform_skimage_affine + transform_skimage_center)
 
