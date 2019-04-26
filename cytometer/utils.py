@@ -17,7 +17,7 @@ from skimage.measure import regionprops
 from skimage.segmentation import clear_border
 from mahotas.labeled import borders
 import networkx as nx
-from skimage.transform import SimilarityTransform, AffineTransform, warp, matrix_transform
+from skimage.transform import EuclideanTransform, SimilarityTransform, AffineTransform, warp, matrix_transform
 from skimage.color import rgb2hsv, hsv2rgb
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
@@ -1537,8 +1537,13 @@ def keras2skimage_transform(transform, shape):
     Convert an affine transform from keras to skimage format. This can then be used to apply a transformation
     to an image with skimage.transform.warp.
 
-    Note: Currently, only scaling ('zx', 'zy'), rotation ('theta') and shear ('shear' in counter-clockwise degrees)
-    are considered. Translation, flips, etc are ignored.
+    Note: Currently, the implemented parameters are:
+      * scaling ('zx', 'zy')
+      * rotation ('theta')
+      * translation ('tx', 'ty')
+      * shear ('shear' in counter-clockwise degrees)
+      * flip around the x-axis ('flip_vertical')
+      * flip around the y-axis ('flip_horizontal')
 
     Note 2: This function takes into account that rotations in keras are referred to the centre of the image, but
     skimage rotates around the centre of coordinates.
@@ -1548,13 +1553,41 @@ def keras2skimage_transform(transform, shape):
     :return: transform_skimage: skimage.transform._geometric.ProjectiveTransform with same affine transform.
     """
 
+
+
+    # move transformation centre to image centre
     transform_skimage_center = SimilarityTransform(translation=(shape[1] / 2, shape[0] / 2))
+
+    # return transformation centre to image corner
     transform_skimage_center_inv = SimilarityTransform(translation=(-shape[1] / 2, -shape[0] / 2))
+
+    # identity transformation
+    transform_identity = EuclideanTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+
+    # affine transformation
     transform_skimage_affine = AffineTransform(matrix=None, scale=(transform['zx'], transform['zy']),
                                                rotation=transform['theta'] / 180.0 * np.pi,
                                                shear=transform['shear'] / 180.0 * np.pi,
-                                               translation=None)
-    transform_skimage = transform_skimage_center_inv + (transform_skimage_affine + transform_skimage_center)
+                                               translation=(transform['tx'], transform['ty']))
+
+    # horizontal flip
+    if transform['flip_horizontal'] == 1:
+        transform_skimage_horizontal_flip = EuclideanTransform(np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+    else:
+        transform_skimage_horizontal_flip = EuclideanTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+
+    # vertical flip
+    if transform['flip_vertical'] == 1:
+        transform_skimage_vertical_flip = EuclideanTransform(np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]]))
+    else:
+        transform_skimage_vertical_flip = EuclideanTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+
+    # composition of all transformations
+    transform_skimage = transform_skimage_center + transform_identity
+    transform_skimage = transform_skimage_affine + transform_skimage
+    transform_skimage = transform_skimage_horizontal_flip + transform_skimage
+    transform_skimage = transform_skimage_vertical_flip + transform_skimage
+    transform_skimage = transform_skimage_center_inv + transform_skimage
 
     return transform_skimage
 
@@ -1578,18 +1611,6 @@ def keras_transform(im, transform, order=1):
 
     # apply transformation to image
     im_out = warp(im, transform_skimage.inverse, order=order, preserve_range=True)
-
-    # apply flips
-    if transform['flip_horizontal'] == 1:
-        if im_out.ndim == 2:
-            im_out = im_out[:, ::-1]
-        elif im_out.ndim == 3:
-            im_out = im_out[:, ::-1, :]
-    if transform['flip_vertical'] == 1:
-        if im_out.ndim == 2:
-            im_out = im_out[::-1, :]
-        elif im_out.ndim == 3:
-            im_out = im_out[::-1, :, :]
 
     # correct output type
     im_out = im_out.astype(im.dtype)
