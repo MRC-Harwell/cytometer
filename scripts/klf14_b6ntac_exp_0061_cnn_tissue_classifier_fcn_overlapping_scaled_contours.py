@@ -251,22 +251,31 @@ for i, file_svg in enumerate(file_list):
 
     for aug in range(augment_factor):
 
+        # convert keras transform to skimage format
+        skimage_transform, output_shape = \
+            cytometer.utils.keras2skimage_transform(transform[aug], input_shape=im_array_0.shape[0:2],
+                                                    output_shape='full')
+
         # apply augmentation transformation to image
-        im_array = cytometer.utils.keras_transform(im_array_0, transform[aug], order=1)
+        im_array = cytometer.utils.transform_im(im_array_0, skimage_transform, order=1,
+                                                output_shape=output_shape)
 
         if DEBUG:
             plt.clf()
             plt.subplot(121)
             plt.imshow(im_array_0)
+            plt.scatter((im_array_0.shape[1]-1)/2.0, (im_array_0.shape[0]-1)/2.0)
             plt.subplot(122)
+            plt.cla()
             plt.imshow(im_array)
+            plt.scatter((im_array.shape[1]-1)/2.0, (im_array.shape[0]-1)/2.0)
 
         # loop ground truth cell contours
         for j, contour in enumerate(cell_contours + other_contours + brown_contours):
 
             # apply transformation to contour
             contour_0 = contour.copy()
-            contour = cytometer.utils.keras_transform_coords(contour, transform[aug], im_array_0.shape)
+            contour = cytometer.utils.transform_coords(contour, skimage_transform)
 
             if DEBUG:
                 plt.clf()
@@ -284,7 +293,7 @@ for i, file_svg in enumerate(file_list):
                 plt.scatter(xy_c[0], xy_c[1])
 
             # rasterise current ground truth segmentation
-            cell_seg_gtruth = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+            cell_seg_gtruth = Image.new("1", im_array.shape[0:2][::-1], "black")  # I = 32-bit signed integer pixels
             draw = ImageDraw.Draw(cell_seg_gtruth)
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.uint8)
@@ -296,9 +305,12 @@ for i, file_svg in enumerate(file_list):
                 cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='rc', inc=1.00)
 
             if DEBUG:
-                plt.subplot(222)
+                plt.subplot(121)
                 plt.cla()
                 plt.imshow(cell_seg_gtruth)
+                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
+                plt.subplot(122)
                 plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
                          (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
@@ -311,7 +323,7 @@ for i, file_svg in enumerate(file_list):
             window_out[:, :, contour_type[j]] = window_seg_gtruth
 
             if DEBUG:
-                plt.subplot(223)
+                plt.subplot(121)
                 plt.cla()
                 plt.imshow(window_im)
                 plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
@@ -323,7 +335,7 @@ for i, file_svg in enumerate(file_list):
             window_out = cytometer.utils.resize(window_out, size=training_size, resample=Image.NEAREST)
 
             if DEBUG:
-                plt.subplot(224)
+                plt.subplot(121)
                 plt.cla()
                 plt.imshow(window_im)
                 plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
