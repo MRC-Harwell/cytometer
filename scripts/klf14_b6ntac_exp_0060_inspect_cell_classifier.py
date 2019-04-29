@@ -139,6 +139,7 @@ for i, file_svg in enumerate(file_list):
                                                              minimum_npoints=3)
     brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
                                                              minimum_npoints=3)
+    contours = cell_contours + other_contours + brown_contours
 
     # make a list with the type of cell each contour is classified as
     contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
@@ -153,7 +154,7 @@ for i, file_svg in enumerate(file_list):
     print('')
 
     # loop ground truth cell contours
-    for j, contour in enumerate(cell_contours + other_contours + brown_contours):
+    for j, contour in enumerate(contours):
 
         if DEBUG:
             # centre of current cell
