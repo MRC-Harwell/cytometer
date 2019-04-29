@@ -299,9 +299,6 @@ for i_fold in range(n_folds):
                 plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
                 plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='green')
 
-            # NOTE: classifier network 0057 expects values in [-1.0, 1.0], float32
-            window_masked_im /= 255
-
             # process histology for classification
             window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
 
@@ -309,8 +306,8 @@ for i_fold in range(n_folds):
             window_classifier_class = np.argmax(window_classifier_out, axis=3)
 
             # proportion of "Other" pixels in the mask
-            window_other_prop = np.count_nonzero(window_seg * window_classifier_class, axis=(0, 1, 2)) \
-                                / np.count_nonzero(window_seg, axis=(0, 1, 2))
+            window_other_prop = np.count_nonzero(window_seg * window_classifier_class) \
+                                / np.count_nonzero(window_seg)
 
             if DEBUG:
                 # plot classification
