@@ -15,12 +15,12 @@ from skimage.morphology import watershed
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
 from skimage.segmentation import clear_border
-from mahotas.labeled import borders
-import networkx as nx
-from skimage.transform import EuclideanTransform, SimilarityTransform, AffineTransform, warp, matrix_transform
+from skimage.transform import EuclideanTransform, AffineTransform, warp, matrix_transform
 from skimage.color import rgb2hsv, hsv2rgb
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
+from mahotas.labeled import borders
+import networkx as nx
 import keras.backend as K
 import keras
 import tensorflow as tf
@@ -1532,10 +1532,10 @@ def colour_labels_with_receptive_field(labels, receptive_field):
     return colours, coloured_labels
 
 
-def keras2skimage_transform(transform, shape):
+def keras2skimage_transform(keras_transform, input_shape, output_shape='same'):
     """
-    Convert an affine transform from keras to skimage format. This can then be used to apply a transformation
-    to an image with skimage.transform.warp.
+    Convert an affine transform from keras to skimage format. This can then be used to apply a
+    transformation to an image (transform_im) or point set (transform_coords).
 
     Note: Currently, the implemented parameters are:
       * scaling ('zx', 'zy')
@@ -1544,90 +1544,127 @@ def keras2skimage_transform(transform, shape):
       * shear ('shear' in counter-clockwise degrees)
       * flip around the x-axis ('flip_vertical')
       * flip around the y-axis ('flip_horizontal')
+    Ignored:
+      * 'channel_shift_intensity'
+      * 'brightness'
 
-    Note 2: This function takes into account that rotations in keras are referred to the centre of the image, but
-    skimage rotates around the centre of coordinates.
+    Note 2: Rotations in keras are referred to the centre of the image.
+    Rotations in skimage are referred to the origin of coordinates (x, y)=(0, 0).
 
-    :param transform: Dictionary with affine transform in keras format, as returned by keras.get_random_transform.
-    :param shape: Tuple with (width, height) size of output image.
-    :return: transform_skimage: skimage.transform._geometric.ProjectiveTransform with same affine transform.
+    :param keras_transform: Dictionary with transform in keras format, as returned by
+    keras.get_random_transform. E.g.
+    {'theta': -43.1, 'tx': 0, 'ty': 0, 'shear': 4.3, 'zx': 1, 'zy': 1, 'flip_horizontal': 0,
+     'flip_vertical': 0, 'channel_shift_intensity': None, 'brightness': None}
+    :param input_shape: Tuple with (width, height) size of input image.
+    :param output_shape: (def 'same')
+        * 'same': The output has the same size as the input. Usually, this will crop out parts of the
+                  transformed image.
+        * 'full': The output will be large enough to contain the full transformed image. In general,
+        the output image won't have the same centre as the output image produced with 'same'.
+        * Tuple with (height, width) size of output image. Note: This option produces an output with the
+        same centre as 'same'.
+    :return:
+    * transform_skimage: skimage.transform._geometric.ProjectiveTransform with same affine
+    transform.
+    * output_shape: (height, width)
     """
 
+    # input image's centre
+    im_centre = np.array([(input_shape[1] - 1) / 2, (input_shape[0] - 1) / 2])  # (x, y)
 
-
-    # move transformation centre to image centre
-    transform_skimage_center = SimilarityTransform(translation=(shape[1] / 2, shape[0] / 2))
-
-    # return transformation centre to image corner
-    transform_skimage_center_inv = SimilarityTransform(translation=(-shape[1] / 2, -shape[0] / 2))
-
-    # identity transformation
-    transform_identity = EuclideanTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+    # move image's centre to origin of coordinates
+    transform_skimage_center = EuclideanTransform(translation=-im_centre)
 
     # affine transformation
-    transform_skimage_affine = AffineTransform(matrix=None, scale=(transform['zx'], transform['zy']),
-                                               rotation=transform['theta'] / 180.0 * np.pi,
-                                               shear=transform['shear'] / 180.0 * np.pi,
-                                               translation=(transform['tx'], transform['ty']))
+    transform_skimage_affine = AffineTransform(matrix=None, scale=(keras_transform['zx'], keras_transform['zy']),
+                                               rotation=keras_transform['theta'] / 180.0 * np.pi,
+                                               shear=keras_transform['shear'] / 180.0 * np.pi,
+                                               translation=(keras_transform['tx'], keras_transform['ty']))
 
     # horizontal flip
-    if transform['flip_horizontal'] == 1:
-        transform_skimage_horizontal_flip = EuclideanTransform(np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+    if keras_transform['flip_horizontal'] == 1:
+        transform_skimage_horizontal_flip = EuclideanTransform(np.array([[-1, 0, 0],
+                                                                         [0, 1, 0],
+                                                                         [0, 0, 1]]))
     else:
-        transform_skimage_horizontal_flip = EuclideanTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+        transform_skimage_horizontal_flip = EuclideanTransform(None)
 
     # vertical flip
-    if transform['flip_vertical'] == 1:
-        transform_skimage_vertical_flip = EuclideanTransform(np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]]))
+    if keras_transform['flip_vertical'] == 1:
+        transform_skimage_vertical_flip = EuclideanTransform(np.array([[1, 0, 0],
+                                                                       [0, -1, 0],
+                                                                       [0, 0, 1]]))
     else:
-        transform_skimage_vertical_flip = EuclideanTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]))
+        transform_skimage_vertical_flip = EuclideanTransform(None)
 
     # composition of all transformations
-    transform_skimage = transform_skimage_center + transform_identity
-    transform_skimage = transform_skimage_affine + transform_skimage
-    transform_skimage = transform_skimage_horizontal_flip + transform_skimage
-    transform_skimage = transform_skimage_vertical_flip + transform_skimage
-    transform_skimage = transform_skimage_center_inv + transform_skimage
+    transform_skimage = transform_skimage_center \
+                        + transform_skimage_affine \
+                        + transform_skimage_horizontal_flip \
+                        + transform_skimage_vertical_flip \
+                        + transform_skimage_center.inverse
 
-    return transform_skimage
+    if output_shape == 'full':
+
+        # input image bounding box's corners
+        x0 = 0
+        y0 = 0
+        xend = input_shape[1] - 1
+        yend = input_shape[0] - 1
+        corner_coords = np.array([[x0, y0],
+                                  [xend, y0],
+                                  [xend, yend],
+                                  [x0, yend]])
+
+        # apply the same image transformation to the input bounding box
+        corner_coords = matrix_transform(corner_coords, transform_skimage.params)  # (x, y)
+
+        # bounding box containing the whole output image
+        bbox_out = np.array([np.min(corner_coords, axis=0), np.max(corner_coords, axis=0)])  # (x, y)
+
+        # bottom-left and top-right corners of the output bounding box
+        bbox_out_min = np.min(bbox_out, axis=0)  # (x, y)
+        bbox_out_max = np.max(bbox_out, axis=0)  # (x, y)
+
+        # size of the output image is the size of the output bounding box
+        output_shape = np.ceil(bbox_out_max - bbox_out_min + np.array([1, 1]))  # (x, y)
+        output_shape = output_shape[::-1]  # (row, col)
+
+        # move bottom left of bounding box to origin of coordinates, so no part of the image will be
+        # cropped
+        transform_translate = EuclideanTransform(translation=-bbox_out_min)
+        transform_skimage = transform_skimage + transform_translate
+
+    elif output_shape == 'same':
+
+        # size of the output image is the size of the input image
+        output_shape = input_shape[0:2]
+
+        # no translation correction needed
+
+    else:  # user provides numerical output size
+
+        # correction of centre point if output size is not the same as the input image size
+        shape_correction = (np.array(output_shape) - np.array(input_shape[0:2])) / 2.0
+        transform_translate = EuclideanTransform(translation=shape_correction)
+
+        transform_skimage = transform_skimage + transform_translate
+
+    if type(output_shape) == np.ndarray:
+        output_shape = tuple(output_shape.astype(np.int64))
+    return transform_skimage, output_shape
 
 
-def keras_transform(im, transform, order=1):
+def transform_coords(coords, transform_skimage):
     """
-    Apply a keras transformation to an image.
-
-    The reason for this function is because keras apply_transform() doesn't enable nearest neighbour interpolation.
-    Thus, when applied to label or segmentation images, it
-
-    :param im: (row, col, channel) or (row, col)-np.array image.
-    :param transform: dict with a keras transformation created by the ImageDataGenerator class.
-    :param order: (def 1) interpolation order. 0: nearest neighbour, 1: bi-linear, 2: bi-quadratic, ..., 5: bi-quintic.
-    :return:
-    * im_out: np.array with the same shape and dtype as im.
-    """
-
-    # convert transform from keras to skimage format
-    transform_skimage = keras2skimage_transform(transform, shape=im.shape)
-
-    # apply transformation to image
-    im_out = warp(im, transform_skimage.inverse, order=order, preserve_range=True)
-
-    # correct output type
-    im_out = im_out.astype(im.dtype)
-
-    return im_out
-
-
-def keras_transform_coords(coords, transform, shape):
-    """
-    Apply a keras transformation to a set of point coordinates.
+    Apply a scikit.image transformation to a set of point coordinates.
 
     The transformations applied to point coordinates in this function are consistent to transformations applied to
-    an image with keras_transform().
+    an image with transform_im().
 
     :param coords: (P, 2) np.array, each row has the (x, y) coordinates of a point.
                     Alternatively, list of (x, y) coordinates.
-    :param transform: dict with a keras transformation created by the ImageDataGenerator class.
+    :param transform_skimage: skimage transform, e.g. created with keras2skimage_transform().
     :return:
     * coords_out: (P, 2) np.array or list of (x, y) coordinates of the transformed points.
     """
@@ -1635,9 +1672,6 @@ def keras_transform_coords(coords, transform, shape):
     is_list = type(coords) == list
     if is_list:
         coords = np.vstack(coords)
-
-    # convert transform from keras to skimage format
-    transform_skimage = keras2skimage_transform(transform, shape=shape)
 
     # apply transformation to coordinates
     coords_out = matrix_transform(coords, transform_skimage.params)
@@ -1647,6 +1681,32 @@ def keras_transform_coords(coords, transform, shape):
         coords_out = [tuple(x) for x in coords_out]
 
     return coords_out
+
+
+def transform_im(im, transform_skimage, output_shape=None, order=1):
+    """
+    Apply a scikit.image transformation to an image.
+
+    The motivation for this function is that keras apply_transform() doesn't enable nearest neighbour
+    interpolation. Thus, when applied to label or segmentation images, its bi-linear interpolation
+    creates bogus labels.
+
+    :param im: (row, col, channel) or (row, col)-np.array image.
+    :param transform_skimage: skimage transform, e.g. created with keras2skimage_transform()
+    :param output_shape: (def None) (height, width) tuple with the size of the output image. By default,
+    the shape of the input image is preserved.
+    :param order: (def 1) interpolation order. 0: nearest neighbour, 1: bi-linear, 2: bi-quadratic, ..., 5: bi-quintic.
+    :return:
+    * im_out: np.array with the same shape and dtype as im.
+    """
+
+    # apply transformation to image
+    im_out = warp(im, transform_skimage.inverse, order=order, preserve_range=True, output_shape=output_shape)
+
+    # correct output type
+    im_out = im_out.astype(im.dtype)
+
+    return im_out
 
 
 def focal_loss(gamma=2., alpha=.25):
