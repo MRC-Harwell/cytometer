@@ -386,7 +386,8 @@ device_list = K.get_session().list_devices()
 # number of GPUs
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
-for i_fold in range(0, len(idx_test_all)):
+# HACK: fold 0 already computed
+for i_fold in range(1, len(idx_test_all)):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
@@ -468,13 +469,13 @@ for i_fold in range(0, len(idx_test_all)):
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
-        cytometer.utils.clear_mem()
-        del window_im_train
-        del window_im_test
-        del window_out_train
-        del window_out_test
-        del window_seg_gtruth_train
-        del window_seg_gtruth_test
+    cytometer.utils.clear_mem()
+    del window_im_train
+    del window_im_test
+    del window_out_train
+    del window_out_test
+    del window_seg_gtruth_train
+    del window_seg_gtruth_test
 
 '''Save the log of computations
 '''
