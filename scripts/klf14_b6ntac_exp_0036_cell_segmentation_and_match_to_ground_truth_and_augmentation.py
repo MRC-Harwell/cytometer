@@ -249,7 +249,9 @@ for fold_i, idx_test in enumerate(idx_orig_test_all):
             transform = pickle.load(open(transform_file, 'br'))
 
             # convert transform to skimage format
-            transform_skimage = cytometer.utils.keras2skimage_transform(transform=transform, shape=im.shape[1:3])
+            transform_skimage = cytometer.utils.keras2skimage_transform(keras_transform=transform,
+                                                                        input_shape=labels.shape[1:3],
+                                                                        output_shape=im.shape[1:3])
 
             # apply transform to reference images
             labels_augmented = warp(labels[i, :, :, 0], transform_skimage.inverse,
