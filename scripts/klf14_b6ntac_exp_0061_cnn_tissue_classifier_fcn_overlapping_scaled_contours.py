@@ -40,7 +40,7 @@ import time
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -162,6 +162,7 @@ if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
     experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
+print('Experiment ID: ' + experiment_id)
 
 # load list of images, and indices for training vs. testing indices
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_kfold_info.pickle')
