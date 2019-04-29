@@ -74,7 +74,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0054_inspect_testing_dataset'
+experiment_id = 'klf14_b6ntac_exp_0062_validate_pipeline'
 
 # load k-folds training and testing data
 kfold_info_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_kfold_info.pickle')
@@ -87,7 +87,7 @@ del kfold_info
 # model names
 contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour_model'
 dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap_model'
-classifier_model_basename = 'klf14_b6ntac_exp_0057_cnn_tissue_classifier_fcn_overlapping_scaled_contours_model'
+classifier_model_basename = 'klf14_b6ntac_exp_0059_cnn_tissue_classifier_fcn_overlapping_scaled_contours_model'
 quality_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_model'
 
 # number of images
@@ -130,7 +130,25 @@ for i_fold in range(n_folds):
 
         # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
         # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
-        contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False)
+        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                                minimum_npoints=3)
+        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        contours = cell_contours + other_contours + brown_contours
+
+        # make a list with the type of cell each contour is classified as
+        contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
+                        np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
+                        np.ones(shape=(len(brown_contours),),
+                                dtype=np.uint8)]  # 1: brown cells (treated as "other" tissue)
+        contour_type = np.concatenate(contour_type)
+
+        print('Cells: ' + str(len(cell_contours)))
+        print('Other: ' + str(len(other_contours)))
+        print('Brown: ' + str(len(brown_contours)))
+        print('')
 
         if DEBUG:
             plt.clf()
@@ -141,7 +159,7 @@ for i_fold in range(n_folds):
 
         # make array copy
         im_array = np.array(im, dtype=np.float32)
-        im_array /= 255
+        im_array /= 255  # NOTE: quality network 0053 expects intensity values in [-255, 255], but contour and dmap do
 
         # load contour and dmap models
         contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
@@ -217,10 +235,12 @@ for i_fold in range(n_folds):
                 plt.imshow(window_im)
                 plt.contour(window_seg, linewidths=1, levels=0.5, colors='blue')
 
-            # input to the CNN: multiply histology by +1/-1 segmentation mask
+            # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
             window_masked_im = \
                 cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
                                                    quality_model_type='-1_1')[0, :, :, :]
+            # NOTE: quality network 0053 expects values in [-255, 255], float32
+            window_masked_im *= 255
 
             # scaling factors for the training image
             training_size = (training_window_len, training_window_len)
@@ -230,34 +250,29 @@ for i_fold in range(n_folds):
             # resize the images to training window size
             window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
             window_masked_im = cytometer.utils.resize(window_masked_im, size=training_size, resample=Image.LINEAR)
-            # window_seg_gtruth = cytometer.utils.resize(window_seg_gtruth, size=training_size, resample=Image.NEAREST)
             window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
-            # window_out_gtruth = cytometer.utils.resize(window_out_gtruth, size=training_size, resample=Image.NEAREST)
 
             # add dummy dimensions for keras
             window_im = np.expand_dims(window_im, axis=0)
             window_masked_im = np.expand_dims(window_masked_im, axis=0)
-            # window_seg_gtruth = np.expand_dims(window_seg_gtruth, axis=0)
             window_seg = np.expand_dims(window_seg, axis=0)
-            # window_out_gtruth = np.expand_dims(window_out_gtruth, axis=0)
 
             # check sizes and types
             assert(window_im.ndim == 4 and window_im.dtype == np.float32)
             assert(window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32)
-            # assert(window_out_gtruth.ndim == 3 and window_out_gtruth.dtype == np.float32)
 
             # process histology * mask for quality
             window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
 
             # correction for segmentation
-            window_seg_correction = window_seg[0, :, :] * 0
+            window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
             window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
             window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
 
             # corrected segmentation
-            window_seg_corrected = window_seg[0, :, :]
-            window_seg_corrected[window_quality_out[0, :, :, 0] >= 0.5] = 0  # the segmentation went too far
-            window_seg_corrected[window_quality_out[0, :, :, 0] <= -0.5] = 1  # the segmentation fell short
+            window_seg_corrected = window_seg[0, :, :].copy()
+            window_seg_corrected[window_seg_correction == 1] = 0
+            window_seg_corrected[window_seg_correction == -1] = 1
 
             if DEBUG:
                 # plot segmentation correction
@@ -280,14 +295,22 @@ for i_fold in range(n_folds):
 
                 plt.subplot(224)
                 plt.cla()
-                plt.imshow(window_seg_corrected)
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='white')
+                plt.imshow(window_im[0, :, :, :])
+                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
+                plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='green')
+
+            # NOTE: classifier network 0057 expects values in [-1.0, 1.0], float32
+            window_masked_im /= 255
 
             # process histology for classification
             window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
 
             # get classification label for each pixel
             window_classifier_class = np.argmax(window_classifier_out, axis=3)
+
+            # proportion of "Other" pixels in the mask
+            window_other_prop = np.count_nonzero(window_seg * window_classifier_class, axis=(0, 1, 2)) \
+                                / np.count_nonzero(window_seg, axis=(0, 1, 2))
 
             if DEBUG:
                 # plot classification
@@ -297,22 +320,26 @@ for i_fold in range(n_folds):
                 plt.cla()
                 plt.imshow(window_im[0, :, :, :])
                 plt.contour(window_seg[0, :, :], linewidths=1, colors='blue', linestyles='dotted')
+                plt.title('Histology')
+                plt.axis('off')
 
                 plt.subplot(222)
                 plt.cla()
-                plt.imshow(window_classifier_class[0, :, :])
+                aux = window_classifier_class[0, :, :]
+                plt.imshow(aux)
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='white', linestyles='solid')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
+                plt.axis('off')
 
-                plt.subplot(234)
+                plt.subplot(223)
                 plt.cla()
                 plt.imshow(window_classifier_out[0, :, :, 0])
                 plt.title('Cell')
+                plt.axis('off')
 
-                plt.subplot(235)
+                plt.subplot(224)
                 plt.cla()
                 plt.imshow(window_classifier_out[0, :, :, 1])
                 plt.title('Other')
+                plt.axis('off')
 
-                plt.subplot(236)
-                plt.cla()
-                plt.imshow(window_classifier_out[0, :, :, 2])
-                plt.title('Damaged')
