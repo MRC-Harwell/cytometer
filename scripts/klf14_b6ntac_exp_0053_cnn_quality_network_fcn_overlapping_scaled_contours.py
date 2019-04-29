@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 import time
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -163,6 +163,7 @@ if experiment_id == '<input>':
     experiment_id = 'unknownscript'
 else:
     experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
+print('Experiment ID: ' + experiment_id)
 
 # load list of images, and indices for training vs. testing indices
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_kfold_info.pickle')
@@ -359,6 +360,13 @@ if DEBUG:
              window_im_all=window_im_all, window_out_all=window_out_all,
              window_mask_loss_all=window_mask_loss_all, window_idx_all=window_idx_all)
 
+    result = np.load(os.path.join(saved_models_dir, experiment_id + '_data.npz'))
+    window_im_all = result['window_im_all']
+    window_out_all = result['window_out_all']
+    window_mask_loss_all = result['window_mask_loss_all']
+    window_idx_all = result['window_idx_all']
+    del result
+
 '''Convolutional neural network training
 
     Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -372,7 +380,7 @@ device_list = K.get_session().list_devices()
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
 # HACK: skip folds that are already computed
-for i_fold in range(3, n_folds):
+for i_fold in range(4, n_folds):
 
     print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
 
