@@ -18,6 +18,7 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
+import pandas as pd
 
 # other imports
 from PIL import Image, ImageDraw
@@ -82,6 +83,12 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0062_validate_pipeline'
 
+# model names
+contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour_model'
+dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap_model'
+classifier_model_basename = 'klf14_b6ntac_exp_0059_cnn_tissue_classifier_fcn_overlapping_scaled_contours_model'
+quality_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_model'
+
 # load k-folds training and testing data
 kfold_info_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_kfold_info.pickle')
 with open(kfold_info_filename, 'rb') as f:
@@ -90,14 +97,12 @@ file_list = kfold_info['file_list']
 idx_test_all = kfold_info['idx_test']
 del kfold_info
 
-# model names
-contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour_model'
-dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap_model'
-classifier_model_basename = 'klf14_b6ntac_exp_0059_cnn_tissue_classifier_fcn_overlapping_scaled_contours_model'
-quality_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_model'
-
 # number of images
 n_im = len(file_list)
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
 
 '''Load the test data of each fold
 '''
@@ -197,6 +202,11 @@ for i_fold in range(n_folds):
             plt.subplot(122)
             plt.imshow(labels)
 
+        # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
+        df_0 = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                         values=[i], values_tag='area',
+                                                         tags_to_keep=['id', 'ko', 'sex'])
+
         '''Cell by cell processing
         '''
 
@@ -219,16 +229,13 @@ for i_fold in range(n_folds):
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.uint8)
 
+            if DEBUG:
+                plt.subplot(222)
+                plt.imshow(cell_seg_gtruth)
 
-
-
-
-
-
-
-
-
-
+            # add to dataframe: image index and cell label
+            df['im'] = i
+            df['label'] = p_label
 
             # isolate segmentation mask
             cell_seg = (labels == lab).astype(np.uint8)
