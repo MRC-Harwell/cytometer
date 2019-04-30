@@ -1,5 +1,11 @@
 """
-Validation of pipeline using classifier (0059) and segmentation quality (0053) networks.
+Produce plots from pipeline using classifier (0059) and segmentation quality (0053) networks.
+
+Here, we segment the images and apply the classifier and quality networks to those segmentations. For validation, we
+need to use the ground truth contours as the basis, but I want to preserve this script in case I need to generate those
+kind of figures.
+
+I'll start another script (0063) for proper pipeline validation.
 """
 
 # cross-platform home directory
