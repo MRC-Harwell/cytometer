@@ -1,5 +1,5 @@
 """
-Validation of pipeline using classifier (0057) and segmentation quality (0053) networks.
+Validation of pipeline using classifier (0059) and segmentation quality (0053) networks.
 """
 
 # cross-platform home directory
@@ -139,11 +139,11 @@ for i_fold in range(n_folds):
         contours = cell_contours + other_contours + brown_contours
 
         # make a list with the type of cell each contour is classified as
-        contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
-                        np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
-                        np.ones(shape=(len(brown_contours),),
+        contour_type_all = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
+                            np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
+                            np.ones(shape=(len(brown_contours),),
                                 dtype=np.uint8)]  # 1: brown cells (treated as "other" tissue)
-        contour_type = np.concatenate(contour_type)
+        contour_type_all = np.concatenate(contour_type_all)
 
         print('Cells: ' + str(len(cell_contours)))
         print('Other: ' + str(len(other_contours)))
