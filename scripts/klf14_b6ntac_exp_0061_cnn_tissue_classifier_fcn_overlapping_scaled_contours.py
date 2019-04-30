@@ -40,7 +40,7 @@ import time
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -386,8 +386,8 @@ device_list = K.get_session().list_devices()
 # number of GPUs
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
-# HACK: fold 0 already computed
-for i_fold in range(1, len(idx_test_all)):
+# HACK: folds 0, 1 already computed
+for i_fold in range(2, len(idx_test_all)):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
