@@ -553,7 +553,7 @@ def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
     This function takes two segmentations, reference and test, and computes how good each test
     label segmentation is, based on how it overlaps the reference segmentation. In a nutshell,
     we find the reference label best aligned to each test label, and compute the Dice
-    coefficient as a similarity measure.
+    coefficient as a similarity measure. Note that labels=0 (background) will be ignored.
 
     We illustrate this with an example.
 
@@ -605,6 +605,15 @@ def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
     labels_test_unique, labels_test_unique_count = np.unique(labels_test, return_counts=True)
     labels_ref_unique, labels_ref_unique_count = np.unique(labels_ref, return_counts=True)
 
+    # remove 0 labels
+    idx = labels_test_unique != 0
+    labels_test_unique = labels_test_unique[idx]
+    labels_test_unique_count = labels_test_unique_count[idx]
+
+    idx = labels_ref_unique != 0
+    labels_ref_unique = labels_ref_unique[idx]
+    labels_ref_unique_count = labels_ref_unique_count[idx]
+
     # look up tables to speed up searching for object sizes
     labels_test_unique_count_lut = np.zeros(shape=(np.max(labels_test_unique) + 1, ),
                                             dtype=labels_test_unique_count.dtype)
@@ -622,8 +631,8 @@ def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
     aux = np.stack((labels_test.flatten(), labels_ref.flatten()))  # row 0 = TEST, row 1 = REF
     label_pairs_by_pixel, label_pairs_by_pixel_count = np.unique(aux, axis=1, return_counts=True)
 
-    # remove correspondences between any test lab and ref 0 label (background)
-    idx = label_pairs_by_pixel[ref, :] != 0
+    # remove 0 labels
+    idx = np.logical_and(label_pairs_by_pixel[test, :] != 0, label_pairs_by_pixel[ref, :] != 0)
     label_pairs_by_pixel = label_pairs_by_pixel[:, idx]
     label_pairs_by_pixel_count = label_pairs_by_pixel_count[idx]
 
@@ -681,6 +690,7 @@ def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
             dice[:, lab_ref] = 0
 
     # check that all Dice values are in [0.0, 1.0]
+    print(out)
     assert(all(out['dice'] >= 0.0) and all(out['dice'] <= 1.0))
 
     return out
