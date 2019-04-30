@@ -204,7 +204,7 @@ for i_fold in range(n_folds):
 
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_0 = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                         values=[i], values_tag='area',
+                                                         values=[i], values_tag='im',
                                                          tags_to_keep=['id', 'ko', 'sex'])
 
         '''Cell by cell processing
@@ -213,6 +213,10 @@ for i_fold in range(n_folds):
         # loop contours
         for j, contour in enumerate(contours):
 
+            # start dataframe line
+            df = df_0.copy()
+            df['contour'] = j
+
             if DEBUG:
                 # centre of current cell
                 xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
@@ -220,7 +224,7 @@ for i_fold in range(n_folds):
                 plt.clf()
                 plt.subplot(221)
                 plt.imshow(im_array)
-                plt.plot([p[0] for p in contour], [p[1] for p in contour])
+                plt.plot([p[0] for p in contour], [p[1] for p in contour], color='green')
                 plt.scatter(xy_c[0], xy_c[1])
 
             # rasterise current ground truth segmentation
@@ -229,54 +233,46 @@ for i_fold in range(n_folds):
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.uint8)
 
-            if DEBUG:
-                plt.subplot(222)
-                plt.imshow(cell_seg_gtruth)
-
-            # add to dataframe: image index and cell label
-            df['im'] = i
-            df['label'] = p_label
-
-            # isolate segmentation mask
-            cell_seg = (labels == lab).astype(np.uint8)
-
             # compute bounding box that contains the mask, and leaves some margin
             bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='xy', inc=1.00)
             bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='rc', inc=1.00)
+
+            # find the segmented label that best overlaps with the ground truth label
+            match_out = \
+                cytometer.utils.match_overlapping_labels(labels_ref=labels, labels_test=cell_seg_gtruth,
+                                                         allow_repeat_ref=False)
+            if len(match_out) != 1:
+                raise Warning('No correspondence found for contour: ' + str(j))
+                continue
+
+            # isolate said segmented label
+            cell_seg = (labels == match_out[0]['lab_ref']).astype(np.uint8)
+
+            # add to dataframe: segmentation areas and Dice coefficient
+            df['area_gtruth'] = match_out[0]['area_test'] * xres * yres  # um^2
+            df['area_seg'] = match_out[0]['area_ref'] * xres * yres  # um^2
+            df['dice'] = match_out[0]['dice']
 
             if DEBUG:
-                plt.clf()
-                plt.subplot(221)
-                plt.imshow(im)
-
                 plt.subplot(222)
-                plt.imshow(labels)
-
-                plt.subplot(223)
-                plt.cla()
-                plt.imshow(cell_seg)
-                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
-                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
+                plt.imshow(im_array)
+                plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='red')
+                plt.xlim(bbox_x0, bbox_xend)
+                plt.ylim(bbox_yend, bbox_y0)
 
             # crop image and masks according to bounding box
             window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
             window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
 
             if DEBUG:
-                plt.clf()
-                plt.subplot(121)
-                plt.cla()
-                plt.imshow(im_array)
-                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='blue')
-                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
-                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0), 'black')
-
-                plt.subplot(122)
-                plt.cla()
+                plt.subplot(223)
                 plt.imshow(window_im)
-                plt.contour(window_seg, linewidths=1, levels=0.5, colors='blue')
+                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(window_seg, linewidths=1, levels=0.5, colors='red')
 
             # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
             window_masked_im = \
@@ -293,6 +289,7 @@ for i_fold in range(n_folds):
             # resize the images to training window size
             window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
             window_masked_im = cytometer.utils.resize(window_masked_im, size=training_size, resample=Image.LINEAR)
+            window_seg_gtruth = cytometer.utils.resize(window_seg_gtruth, size=training_size, resample=Image.NEAREST)
             window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
 
             # add dummy dimensions for keras
@@ -300,11 +297,17 @@ for i_fold in range(n_folds):
             window_masked_im = np.expand_dims(window_masked_im, axis=0)
             window_seg = np.expand_dims(window_seg, axis=0)
 
+            # correct types
+            window_seg = window_seg.astype(np.float32)
+            window_seg_gtruth = window_seg_gtruth.astype(np.float32)
+
             # check sizes and types
             assert(window_im.ndim == 4 and window_im.dtype == np.float32)
             assert(window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32)
+            assert(window_seg.ndim == 3 and window_seg.dtype == np.float32)
+            assert(window_seg_gtruth.ndim == 2 and window_seg_gtruth.dtype == np.float32)
 
-            # process histology * mask for quality
+            # process (histology * mask) for quality
             window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
 
             # correction for segmentation
@@ -317,30 +320,18 @@ for i_fold in range(n_folds):
             window_seg_corrected[window_seg_correction == 1] = 0
             window_seg_corrected[window_seg_correction == -1] = 1
 
+            # corrected segmentation area
+            area_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
+            df['area_corrected'] = area_corrected
+
             if DEBUG:
                 # plot segmentation correction
-                plt.clf()
-
-                plt.subplot(221)
-                plt.cla()
-                aux = 0.2989 * window_masked_im[0, :, :, 0] \
-                      + 0.5870 * window_masked_im[0, :, :, 1] \
-                      + 0.1140 * window_masked_im[0, :, :, 2]
-                plt.imshow(aux)
-
-                plt.subplot(222)
-                plt.cla()
-                plt.imshow(window_quality_out[0, :, :, 0])
-
                 plt.subplot(223)
                 plt.cla()
-                plt.imshow(window_seg_correction)
-
-                plt.subplot(224)
-                plt.cla()
                 plt.imshow(window_im[0, :, :, :])
+                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
                 plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
-                plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='green')
+                plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='black')
 
             # process histology for classification
             window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
