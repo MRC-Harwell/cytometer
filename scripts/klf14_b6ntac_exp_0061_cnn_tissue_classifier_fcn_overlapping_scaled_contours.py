@@ -387,7 +387,7 @@ device_list = K.get_session().list_devices()
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
 # HACK: folds 0, 1 already computed
-for i_fold in range(2, len(idx_test_all)):
+for i_fold in range(len(idx_test_all)-1, 6, -1):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
