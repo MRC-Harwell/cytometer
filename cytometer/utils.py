@@ -690,7 +690,6 @@ def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
             dice[:, lab_ref] = 0
 
     # check that all Dice values are in [0.0, 1.0]
-    print(out)
     assert(all(out['dice'] >= 0.0) and all(out['dice'] <= 1.0))
 
     return out
