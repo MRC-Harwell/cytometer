@@ -369,3 +369,15 @@ for i_fold in range(n_folds):
 # save results
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
 df_all.to_pickle(dataframe_filename)
+
+'''Dataframe analysis
+'''
+
+# classifier confusion matrix
+cytometer.utils.plot_confusion_matrix(y_true=np.array(df_all['other_gtruth']).astype(np.float32),
+                                      y_pred=np.array(df_all['other_prop']).astype(np.float32) >= 0.1,
+                                      normalize=True,
+                                      title='All test data',
+                                      xlabel='"Other" predicted',
+                                      ylabel='Object is "Other"',
+                                      cmap=plt.cm.Blues)
