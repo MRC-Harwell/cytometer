@@ -19,6 +19,7 @@ import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
 import pandas as pd
+import time
 
 # other imports
 from PIL import Image, ImageDraw
@@ -81,7 +82,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0062_validate_pipeline'
+experiment_id = 'klf14_b6ntac_exp_0063_pipeline_validation'
 
 # model names
 contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour_model'
@@ -104,8 +105,11 @@ n_im = len(file_list)
 metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
-'''Load the test data of each fold
+'''Process the test data of each fold with the corresponding trained networks
 '''
+
+time0 = time.time()
+df_all = pd.DataFrame()
 
 for i_fold in range(n_folds):
 
@@ -203,9 +207,9 @@ for i_fold in range(n_folds):
             plt.imshow(labels)
 
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
-        df_0 = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                         values=[i], values_tag='im',
-                                                         tags_to_keep=['id', 'ko', 'sex'])
+        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                          values=[i_fold], values_tag='fold',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
 
         '''Cell by cell processing
         '''
@@ -213,8 +217,9 @@ for i_fold in range(n_folds):
         # loop contours
         for j, contour in enumerate(contours):
 
-            # start dataframe line
-            df = df_0.copy()
+            # start dataframe row for this contour
+            df = df_im.copy()
+            df['im'] = i
             df['contour'] = j
 
             if DEBUG:
@@ -321,8 +326,8 @@ for i_fold in range(n_folds):
             window_seg_corrected[window_seg_correction == -1] = 1
 
             # corrected segmentation area
-            area_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
-            df['area_corrected'] = area_corrected
+            area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
+            df['area_seg_corrected'] = area_seg_corrected
 
             if DEBUG:
                 # plot segmentation correction
@@ -343,34 +348,24 @@ for i_fold in range(n_folds):
             window_other_prop = np.count_nonzero(window_seg * window_classifier_class) \
                                 / np.count_nonzero(window_seg)
 
+            # add to dataframe row
+            df['other_gtruth'] = contour_type_all[j]
+            df['other_prop'] = window_other_prop
+
             if DEBUG:
                 # plot classification
-                plt.clf()
-
-                plt.subplot(221)
-                plt.cla()
-                plt.imshow(window_im[0, :, :, :])
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='blue', linestyles='dotted')
-                plt.title('Histology')
-                plt.axis('off')
-
-                plt.subplot(222)
-                plt.cla()
-                aux = window_classifier_class[0, :, :]
-                plt.imshow(aux)
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='white', linestyles='solid')
-                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
-                plt.axis('off')
-
-                plt.subplot(223)
-                plt.cla()
-                plt.imshow(window_classifier_out[0, :, :, 0])
-                plt.title('Cell')
-                plt.axis('off')
-
                 plt.subplot(224)
                 plt.cla()
-                plt.imshow(window_classifier_out[0, :, :, 1])
-                plt.title('Other')
-                plt.axis('off')
+                plt.imshow(window_classifier_class[0, :, :])
+                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
+                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
 
+            # append current results to global dataframe
+            df_all = pd.concat([df_all, df])
+
+        print('Time so far: ' + str(time.time() - time0) + ' s')
+
+# save results
+dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
+df_all.to_pickle(dataframe_filename)
