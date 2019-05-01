@@ -25,6 +25,7 @@ import time
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
@@ -370,8 +371,32 @@ for i_fold in range(n_folds):
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
 df_all.to_pickle(dataframe_filename)
 
+if DEBUG:
+    dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
+    df_all = pd.read_pickle(dataframe_filename)
+
 '''Dataframe analysis
 '''
+
+# classifier ROC
+fpr, tpr, thr = roc_curve(y_true=df_all['other_gtruth'],
+                          y_score=df_all['other_prop'])
+roc_auc = auc(fpr, tpr)
+
+# find point in the curve for False Positive Rate = 10%
+idx = np.where(fpr <= 0.1)[0][-1]
+
+if DEBUG:
+    plt.clf()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot(fpr, tpr, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.scatter(fpr[idx], tpr[idx],
+                label='FPR = %0.3f, TPR = %0.3f' % (fpr[idx], tpr[idx]))
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
+    plt.legend(loc="lower right")
+
 
 # classifier confusion matrix
 cytometer.utils.plot_confusion_matrix(y_true=np.array(df_all['other_gtruth']).astype(np.float32),

@@ -370,6 +370,10 @@ for i_fold in range(n_folds):
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
 df_all.to_pickle(dataframe_filename)
 
+if DEBUG:
+    dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
+    df_all = pd.read_pickle(dataframe_filename)
+
 '''Dataframe analysis
 '''
 
