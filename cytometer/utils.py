@@ -2077,7 +2077,8 @@ def plot_confusion_matrix(y_true, y_pred,
                           title=None,
                           xlabel=None,
                           ylabel=None,
-                          cmap=plt.cm.Blues):
+                          cmap=plt.cm.Blues,
+                          colorbar=True):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -2111,9 +2112,10 @@ def plot_confusion_matrix(y_true, y_pred,
 
     fig, ax = plt.subplots()
     im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    cb = ax.figure.colorbar(im, ax=ax)
-    for cbi in cb.ax.yaxis.get_ticklabels():
-        cbi.set_size(14)
+    if colorbar:
+        cb = ax.figure.colorbar(im, ax=ax)
+        for cbi in cb.ax.yaxis.get_ticklabels():
+            cbi.set_size(14)
     # We want to show all ticks...
     ax.set(xticks=np.arange(cm.shape[1]),
            yticks=np.arange(cm.shape[0]),
