@@ -49,9 +49,6 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
-# number of folds for k-fold cross validation
-n_folds = 10
-
 # number of epochs for training
 epochs = 25
 
@@ -92,12 +89,13 @@ classifier_model_basename = 'klf14_b6ntac_exp_0059_cnn_tissue_classifier_fcn_ove
 quality_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_model'
 
 # load k-folds training and testing data
-kfold_info_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_kfold_info.pickle')
+kfold_info_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0055_cnn_contour_kfold_info.pickle')
 with open(kfold_info_filename, 'rb') as f:
     kfold_info = pickle.load(f)
 file_list = kfold_info['file_list']
 idx_test_all = kfold_info['idx_test']
 del kfold_info
+n_folds = len(idx_test_all)
 
 # number of images
 n_im = len(file_list)
