@@ -389,7 +389,6 @@ idx = np.where(fpr <= 0.1)[0][-1]
 if DEBUG:
     plt.clf()
     plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
-    plt.plot(fpr, tpr, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
     plt.scatter(fpr[idx], tpr[idx],
                 label='FPR = %0.3f, TPR = %0.3f' % (fpr[idx], tpr[idx]))
     plt.tick_params(labelsize=16)
