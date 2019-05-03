@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 import time
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -68,9 +68,6 @@ set_session(tf.Session(config=config))
 K.set_image_data_format('channels_last')
 
 DEBUG = False
-
-# number of folds for k-fold cross validation
-n_folds = 10
 
 # number of epochs for training
 epochs = 25
@@ -172,6 +169,7 @@ with open(contour_model_kfold_filename, 'rb') as f:
 file_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
+n_folds = len(idx_train_all)
 
 # number of images
 n_im = len(file_list)
@@ -380,7 +378,7 @@ device_list = K.get_session().list_devices()
 gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
 # HACK: skip folds that are already computed
-for i_fold in range(4, n_folds):
+for i_fold in range(10, n_folds):
 
     print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
 
