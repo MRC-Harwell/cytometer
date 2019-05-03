@@ -58,9 +58,6 @@ DEBUG = False
 # number of blocks to split each image into so that training fits into GPU memory
 nblocks = 2
 
-# number of folds for k-fold cross validation
-n_folds = 11
-
 # number of epochs for training
 epochs = 20
 
