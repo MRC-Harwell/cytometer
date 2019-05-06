@@ -17,6 +17,7 @@ home = str(Path.home())
 import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
+import warnings
 import pickle
 import pandas as pd
 import time
@@ -29,7 +30,7 @@ from sklearn.metrics import roc_curve, auc
 from scipy.stats import linregress
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -114,6 +115,8 @@ metainfo = pd.read_csv(metainfo_csv_file)
 time0 = time.time()
 df_all = pd.DataFrame()
 
+#for i_fold in range(n_folds):
+# HACK: last fold of 0053 is being computed
 for i_fold in range(n_folds):
 
     print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
@@ -195,10 +198,20 @@ for i_fold in range(n_folds):
         dmap_pred = dmap_model.predict(np.expand_dims(im_array, axis=0))
 
         # cell segmentation
-        labels, labels_borders \
+        labels, _ \
             = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
                                                    contour=contour_pred[0, :, :, 0],
                                                    border_dilation=0)
+
+        # remove edge segmentations, because in general they correspond to incomplete objects
+        labels_edge = cytometer.utils.edge_labels(labels)
+        idx = np.isin(labels, test_elements=labels_edge)
+        labels[idx] = 0
+
+        # list of unique segmentation labels (remove blackground)
+        labels_seg = list(np.unique(labels))
+        if 0 in labels_seg:
+            labels_seg.remove(0)
 
         if DEBUG:
             plt.clf()
@@ -214,7 +227,7 @@ for i_fold in range(n_folds):
                                                           values=[i_fold], values_tag='fold',
                                                           tags_to_keep=['id', 'ko', 'sex'])
 
-        '''Cell by cell processing
+        '''Ground truth cell by cell processing
         '''
 
         # loop contours
@@ -241,22 +254,32 @@ for i_fold in range(n_folds):
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.uint8)
 
-            # compute bounding box that contains the mask, and leaves some margin
-            bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='xy', inc=1.00)
-            bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='rc', inc=1.00)
-
             # find the segmented label that best overlaps with the ground truth label
             match_out = \
                 cytometer.utils.match_overlapping_labels(labels_ref=labels, labels_test=cell_seg_gtruth,
                                                          allow_repeat_ref=False)
+
             if len(match_out) != 1:
-                raise Warning('No correspondence found for contour: ' + str(j))
+                warnings.warn('No correspondence found for contour: ' + str(j))
                 continue
+
+            # remove matched segmentation from list of remaining segmentations
+            if match_out[0]['lab_ref'] in labels_seg:
+                labels_seg.remove(match_out[0]['lab_ref'])
 
             # isolate said segmented label
             cell_seg = (labels == match_out[0]['lab_ref']).astype(np.uint8)
+
+            # compute bounding box for the ground truth cell and the corresponding segmentation
+            bbox_seg_gtruth_x0, bbox_seg_gtruth_y0, bbox_seg_gtruth_xend, bbox_seg_gtruth_yend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='xy', inc=1.00)
+            bbox_seg_gtruth_r0, bbox_seg_gtruth_c0, bbox_seg_gtruth_rend, bbox_seg_gtruth_cend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='rc', inc=1.00)
+
+            bbox_seg_x0, bbox_seg_y0, bbox_seg_xend, bbox_seg_yend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+            bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
 
             # add to dataframe: segmentation areas and Dice coefficient
             df['area_gtruth'] = match_out[0]['area_test'] * xres * yres  # um^2
@@ -269,13 +292,21 @@ for i_fold in range(n_folds):
                 plt.imshow(im_array)
                 plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
                 plt.contour(cell_seg, linewidths=1, levels=0.5, colors='red')
-                plt.xlim(bbox_x0, bbox_xend)
-                plt.ylim(bbox_yend, bbox_y0)
+                plt.plot((bbox_seg_gtruth_x0, bbox_seg_gtruth_xend, bbox_seg_gtruth_xend, bbox_seg_gtruth_x0, bbox_seg_gtruth_x0),
+                         (bbox_seg_gtruth_y0, bbox_seg_gtruth_y0, bbox_seg_gtruth_yend, bbox_seg_gtruth_yend, bbox_seg_gtruth_y0),
+                         color='green')
+                plt.plot((bbox_seg_x0, bbox_seg_xend, bbox_seg_xend, bbox_seg_x0, bbox_seg_x0),
+                         (bbox_seg_y0, bbox_seg_y0, bbox_seg_yend, bbox_seg_yend, bbox_seg_y0),
+                         color='red')
+                plt.xlim(0.9 * np.min((bbox_seg_gtruth_x0, bbox_seg_x0)),
+                         1.1 * np.max((bbox_seg_gtruth_xend, bbox_seg_xend)))
+                plt.ylim(1.1 * np.max((bbox_seg_gtruth_yend, bbox_seg_yend)),
+                         0.9 * np.min((bbox_seg_gtruth_y0, bbox_seg_y0)))
 
-            # crop image and masks according to bounding box
-            window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+            # crop image and masks according to bounding box of automatic segmentation
+            window_im = cytometer.utils.extract_bbox(im_array, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
+            window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
+            window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
 
             if DEBUG:
                 plt.subplot(223)
@@ -366,10 +397,141 @@ for i_fold in range(n_folds):
                 plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
                 plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
 
+            # reset index to avoid pd.concat Warning
+            df = df.reset_index()
+
             # append current results to global dataframe
             df_all = pd.concat([df_all, df])
 
         print('Time so far: ' + str(time.time() - time0) + ' s')
+
+        '''Automatic segmentation cell by cell processing
+        '''
+
+        for lab in labels_seg:
+
+            # isolate segmented label
+            cell_seg = (labels == lab).astype(np.uint8)
+
+            # compute bounding box for the segmentation
+            bbox_seg_x0, bbox_seg_y0, bbox_seg_xend, bbox_seg_yend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+            bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+
+            # add to dataframe: segmentation areas and Dice coefficient
+            df['area_gtruth'] = np.nan
+            df['area_seg'] = match_out[0]['area_ref'] * xres * yres  # um^2
+            df['dice'] = np.nan
+
+            if DEBUG:
+                plt.subplot(222)
+                plt.cla()
+                plt.imshow(im_array)
+                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='red')
+                plt.plot((bbox_seg_x0, bbox_seg_xend, bbox_seg_xend, bbox_seg_x0, bbox_seg_x0),
+                         (bbox_seg_y0, bbox_seg_y0, bbox_seg_yend, bbox_seg_yend, bbox_seg_y0),
+                         color='red')
+                plt.xlim(0.9 * bbox_seg_x0,
+                         1.1 * bbox_seg_xend)
+                plt.ylim(1.1 * bbox_seg_yend,
+                         0.9 * bbox_seg_y0)
+
+            # crop image and masks according to bounding box of automatic segmentation
+            window_im = cytometer.utils.extract_bbox(im_array, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
+            window_seg = cytometer.utils.extract_bbox(cell_seg,
+                                                      (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
+
+            if DEBUG:
+                plt.subplot(223)
+                plt.cla()
+                plt.imshow(window_im)
+                plt.contour(window_seg, linewidths=1, levels=0.5, colors='red')
+
+            # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
+            window_masked_im = \
+                cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
+                                                   quality_model_type='-1_1')[0, :, :, :]
+            # NOTE: quality network 0053 expects values in [-255, 255], float32
+            window_masked_im *= 255
+
+            # scaling factors for the training image
+            training_size = (training_window_len, training_window_len)
+            scaling_factor = np.array(training_size) / np.array(window_masked_im.shape[0:2])
+            window_pixel_size = np.array([xres, yres]) / scaling_factor  # (um, um)
+
+            # resize the images to training window size
+            window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
+            window_masked_im = cytometer.utils.resize(window_masked_im, size=training_size, resample=Image.LINEAR)
+            window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
+
+            # add dummy dimensions for keras
+            window_im = np.expand_dims(window_im, axis=0)
+            window_masked_im = np.expand_dims(window_masked_im, axis=0)
+            window_seg = np.expand_dims(window_seg, axis=0)
+
+            # correct types
+            window_seg = window_seg.astype(np.float32)
+
+            # check sizes and types
+            assert (window_im.ndim == 4 and window_im.dtype == np.float32)
+            assert (window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32)
+            assert (window_seg.ndim == 3 and window_seg.dtype == np.float32)
+
+            # process (histology * mask) for quality
+            window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
+
+            # correction for segmentation
+            window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
+            window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
+            window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
+
+            # corrected segmentation
+            window_seg_corrected = window_seg[0, :, :].copy()
+            window_seg_corrected[window_seg_correction == 1] = 0
+            window_seg_corrected[window_seg_correction == -1] = 1
+
+            # corrected segmentation area
+            area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
+            df['area_seg_corrected'] = area_seg_corrected
+
+            if DEBUG:
+                # plot segmentation correction
+                plt.subplot(223)
+                plt.cla()
+                plt.imshow(window_im[0, :, :, :].reset_index())
+                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
+                plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='black')
+
+            # process histology for classification
+            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
+
+            # get classification label for each pixel
+            window_classifier_class = np.argmax(window_classifier_out, axis=3)
+
+            # proportion of "Other" pixels in the mask
+            window_other_prop = np.count_nonzero(window_seg * window_classifier_class) \
+                                / np.count_nonzero(window_seg)
+
+            # add to dataframe row
+            df['other_gtruth'] = -1
+            df['other_prop'] = window_other_prop
+
+            if DEBUG:
+                # plot classification
+                plt.subplot(224)
+                plt.cla()
+                plt.imshow(window_classifier_class[0, :, :])
+                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
+
+            # append current results to global dataframe
+            df_all = pd.concat([df_all, df])
+
+        print('Time so far: ' + str(time.time() - time0) + ' s')
+
+# reindex data frame
+df_all = df_all.reset_index()
 
 # save results
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
@@ -377,6 +539,10 @@ df_all.to_pickle(dataframe_filename)
 
 '''Dataframe analysis
 '''
+
+# dataframe:
+#  ['index', 'id', 'ko', 'sex', 'fold', 'im', 'contour', 'area_gtruth',
+#   'area_seg', 'dice', 'area_seg_corrected', 'other_gtruth', 'other_prop']
 
 ## previous experiment: classifier without data augmentation
 
