@@ -115,8 +115,6 @@ metainfo = pd.read_csv(metainfo_csv_file)
 time0 = time.time()
 df_all = pd.DataFrame()
 
-#for i_fold in range(n_folds):
-# HACK: last fold of 0053 is being computed
 for i_fold in range(n_folds):
 
     print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
@@ -397,9 +395,6 @@ for i_fold in range(n_folds):
                 plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
                 plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
 
-            # reset index to avoid pd.concat Warning
-            df = df.reset_index()
-
             # append current results to global dataframe
             df_all = pd.concat([df_all, df])
 
@@ -530,8 +525,8 @@ for i_fold in range(n_folds):
 
         print('Time so far: ' + str(time.time() - time0) + ' s')
 
-# reindex data frame
-df_all = df_all.reset_index()
+# reset indices
+df_all.reset_index(drop=True, inplace=True)
 
 # save results
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
@@ -574,9 +569,13 @@ idx_0063 = np.where(fpr_0063 <= 0.1)[0][-1]
 dataframe_filename_0064 = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0064_pipeline_validation_dataframe.pkl')
 df_all_0064 = pd.read_pickle(dataframe_filename_0064)
 
-# reject rows with very low Dice values, because that means that the ground truth contours doesn't really overlap with
+# remove rows with very low Dice values, because that means that the ground truth contours doesn't really overlap with
 # an automatic segmentation. Instead, it's probably just touching a nearby one
 idx = df_all_0064['dice'] >= 0.5
+df_all_0064 = df_all_0064.loc[idx, :]
+
+# remove rows with segmentations that have no corresponding ground truth
+idx = df_all_0064['other_gtruth'] != -1
 df_all_0064 = df_all_0064.loc[idx, :]
 
 # add columns for cell estimates. This could be computed on the fly in the plots, but this way makes the code below

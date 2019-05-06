@@ -111,8 +111,6 @@ metainfo = pd.read_csv(metainfo_csv_file)
 time0 = time.time()
 df_all = pd.DataFrame()
 
-#for i_fold in range(n_folds):
-# HACK: last fold of 0053 is being computed
 for i_fold in range(n_folds):
 
     print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
@@ -393,9 +391,6 @@ for i_fold in range(n_folds):
                 plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
                 plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
 
-            # reset index to avoid pd.concat Warning
-            df = df.reset_index()
-
             # append current results to global dataframe
             df_all = pd.concat([df_all, df])
 
@@ -495,7 +490,7 @@ for i_fold in range(n_folds):
                 # plot segmentation correction
                 plt.subplot(223)
                 plt.cla()
-                plt.imshow(window_im[0, :, :, :])
+                plt.imshow(window_im[0, :, :, :].reset_index())
                 plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
                 plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='black')
 
@@ -526,8 +521,8 @@ for i_fold in range(n_folds):
 
         print('Time so far: ' + str(time.time() - time0) + ' s')
 
-# reindex data frame
-df_all = df_all.reset_index()
+# reset indices
+df_all.reset_index(drop=True, inplace=True)
 
 # save results
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
