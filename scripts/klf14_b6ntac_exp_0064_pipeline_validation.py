@@ -403,6 +403,9 @@ for i_fold in range(n_folds):
         '''Automatic segmentation cell by cell processing
         '''
 
+        # segmentations have no corresponding contours here
+        contour = -1
+
         for lab in labels_seg:
 
             # isolate segmented label
@@ -532,64 +535,74 @@ df_all.reset_index(drop=True, inplace=True)
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
 df_all.to_pickle(dataframe_filename)
 
-'''Dataframe analysis
+'''Dataframe analysis of segmentations with corresponding ground truth
 '''
 
 # dataframe:
 #  ['index', 'id', 'ko', 'sex', 'fold', 'im', 'contour', 'area_gtruth',
-#   'area_seg', 'dice', 'area_seg_corrected', 'other_gtruth', 'other_prop']
+#   'area_seg', 'dice', 'area_seg_corrected']
 
-## previous experiment: classifier without data augmentation
+## previous experiment: classifier without data augmentation (only segmentations with corresponding ground truth)
 
 # load results
 dataframe_filename_0063 = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0063_pipeline_validation_dataframe.pkl')
-df_all_0063 = pd.read_pickle(dataframe_filename_0063)
+df_0063 = pd.read_pickle(dataframe_filename_0063)
 
 # reject rows with very low Dice values, because that means that the ground truth contours doesn't really overlap with
 # an automatic segmentation. Instead, it's probably just touching a nearby one
-idx = df_all_0063['dice'] >= 0.5
-df_all_0063 = df_all_0063.loc[idx, :]
+idx = df_0063['dice'] >= 0.5
+df_0063 = df_0063.loc[idx, :]
+
+# remove rows with segmentations that have no corresponding ground truth
+idx = df_0063['other_gtruth'] != -1
+df_0063 = df_0063.loc[idx, :]
 
 # add columns for cell estimates. This could be computed on the fly in the plots, but this way makes the code below
 # a bit easier to read, and less likely to have bugs if we forget the 1-x operation
-df_all_0063['cell_gtruth'] = 1 - df_all_0063['other_gtruth']
-df_all_0063['cell_prop'] = 1 - df_all_0063['other_prop']
+df_0063['cell_gtruth'] = 1 - df_0063['other_gtruth']
+df_0063['cell_prop'] = 1 - df_0063['other_prop']
 
 # classifier ROC (we make cell=1, other=0 for clarity of the results)
-fpr_0063, tpr_0063, thr_0063 = roc_curve(y_true=df_all_0063['cell_gtruth'],
-                                         y_score=df_all_0063['cell_prop'])
+fpr_0063, tpr_0063, thr_0063 = roc_curve(y_true=df_0063['cell_gtruth'],
+                                         y_score=df_0063['cell_prop'])
 roc_auc_0063 = auc(fpr_0063, tpr_0063)
 
-# find point in the curve for False Positive Rate = 10%
-idx_0063 = np.where(fpr_0063 <= 0.1)[0][-1]
+# find point in the curve for False Positive Rate ~ 10%
+idx_0063 = np.where(fpr_0063 >= 0.1)[0][0]
 
-## previous experiment: classifier with data augmentation
+## this experiment: classifier with data augmentation (only segmentations with corresponding ground truth)
 
 # load results
 dataframe_filename_0064 = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0064_pipeline_validation_dataframe.pkl')
-df_all_0064 = pd.read_pickle(dataframe_filename_0064)
+df_0064 = pd.read_pickle(dataframe_filename_0064)
 
 # remove rows with very low Dice values, because that means that the ground truth contours doesn't really overlap with
 # an automatic segmentation. Instead, it's probably just touching a nearby one
-idx = df_all_0064['dice'] >= 0.5
-df_all_0064 = df_all_0064.loc[idx, :]
+idx = df_0064['dice'] >= 0.5
+df_0064 = df_0064.loc[idx, :]
 
 # remove rows with segmentations that have no corresponding ground truth
-idx = df_all_0064['other_gtruth'] != -1
-df_all_0064 = df_all_0064.loc[idx, :]
+idx = df_0064['other_gtruth'] != -1
+df_0064 = df_0064.loc[idx, :]
 
 # add columns for cell estimates. This could be computed on the fly in the plots, but this way makes the code below
 # a bit easier to read, and less likely to have bugs if we forget the 1-x operation
-df_all_0064['cell_gtruth'] = 1 - df_all_0064['other_gtruth']
-df_all_0064['cell_prop'] = 1 - df_all_0064['other_prop']
+df_0064['cell_gtruth'] = 1 - df_0064['other_gtruth']
+df_0064['cell_prop'] = 1 - df_0064['other_prop']
 
 # classifier ROC (we make cell=1, other=0 for clarity of the results)
-fpr_0064, tpr_0064, thr_0064 = roc_curve(y_true=df_all_0064['cell_gtruth'],
-                                         y_score=df_all_0064['cell_prop'])
+fpr_0064, tpr_0064, thr_0064 = roc_curve(y_true=df_0064['cell_gtruth'],
+                                         y_score=df_0064['cell_prop'])
 roc_auc_0064 = auc(fpr_0064, tpr_0064)
 
 # find point in the curve for False Positive Rate = 10%
 idx_0064 = np.where(fpr_0064 <= 0.1)[0][-1]
+
+## show imbalance between classes
+n_cell = np.count_nonzero(df_0064['cell_gtruth'] == 1)
+n_other = np.count_nonzero(df_0064['other_gtruth'] == 1)
+print('Number of cell objects: ' + str(n_cell) + ' (%0.1f' % (n_cell / (n_cell + n_other) * 100) + '%)')
+print('Number of other objects: ' + str(n_other) + ' (%0.1f' % (n_other / (n_cell + n_other) * 100) + '%)')
 
 ## plots for both classifiers
 
@@ -613,8 +626,8 @@ if DEBUG:
 
 
 # classifier confusion matrix
-cytometer.utils.plot_confusion_matrix(y_true=df_all_0063['cell_gtruth'],
-                                      y_pred=df_all_0063['cell_prop'] >= thr_0063[idx_0063],
+cytometer.utils.plot_confusion_matrix(y_true=df_0063['cell_gtruth'],
+                                      y_pred=df_0063['cell_prop'] >= thr_0063[idx_0063],
                                       normalize=True,
                                       title='Without data agumentation',
                                       xlabel='"Cell" predicted',
@@ -622,8 +635,8 @@ cytometer.utils.plot_confusion_matrix(y_true=df_all_0063['cell_gtruth'],
                                       cmap=plt.cm.Blues,
                                       colorbar=False)
 
-cytometer.utils.plot_confusion_matrix(y_true=df_all_0064['cell_gtruth'],
-                                      y_pred=df_all_0064['cell_prop'] >= thr_0064[idx_0064],
+cytometer.utils.plot_confusion_matrix(y_true=df_0064['cell_gtruth'],
+                                      y_pred=df_0064['cell_prop'] >= thr_0064[idx_0064],
                                       normalize=True,
                                       title='With data augmentation',
                                       xlabel='"Cell" predicted',
@@ -634,39 +647,86 @@ cytometer.utils.plot_confusion_matrix(y_true=df_all_0064['cell_gtruth'],
 ## segmentation correction
 
 # indices of "Cell" objects
-idx_cell = df_all_0064['cell_gtruth'] == 1
+idx_cell = df_0064['cell_gtruth'] == 1
 
 # linear regression
 slope_0064_seg, intercept_0064_seg, \
 r_value_0064_seg, p_value_0064_seg, std_err_0064_seg = \
-    linregress(df_all_0064.loc[idx_cell, 'area_gtruth'], df_all_0064.loc[idx_cell, 'area_seg'])
+    linregress(df_0064.loc[idx_cell, 'area_gtruth'], df_0064.loc[idx_cell, 'area_seg'])
 
 slope_0064_seg_corrected, intercept_0064_seg_corrected, \
 r_value_0064_seg_corrected, p_value_0064_seg_corrected, std_err_0064_seg_corrected = \
-    linregress(df_all_0064.loc[idx_cell, 'area_gtruth'], df_all_0064.loc[idx_cell, 'area_seg_corrected'])
+    linregress(df_0064.loc[idx_cell, 'area_gtruth'], df_0064.loc[idx_cell, 'area_seg_corrected'])
 
 if DEBUG:
     # linear regression: ground truth area vs. best matching segmentation area
+    # No area correction
     plt.clf()
-    plt.scatter(df_all_0064.loc[idx_cell, 'area_gtruth'], df_all_0064.loc[idx_cell, 'area_seg'])
-    plt.plot([0, 20e3], [0, 20e3], color='darkorange')
+    plt.scatter(df_0064.loc[idx_cell, 'area_gtruth'], df_0064.loc[idx_cell, 'area_seg'], label='')
+    plt.plot([0, 20e3], [0, 20e3], color='darkorange', label='Identity')
     plt.plot([0, 20e3],
              [intercept_0064_seg, intercept_0064_seg + 20e3 * slope_0064_seg],
-             color='red')
+             color='red', label='Linear regression')
     plt.xlabel('Ground truth area ($\mu$m$^2$)', fontsize=14)
     plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend()
 
     # linear regression: ground truth area vs. best matching segmentation area
+    # Area correction
     plt.clf()
-    plt.scatter(df_all_0064.loc[idx_cell, 'area_gtruth'], df_all_0064.loc[idx_cell, 'area_seg_corrected'])
-    plt.plot([0, 20e3], [0, 20e3], color='darkorange')
+    plt.scatter(df_0064.loc[idx_cell, 'area_gtruth'], df_0064.loc[idx_cell, 'area_seg_corrected'], label='')
+    plt.plot([0, 20e3], [0, 20e3], color='darkorange', label='Identity')
     plt.plot([0, 20e3],
              [intercept_0064_seg_corrected, intercept_0064_seg_corrected + 20e3 * slope_0064_seg_corrected],
-             color='red')
+             color='red', label='Linear regression')
     plt.xlabel('Ground truth area ($\mu$m$^2$)', fontsize=14)
     plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend()
 
-    #
+## population area profiles
 
+if DEBUG:
+
+    # hand vs. automatic vs. corrected segmentation
+    plt.clf()
+    plt.hist(df_0064.loc[idx_cell, 'area_gtruth'], density=True, bins=50, histtype='step',
+             label='Hand segmentation')
+    plt.hist(df_0064.loc[idx_cell, 'area_seg'], density=True, bins=50, histtype='step',
+             label='Automatic segmentation')
+    plt.hist(df_0064.loc[idx_cell, 'area_seg_corrected'], density=True, bins=50, histtype='step',
+             label='Corrected segmentation')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.legend()
+
+## reload this experiment, including segmentations without corresponding ground truth
+
+# load results
+dataframe_filename_0064 = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0064_pipeline_validation_dataframe.pkl')
+df_0064_all = pd.read_pickle(dataframe_filename_0064)
+
+# new column with proportion of cell pixels in segmentation, for convenience
+df_0064_all['cell_prop'] = 1 - df_0064_all['other_prop']
+
+# population profiles for automatic segmentations and automatic classification
+idx_cell_auto = df_0064_all['cell_prop'] >= thr_0064[idx_0064]
+
+if DEBUG:
+
+    # histograms: hand vs. full test windows
+    plt.clf()
+    plt.hist(df_0064.loc[idx_cell, 'area_gtruth'], density=True, bins=50, histtype='step',
+             label='Hand segmentation')
+    plt.hist(df_0064_all.loc[idx_cell_auto, 'area_seg_corrected'], density=True, bins=50, histtype='step',
+             label='Classifier segmentations')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.legend()
+
+    # boxplots: hand vs. full test windows
+    plt.clf()
+    plt.boxplot((df_0064.loc[idx_cell, 'area_gtruth'],
+                 df_0064_all.loc[idx_cell_auto, 'area_seg_corrected']), notch=True)
+    plt.ylim(-840, 6800)
