@@ -399,6 +399,9 @@ for i_fold in range(n_folds):
         '''Automatic segmentation cell by cell processing
         '''
 
+        # segmentations have no corresponding contours here
+        contour = -1
+
         for lab in labels_seg:
 
             # isolate segmented label
