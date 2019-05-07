@@ -713,12 +713,16 @@ df_0064_all['cell_prop'] = 1 - df_0064_all['other_prop']
 # population profiles for automatic segmentations and automatic classification
 idx_cell_auto = df_0064_all['cell_prop'] >= thr_0064[idx_0064]
 
+# median values
+print('Ground truth median area: %0.0f ' % np.median(df_0064.loc[idx_cell, 'area_gtruth']) + r'(um^2)')
+print('Pipeline median area: %0.0f ' % np.median(df_0064_all.loc[idx_cell_auto, 'area_seg_corrected']) + r'(um^2)')
+
 if DEBUG:
 
     # histograms: hand vs. full test windows
     plt.clf()
     plt.hist(df_0064.loc[idx_cell, 'area_gtruth'], density=True, bins=50, histtype='step',
-             label='Hand segmentation')
+             label='Hand segmentations')
     plt.hist(df_0064_all.loc[idx_cell_auto, 'area_seg_corrected'], density=True, bins=50, histtype='step',
              label='Classifier segmentations')
     plt.tick_params(axis='both', which='major', labelsize=14)
@@ -728,5 +732,9 @@ if DEBUG:
     # boxplots: hand vs. full test windows
     plt.clf()
     plt.boxplot((df_0064.loc[idx_cell, 'area_gtruth'],
-                 df_0064_all.loc[idx_cell_auto, 'area_seg_corrected']), notch=True)
+                 df_0064_all.loc[idx_cell_auto, 'area_seg_corrected']), notch=True,
+                labels=('Hand segmentations', 'Classifier segmentations'))
+    plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
     plt.ylim(-840, 6800)
