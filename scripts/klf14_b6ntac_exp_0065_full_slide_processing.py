@@ -62,7 +62,7 @@ experiment_id = 'klf14_b6ntac_exp_0065_full_slide_processing'
 saved_contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour_model'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap_model'
 saved_classifier_model_basename = 'klf14_b6ntac_exp_0061_cnn_tissue_classifier_fcn_overlapping_scaled_contours_model'
-saved_quality_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_model'
+saved_correction_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_model'
 
 # full resolution image window and network expected receptive field parameters
 fullres_box_size = np.array([1751, 1751])
@@ -84,15 +84,15 @@ block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np
 # process all histology slices in the data directory
 # files_list = glob.glob(os.path.join(data_dir, 'KLF14*.ndpi'))
 
-# process only histology slices that were used for the hand traced dataset
-files_list = glob.glob(os.path.join(training_augmented_dir, 'im_seed_nan_*.tif'))
-for i, file in enumerate(files_list):
-    file_parts = os.path.split(file)
-    # recover original .ndpi filename (e.g. from
-    #'im_seed_nan_KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_007372_col_008556.tif'
-    # to
-    #
-    files_list[i] = os.path.join(data_dir, file_parts[1][12:66] + '.ndpi')
+# # process only histology slices that were used for the hand traced dataset
+# files_list = glob.glob(os.path.join(training_augmented_dir, 'im_seed_nan_*.tif'))
+# for i, file in enumerate(files_list):
+#     file_parts = os.path.split(file)
+#     # recover original .ndpi filename (e.g. from
+#     #'im_seed_nan_KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_007372_col_008556.tif'
+#     # to
+#     #
+#     files_list[i] = os.path.join(data_dir, file_parts[1][12:66] + '.ndpi')
 
 # HACK: only process four images
 files_list = [
@@ -108,13 +108,13 @@ fold_i = 0
 contour_model_file = os.path.join(saved_models_dir, saved_contour_model_basename + '_fold_' + str(fold_i) + '.h5')
 dmap_model_file = os.path.join(saved_models_dir, saved_dmap_model_basename + '_fold_' + str(fold_i) + '.h5')
 classifier_model_file = os.path.join(saved_models_dir, saved_classifier_model_basename + '_fold_' + str(fold_i) + '.h5')
-quality_model_file = os.path.join(saved_models_dir, saved_quality_model_basename + '_fold_' + str(fold_i) + '.h5')
+correction_model_file = os.path.join(saved_models_dir, saved_correction_model_basename + '_fold_' + str(fold_i) + '.h5')
 
 # load models
 contour_model = keras.models.load_model(contour_model_file)
 dmap_model = keras.models.load_model(dmap_model_file)
 classifier_model = keras.models.load_model(classifier_model_file)
-quality_model = keras.models.load_model(quality_model_file)
+correction_model = keras.models.load_model(correction_model_file)
 
 # "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
 # file_i = 10; file = files_list[file_i]
@@ -216,11 +216,11 @@ for file_i, file in enumerate(files_list):
         istissue_tile = (istissue_tile != 0).astype(np.uint8)
 
         # segment histology
-        labels, labels_info = cytometer.utils.segmentation_pipeline(tile,
-                                                                    contour_model, dmap_model, quality_model,
-                                                                    quality_model_type='-1_1_band',
-                                                                    mask=istissue_tile,
-                                                                    smallest_cell_area=804)
+        labels, labels_info = cytometer.utils.segmentation_pipeline2(tile,
+                                                                     contour_model, dmap_model,
+                                                                     correction_model, classifier_model,
+                                                                     mask=istissue_tile,
+                                                                     smallest_cell_area=804)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration
         if len(labels) == 0:
