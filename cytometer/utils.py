@@ -1379,6 +1379,184 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
     return labels, labels_info
 
 
+def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, correction_model=None,
+                           classifier_model_preprocessing=None,
+                           mask=None, smallest_cell_area=804):
+    """
+    Instance segmentation of cells using the contour + distance transformation pipeline.
+
+    :param im: numpy.ndarray (image, row, col, channel) with RGB histology images.
+    :param contour_model: filename or keras model for the contour detection neural network. This is assumed to
+    be a convolutional network where the output has the same (row, col) as the input.
+    :param dmap_model: filename or keras model for the distance transformation regression neural network.
+    This is assumed to be a convolutional network where the output has the same (row, col) as the input.
+    :param correction_model: filename or keras model for the quality coefficient estimation neural network.
+    This network processes one cell at a time. Networks trained for different types of masking can be used
+    by setting the value of quality_model_type.
+    :param quality_model_type: (def '0_1') String with the type of masking used in the quality network.
+    * '0_1': mask: 1 within the segmentation, 0 outside.
+    * '-1_1': mask: 1 within the segmentation, -1 outside.
+    * '-1_1_band': mask: 1 within the segmentation, -1 on outside (75-1)/2 pixel band, 0 beyond the band.
+    * '-1_1_prop_band': mask: 1 within the segmentation, -1 on outside 20% equivalent radius thick band, 0 beyond the
+      band.
+    :param classifier_model_preprocessing: (def None) Apply a preprocessing step to the single-cell images before they are
+    passed to the Quality Network.
+    * 'polar': Convert image from (x,y) to polar (rho, theta)=(cols, rows) coordinates.
+    :param mask: (def None) If provided, labels that intersect less than 60% with the mask are ignored.
+    The mask can be used to skip segmenting background or another type of tissue.
+    :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
+    segmentation noise.
+    :return: labels, labels_info
+
+    labels: numpy.ndarray of size (image, row, col, 1). Instance segmentation of im. Each label segments a different
+    cell.
+
+    labels_info: numpy structured array. One element per cell.
+    labels_info['im']: Each element is the index of the image the cell belongs to.
+    labels_info['label']: Each element is the label assigned to the cell in that image.
+    labels_info['quality']: Each element is a quality value in [0.0, 1.0] estimating the quality of the segmentation
+    for that cell. As a rule of thumb, quality >= 0.9 corresponds to an acceptable segmentation.
+    """
+
+    # load model if filename provided
+    if isinstance(contour_model, six.string_types):
+        contour_model = keras.models.load_model(contour_model)
+    if isinstance(dmap_model, six.string_types):
+        dmap_model = keras.models.load_model(dmap_model)
+    if isinstance(classifier_model, six.string_types):
+        classifier_model = keras.models.load_model(classifier_model)
+    if isinstance(correction_model, six.string_types):
+        correction_model = keras.models.load_model(correction_model)
+
+    # set input layer to size of images for the convolutional networks
+    contour_model = change_input_size(contour_model, batch_shape=(None,) + im.shape[1:])
+    dmap_model = change_input_size(dmap_model, batch_shape=(None,) + im.shape[1:])
+
+    # This doesn't apply to the quality network because that one needs to collapse to one output value. Thus we
+    # read the training window size from the network itself
+    training_window_len = classifier_model.input_shape[1]
+    assert(training_window_len == classifier_model.input_shape[2])
+
+    # allocate arrays for labels
+    labels = np.zeros(shape=im.shape[0:3] + (1,), dtype='int32')
+    labels_borders = np.zeros(shape=im.shape[0:3] + (1,), dtype='bool')
+
+    # run images through networks
+    one_im_shape = (1,) + im.shape[1:]
+    for i in range(im.shape[0]):
+
+        # process one histology image through the two pipeline branches
+        one_im = im[i, :, :, :].reshape(one_im_shape)
+        contour_pred = contour_model.predict(one_im)
+        dmap_pred = dmap_model.predict(one_im)
+
+        # combine pipeline branches for instance segmentation
+        labels[i, :, :, 0], labels_borders[i, :, :, 0] = segment_dmap_contour(dmap_pred[0, :, :, 0],
+                                                                              contour=contour_pred[0, :, :, 0],
+                                                                              border_dilation=0)
+
+        # remove labels that are too small
+        aux = labels[i, :, :, 0]
+        props = regionprops(aux)
+        for p in props:
+            if p.area < smallest_cell_area:
+                aux[aux == p.label] = 0
+
+        # remove labels that are not substantially within the mask
+        if mask is not None:
+
+            # count number of pixels in each label after we multiply by the mask
+            props_masked = regionprops(aux * mask[i, :, :])
+
+            # create a lookup table for quick search of masked label area
+            max_label = np.max([p.label for p in props])
+            area_masked = np.zeros(shape=(max_label + 1,))
+            for p_masked in props_masked:
+                area_masked[p_masked.label] = p_masked.area
+
+            # check for each original label whether it is at least 60% covered by the mask
+            for p in props:
+                if area_masked[p.label] < p.area * 0.60:
+                    aux[aux == p.label] = 0
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(one_im[0, :, :, :])
+            plt.subplot(222)
+            plt.imshow(contour_pred[0, :, :, 0])
+            plt.subplot(223)
+            plt.imshow(dmap_pred[0, :, :, 0])
+            plt.subplot(224)
+            plt.imshow(contour_pred[0, :, :, 0] * dmap_pred[0, :, :, 0])
+
+            plt.clf()
+            plt.subplot(121)
+            plt.imshow(one_im[0, :, :, :])
+            plt.subplot(122)
+            plt.imshow(labels[i, :, :, 0])
+
+    # split histology images into individual segmented objects
+    # Note: smallest_cell_area should be redundant here, because small labels have been removed
+    cell_im, cell_seg, cell_index = one_image_per_label(dataset_im=im,
+                                                        dataset_lab_test=labels,
+                                                        training_window_len=training_window_len,
+                                                        smallest_cell_area=smallest_cell_area)
+
+    # if no cells extracted
+    if len(cell_im) == 0:
+        return [], []
+
+    # compute mask from segmentation, and mask histology images
+    cell_im = quality_model_mask(cell_seg, im=cell_im, quality_model_type=quality_model_type)
+    if cell_im.ndim == 3:
+        cell_im = np.expand_dims(cell_im, axis=0)
+
+    # preprocess images before feeding to quality network
+    if classifier_model_preprocessing == 'polar':
+
+        # convert input images to polar coordinates
+        # shape = (im, row, col, chan)
+        # row = Y, col = X
+        center = ((cell_im.shape[2] - 1) / 2.0, (cell_im.shape[1] - 1) / 2.0)
+        maxRadius = np.sqrt(cell_im.shape[2] ** 2 + cell_im.shape[1] ** 2) / 2
+        for i in range(cell_im.shape[0]):
+            cell_im[i, :, :, :] = cv2.linearPolar(cell_im[i, :, :, :], center=center, maxRadius=maxRadius,
+                                                  flags=cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS)
+
+    elif classifier_model_preprocessing is not None:
+
+        raise ValueError('Unknown quality_model_preprocessing')
+
+    # compute quality of segmented labels
+    quality = correction_model.predict(cell_im)
+
+    if DEBUG:
+        i = 4
+
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im[i, :, :, :].reshape(one_im_shape)[0, :, :, :])
+        plt.subplot(222)
+        plt.imshow(labels[i, :, :, 0])
+        plt.subplot(223)
+        plt.boxplot(quality)
+        plt.subplot(224)
+        aux = paint_labels(labels[i, :, :, 0], cell_index[cell_index[:, 0] == i, 1],
+                           quality[cell_index[:, 0] == i, 0] >= 0.5)
+        plt.imshow(aux)
+
+    # prepare output as structured array
+    labels_info = np.zeros((len(quality),), dtype=[('im', cell_index.dtype),
+                                                   ('label', cell_index.dtype),
+                                                   ('quality', quality.dtype)])
+    labels_info['im'] = cell_index[:, 0]
+    labels_info['label'] = cell_index[:, 1]
+    labels_info['quality'] = quality[:, 0]
+
+    return labels, labels_info
+
+
 def colour_labels_with_receptive_field(labels, receptive_field):
     """
     Take a segmentation where each object has a different label, and colour them with a distance constraint:
