@@ -1456,17 +1456,17 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
                                                                               border_dilation=0)
 
         # remove labels that are too small
-        aux = labels[i, :, :, 0]
-        props = regionprops(aux)
+        labels_aux = labels[i, :, :, 0]
+        props = regionprops(labels_aux)
         for p in props:
             if p.area < smallest_cell_area:
-                aux[aux == p.label] = 0
+                labels_aux[labels_aux == p.label] = 0
 
         # remove labels that are not substantially within the mask
         if mask is not None:
 
             # count number of pixels in each label after we multiply by the mask
-            props_masked = regionprops(aux * mask[i, :, :])
+            props_masked = regionprops(labels_aux * mask[i, :, :])
 
             # create a lookup table for quick search of masked label area
             max_label = np.max([p.label for p in props])
@@ -1477,7 +1477,7 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
             # check for each original label whether it is at least 60% covered by the mask
             for p in props:
                 if area_masked[p.label] < p.area * 0.60:
-                    aux[aux == p.label] = 0
+                    labels_aux[labels_aux == p.label] = 0
 
         if DEBUG:
             plt.clf()
@@ -1542,9 +1542,9 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
         plt.subplot(223)
         plt.boxplot(quality)
         plt.subplot(224)
-        aux = paint_labels(labels[i, :, :, 0], cell_index[cell_index[:, 0] == i, 1],
+        labels_aux = paint_labels(labels[i, :, :, 0], cell_index[cell_index[:, 0] == i, 1],
                            quality[cell_index[:, 0] == i, 0] >= 0.5)
-        plt.imshow(aux)
+        plt.imshow(labels_aux)
 
     # prepare output as structured array
     labels_info = np.zeros((len(quality),), dtype=[('im', cell_index.dtype),
