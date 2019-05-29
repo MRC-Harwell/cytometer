@@ -18,7 +18,7 @@ sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -147,9 +147,9 @@ for file_i, file in enumerate(files_list):
 
     if DEBUG:
         plt.clf()
-        plt.subplot(121)
+        plt.subplot(211)
         plt.imshow(im_downsampled)
-        plt.subplot(122)
+        plt.subplot(212)
         plt.imshow(lores_istissue0)
 
     # segmentation copy, to keep track of what's left to do

@@ -1456,6 +1456,7 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
                                                                               border_dilation=0)
 
         # remove labels that are too small
+        # note: labels_aux is a pointer, so changes in it also occur in labels
         labels_aux = labels[i, :, :, 0]
         props = regionprops(labels_aux)
         for p in props:
