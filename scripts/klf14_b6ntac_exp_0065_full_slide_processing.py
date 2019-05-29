@@ -222,7 +222,8 @@ for file_i, file in enumerate(files_list):
                                                                      mask=istissue_tile,
                                                                      smallest_cell_area=804)
 
-        # if no cells found, wipe out current window from tissue segmentation, and go to next iteration
+        # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
+        # enter an infinite loop
         if len(labels) == 0:
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
             contours_all.append([])
