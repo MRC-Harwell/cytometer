@@ -1381,7 +1381,7 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
 
 def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, correction_model=None,
                            classifier_model_preprocessing=None,
-                           mask=None, smallest_cell_area=804):
+                           mask=None, smallest_cell_area=804, batch_size=16):
     """
     Instance segmentation of cells using the contour + distance transformation pipeline.
 
@@ -1456,7 +1456,7 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
                                                                               border_dilation=0)
 
         # remove labels that are too small
-        # note: labels_aux is a pointer, so changes in it also occur in labels
+        # note: labels_aux is a pointer, so changes in it also occur in the "labels" array
         labels_aux = labels[i, :, :, 0]
         props = regionprops(labels_aux)
         for p in props:
@@ -1507,6 +1507,25 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
     # if no cells extracted
     if len(cell_im) == 0:
         return [], []
+
+    # apply classifier to cell histology
+    cell_class = classifier_model.predict(cell_im, batch_size=batch_size)
+
+    if DEBUG:
+        j = 20
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(cell_im[j, :, :, :])
+        plt.subplot(222)
+        plt.imshow(cell_seg[j, :, :, 0])
+        plt.subplot(223)
+        plt.imshow(cell_class[j, :, :, 0])
+        plt.contour(cell_seg[j, :, :, 0])
+        plt.subplot(224)
+        plt.imshow(cell_class[j, :, :, 0] >= 0.5)
+        plt.contour(cell_seg[j, :, :, 0], colors='red')
+
+
 
     # compute mask from segmentation, and mask histology images
     cell_im = quality_model_mask(cell_seg, im=cell_im, quality_model_type=quality_model_type)
