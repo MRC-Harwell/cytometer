@@ -12,6 +12,7 @@ from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep, splev
 from skimage import measure
 from skimage.morphology import watershed
+from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
 from skimage.segmentation import clear_border
@@ -467,7 +468,7 @@ def principal_curvatures_range_image(img, sigma=10):
     return K, H, k1, k2
 
 
-def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, border_dilation=0):
+def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, border_dilation=0, version=2):
     """
     Segment cells from a distance transformation image, and optionally, a contour estimate image.
 
@@ -518,11 +519,22 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     else:
         contour = mean_curvature.copy()
 
-    # rough segmentation of inner areas
-    labels = (mean_curvature <= 0).astype('uint8')
+    if version == 1:
 
-    # label areas with a different label per connected area
-    labels = measure.label(labels)
+        # rough segmentation of inner areas
+        labels = (mean_curvature <= 0).astype('uint8')
+
+        # label areas with a different label per connected area
+        labels = measure.label(labels)
+
+    elif version == 2:
+
+        # get local minima
+        pk_idx = peak_local_max(-contour, min_distance=10, indices=True, num_peaks_per_label=1)
+
+    else:
+
+        raise ValueError('Unknown version')
 
     # remove very small labels (noise)
     labels_prop = measure.regionprops(labels)
@@ -1203,6 +1215,36 @@ def extract_bbox(im, bbox):
         return out
 
 
+def edge_labels(labels):
+    """
+    Find which labels touch the borders of the image. The background label (0) will be ignored.
+
+    :param labels: 2D numpy.ndarray with segmentation labels.
+    :return:
+    edge_labels: numpy.ndarray with list of labels.
+    """
+
+    if labels.ndim != 2:
+        raise ValueError('labels must be a 2D array')
+
+    # labels that touch the top edge of the image
+    edge_labels = np.unique(labels[0, :])
+
+    # labels that touch the left edge
+    edge_labels = np.unique(np.concatenate((edge_labels, labels[:, 0].flat)))
+
+    # labels that touch the right edge
+    edge_labels = np.unique(np.concatenate((edge_labels, labels[:, -1].flat)))
+
+    # labels that touch the bottom edge
+    edge_labels = np.unique(np.concatenate((edge_labels, labels[-1, :].flat)))
+
+    # remove label=0, if present
+    edge_labels = np.setdiff1d(edge_labels, 0)
+
+    return edge_labels
+
+
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
                           quality_model_type='0_1', quality_model_preprocessing=None,
                           mask=None, smallest_cell_area=804):
@@ -1450,14 +1492,32 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
         contour_pred = contour_model.predict(one_im)
         dmap_pred = dmap_model.predict(one_im)
 
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(one_im[0, :, :, :])
+            plt.subplot(222)
+            plt.imshow(contour_pred[0, :, :, 0])
+            plt.subplot(223)
+            plt.imshow(dmap_pred[0, :, :, 0])
+            plt.subplot(224)
+            _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_pred[0, :, :, 0], sigma=10)
+            plt.imshow(contour_pred[0, :, :, 0] * mean_curvature)
+
         # combine pipeline branches for instance segmentation
         labels[i, :, :, 0], labels_borders[i, :, :, 0] = segment_dmap_contour(dmap_pred[0, :, :, 0],
                                                                               contour=contour_pred[0, :, :, 0],
                                                                               border_dilation=0)
 
-        # remove labels that are too small
-        # note: labels_aux is a pointer, so changes in it also occur in the "labels" array
+        # pointer to labels[i, :, :, 0] so that we can work on each slice by reference
         labels_aux = labels[i, :, :, 0]
+
+        # remove edge segmentations, because in general they correspond to incomplete objects
+        labels_edge = edge_labels(labels_aux)
+        idx = np.isin(labels_aux, test_elements=labels_edge)
+        labels_aux[idx] = 0
+
+        # remove labels that are too small
         props = regionprops(labels_aux)
         for p in props:
             if p.area < smallest_cell_area:
@@ -1482,16 +1542,6 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
         if DEBUG:
             plt.clf()
-            plt.subplot(221)
-            plt.imshow(one_im[0, :, :, :])
-            plt.subplot(222)
-            plt.imshow(contour_pred[0, :, :, 0])
-            plt.subplot(223)
-            plt.imshow(dmap_pred[0, :, :, 0])
-            plt.subplot(224)
-            plt.imshow(contour_pred[0, :, :, 0] * dmap_pred[0, :, :, 0])
-
-            plt.clf()
             plt.subplot(121)
             plt.imshow(one_im[0, :, :, :])
             plt.subplot(122)
@@ -1508,8 +1558,13 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
     if len(cell_im) == 0:
         return [], []
 
-    # apply classifier to cell histology
+    # apply classifier to cell histology. This is just to determine whether each pixel likely corresponds to white
+    # adipocyte tissue
     cell_class = classifier_model.predict(cell_im, batch_size=batch_size)
+
+    # proportion of "Other" pixels in the mask
+    other_prop = np.count_nonzero(cell_seg * (cell_class >= 0.5), axis=(1, 2, 3)) \
+                 / np.count_nonzero(cell_seg, axis=(1, 2, 3))
 
     if DEBUG:
         j = 20
@@ -1522,7 +1577,7 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
         plt.imshow(cell_class[j, :, :, 0])
         plt.contour(cell_seg[j, :, :, 0])
         plt.subplot(224)
-        plt.imshow(cell_class[j, :, :, 0] >= 0.5)
+        plt.imshow((cell_class[j, :, :, 0] >= 0.5).astype(np.uint8))
         plt.contour(cell_seg[j, :, :, 0], colors='red')
 
 
@@ -2184,36 +2239,6 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
                                                      is_sorted=False, returnsorted=False)
 
     return quantiles, pval, reject
-
-
-def edge_labels(labels):
-    """
-    Find which labels touch the borders of the image. The background label (0) will be ignored.
-
-    :param labels: 2D numpy.ndarray with segmentation labels.
-    :return:
-    edge_labels: numpy.ndarray with list of labels.
-    """
-
-    if labels.ndim != 2:
-        raise ValueError('labels must be a 2D array')
-
-    # labels that touch the top edge of the image
-    edge_labels = np.unique(labels[0, :])
-
-    # labels that touch the left edge
-    edge_labels = np.unique(np.concatenate((edge_labels, labels[:, 0].flat)))
-
-    # labels that touch the right edge
-    edge_labels = np.unique(np.concatenate((edge_labels, labels[:, -1].flat)))
-
-    # labels that touch the bottom edge
-    edge_labels = np.unique(np.concatenate((edge_labels, labels[-1, :].flat)))
-
-    # remove label=0, if present
-    edge_labels = np.setdiff1d(edge_labels, 0)
-
-    return edge_labels
 
 
 def bspline_resample(xy, factor=1.0, k=1, is_closed=True):
