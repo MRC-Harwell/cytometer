@@ -11,6 +11,7 @@ from scipy.ndimage.filters import gaussian_filter
 from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep, splev
 from skimage import measure
+from skimage.exposure import rescale_intensity
 from skimage.morphology import watershed
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color
@@ -530,7 +531,32 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     elif version == 2:
 
         # get local minima
-        pk_idx = peak_local_max(-contour, min_distance=10, indices=True, num_peaks_per_label=1)
+        # aux = np.max(contour) - contour
+        aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
+        pk_idx = peak_local_max(aux, min_distance=100, indices=False, num_peaks_per_label=1)
+        pk_idx = peak_local_max(aux, min_distance=100, indices=True, num_peaks_per_label=1)
+
+        aux = rescale_intensity(contour, out_range=np.float32).astype(np.float32)
+        aux = (aux >= 0.01).astype(np.uint8)
+
+        # find connected components
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
+        lblareas = stats[:, cv2.CC_STAT_AREA]
+
+        # labels of large components, that we assume correspond to tissue areas
+        component_size_threshold = 1000
+        labels_large = np.where(lblareas > component_size_threshold)[0]
+        labels_large = list(labels_large)
+
+        # label=0 is the background, so we remove it
+        labels_large.remove(0)
+
+        # only set pixels that belong to the large components
+        seg = np.zeros(aux.shape, dtype=np.uint8)
+        for i in labels_large:
+            seg[labels == i] = 255
+
+
 
     else:
 
@@ -1505,6 +1531,8 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
             plt.imshow(contour_pred[0, :, :, 0] * mean_curvature)
 
         # combine pipeline branches for instance segmentation
+        ##################### FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        # dmap = dmap_pred[0, :, :, 0]
         labels[i, :, :, 0], labels_borders[i, :, :, 0] = segment_dmap_contour(dmap_pred[0, :, :, 0],
                                                                               contour=contour_pred[0, :, :, 0],
                                                                               border_dilation=0)
