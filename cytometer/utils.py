@@ -514,11 +514,12 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     # compute mean curvature from dmap
     _, mean_curvature, _, _ = principal_curvatures_range_image(dmap, sigma=sigma)
 
-    # multiply mean curvature by estimated contours
+    # multiply mean curvature by estimated contours, and clip negative values
     if contour is not None:
         contour *= mean_curvature
     else:
         contour = mean_curvature.copy()
+    contour[contour < 0] = 0
 
     if version == 1:
 
@@ -530,14 +531,41 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
 
     elif version == 2:
 
+        # experiment
+        aux = rescale_intensity(contour, out_range=np.uint8).astype(np.uint8)
+        aux = cv2.adaptiveThreshold(aux, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 0)
+
+        # experiment
+        aux = (contour == 0).astype(np.uint8)
+        aux = cv2.erode(aux, kernel=np.ones(shape=(21, 21), dtype=np.uint8))
+        aux = cv2.dilate(aux, kernel=np.ones(shape=(11, 11), dtype=np.uint8))
+
+        # find connected components
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
+        lblareas = stats[:, cv2.CC_STAT_AREA]
+
+        # extend labels using watershed
+        labels = watershed(mean_curvature, labels)
+
+
+
+        # experiment
         # get local minima
         # aux = np.max(contour) - contour
         aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
         pk_idx = peak_local_max(aux, min_distance=100, indices=False, num_peaks_per_label=1)
         pk_idx = peak_local_max(aux, min_distance=100, indices=True, num_peaks_per_label=1)
 
+        # experiment
         aux = rescale_intensity(contour, out_range=np.float32).astype(np.float32)
-        aux = (aux >= 0.01).astype(np.uint8)
+        aux = (aux >= 0.001).astype(np.uint8)
+
+        # experiment
+        dmap_uint8 = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
+        aux = cv2.dilate(dmap_uint8, np.ones(shape=(75, 75), dtype=np.uint8))
+        pk_idx = np.where(aux == dmap_uint8)
+        plt.subplot(223)
+        plt.plot(pk_idx[1], pk_idx[0], 'r.')
 
         # find connected components
         nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
@@ -1535,7 +1563,8 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
         # dmap = dmap_pred[0, :, :, 0]
         labels[i, :, :, 0], labels_borders[i, :, :, 0] = segment_dmap_contour(dmap_pred[0, :, :, 0],
                                                                               contour=contour_pred[0, :, :, 0],
-                                                                              border_dilation=0)
+                                                                              border_dilation=0,
+                                                                              version=2)
 
         # pointer to labels[i, :, :, 0] so that we can work on each slice by reference
         labels_aux = labels[i, :, :, 0]
@@ -1610,10 +1639,10 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
 
 
-    # compute mask from segmentation, and mask histology images
-    cell_im = quality_model_mask(cell_seg, im=cell_im, quality_model_type=quality_model_type)
-    if cell_im.ndim == 3:
-        cell_im = np.expand_dims(cell_im, axis=0)
+    # # compute mask from segmentation, and mask histology images
+    # cell_im = quality_model_mask(cell_seg, im=cell_im, quality_model_type=quality_model_type)
+    # if cell_im.ndim == 3:
+    #     cell_im = np.expand_dims(cell_im, axis=0)
 
     # preprocess images before feeding to quality network
     if classifier_model_preprocessing == 'polar':
