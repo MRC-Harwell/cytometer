@@ -12,7 +12,7 @@ from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep, splev
 from skimage import measure
 from skimage.exposure import rescale_intensity
-from skimage.morphology import watershed
+from skimage.morphology import watershed, remove_small_objects
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
@@ -531,9 +531,22 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
 
     elif version == 2:
 
-        # experiment
+        # experiment: adaptive threshold of contour * mean_curvature outputs of CNNs
         aux = rescale_intensity(contour, out_range=np.uint8).astype(np.uint8)
         aux = cv2.adaptiveThreshold(aux, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 0)
+
+        # find connected components
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux, connectivity=8)
+        lblareas = stats[:, cv2.CC_STAT_AREA]
+
+        # remove small objects
+        aux = remove_small_objects(labels, min_size=100)
+
+        # experiment (thresholding of histology doesn't work to detect contours)
+        #r, g, b = tile[0, :, :, 0], tile[0, :, :, 1], tile[0, :, :, 2]
+        #gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
+        #gray = rescale_intensity(gray, out_range=np.uint8).astype(np.uint8)
+        #aux = cv2.adaptiveThreshold(gray, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 0)
 
         # experiment
         aux = (contour == 0).astype(np.uint8)
