@@ -16,7 +16,8 @@ from skimage.morphology import watershed, remove_small_objects
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
-from skimage.segmentation import clear_border
+from skimage.segmentation import clear_border, active_contour, morphological_chan_vese, \
+    morphological_geodesic_active_contour, inverse_gaussian_gradient
 from skimage.transform import EuclideanTransform, AffineTransform, warp, matrix_transform
 from skimage.color import rgb2hsv, hsv2rgb
 from sklearn.preprocessing import minmax_scale
@@ -531,17 +532,6 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
 
     elif version == 2:
 
-        # experiment: adaptive threshold of contour * mean_curvature outputs of CNNs
-        aux = rescale_intensity(contour, out_range=np.uint8).astype(np.uint8)
-        aux = cv2.adaptiveThreshold(aux, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 0)
-
-        # find connected components
-        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux, connectivity=8)
-        lblareas = stats[:, cv2.CC_STAT_AREA]
-
-        # remove small objects
-        aux = remove_small_objects(labels, min_size=100)
-
         # experiment (thresholding of histology doesn't work to detect contours)
         #r, g, b = tile[0, :, :, 0], tile[0, :, :, 1], tile[0, :, :, 2]
         #gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
@@ -549,53 +539,103 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
         #aux = cv2.adaptiveThreshold(gray, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 0)
 
         # experiment
-        aux = (contour == 0).astype(np.uint8)
-        aux = cv2.erode(aux, kernel=np.ones(shape=(21, 21), dtype=np.uint8))
-        aux = cv2.dilate(aux, kernel=np.ones(shape=(11, 11), dtype=np.uint8))
+
+        # blurring maintaining edges
+        aux = cv2.bilateralFilter(contour, 15, 1, 15)
+
+        # adaptive threshold of contour * mean_curvature outputs of CNNs
+        aux = rescale_intensity(aux, out_range=np.uint8).astype(np.uint8)
+        aux = cv2.adaptiveThreshold(aux, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 75, 0)
 
         # find connected components
-        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux, connectivity=8)
         lblareas = stats[:, cv2.CC_STAT_AREA]
 
-        # extend labels using watershed
-        labels = watershed(mean_curvature, labels)
-
+        # remove small objects
+        aux = remove_small_objects(labels, min_size=750)
 
 
         # experiment
-        # get local minima
-        # aux = np.max(contour) - contour
+
+        # starting point
+        x0, y0 = (895, 1108)
+        x0, y0 = (1011, 1292)
+        x0, y0 = (404, 1520)
+        x0, y0 = (225, 1009)
+        x0, y0 = (622, 886)
+        x0, y0 = (767, 593)
+
+        # dmap value at the starting point
+        pmax = dmap[y0, x0]
+
+        # create initialisation mask as the pixels with p >= 90% * pmax connected to the initial point
+        init = (dmap >= 0.9 * pmax).astype(np.uint8)
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(init)
+        init = (labels == labels[y0, x0]).astype(np.uint8)
+        _, init_pt, hierarchy = cv2.findContours(init, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
+        assert(len(init_pt) == 1)
+        init_pt = init_pt[0][:, 0, :]
+
+        # active contour
         aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
-        pk_idx = peak_local_max(aux, min_distance=100, indices=False, num_peaks_per_label=1)
-        pk_idx = peak_local_max(aux, min_distance=100, indices=True, num_peaks_per_label=1)
+        snake = active_contour(aux, init_pt, alpha=0.01, beta=1, w_line=-5, w_edge=5, gamma=0.01, bc='periodic')
 
-        # experiment
-        aux = rescale_intensity(contour, out_range=np.float32).astype(np.float32)
-        aux = (aux >= 0.001).astype(np.uint8)
+        # snake = active_contour(contour, init_pt, alpha=0.01, beta=1, w_line=5, w_edge=5, gamma=0.01, bc='periodic')
 
-        # experiment
-        dmap_uint8 = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
-        aux = cv2.dilate(dmap_uint8, np.ones(shape=(75, 75), dtype=np.uint8))
-        pk_idx = np.where(aux == dmap_uint8)
-        plt.subplot(223)
-        plt.plot(pk_idx[1], pk_idx[0], 'r.')
+        if DEBUG:
+            plt.clf()
+            plt.imshow(dmap)
+            plt.plot(init_pt[:, 0], init_pt[:, 1], 'r')
+            plt.plot(snake[:, 0], snake[:, 1], 'w')
 
-        # find connected components
-        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
-        lblareas = stats[:, cv2.CC_STAT_AREA]
-
-        # labels of large components, that we assume correspond to tissue areas
-        component_size_threshold = 1000
-        labels_large = np.where(lblareas > component_size_threshold)[0]
-        labels_large = list(labels_large)
-
-        # label=0 is the background, so we remove it
-        labels_large.remove(0)
-
-        # only set pixels that belong to the large components
-        seg = np.zeros(aux.shape, dtype=np.uint8)
-        for i in labels_large:
-            seg[labels == i] = 255
+        # # experiment
+        # aux = (contour == 0).astype(np.uint8)
+        # aux = cv2.erode(aux, kernel=np.ones(shape=(21, 21), dtype=np.uint8))
+        # aux = cv2.dilate(aux, kernel=np.ones(shape=(11, 11), dtype=np.uint8))
+        #
+        # # find connected components
+        # nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
+        # lblareas = stats[:, cv2.CC_STAT_AREA]
+        #
+        # # extend labels using watershed
+        # labels = watershed(mean_curvature, labels)
+        #
+        #
+        #
+        # # experiment
+        # # get local minima
+        # # aux = np.max(contour) - contour
+        # aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
+        # pk_idx = peak_local_max(aux, min_distance=100, indices=False, num_peaks_per_label=1)
+        # pk_idx = peak_local_max(aux, min_distance=100, indices=True, num_peaks_per_label=1)
+        #
+        # # experiment
+        # aux = rescale_intensity(contour, out_range=np.float32).astype(np.float32)
+        # aux = (aux >= 0.001).astype(np.uint8)
+        #
+        # # experiment
+        # dmap_uint8 = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
+        # aux = cv2.dilate(dmap_uint8, np.ones(shape=(75, 75), dtype=np.uint8))
+        # pk_idx = np.where(aux == dmap_uint8)
+        # plt.subplot(223)
+        # plt.plot(pk_idx[1], pk_idx[0], 'r.')
+        #
+        # # find connected components
+        # nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
+        # lblareas = stats[:, cv2.CC_STAT_AREA]
+        #
+        # # labels of large components, that we assume correspond to tissue areas
+        # component_size_threshold = 1000
+        # labels_large = np.where(lblareas > component_size_threshold)[0]
+        # labels_large = list(labels_large)
+        #
+        # # label=0 is the background, so we remove it
+        # labels_large.remove(0)
+        #
+        # # only set pixels that belong to the large components
+        # seg = np.zeros(aux.shape, dtype=np.uint8)
+        # for i in labels_large:
+        #     seg[labels == i] = 255
 
 
 
@@ -1569,7 +1609,9 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
             plt.imshow(dmap_pred[0, :, :, 0])
             plt.subplot(224)
             _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_pred[0, :, :, 0], sigma=10)
-            plt.imshow(contour_pred[0, :, :, 0] * mean_curvature)
+            aux = contour_pred[0, :, :, 0] * mean_curvature
+            aux[aux < 0] = 0
+            plt.imshow(aux)
 
         # combine pipeline branches for instance segmentation
         ##################### FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
