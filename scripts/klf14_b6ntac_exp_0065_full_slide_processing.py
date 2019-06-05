@@ -71,7 +71,8 @@ receptive_field = np.array([131, 131])
 # rough_foreground_mask() parameters
 downsample_factor = 8.0
 dilation_size = 25
-component_size_threshold = 1e5
+component_size_threshold = 1e6
+hole_size_treshold = 8000
 
 # contour parameters
 contour_downsample_factor = 0.1
@@ -144,9 +145,12 @@ for file_i, file in enumerate(files_list):
     #     os.remove(annotations_file)
 
     # rough segmentation of the tissue in the image
-    lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor, dilation_size=dilation_size,
-                                                            component_size_threshold=component_size_threshold, return_im=True)
-    lores_istissue0 = (lores_istissue0 > 0).astype(np.uint8)
+    lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor,
+                                                            dilation_size=dilation_size,
+                                                            component_size_threshold=component_size_threshold,
+                                                            hole_size_treshold=hole_size_treshold,
+                                                            return_im=True)
+    lores_istissue0 = lores_istissue0.astype(np.uint8)
 
     if DEBUG:
         plt.clf()
@@ -222,8 +226,8 @@ for file_i, file in enumerate(files_list):
         labels, labels_info = cytometer.utils.segmentation_pipeline2(tile,
                                                                      contour_model, dmap_model,
                                                                      correction_model, classifier_model,
-                                                                     mask=istissue_tile, smallest_cell_area=804,
-                                                                     batch_size=batch_size)
+                                                                     mask=istissue_tile[0, :, :],
+                                                                     smallest_cell_area=804, batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop

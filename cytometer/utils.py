@@ -10,9 +10,10 @@ from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
 from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep, splev
+from scipy.ndimage.morphology import binary_fill_holes
 from skimage import measure
 from skimage.exposure import rescale_intensity
-from skimage.morphology import watershed, remove_small_objects
+from skimage.morphology import watershed, remove_small_objects, remove_small_holes
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
@@ -129,7 +130,8 @@ def paint_labels(labels, paint_labs, paint_values):
     return lut[labels]
 
 
-def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25, component_size_threshold=1e5,
+def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
+                          component_size_threshold=1e6, hole_size_treshold=8000,
                           return_im=False):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
@@ -198,21 +200,11 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25, com
     seg = cv2.dilate(seg, kernel, iterations=1)
     seg = cv2.erode(seg, kernel, iterations=1)
 
-    # find connected components
-    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
-    lblareas = stats[:, cv2.CC_STAT_AREA]
+    # fill small holes
+    seg = remove_small_holes(seg > 0, area_threshold=hole_size_treshold).astype(seg.dtype)
 
-    # labels of large components, that we assume correspond to tissue areas
-    labels_large = np.where(lblareas > component_size_threshold)[0]
-    labels_large = list(labels_large)
-
-    # label=0 is the background, so we remove it
-    labels_large.remove(0)
-
-    # only set pixels that belong to the large components
-    seg = np.zeros(im_downsampled.shape[0:2], dtype=np.uint8)
-    for i in labels_large:
-        seg[labels == i] = 255
+    # remove segmentation noise
+    seg = remove_small_objects(seg > 0, min_size=component_size_threshold).astype(seg.dtype)
 
     # # save segmentation as a tiff file (with ZLIB compression)
     # outfilename = os.path.basename(file)
@@ -544,19 +536,19 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
 
         # experiment
 
-        # blurring maintaining edges
-        aux = cv2.bilateralFilter(contour, 15, 1, 15)
-
-        # adaptive threshold of contour * mean_curvature outputs of CNNs
-        aux = rescale_intensity(aux, out_range=np.uint8).astype(np.uint8)
-        aux = cv2.adaptiveThreshold(aux, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 75, 0)
-
-        # find connected components
-        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux, connectivity=8)
-        lblareas = stats[:, cv2.CC_STAT_AREA]
-
-        # remove small objects
-        aux = remove_small_objects(labels, min_size=750)
+        # # blurring maintaining edges
+        # aux = cv2.bilateralFilter(contour, 15, 1, 15)
+        #
+        # # adaptive threshold of contour * mean_curvature outputs of CNNs
+        # aux = rescale_intensity(aux, out_range=np.uint8).astype(np.uint8)
+        # aux = cv2.adaptiveThreshold(aux, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 75, 0)
+        #
+        # # find connected components
+        # nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux, connectivity=8)
+        # lblareas = stats[:, cv2.CC_STAT_AREA]
+        #
+        # # remove small objects
+        # aux = remove_small_objects(labels, min_size=750)
 
 
         # experiment
