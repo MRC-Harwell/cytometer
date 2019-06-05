@@ -462,7 +462,8 @@ def principal_curvatures_range_image(img, sigma=10):
     return K, H, k1, k2
 
 
-def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, border_dilation=0, version=2):
+def segment_dmap_contour(dmap, contour=None,
+                         sigma=10, min_seed_object_size=50, border_dilation=0, version=2):
     """
     Segment cells from a distance transformation image, and optionally, a contour estimate image.
 
@@ -524,16 +525,68 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
 
     elif version == 2:
 
-        #
+        # starting point
+        x0, y0 = (895, 1108)
+        x0, y0 = (1011, 1292)
+        x0, y0 = (404, 1520)
+        x0, y0 = (225, 1009)
+        x0, y0 = (622, 886)
+        x0, y0 = (767, 593)
+        x0, y0 = (604, 867)
+        x0, y0 = (320, 1360)
+        x0, y0 = (213, 997)
+
+        # save copy of the dmap
+        dmap0 = dmap.copy()
+
+        while True:
+
+            # indices of the pixel with the maximum distance value in dmap
+            y0, x0 = np.unravel_index(np.argmax(dmap), dmap.shape)
+
+            # dmap value at the starting point
+            pmax = dmap[y0, x0]
+
+            # create initialisation mask as the pixels with p >= 90% * pmax connected to the initial point
+            init = (dmap >= 0.9 * pmax).astype(np.uint8)
+            nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(init)
+            init[labels == labels[y0, x0]] = 2
+
+            # watershed to separate current object from the rest of the image
+            labels = watershed(-dmap, init, watershed_line=False)
+            labels = labels.astype(np.uint8)
+            # labels = watershed(contour, init, watershed_line=False)  # contours works worse than dmap
+
+            # make current object's label = 1, and the rest = 0
+            labels -= 1
+
+            # # extract boundary of the label as a contour
+            # _, init_pt, hierarchy = cv2.findContours(labels, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
+            # assert(len(init_pt) == 1)
+            # init_pt = init_pt[0][:, 0, :]
+
+            if DEBUG:
+                plt.clf()
+
+                plt.subplot(121)
+                plt.imshow(dmap)
+                plt.scatter(x0, y0, color='r')
+                plt.contour(labels, colors='r')
+                # plt.plot(init_pt[:, 0], init_pt[:, 1], 'w')
+
+                plt.subplot(122)
+                plt.imshow(init)
+                plt.contour(labels, colors='r')
+
+            # clear current object in dmap
+            dmap[labels == 1] = 0
 
 
+        # # active contour
+        # aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
+        # snake = active_contour(aux, init_pt, alpha=0.01, beta=1, w_line=-50, w_edge=0, gamma=0.01, bc='periodic')
 
-        # experiment (thresholding of histology doesn't work to detect contours)
-        #r, g, b = tile[0, :, :, 0], tile[0, :, :, 1], tile[0, :, :, 2]
-        #gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
-        #gray = rescale_intensity(gray, out_range=np.uint8).astype(np.uint8)
-        #aux = cv2.adaptiveThreshold(gray, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 0)
-
+        # snake = active_contour(contour, init_pt, alpha=0.01, beta=1, w_line=5, w_edge=5, gamma=0.01, bc='periodic')
         # experiment
 
         # # blurring maintaining edges
@@ -550,46 +603,6 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
         # # remove small objects
         # aux = remove_small_objects(labels, min_size=750)
 
-
-        # experiment
-
-        # starting point
-        x0, y0 = (895, 1108)
-        x0, y0 = (1011, 1292)
-        x0, y0 = (404, 1520)
-        x0, y0 = (225, 1009)
-        x0, y0 = (622, 886)
-        x0, y0 = (767, 593)
-        x0, y0 = (604, 867)
-        x0, y0 = (320, 1360)
-        x0, y0 = (213, 997)
-
-        # dmap value at the starting point
-        pmax = dmap[y0, x0]
-
-        # create initialisation mask as the pixels with p >= 90% * pmax connected to the initial point
-        init = (dmap >= 0.9 * pmax).astype(np.uint8)
-        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(init)
-        init[labels == labels[y0, x0]] = 2
-
-        # watershed
-        labels = watershed(contour, init)
-
-        # _, init_pt, hierarchy = cv2.findContours(init, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
-        # assert(len(init_pt) == 1)
-        # init_pt = init_pt[0][:, 0, :]
-        #
-        # # active contour
-        # aux = rescale_intensity(dmap_corr, out_range=np.uint8).astype(np.uint8)
-        # snake = active_contour(aux, init_pt, alpha=0.01, beta=1, w_line=-50, w_edge=0, gamma=0.01, bc='periodic')
-
-        # snake = active_contour(contour, init_pt, alpha=0.01, beta=1, w_line=5, w_edge=5, gamma=0.01, bc='periodic')
-
-        if DEBUG:
-            plt.subplot(224)
-            plt.imshow(dmap)
-            plt.plot(init_pt[:, 0], init_pt[:, 1], 'r')
-            plt.plot(snake[:, 0], snake[:, 1], 'w')
 
         # # experiment
         # aux = (contour == 0).astype(np.uint8)

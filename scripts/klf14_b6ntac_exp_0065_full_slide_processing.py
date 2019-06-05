@@ -226,7 +226,7 @@ for file_i, file in enumerate(files_list):
         labels, labels_info = cytometer.utils.segmentation_pipeline2(tile,
                                                                      contour_model, dmap_model,
                                                                      correction_model, classifier_model,
-                                                                     mask=istissue_tile[0, :, :],
+                                                                     mask=istissue_tile,
                                                                      smallest_cell_area=804, batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
