@@ -512,17 +512,17 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
     if contour is not None and contour.shape != dmap.shape:
         raise ValueError('if provided, contour must have the same shape as dmap')
 
-    # compute mean curvature from dmap
-    _, mean_curvature, _, _ = principal_curvatures_range_image(dmap, sigma=sigma)
-
-    # multiply mean curvature by estimated contours, and clip negative values
-    if contour is not None:
-        contour *= mean_curvature
-    else:
-        contour = mean_curvature.copy()
-    contour[contour < 0] = 0
-
     if version == 1:
+
+        # compute mean curvature from dmap
+        _, mean_curvature, _, _ = principal_curvatures_range_image(dmap, sigma=sigma)
+
+        # multiply mean curvature by estimated contours, and clip negative values
+        if contour is not None:
+            contour *= mean_curvature
+        else:
+            contour = mean_curvature.copy()
+        contour[contour < 0] = 0
 
         # rough segmentation of inner areas
         labels = (mean_curvature <= 0).astype('uint8')
@@ -531,6 +531,10 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
         labels = measure.label(labels)
 
     elif version == 2:
+
+        #
+
+
 
         # experiment (thresholding of histology doesn't work to detect contours)
         #r, g, b = tile[0, :, :, 0], tile[0, :, :, 1], tile[0, :, :, 2]
@@ -564,6 +568,9 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
         x0, y0 = (225, 1009)
         x0, y0 = (622, 886)
         x0, y0 = (767, 593)
+        x0, y0 = (604, 867)
+        x0, y0 = (320, 1360)
+        x0, y0 = (213, 997)
 
         # dmap value at the starting point
         pmax = dmap[y0, x0]
@@ -571,19 +578,23 @@ def segment_dmap_contour(dmap, contour=None, sigma=10, min_seed_object_size=50, 
         # create initialisation mask as the pixels with p >= 90% * pmax connected to the initial point
         init = (dmap >= 0.9 * pmax).astype(np.uint8)
         nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(init)
-        init = (labels == labels[y0, x0]).astype(np.uint8)
-        _, init_pt, hierarchy = cv2.findContours(init, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
-        assert(len(init_pt) == 1)
-        init_pt = init_pt[0][:, 0, :]
+        init[labels == labels[y0, x0]] = 2
 
-        # active contour
-        aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
-        snake = active_contour(aux, init_pt, alpha=0.01, beta=1, w_line=-5, w_edge=5, gamma=0.01, bc='periodic')
+        # watershed
+        labels = watershed(contour, init)
+
+        # _, init_pt, hierarchy = cv2.findContours(init, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
+        # assert(len(init_pt) == 1)
+        # init_pt = init_pt[0][:, 0, :]
+        #
+        # # active contour
+        # aux = rescale_intensity(dmap_corr, out_range=np.uint8).astype(np.uint8)
+        # snake = active_contour(aux, init_pt, alpha=0.01, beta=1, w_line=-50, w_edge=0, gamma=0.01, bc='periodic')
 
         # snake = active_contour(contour, init_pt, alpha=0.01, beta=1, w_line=5, w_edge=5, gamma=0.01, bc='periodic')
 
         if DEBUG:
-            plt.clf()
+            plt.subplot(224)
             plt.imshow(dmap)
             plt.plot(init_pt[:, 0], init_pt[:, 1], 'r')
             plt.plot(snake[:, 0], snake[:, 1], 'w')
