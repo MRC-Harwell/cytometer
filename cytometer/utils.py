@@ -13,7 +13,7 @@ from scipy.interpolate import splprep, splev
 from scipy.ndimage.morphology import binary_fill_holes
 from skimage import measure
 from skimage.exposure import rescale_intensity
-from skimage.morphology import watershed, remove_small_objects, remove_small_holes
+from skimage.morphology import watershed, remove_small_objects, remove_small_holes, local_maxima
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
@@ -539,7 +539,11 @@ def segment_dmap_contour(dmap, contour=None,
         # save copy of the dmap
         dmap0 = dmap.copy()
 
-        while True:
+        # mask to keep track of pixels that have been processed already
+        done = np.zeros(dmap.shape, dtype=np.bool)
+
+
+        while not np.all(done):
 
             # indices of the pixel with the maximum distance value in dmap
             y0, x0 = np.unravel_index(np.argmax(dmap), dmap.shape)
@@ -552,8 +556,11 @@ def segment_dmap_contour(dmap, contour=None,
             nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(init)
             init[labels == labels[y0, x0]] = 2
 
+            # mark done pixels as = 1, as part of the outside of the object
+            init[done] = 1
+
             # watershed to separate current object from the rest of the image
-            labels = watershed(-dmap, init, watershed_line=False)
+            labels = watershed(-dmap0, init, watershed_line=False)
             labels = labels.astype(np.uint8)
             # labels = watershed(contour, init, watershed_line=False)  # contours works worse than dmap
 
@@ -578,8 +585,11 @@ def segment_dmap_contour(dmap, contour=None,
                 plt.imshow(init)
                 plt.contour(labels, colors='r')
 
-            # clear current object in dmap
+            # blank current object in dmap, so that it can no longer contribute maxima
             dmap[labels == 1] = 0
+
+            # add current object to mask of processed pixels
+            done[labels == 1] = True
 
 
         # # active contour
@@ -1623,11 +1633,11 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
             plt.imshow(contour_pred[0, :, :, 0])
             plt.subplot(223)
             plt.imshow(dmap_pred[0, :, :, 0])
-            plt.subplot(224)
-            _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_pred[0, :, :, 0], sigma=10)
-            aux = contour_pred[0, :, :, 0] * mean_curvature
-            aux[aux < 0] = 0
-            plt.imshow(aux)
+            # plt.subplot(224)
+            # _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_pred[0, :, :, 0], sigma=10)
+            # aux = contour_pred[0, :, :, 0] * mean_curvature
+            # aux[aux < 0] = 0
+            # plt.imshow(aux)
 
         # combine pipeline branches for instance segmentation
         ##################### FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
