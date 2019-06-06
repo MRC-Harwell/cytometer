@@ -599,6 +599,14 @@ def segment_dmap_contour(dmap, contour=None,
             plt.imshow(contour)
             plt.contour(labels, colors='r', levels=range(np.max(labels)))
 
+        # compute the Region Adjacency Graph using mean colours (the weights from the mean colours will be ignored)
+        rag = rag_mean_color(contour, labels)
+
+        # iterate adjacent labels
+        # for edge in rag.edges:
+
+
+
     else:
 
         raise ValueError('Unknown version')
