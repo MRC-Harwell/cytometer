@@ -14,9 +14,9 @@ from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep
 from skimage import measure
 from skimage.exposure import rescale_intensity
-from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing
+from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing, binary_dilation
 from skimage.feature import peak_local_max
-from skimage.future.graph import rag_mean_color
+from skimage.future.graph import rag_mean_color, show_rag
 from skimage.measure import regionprops
 from skimage.segmentation import clear_border, active_contour, morphological_chan_vese, \
     morphological_geodesic_active_contour, inverse_gaussian_gradient
@@ -600,10 +600,37 @@ def segment_dmap_contour(dmap, contour=None,
             plt.contour(labels, colors='r', levels=range(np.max(labels)))
 
         # compute the Region Adjacency Graph using mean colours (the weights from the mean colours will be ignored)
-        rag = rag_mean_color(contour, labels)
+        rag = rag_mean_color(labels, labels, mode='distance')
 
-        # iterate adjacent labels
-        # for edge in rag.edges:
+        # iterate pairs of adjacent labels (note that if rag.edges has (1,2), it doesn't also have (2,1))
+        for lab_a, lab_b in rag.edges:
+
+            # dilate each label so that they overlap wherever they are adjacent
+            labels_a = (labels == lab_a).astype(np.uint8)
+            labels_b = (labels == lab_b).astype(np.uint8)
+            labels_a = cv2.dilate(labels_a, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
+            labels_b = cv2.dilate(labels_b, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
+
+            # boundary pixels that are common to both labels
+            common = np.logical_and(labels_a, labels_b)
+
+            # countour values along the intersection
+            np.percentile(contour[common], 10)
+            np.percentile(contour[common], 50)
+            np.percentile(contour[common], 90)
+
+            if DEBUG:
+                print((lab_a, lab_b))
+
+                plt.subplot(223)
+                plt.cla()
+                plt.imshow(contour)
+                plt.contour(labels_a, colors='r')
+                plt.contour(labels_b, colors='g')
+
+                plt.subplot(224)
+                plt.cla()
+                plt.imshow(common)
 
 
 
