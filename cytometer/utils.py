@@ -9,7 +9,8 @@ from statistics import mode
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
 from scipy.sparse import dok_matrix
-from scipy.interpolate import splprep, splev
+from scipy.interpolate import splprep,
+from scipy.signal import medfilt
 from scipy.ndimage.morphology import binary_fill_holes
 from skimage import measure
 from skimage.exposure import rescale_intensity
@@ -23,6 +24,7 @@ from skimage.transform import EuclideanTransform, AffineTransform, warp, matrix_
 from skimage.color import rgb2hsv, hsv2rgb
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
+from medpy.filter.smoothing import anisotropic_diffusion
 from mahotas.labeled import borders
 import networkx as nx
 import keras.backend as K
@@ -542,6 +544,9 @@ def segment_dmap_contour(dmap, contour=None,
         # mask to keep track of pixels that have been processed already
         done = np.zeros(dmap.shape, dtype=np.bool)
 
+        aux = medfilt(contour, kernel_size=(11, 11))
+        plt.imshow(aux)
+        plt.imshow(aux == 0)
 
         while not np.all(done):
 
