@@ -7,14 +7,14 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from statistics import mode
 from scipy.interpolate import RectBivariateSpline
+from scipy.ndimage import median_filter
 from scipy.ndimage.filters import gaussian_filter
-from scipy.sparse import dok_matrix
-from scipy.interpolate import splprep,
-from scipy.signal import medfilt
 from scipy.ndimage.morphology import binary_fill_holes
+from scipy.sparse import dok_matrix
+from scipy.interpolate import splprep
 from skimage import measure
 from skimage.exposure import rescale_intensity
-from skimage.morphology import watershed, remove_small_objects, remove_small_holes, local_maxima
+from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color
 from skimage.measure import regionprops
@@ -525,173 +525,83 @@ def segment_dmap_contour(dmap, contour=None,
         # label areas with a different label per connected area
         labels = measure.label(labels)
 
+        # remove very small labels (noise)
+        labels_prop = measure.regionprops(labels)
+        for j in range(1, np.max(labels)):
+            # label of region under consideration is not the same as index j
+            lab = labels_prop[j]['label']
+            if labels_prop[j]['area'] < min_seed_object_size:
+                labels[labels == lab] = 0
+
+        # extend labels using watershed
+        labels = watershed(mean_curvature, labels)
+
+        # extract borders of watershed regions for plots
+        labels_borders = borders(labels)
+
+        # dilate borders for easier visualization
+        if border_dilation > 0:
+            kernel = np.ones((3, 3), np.uint8)
+            labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
+
     elif version == 2:
 
-        # starting point
-        x0, y0 = (895, 1108)
-        x0, y0 = (1011, 1292)
-        x0, y0 = (404, 1520)
-        x0, y0 = (225, 1009)
-        x0, y0 = (622, 886)
-        x0, y0 = (767, 593)
-        x0, y0 = (604, 867)
-        x0, y0 = (320, 1360)
-        x0, y0 = (213, 997)
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(contour)
 
-        # save copy of the dmap
-        dmap0 = dmap.copy()
+        # remove noise from contour image
+        # Note: scipy.signal.medfilt is 9x slower for (21, 21) kernel compared to scipy.ndimage.median_filter
+        contour = median_filter(contour, size=(21, 21))
 
-        # mask to keep track of pixels that have been processed already
-        done = np.zeros(dmap.shape, dtype=np.bool)
+        if DEBUG:
+            plt.subplot(222)
+            plt.imshow(contour)
 
-        aux = medfilt(contour, kernel_size=(11, 11))
-        plt.imshow(aux)
-        plt.imshow(aux == 0)
+        # threshold contours to find seeds (inside areas of cells)
+        seg = (contour == 0).astype(np.uint8)
 
-        while not np.all(done):
+        if DEBUG:
+            plt.subplot(223)
+            plt.imshow(seg)
 
-            # indices of the pixel with the maximum distance value in dmap
-            y0, x0 = np.unravel_index(np.argmax(dmap), dmap.shape)
+        # dilate and erode to reduce the segmentation noise
+        seg = binary_closing(seg.astype(np.bool), selem=np.ones(shape=(21, 21))).astype(np.uint8)
 
-            # dmap value at the starting point
-            pmax = dmap[y0, x0]
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(seg)
 
-            # create initialisation mask as the pixels with p >= 90% * pmax connected to the initial point
-            init = (dmap >= 0.9 * pmax).astype(np.uint8)
-            nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(init)
-            init[labels == labels[y0, x0]] = 2
+        # remove small holes from the segmentation of insides of cells
+        seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
 
-            # mark done pixels as = 1, as part of the outside of the object
-            init[done] = 1
+        if DEBUG:
+            plt.subplot(223)
+            plt.imshow(seg)
 
-            # watershed to separate current object from the rest of the image
-            labels = watershed(-dmap0, init, watershed_line=False)
-            labels = labels.astype(np.uint8)
-            # labels = watershed(contour, init, watershed_line=False)  # contours works worse than dmap
+        # assign different label to each connected components
+        # Note: cv2.connectedComponentsWithStats is 10x faster than skimage.measure.label
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
 
-            # make current object's label = 1, and the rest = 0
-            labels -= 1
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(labels)
 
-            # # extract boundary of the label as a contour
-            # _, init_pt, hierarchy = cv2.findContours(labels, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
-            # assert(len(init_pt) == 1)
-            # init_pt = init_pt[0][:, 0, :]
+        # use watershed to expand the seeds
+        labels = watershed(-dmap, labels, watershed_line=False)
 
-            if DEBUG:
-                plt.clf()
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(labels)
 
-                plt.subplot(121)
-                plt.imshow(dmap)
-                plt.scatter(x0, y0, color='r')
-                plt.contour(labels, colors='r')
-                # plt.plot(init_pt[:, 0], init_pt[:, 1], 'w')
-
-                plt.subplot(122)
-                plt.imshow(init)
-                plt.contour(labels, colors='r')
-
-            # blank current object in dmap, so that it can no longer contribute maxima
-            dmap[labels == 1] = 0
-
-            # add current object to mask of processed pixels
-            done[labels == 1] = True
-
-
-        # # active contour
-        # aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
-        # snake = active_contour(aux, init_pt, alpha=0.01, beta=1, w_line=-50, w_edge=0, gamma=0.01, bc='periodic')
-
-        # snake = active_contour(contour, init_pt, alpha=0.01, beta=1, w_line=5, w_edge=5, gamma=0.01, bc='periodic')
-        # experiment
-
-        # # blurring maintaining edges
-        # aux = cv2.bilateralFilter(contour, 15, 1, 15)
-        #
-        # # adaptive threshold of contour * mean_curvature outputs of CNNs
-        # aux = rescale_intensity(aux, out_range=np.uint8).astype(np.uint8)
-        # aux = cv2.adaptiveThreshold(aux, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 75, 0)
-        #
-        # # find connected components
-        # nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux, connectivity=8)
-        # lblareas = stats[:, cv2.CC_STAT_AREA]
-        #
-        # # remove small objects
-        # aux = remove_small_objects(labels, min_size=750)
-
-
-        # # experiment
-        # aux = (contour == 0).astype(np.uint8)
-        # aux = cv2.erode(aux, kernel=np.ones(shape=(21, 21), dtype=np.uint8))
-        # aux = cv2.dilate(aux, kernel=np.ones(shape=(11, 11), dtype=np.uint8))
-        #
-        # # find connected components
-        # nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
-        # lblareas = stats[:, cv2.CC_STAT_AREA]
-        #
-        # # extend labels using watershed
-        # labels = watershed(mean_curvature, labels)
-        #
-        #
-        #
-        # # experiment
-        # # get local minima
-        # # aux = np.max(contour) - contour
-        # aux = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
-        # pk_idx = peak_local_max(aux, min_distance=100, indices=False, num_peaks_per_label=1)
-        # pk_idx = peak_local_max(aux, min_distance=100, indices=True, num_peaks_per_label=1)
-        #
-        # # experiment
-        # aux = rescale_intensity(contour, out_range=np.float32).astype(np.float32)
-        # aux = (aux >= 0.001).astype(np.uint8)
-        #
-        # # experiment
-        # dmap_uint8 = rescale_intensity(dmap, out_range=np.uint8).astype(np.uint8)
-        # aux = cv2.dilate(dmap_uint8, np.ones(shape=(75, 75), dtype=np.uint8))
-        # pk_idx = np.where(aux == dmap_uint8)
-        # plt.subplot(223)
-        # plt.plot(pk_idx[1], pk_idx[0], 'r.')
-        #
-        # # find connected components
-        # nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(aux)
-        # lblareas = stats[:, cv2.CC_STAT_AREA]
-        #
-        # # labels of large components, that we assume correspond to tissue areas
-        # component_size_threshold = 1000
-        # labels_large = np.where(lblareas > component_size_threshold)[0]
-        # labels_large = list(labels_large)
-        #
-        # # label=0 is the background, so we remove it
-        # labels_large.remove(0)
-        #
-        # # only set pixels that belong to the large components
-        # seg = np.zeros(aux.shape, dtype=np.uint8)
-        # for i in labels_large:
-        #     seg[labels == i] = 255
-
-
+            plt.subplot(222)
+            plt.imshow(contour)
+            plt.contour(labels, colors='r', levels=range(np.max(labels)))
 
     else:
 
         raise ValueError('Unknown version')
-
-    # remove very small labels (noise)
-    labels_prop = measure.regionprops(labels)
-    for j in range(1, np.max(labels)):
-        # label of region under consideration is not the same as index j
-        lab = labels_prop[j]['label']
-        if labels_prop[j]['area'] < min_seed_object_size:
-            labels[labels == lab] = 0
-
-    # extend labels using watershed
-    labels = watershed(mean_curvature, labels)
-
-    # extract borders of watershed regions for plots
-    labels_borders = borders(labels)
-
-    # dilate borders for easier visualization
-    if border_dilation > 0:
-        kernel = np.ones((3, 3), np.uint8)
-        labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
 
     return labels, labels_borders
 
