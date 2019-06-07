@@ -499,13 +499,18 @@ def segment_dmap_contour(dmap, contour=None,
     Gaussian blurring removes part of that noise.
     :param min_seed_object_size: (def 50). Objects with fewer pixels than this value will be discarded.
     :param border_dilation: (def 0) Optional dilation of the watershed borders.
+    :param boundary_threshold: (def 0.1) Threshold for the 90-percentile of contour values along kissing points
+    between adjacent labels. If the 90-percentile < boundary_threshold, we assume that there's no membrane between
+    both labels, and thus they belong to the same cell and should be merged.
+    :param version: (def 2) Implementation version of the segmentation algorithm. version=1 corresponds to a deprecated
+    algorithm, kept only for historical comparisons.
     :return: labels, labels_borders
     """
 
     # auxiliary functions for merge_hierarchical() taken from
     # https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_rag_merge.html#sphx-glr-auto-examples-segmentation-plot-rag-merge-py
     #
-    # For the purpose of this function, what they do is not very important
+    # For the purpose of this function, the details of what they do are not very important
     def _weight_mean_color(graph, src, dst, n):
         diff = graph.node[dst]['mean color'] - graph.node[n]['mean color']
         diff = np.linalg.norm(diff)
@@ -1556,6 +1561,8 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
     The mask can be used to skip segmenting background or another type of tissue.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
     segmentation noise.
+    :param batch_size: (def 16) Parameter for Keras model.predict(..., batch_size=batch_size). With smaller values of
+    batch_size, the model needs to allocate less memory, but takes longer to compute.
     :return: labels, labels_info
 
     labels: numpy.ndarray of size (image, row, col, 1). Instance segmentation of im. Each label segments a different
