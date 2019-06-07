@@ -16,7 +16,7 @@ from skimage import measure
 from skimage.exposure import rescale_intensity
 from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing, binary_dilation
 from skimage.feature import peak_local_max
-from skimage.future.graph import rag_mean_color, show_rag
+from skimage.future.graph import rag_mean_color, show_rag, merge_hierarchical
 from skimage.measure import regionprops
 from skimage.segmentation import clear_border, active_contour, morphological_chan_vese, \
     morphological_geodesic_active_contour, inverse_gaussian_gradient
@@ -465,7 +465,8 @@ def principal_curvatures_range_image(img, sigma=10):
 
 
 def segment_dmap_contour(dmap, contour=None,
-                         sigma=10, min_seed_object_size=50, border_dilation=0, version=2):
+                         sigma=10, min_seed_object_size=50, border_dilation=0, boundary_threshold=0.1,
+                         version=2):
     """
     Segment cells from a distance transformation image, and optionally, a contour estimate image.
 
@@ -501,6 +502,20 @@ def segment_dmap_contour(dmap, contour=None,
     :return: labels, labels_borders
     """
 
+    # auxiliary functions for merge_hierarchical() taken from
+    # https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_rag_merge.html#sphx-glr-auto-examples-segmentation-plot-rag-merge-py
+    #
+    # For the purpose of this function, what they do is not very important
+    def _weight_mean_color(graph, src, dst, n):
+        diff = graph.node[dst]['mean color'] - graph.node[n]['mean color']
+        diff = np.linalg.norm(diff)
+        return {'weight': diff}
+
+    def merge_mean_color(graph, src, dst):
+        graph.node[dst]['total color'] += graph.node[src]['total color']
+        graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
+        graph.node[dst]['mean color'] = (graph.node[dst]['total color'] / graph.node[dst]['pixel count'])
+
     # check size of inputs
     if dmap.ndim != 2:
         raise ValueError('dmap array must have 2 dimensions')
@@ -535,14 +550,6 @@ def segment_dmap_contour(dmap, contour=None,
 
         # extend labels using watershed
         labels = watershed(mean_curvature, labels)
-
-        # extract borders of watershed regions for plots
-        labels_borders = borders(labels)
-
-        # dilate borders for easier visualization
-        if border_dilation > 0:
-            kernel = np.ones((3, 3), np.uint8)
-            labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
 
     elif version == 2:
 
@@ -599,6 +606,21 @@ def segment_dmap_contour(dmap, contour=None,
             plt.imshow(contour)
             plt.contour(labels, colors='r', levels=range(np.max(labels)))
 
+        # For every pair of adjacent labels, we want to find out whether both belong to different cells (i.e.
+        # they have a membrane between them), or they belong to the same cell and should be merged.
+        #
+        # To do this efficiently, we are going to use a Region Adjacency Graph (RAG) that will create a graph
+        # where each node corresponds to one label, and edges indicate that two labels are adjacent.
+        #
+        # The edge weight = norm([la, la, la] - [lb, lb, lb]), where la, lb are the two labels. This is how it's
+        # implemented in rag_mean_color(). We don't care about the value of the weight as long as it's > 0.
+        #
+        # Then, we are going to check pairs of adjacent labels. If they should be merge, we make the edge weight = 0.
+        # The criterion to decide whether labels should be merged is to check whether on the kissing points between
+        # both labels we have a membrane or not.
+        #
+        # Once all edges have been examined, the graph can be simplified in one go with merge_hierarchical().
+
         # compute the Region Adjacency Graph using mean colours (the weights from the mean colours will be ignored)
         rag = rag_mean_color(labels, labels, mode='distance')
 
@@ -611,32 +633,35 @@ def segment_dmap_contour(dmap, contour=None,
             labels_a = cv2.dilate(labels_a, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
             labels_b = cv2.dilate(labels_b, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
 
-            # boundary pixels that are common to both labels
+            # boundary pixels that are common to both labels (kissing points)
             common = np.logical_and(labels_a, labels_b)
 
-            # countour values along the intersection
-            np.percentile(contour[common], 10)
-            np.percentile(contour[common], 50)
-            np.percentile(contour[common], 90)
+            # if the 90-percentile of the contour values along the kissing points is small, that means that the
+            # separation between the two labels is spurious, because there's probably no membrane between them
+            if np.percentile(contour[common], 90) <= boundary_threshold:
+                if DEBUG:
+                    print('Merging ' + str((lab_a, lab_b)))
+                nx.set_edge_attributes(rag, {(lab_a, lab_b): {'weight': 0}})
 
-            if DEBUG:
-                print((lab_a, lab_b))
+        # update the labels by greedy merging
+        labels = merge_hierarchical(labels, rag, thresh=0.1, rag_copy=False, in_place_merge=True,
+                                    merge_func=merge_mean_color, weight_func=_weight_mean_color)
 
-                plt.subplot(223)
-                plt.cla()
-                plt.imshow(contour)
-                plt.contour(labels_a, colors='r')
-                plt.contour(labels_b, colors='g')
-
-                plt.subplot(224)
-                plt.cla()
-                plt.imshow(common)
-
-
+        if DEBUG:
+            plt.subplot(224)
+            plt.contour(labels, levels=np.unique(labels), colors='r')
 
     else:
 
-        raise ValueError('Unknown version')
+        raise ValueError('You are asking for a version of this function that does not exist')
+
+    # extract borders of watershed regions for plots
+    labels_borders = borders(labels)
+
+    # dilate borders for easier visualization
+    if border_dilation > 0:
+        kernel = np.ones((3, 3), np.uint8)
+        labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
 
     return labels, labels_borders
 
