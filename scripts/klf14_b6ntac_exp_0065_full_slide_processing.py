@@ -83,6 +83,8 @@ block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
 block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
 
 # segmentation parameters
+min_mask_overlap = 0.8
+min_cell_area = 1500
 batch_size = 16
 
 # process all histology slices in the data directory
@@ -227,7 +229,9 @@ for file_i, file in enumerate(files_list):
                                                                      contour_model, dmap_model,
                                                                      correction_model, classifier_model,
                                                                      mask=istissue_tile,
-                                                                     smallest_cell_area=804, batch_size=batch_size)
+                                                                     min_mask_overlap=min_mask_overlap,
+                                                                     min_cell_area=min_cell_area,
+                                                                     batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop

@@ -1358,11 +1358,76 @@ def edge_labels(labels):
     return edge_labels
 
 
+def clean_segmentation(labels, remove_edge_labels=False, min_cell_area=0, mask=None, min_mask_overlap=0.6):
+    """
+    The function packs several methods to remove unwanted labels from a segmentation:
+      * Remove labels that touch the edges of the segmentation.
+      * Remove labels that are smaller than a certain size.
+      * Remove labels that don't overlap enough with a binary mask.
+    
+    :param labels: (row, col) np.ndarray with segmentation labels.
+    :param remove_edge_labels: (def False) Boolean to remove labels that touch the edge of the image.
+    :param min_cell_area: (def 0) Remove labels with area < min_cell_area.
+    :param mask: (def None) (row, col) np.ndarray binary mask. If provided, remove labels that don't overlap
+    enough with the mask.
+    :param min_mask_overlap: (def 0.6) Remove labels that don't have at least min_mask_overlap of their pixels
+    within the mask.
+    :return: (row, col) np.ndarray with removed labels as requested.
+    """
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(labels)
+
+    # remove edge segmentations, because in general they correspond to incomplete objects
+    if remove_edge_labels:
+        labels_edge = edge_labels(labels)
+        idx = np.isin(labels, test_elements=labels_edge)
+        labels[idx] = 0
+
+    if DEBUG:
+        plt.subplot(222)
+        plt.imshow(labels)
+
+    # remove labels that are too small
+    labels = remove_small_objects(labels, min_size=min_cell_area)
+
+    if DEBUG:
+        plt.subplot(223)
+        plt.imshow(labels)
+
+    # remove labels that are not substantially within the mask
+    if mask is not None:
+
+        # count number of pixels in each label after we multiply by the mask
+        props_masked = regionprops(labels * mask)
+
+        # create a lookup table for quick search of masked label area
+        max_label = np.max([p.label for p in props_masked])
+        area_masked_lut = np.zeros(shape=(max_label + 1,))
+        for p_masked in props_masked:
+            area_masked_lut[p_masked.label] = p_masked.area
+
+        # check for each original label whether it is at least min_mask_overlap (def 60%) covered by the mask
+        for p in props_masked:
+            if area_masked_lut[p.label] < p.area * min_mask_overlap:
+                labels[labels == p.label] = 0
+
+    if DEBUG:
+        plt.subplot(224)
+        plt.imshow(labels)
+
+    return labels
+
+
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
                           quality_model_type='0_1', quality_model_preprocessing=None,
                           mask=None, smallest_cell_area=804):
     """
     Instance segmentation of cells using the contour + distance transformation pipeline.
+
+    DEPRECATED by segmentation_pipeline2(). Kept for historical comparisons.
 
     :param im: numpy.ndarray (image, row, col, channel) with RGB histology images.
     :param contour_model: filename or keras model for the contour detection neural network. This is assumed to
@@ -1432,29 +1497,11 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
                                                                               contour=contour_pred[0, :, :, 0],
                                                                               border_dilation=0)
 
-        # remove labels that are too small
-        aux = labels[i, :, :, 0]
-        props = regionprops(aux)
-        for p in props:
-            if p.area < smallest_cell_area:
-                aux[aux == p.label] = 0
-
-        # remove labels that are not substantially within the mask
-        if mask is not None:
-
-            # count number of pixels in each label after we multiply by the mask
-            props_masked = regionprops(aux * mask[i, :, :])
-
-            # create a lookup table for quick search of masked label area
-            max_label = np.max([p.label for p in props])
-            area_masked = np.zeros(shape=(max_label + 1,))
-            for p_masked in props_masked:
-                area_masked[p_masked.label] = p_masked.area
-
-            # check for each original label whether it is at least 60% covered by the mask
-            for p in props:
-                if area_masked[p.label] < p.area * 0.60:
-                    aux[aux == p.label] = 0
+        # remove labels that touch the edges, that are too small or that don't overlap enough with the rough foreground
+        # mask
+        labels[i, :, :, 0] = clean_segmentation(labels[i, :, :, 0],
+                                                remove_edge_labels=False, min_cell_area=smallest_cell_area,
+                                                mask=mask[i, :, :], min_mask_overlap=0.6)
 
         if DEBUG:
             plt.clf()
@@ -1536,7 +1583,7 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
 
 def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, correction_model=None,
                            classifier_model_preprocessing=None,
-                           mask=None, smallest_cell_area=804, batch_size=16):
+                           mask=None, min_mask_overlap=0.6, min_cell_area=804, batch_size=16):
     """
     Instance segmentation of cells using the contour + distance transformation pipeline.
 
@@ -1544,6 +1591,9 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
     :param contour_model: filename or keras model for the contour detection neural network. This is assumed to
     be a convolutional network where the output has the same (row, col) as the input.
     :param dmap_model: filename or keras model for the distance transformation regression neural network.
+    This is assumed to be a convolutional network where the output has the same (row, col) as the input.
+    :param classifier_model: filename or keras model for the pixel tissue classifier neural network.
+    Output 0 = white adipocyte. Output 1 = other type of tissue.
     This is assumed to be a convolutional network where the output has the same (row, col) as the input.
     :param correction_model: filename or keras model for the quality coefficient estimation neural network.
     This network processes one cell at a time. Networks trained for different types of masking can be used
@@ -1559,7 +1609,9 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
     * 'polar': Convert image from (x,y) to polar (rho, theta)=(cols, rows) coordinates.
     :param mask: (def None) If provided, labels that intersect less than 60% with the mask are ignored.
     The mask can be used to skip segmenting background or another type of tissue.
-    :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as
+    :param min_mask_overlap: (def 0.6) Remove labels that don't have at least min_mask_overlap of their pixels
+    within the mask.
+    :param min_cell_area: (def 804) Labels with area < min_cell_area pixels will be removed as
     segmentation noise.
     :param batch_size: (def 16) Parameter for Keras model.predict(..., batch_size=batch_size). With smaller values of
     batch_size, the model needs to allocate less memory, but takes longer to compute.
@@ -1615,64 +1667,40 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
             plt.imshow(contour_pred[0, :, :, 0])
             plt.subplot(223)
             plt.imshow(dmap_pred[0, :, :, 0])
-            # plt.subplot(224)
-            # _, mean_curvature, _, _ = principal_curvatures_range_image(dmap_pred[0, :, :, 0], sigma=10)
-            # aux = contour_pred[0, :, :, 0] * mean_curvature
-            # aux[aux < 0] = 0
-            # plt.imshow(aux)
 
         # combine pipeline branches for instance segmentation
-        ##################### FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-        # dmap = dmap_pred[0, :, :, 0]
         labels[i, :, :, 0], labels_borders[i, :, :, 0] = segment_dmap_contour(dmap_pred[0, :, :, 0],
                                                                               contour=contour_pred[0, :, :, 0],
                                                                               border_dilation=0,
                                                                               version=2)
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(labels[i, :, :, 0])
 
-        # pointer to labels[i, :, :, 0] so that we can work on each slice by reference
-        labels_aux = labels[i, :, :, 0]
+        # remove labels that touch the edges, that are too small or that don't overlap enough with the rough foreground
+        # mask
+        labels[i, :, :, 0] = clean_segmentation(labels[i, :, :, 0],
+                                                remove_edge_labels=True, min_cell_area=min_cell_area,
+                                                mask=mask[i, :, :], min_mask_overlap=min_mask_overlap)
 
-        # remove edge segmentations, because in general they correspond to incomplete objects
-        labels_edge = edge_labels(labels_aux)
-        idx = np.isin(labels_aux, test_elements=labels_edge)
-        labels_aux[idx] = 0
-
-        # remove labels that are too small
-        props = regionprops(labels_aux)
-        for p in props:
-            if p.area < smallest_cell_area:
-                labels_aux[labels_aux == p.label] = 0
-
-        # remove labels that are not substantially within the mask
-        if mask is not None:
-
-            # count number of pixels in each label after we multiply by the mask
-            props_masked = regionprops(labels_aux * mask[i, :, :])
-
-            # create a lookup table for quick search of masked label area
-            max_label = np.max([p.label for p in props])
-            area_masked = np.zeros(shape=(max_label + 1,))
-            for p_masked in props_masked:
-                area_masked[p_masked.label] = p_masked.area
-
-            # check for each original label whether it is at least 60% covered by the mask
-            for p in props:
-                if area_masked[p.label] < p.area * 0.60:
-                    labels_aux[labels_aux == p.label] = 0
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(labels[i, :, :, 0])
 
         if DEBUG:
             plt.clf()
             plt.subplot(121)
             plt.imshow(one_im[0, :, :, :])
             plt.subplot(122)
-            plt.imshow(labels[i, :, :, 0])
+            plt.imshow(one_im[0, :, :, :])
+            plt.contour(labels[i, :, :, 0], levels=np.unique(labels[i, :, :, 0]), colors='r')
 
     # split histology images into individual segmented objects
     # Note: smallest_cell_area should be redundant here, because small labels have been removed
     cell_im, cell_seg, cell_index = one_image_per_label(dataset_im=im,
                                                         dataset_lab_test=labels,
                                                         training_window_len=training_window_len,
-                                                        smallest_cell_area=smallest_cell_area)
+                                                        smallest_cell_area=min_cell_area)
 
     # if no cells extracted
     if len(cell_im) == 0:
