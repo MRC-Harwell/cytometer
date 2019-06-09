@@ -8,6 +8,9 @@ Validate pipeline v2:
 
 """
 
+# script name to identify this experiment
+experiment_id = 'klf14_b6ntac_exp_0066_pipeline_validation'
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
@@ -88,9 +91,6 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-# script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0066_pipeline_validation'
-
 # model names
 contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour_model'
 dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap_model'
@@ -123,11 +123,17 @@ for i_fold in range(n_folds):
 
     print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
 
+    # in these folds, the contour model failed to train properly, and produces outputs that are all zeros
+    if i_fold in [1, 2, 10]:
+        print('Skipping')
+        continue
+
     '''Load data
     '''
 
     # list of test files in this fold
     file_list_test = np.array(file_list)[idx_test_all[i_fold]]
+    # file_list_train = np.array(file_list)[idx_train_all[i_fold]]
 
     # load quality model
     quality_model_filename = os.path.join(saved_models_dir, quality_model_basename + '_fold_' + str(i_fold) + '.h5')
@@ -144,7 +150,7 @@ for i_fold in range(n_folds):
         # change file extension from .svg to .tif
         file_tif = file_svg.replace('.svg', '.tif')
 
-        # open histology training image
+        # open histology testing image
         im = Image.open(file_tif)
 
         # read pixel size information
@@ -224,7 +230,7 @@ for i_fold in range(n_folds):
             labels_seg.remove(0)
 
         if len(labels_seg) == 0:
-            continue
+            warnings.warn('No labels produced!')
 
         if DEBUG:
             plt.clf()
