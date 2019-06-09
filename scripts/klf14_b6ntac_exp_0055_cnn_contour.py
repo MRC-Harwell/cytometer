@@ -162,11 +162,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
-    # HACK: recompute only contour models that give 0 outputs
-    if i_fold not in [1, 2, 7, 10]:
-        print('## Skipping')
-        continue
-
     '''Load data
     '''
 
