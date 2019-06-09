@@ -466,6 +466,7 @@ def principal_curvatures_range_image(img, sigma=10):
 
 def segment_dmap_contour(dmap, contour=None,
                          sigma=10, min_seed_object_size=50, border_dilation=0, boundary_threshold=0.1,
+                         median_size=11, closing_size=11, contour_seed_threshold=0,
                          version=2):
     """
     Segment cells from a distance transformation image, and optionally, a contour estimate image.
@@ -502,6 +503,16 @@ def segment_dmap_contour(dmap, contour=None,
     :param boundary_threshold: (def 0.1) Threshold for the 90-percentile of contour values along kissing points
     between adjacent labels. If the 90-percentile < boundary_threshold, we assume that there's no membrane between
     both labels, and thus they belong to the same cell and should be merged.
+    :param median_size: (def 11) Kernel size for the median filter to reduce noise in the output of the contour CNN.
+    Larger values may blur contours too much, so there won't be seeds inside of the cells. Smaller values may leave
+    fragmented seeds, that split cells into two or more labels.
+    :param closing_size: (def 11) Kernel size for the dilation and erosion operation that reduces noise in the
+    segmentation seeds (ideally, you get a connected component seed per cell). Larger values may merge neighbour cells
+    together, whereas a low value may fragment a cell into two or more labels.
+    :param contour_seed_threshold: (def 0) The output of the contour CNN are contour values. Segmentations seeds inside
+    of cells are computed as contour <= contour_seed_threshold. Usually, 0 works well. This value can be
+    increased a bit if some cells fail to get a seed. However, contour values on membranes are often as low as 0.1.
+    Thus, even small values of contour_seed_threshold can create seeds that overflow the cell.
     :param version: (def 2) Implementation version of the segmentation algorithm. version=1 corresponds to a deprecated
     algorithm, kept only for historical comparisons.
     :return: labels, labels_borders
@@ -565,21 +576,22 @@ def segment_dmap_contour(dmap, contour=None,
 
         # remove noise from contour image
         # Note: scipy.signal.medfilt is 9x slower for (21, 21) kernel compared to scipy.ndimage.median_filter
-        contour = median_filter(contour, size=(21, 21))
+        if median_size > 1:
+            contour = median_filter(contour, size=(median_size, median_size))
 
         if DEBUG:
             plt.subplot(222)
             plt.imshow(contour)
 
         # threshold contours to find seeds (inside areas of cells)
-        seg = (contour == 0).astype(np.uint8)
+        seg = (contour <= contour_seed_threshold).astype(np.uint8)
 
         if DEBUG:
             plt.subplot(223)
             plt.imshow(seg)
 
         # dilate and erode to reduce the segmentation noise
-        seg = binary_closing(seg.astype(np.bool), selem=np.ones(shape=(21, 21))).astype(np.uint8)
+        seg = binary_closing(seg.astype(np.bool), selem=np.ones(shape=(closing_size, closing_size))).astype(np.uint8)
 
         if DEBUG:
             plt.subplot(224)
@@ -598,6 +610,7 @@ def segment_dmap_contour(dmap, contour=None,
 
         if DEBUG:
             plt.subplot(224)
+            plt.cla()
             plt.imshow(labels)
 
         # use watershed to expand the seeds
