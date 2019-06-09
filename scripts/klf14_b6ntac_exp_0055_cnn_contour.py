@@ -162,6 +162,11 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
+    # HACK: recompute only contour models that give 0 outputs
+    if i_fold not in [1, 2, 10]:
+        print('## Skipping')
+        continue
+
     '''Load data
     '''
 
@@ -181,8 +186,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
     # remove training data where the mask has very few valid pixels
-    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
-    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
+    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='seg', threshold=1900)
+    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='seg', threshold=1900)
 
     if DEBUG:
         i = 150
