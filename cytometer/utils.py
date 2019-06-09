@@ -639,31 +639,33 @@ def segment_dmap_contour(dmap, contour=None,
         #
         # Once all edges have been examined, the graph can be simplified in one go with merge_hierarchical().
 
-        # compute the Region Adjacency Graph using mean colours (the weights from the mean colours will be ignored)
-        rag = rag_mean_color(labels, labels, mode='distance')
+        if len(np.unique(labels)) > 1:
 
-        # iterate pairs of adjacent labels (note that if rag.edges has (1,2), it doesn't also have (2,1))
-        for lab_a, lab_b in rag.edges:
+            # compute the Region Adjacency Graph using mean colours (the weights from the mean colours will be ignored)
+            rag = rag_mean_color(labels, labels, mode='distance')
 
-            # dilate each label so that they overlap wherever they are adjacent
-            labels_a = (labels == lab_a).astype(np.uint8)
-            labels_b = (labels == lab_b).astype(np.uint8)
-            labels_a = cv2.dilate(labels_a, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
-            labels_b = cv2.dilate(labels_b, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
+            # iterate pairs of adjacent labels (note that if rag.edges has (1,2), it doesn't also have (2,1))
+            for lab_a, lab_b in rag.edges:
 
-            # boundary pixels that are common to both labels (kissing points)
-            common = np.logical_and(labels_a, labels_b)
+                # dilate each label so that they overlap wherever they are adjacent
+                labels_a = (labels == lab_a).astype(np.uint8)
+                labels_b = (labels == lab_b).astype(np.uint8)
+                labels_a = cv2.dilate(labels_a, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
+                labels_b = cv2.dilate(labels_b, kernel=np.ones(shape=(3, 3), dtype=np.uint8))
 
-            # if the 90-percentile of the contour values along the kissing points is small, that means that the
-            # separation between the two labels is spurious, because there's probably no membrane between them
-            if np.percentile(contour[common], 90) <= boundary_threshold:
-                if DEBUG:
-                    print('Merging ' + str((lab_a, lab_b)))
-                nx.set_edge_attributes(rag, {(lab_a, lab_b): {'weight': 0}})
+                # boundary pixels that are common to both labels (kissing points)
+                common = np.logical_and(labels_a, labels_b)
 
-        # update the labels by greedy merging
-        labels = merge_hierarchical(labels, rag, thresh=0.1, rag_copy=False, in_place_merge=True,
-                                    merge_func=merge_mean_color, weight_func=_weight_mean_color)
+                # if the 90-percentile of the contour values along the kissing points is small, that means that the
+                # separation between the two labels is spurious, because there's probably no membrane between them
+                if np.percentile(contour[common], 90) <= boundary_threshold:
+                    if DEBUG:
+                        print('Merging ' + str((lab_a, lab_b)))
+                    nx.set_edge_attributes(rag, {(lab_a, lab_b): {'weight': 0}})
+
+            # update the labels by greedy merging
+            labels = merge_hierarchical(labels, rag, thresh=0.1, rag_copy=False, in_place_merge=True,
+                                        merge_func=merge_mean_color, weight_func=_weight_mean_color)
 
         if DEBUG:
             plt.subplot(224)
