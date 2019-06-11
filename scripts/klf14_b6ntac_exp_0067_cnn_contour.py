@@ -46,11 +46,11 @@ import cytometer.model_checkpoint_parallel
 import random
 import tensorflow as tf
 
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 1.0
-# set_session(tf.Session(config=config))
+# limit GPU memory used
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.9
+set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -232,7 +232,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                                                            verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'classification_output': cytometer.utils.focal_loss(alpha=.25, gamma=2)},
+        parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.25, gamma=2)},
                                optimizer='Adadelta',
                                metrics={'classification_output': 'accuracy'},
                                sample_weight_mode='element')
@@ -257,7 +257,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                                        verbose=1, save_best_only=True)
 
         # compile model
-        model.compile(loss={'classification_output': cytometer.utils.focal_loss(alpha=.25, gamma=2)},
+        model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.25, gamma=2)},
                       optimizer='Adadelta',
                       metrics={'classification_output': 'accuracy'},
                       sample_weight_mode='element')

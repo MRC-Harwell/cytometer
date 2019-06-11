@@ -360,7 +360,7 @@ for i_fold in range(0, len(idx_test_all)):
                                                                            verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'output': cytometer.utils.focal_loss(alpha=.25, gamma=2)},
+        parallel_model.compile(loss={'output': cytometer.utils.binary_focal_loss(alpha=.25, gamma=2)},
                                optimizer='Adadelta',
                                metrics={'output': ['acc']},
                                sample_weight_mode='element')
@@ -386,7 +386,7 @@ for i_fold in range(0, len(idx_test_all)):
                                                        verbose=1, save_best_only=True)
 
         # compile model
-        model.compile(loss={'output': cytometer.utils.focal_loss(alpha=.25, gamma=2)},
+        model.compile(loss={'output': cytometer.utils.binary_focal_loss(alpha=.25, gamma=2)},
                       optimizer='Adadelta',
                       metrics={'output': ['acc']},
                       sample_weight_mode='element')
