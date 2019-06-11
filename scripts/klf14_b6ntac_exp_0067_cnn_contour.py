@@ -28,7 +28,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -181,6 +181,17 @@ for i_fold, idx_test in enumerate(idx_test_all):
     test_dataset, test_file_list, test_shuffle_idx = \
         cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'seg', 'mask'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
+
+    # add seg pixels to the mask, because the mask doesn't fully cover the contour
+    train_dataset['mask'] = np.logical_or(train_dataset['mask'], train_dataset['seg'])
+    test_dataset['mask'] = np.logical_or(test_dataset['mask'], test_dataset['seg'])
+
+    # cast data to float32
+    train_dataset['mask'] = train_dataset['mask'].astype(np.float32)
+    test_dataset['mask'] = test_dataset['mask'].astype(np.float32)
+
+    train_dataset['seg'] = train_dataset['seg'].astype(np.float32)
+    test_dataset['seg'] = test_dataset['seg'].astype(np.float32)
 
     # remove training data where the mask has very few valid pixels
     train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='seg', threshold=1900)
