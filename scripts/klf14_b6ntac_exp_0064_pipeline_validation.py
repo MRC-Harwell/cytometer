@@ -30,7 +30,7 @@ from sklearn.metrics import roc_curve, auc
 from scipy.stats import linregress
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -199,7 +199,8 @@ for i_fold in range(n_folds):
         labels, _ \
             = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
                                                    contour=contour_pred[0, :, :, 0],
-                                                   border_dilation=0)
+                                                   border_dilation=0,
+                                                   version=1)
 
         # remove edge segmentations, because in general they correspond to incomplete objects
         labels_edge = cytometer.utils.edge_labels(labels)
