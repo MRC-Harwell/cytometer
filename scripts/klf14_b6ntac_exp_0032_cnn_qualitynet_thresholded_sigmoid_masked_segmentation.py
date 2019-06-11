@@ -190,7 +190,7 @@ for i_fold in range(1):  # this is a clunky way of doing i_fold = 0, but that ca
                                                                            verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'fc1': cytometer.utils.focal_loss(alpha=.25, gamma=2)},
+        parallel_model.compile(loss={'fc1': cytometer.utils.binary_focal_loss(alpha=.25, gamma=2)},
                                optimizer='Adadelta',
                                metrics={'fc1': ['acc']})
 
@@ -212,7 +212,7 @@ for i_fold in range(1):  # this is a clunky way of doing i_fold = 0, but that ca
                                                        verbose=1, save_best_only=True)
 
         # compile model
-        model.compile(loss={'fc1': cytometer.utils.focal_loss(alpha=.25, gamma=2)},
+        model.compile(loss={'fc1': cytometer.utils.binary_focal_loss(alpha=.25, gamma=2)},
                       optimizer='Adadelta',
                       metrics={'fc1': ['acc']})
 
