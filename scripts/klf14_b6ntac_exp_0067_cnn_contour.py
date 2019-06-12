@@ -141,14 +141,13 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
     return Model(inputs=input, outputs=[classification_output])
 
 
-'''Prepare folds
+'''Main code
 '''
 
 # load list of images, and indices for training vs. testing indices
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_kfold_info.pickle')
 with open(contour_model_kfold_filename, 'rb') as f:
     aux = pickle.load(f)
-aux = pickle.load(f)
 im_svg_file_list = aux['file_list']
 idx_orig_test_all = aux['idx_test']
 
