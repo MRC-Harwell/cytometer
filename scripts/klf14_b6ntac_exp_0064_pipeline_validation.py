@@ -1,6 +1,6 @@
 """
 Validate pipeline:
- * segmentation
+ * segmentation v1
    * contour (0055)
    * dmap (0056)
  * classifier (0061)
