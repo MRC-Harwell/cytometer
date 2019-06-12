@@ -6,7 +6,14 @@ Contour segmentation for all folds using focal loss.
 
 Training vs testing is done at the histology slide level, not at the window level. This way, we really guarantee that
 the network has not been trained with data sampled from the same image as the test data.
+
+Training for the CNN:
+* Input: histology
+* Output: hand tracked contours, dilated a bit.
+* Other: mask for the loss function, to avoid looking outside of where we have contours.
 '''
+
+experiment_id = 'klf14_b6ntac_exp_0067_cnn_contour'
 
 # cross-platform home directory
 from pathlib import Path
@@ -76,12 +83,8 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-# script name to identify this experiment
-experiment_id = inspect.getfile(inspect.currentframe())
-if experiment_id == '<input>':
-    experiment_id = 'unknownscript'
-else:
-    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
+saved_contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour'
+
 
 '''CNN Model
 '''
@@ -141,28 +144,25 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
 '''Prepare folds
 '''
 
-# we are interested only in .tif files for which we created hand segmented contours
-file_list = glob.glob(os.path.join(training_dir, '*.svg'))
-
-# number of images
-n_orig_im = len(file_list)
-
-# split data into training and testing for k-folds
-kfold_info_filename = os.path.join(saved_models_dir, experiment_id + '_kfold_info.pickle')
-idx_train_all, idx_test_all = cytometer.data.split_file_list_kfolds(
-    file_list, n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=kfold_info_filename)
+# load list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_kfold_info.pickle')
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+aux = pickle.load(f)
+im_svg_file_list = aux['file_list']
+idx_orig_test_all = aux['idx_test']
 
 # list of non-overlapped segmentations
 im_orig_file_list = []
-for i, file in enumerate(file_list):
+for i, file in enumerate(im_svg_file_list):
     im_orig_file_list.append(file.replace('.svg', '.tif'))
     im_orig_file_list[i] = os.path.join(training_augmented_dir, 'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
-for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-    print('## Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+    print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
 
     '''Load data
     '''
