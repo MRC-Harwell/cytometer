@@ -42,7 +42,7 @@ import keras
 import keras.backend as K
 
 from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
+from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation, Dense
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -133,6 +133,19 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
 
     # dimensionality reduction
+    x = Conv2D(filters=64, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
+
+    x = Conv2D(filters=8, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
+
     x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
 
     # classification output
