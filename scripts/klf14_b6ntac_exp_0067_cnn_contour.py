@@ -1,5 +1,6 @@
 '''
 Contour segmentation for all folds using focal loss.
+The CNN has 3 dimensionality reduction layers at the end, instead of 1.
 
 (klf14_b6ntac_exp_0006_cnn_contour only computes fold 0.)
 (klf14_b6ntac_exp_0055_cnn_contour.py uses binary crossentropy.)
