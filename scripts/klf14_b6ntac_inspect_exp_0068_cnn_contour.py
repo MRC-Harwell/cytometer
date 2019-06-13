@@ -1,5 +1,6 @@
 """
 Contour segmentation for all folds using focal loss. Use transfer learning from dmap networks.
+The CNN has 3 dimensionality reduction layers at the end, instead of 1.
 
 (klf14_b6ntac_exp_0006_cnn_contour only computes fold 0.)
 (klf14_b6ntac_exp_0055_cnn_contour.py uses binary crossentropy.)
@@ -48,6 +49,7 @@ set_session(tf.Session(config=config))
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
 
+SAVE_FIGS = False
 DEBUG = False
 
 # number of folds for k-fold cross validation
@@ -82,12 +84,16 @@ training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+figures_dir = os.path.join(root_data_dir, 'figures')
 
 # script name that created the folds
 folds_basename = 'klf14_b6ntac_exp_0055_cnn_contour'
 
 # script that trained the contour models
 contour_model_basename = 'klf14_b6ntac_exp_0068_cnn_contour'
+
+# experiment we are inspecting
+experiment_id = 'klf14_b6ntac_exp_0068_cnn_contour'
 
 # load k-folds training and testing data
 kfold_info_filename = os.path.join(saved_models_dir, folds_basename + '_kfold_info.pickle')
@@ -186,3 +192,34 @@ lay = 15
 w = contour_model.get_layer(index=lay).get_weights()
 plt.plot(w[0][0, 0, :, 0])
 plt.plot(w[1][0, 0, :, 0])
+
+'''Plot metrics and convergence
+'''
+
+log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
+
+if os.path.isfile(log_filename):
+
+    # read Keras output
+    df_list = cytometer.data.read_keras_training_output(log_filename)
+
+    # plot metrics with every iteration
+    plt.clf()
+    for df in df_list:
+        plt.subplot(211)
+        # loss_plot, = plt.semilogy(df.index, df.loss, label='Loss')
+        loss_plot, = plt.plot(df.index, df.loss, label='Loss')
+        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
+        # epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='End of epoch')
+        epoch_ends_plot1, = plt.plot(epoch_ends, df.loss[epoch_ends], 'ro', label='End of epoch')
+        plt.legend(handles=[loss_plot, epoch_ends_plot1])
+        plt.tick_params(labelsize=16)
+        plt.subplot(212)
+        regr_mae_plot, = plt.plot(df.index, df.acc, label='Acc')
+        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='End of epoch')
+        plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
+        plt.tick_params(labelsize=16)
+        plt.xlabel('Steps', fontsize=16)
+
+if SAVE_FIGS:
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0068_training_convergence.png'))
