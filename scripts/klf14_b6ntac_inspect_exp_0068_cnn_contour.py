@@ -179,8 +179,8 @@ for i_fold in range(n_folds):
 '''
 
 x = np.expand_dims(im_array, axis=0)
-intermediate_layer_model = Model(inputs=contour_model.input,
-                                 outputs=contour_model.get_layer(index=lay).output)
+intermediate_layer_model = keras.models.Model(inputs=contour_model.input,
+                                              outputs=contour_model.get_layer(index=lay).output)
 print(contour_model.get_layer(index=lay).name)
 intermediate_output = intermediate_layer_model.predict(x[:, 0:500, 0:500, :])
 
