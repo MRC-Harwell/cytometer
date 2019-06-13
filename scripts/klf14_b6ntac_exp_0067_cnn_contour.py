@@ -35,7 +35,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -133,6 +133,19 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
         x = Activation('relu')(x)
 
     # dimensionality reduction
+    x = Conv2D(filters=64, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
+
+    x = Conv2D(filters=8, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+
+    if for_receptive_field:
+        x = Activation('linear')(x)
+    else:
+        x = Activation('relu')(x)
+
     x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
 
     # classification output
