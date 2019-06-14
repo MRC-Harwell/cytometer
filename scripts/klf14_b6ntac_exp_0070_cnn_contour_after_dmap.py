@@ -176,6 +176,11 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     print('## Fold ' + str(i_fold) + '/' + str(len(idx_orig_test_all) - 1))
 
+    # HACK: skip already computed fold
+    if i_fold == 0:
+        print('## Skip')
+        continue
+
     '''Load data
     '''
 
