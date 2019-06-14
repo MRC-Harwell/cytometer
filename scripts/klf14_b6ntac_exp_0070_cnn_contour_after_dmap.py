@@ -1,6 +1,5 @@
 '''
-Contour segmentation for all folds using binary crossentropy.
-Train on the output of dmaps, to detect contours.
+Contour segmentation of dmaps for all folds using binary crossentropy.
 
 Training vs testing is done at the histology slide level, not at the window level. This way, we really guarantee that
 the network has not been trained with data sampled from the same image as the test data.
@@ -11,7 +10,7 @@ Training for the CNN:
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
 '''
 
-experiment_id = 'klf14_b6ntac_exp_0069_cnn_contour'
+experiment_id = 'klf14_b6ntac_exp_0070_cnn_contour_after_dmap'
 
 # cross-platform home directory
 from pathlib import Path
@@ -33,7 +32,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -70,6 +69,9 @@ n_folds = 11
 
 # number of epochs for training
 epochs = 20
+
+# this is used both in dmap.predict(im) and in training of the contour model
+batch_size = 10
 
 '''Directories and filenames
 '''
@@ -228,6 +230,18 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                 plt.imshow(test_dataset[prefix][i, :, :, :])
             plt.title('out[' + prefix + ']')
 
+    '''Convert histology to dmaps
+    '''
+
+    # load dmap model that we are going to use as the basis for the contour model
+    dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    dmap_model = keras.models.load_model(dmap_model_filename)
+
+    # replace histology images by the estimated dmaps. The reason to replace instead of creating a new 'dmap'
+    # object is to save memory
+    train_dataset['im'] = dmap_model.predict(train_dataset['im'], batch_size)
+    test_dataset['im'] = dmap_model.predict(test_dataset['im'], batch_size)
+
     '''Convolutional neural network training
     
     Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -240,22 +254,19 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # number of GPUs
     gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 
-    # load dmap model that we are going to use as the basis for the contour model
-    dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-    dmap_model = keras.models.load_model(dmap_model_filename)
-
     # instantiate contour model
     with tf.device('/cpu:0'):
         contour_model = fcn_sherrah2016_classifier(input_shape=train_dataset['im'].shape[1:])
 
-    for lay in [1, 4, 7]:
-        # transfer weights from dmap to contour model in the first 3 convolutional layers
-        dmap_layer = dmap_model.get_layer(index=lay)
-        contour_layer = contour_model.get_layer(index=lay)
-        contour_layer.set_weights(dmap_layer.get_weights())
-
-        # fix 3 first convolutional layers so that they don't get trained
-        contour_model.get_layer(index=lay).trainable = False
+    # Note: Let's try without the transfer learning
+    # for lay in [1, 4, 7]:
+    #     # transfer weights from dmap to contour model in the first 3 convolutional layers
+    #     dmap_layer = dmap_model.get_layer(index=lay)
+    #     contour_layer = contour_model.get_layer(index=lay)
+    #     contour_layer.set_weights(dmap_layer.get_weights())
+    #
+    #     # fix 3 first convolutional layers so that they don't get trained
+    #     contour_model.get_layer(index=lay).trainable = False
 
     # delete dmap model
     del dmap_model
@@ -283,7 +294,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                            validation_data=(test_dataset['im'],
                                             {'classification_output': test_dataset['seg']},
                                             {'classification_output': test_dataset['mask'][..., 0]}),
-                           batch_size=10, epochs=epochs, initial_epoch=0,
+                           batch_size=batch_size, epochs=epochs, initial_epoch=0,
                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -308,7 +319,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                           validation_data=(test_dataset['im'],
                                    {'classification_output': test_dataset['seg']},
                                    {'classification_output': test_dataset['mask'][..., 0]}),
-                          batch_size=10, epochs=epochs, initial_epoch=0,
+                          batch_size=batch_size, epochs=epochs, initial_epoch=0,
                           callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
