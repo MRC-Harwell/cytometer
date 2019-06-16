@@ -686,6 +686,37 @@ def segment_dmap_contour(dmap, contour=None,
     return labels, labels_borders
 
 
+# contour_model = contour_model_filename
+# dmap_model = dmap_model_filename
+def segment_dmap_contour_v3(im_array, contour_model, dmap_model, version=3):
+
+    # make sure input image is (n, row, col, 3)
+    if im_array.shape[-1] != 3:
+        raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
+    if im_array.ndim < 3:
+        raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
+    elif im_array.ndim == 3:
+        im_array = np.expand_dims(im_array, axis=0)
+    else:
+        raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
+
+    # load models if they are provided as filenames
+    if isinstance(contour_model, six.string_types):
+        contour_model = keras.models.load_model(contour_model)
+    if isinstance(dmap_model, six.string_types):
+        dmap_model = keras.models.load_model(dmap_model)
+
+    # set input layer of dmap to size of images
+    if dmap_model.input_shape[1:] == im_array.shape:
+        dmap_model = change_input_size(dmap_model, batch_shape=(None,) + im_array.shape)
+
+    contour_model = change_input_size(contour_model, batch_shape=(None,) + im_array.shape)
+
+    # run histology image through network
+    contour_pred = contour_model.predict(np.expand_dims(im_array, axis=0))
+    dmap_pred = dmap_model.predict(np.expand_dims(im_array, axis=0))
+
+
 def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
     """
     Match estimated segmentations to ground truth segmentations and compute Dice coefficients.
