@@ -42,6 +42,7 @@ import keras
 import keras.backend as K
 
 import cytometer.data
+import cytometer.models
 import tensorflow as tf
 
 # limit GPU memory used
@@ -218,34 +219,3 @@ lay = 15
 w = contour_model.get_layer(index=lay).get_weights()
 plt.plot(w[0][0, 0, :, 0])
 plt.plot(w[1][0, 0, :, 0])
-
-'''Plot metrics and convergence
-'''
-
-log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-
-if os.path.isfile(log_filename):
-
-    # read Keras output
-    df_list = cytometer.data.read_keras_training_output(log_filename)
-
-    # plot metrics with every iteration
-    plt.clf()
-    for df in df_list:
-        plt.subplot(211)
-        # loss_plot, = plt.semilogy(df.index, df.loss, label='Loss')
-        loss_plot, = plt.plot(df.index, df.loss, label='Loss')
-        epoch_ends = np.concatenate((np.where(np.diff(df.epoch))[0], [len(df.epoch)-1, ]))
-        # epoch_ends_plot1, = plt.semilogy(epoch_ends, df.loss[epoch_ends], 'ro', label='End of epoch')
-        epoch_ends_plot1, = plt.plot(epoch_ends, df.loss[epoch_ends], 'ro', label='End of epoch')
-        plt.legend(handles=[loss_plot, epoch_ends_plot1])
-        plt.tick_params(labelsize=16)
-        plt.subplot(212)
-        regr_mae_plot, = plt.plot(df.index, df.acc, label='Acc')
-        regr_mae_epoch_ends_plot2, = plt.plot(epoch_ends, df.acc[epoch_ends], 'ro', label='End of epoch')
-        plt.legend(handles=[regr_mae_plot, regr_mae_epoch_ends_plot2])
-        plt.tick_params(labelsize=16)
-        plt.xlabel('Steps', fontsize=16)
-
-if SAVE_FIGS:
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_inspect_exp_0068_training_convergence.png'))
