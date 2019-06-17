@@ -21,5 +21,6 @@ setup(name='cytometer',
                         'svgpathtools>=1.3.2', 'statsmodels>=0.9.0',
                         'rpy2>=2.9.3', 'tzlocal>=1.5.1', 'six>=1.11.0',
                         'receptivefield>=0.19', 'pysto>=1.4.1',
-                        'mahotas>=1.4.4', 'networkx>=2.1']
+                        'mahotas>=1.4.4', 'networkx>=2.1', 'statsmodels>=0.9.0',
+                        'svgpathtools>=1.3.3']
       )
