@@ -24,7 +24,6 @@ from skimage.transform import EuclideanTransform, AffineTransform, warp, matrix_
 from skimage.color import rgb2hsv, hsv2rgb
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
-from medpy.filter.smoothing import anisotropic_diffusion
 from mahotas.labeled import borders
 import networkx as nx
 import keras.backend as K
