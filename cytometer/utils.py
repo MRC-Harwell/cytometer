@@ -685,9 +685,26 @@ def segment_dmap_contour(dmap, contour=None,
     return labels, labels_borders
 
 
-# contour_model = contour_model_filename
-# dmap_model = dmap_model_filename
-def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3):
+def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3,
+                            local_threshold_block_size=41, border_dilation=0):
+    """
+    Segment cells in histology using the architecture pipeline v3:
+      * distance transformation is estimated from histology using CNN.
+      * contours are estimated from distance transformation using another CNN.
+
+    :param im: Input histology. Accepted types are
+      * PIL.TiffImagePlugin.TiffImageFile with RGB channels.
+      * np.array: (1, rows, cols, 3), dtype=np.uint8, values in [0, 255].
+      * np.array: (1, rows, cols, 3), dtype=np.float32, values in [0.0, 1.0].
+    :param contour_model: Keras CNN model. Input is (n, rows, cols, 3).
+    :param dmap_model: Keras CNN model. Input is (n, rows, cols, 1).
+    :param version: (def 3). Unused.
+    :param local_threshold_block_size: (def 41) Size of local neighbourhood used by the local threshold algorithm.
+    :param border_dilation: (def 0) Number of iterations of the border dilation algorithm.
+    :return:
+      * labels: np.array (rows, cols) Labels, one label per cell.
+      * labels_borders: np.array (rows, cols) Label edges.
+    """
 
     # auxiliary functions for merge_hierarchical() taken from
     # https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_rag_merge.html#sphx-glr-auto-examples-segmentation-plot-rag-merge-py
@@ -736,23 +753,20 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3):
 
     if DEBUG:
         plt.clf()
-        plt.subplot(131)
+        plt.subplot(221)
         plt.imshow(im[0, ...])
         plt.axis('off')
+        plt.title('Histology', fontsize=14)
 
-        plt.subplot(132)
+        plt.subplot(222)
         plt.imshow(dmap_pred[0, :, :, 0])
         plt.axis('off')
+        plt.title('Distance transf.', fontsize=14)
 
-        plt.subplot(133)
+        plt.subplot(223)
         plt.imshow(contour_pred[0, :, :, 0])
         plt.axis('off')
-
-    # sharpen edges in contours output
-    local_threshold = threshold_local(contour_pred[0, :, :, 0], block_size=41, method='mean', mode='reflect')
-
-    # remove small holes from the segmentation of insides of cells
-    seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
+        plt.title('Contours', fontsize=14)
 
     if DEBUG:
         plt.clf()
@@ -765,16 +779,69 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3):
         plt.imshow(contour_pred[0, :, :, 0])
         plt.axis('off')
 
+    # local threshold
+    local_threshold = threshold_local(contour_pred[0, :, :, 0], block_size=local_threshold_block_size,
+                                      method='mean', mode='reflect')
+    seg = (contour_pred[0, :, :, 0] > local_threshold).astype(np.uint8)
+
+    if DEBUG:
         plt.subplot(223)
         plt.cla()
-        plt.imshow(contour_pred[0, :, :, 0] > local_threshold)
+        plt.imshow(seg)
         plt.axis('off')
 
+    # invert the segmentation
+    seg = 1 - seg
+
+    # remove small holes from the segmentation of insides of cells
+    seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
+
+    if DEBUG:
         plt.subplot(224)
         plt.cla()
-        plt.imshow(segments)
+        plt.imshow(seg)
         plt.axis('off')
 
+    # assign different label to each connected components
+    # Note: cv2.connectedComponentsWithStats is 10x faster than skimage.measure.label
+    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
+
+    if DEBUG:
+        plt.subplot(223)
+        plt.cla()
+        plt.imshow(labels)
+        plt.axis('off')
+
+    # use watershed to expand the seeds
+    labels = watershed(-dmap_pred[0, :, :, 0], labels, watershed_line=False)
+
+    if DEBUG:
+        plt.subplot(224)
+        plt.cla()
+        plt.imshow(labels)
+        plt.axis('off')
+
+        plt.subplot(223)
+        plt.cla()
+        plt.imshow(im[0, ...])
+        plt.contour(labels, levels=np.unique(labels), colors='black')
+        plt.axis('off')
+
+    # extract borders of watershed regions for plots
+    labels_borders = borders(labels)
+
+    # dilate borders for easier visualization
+    if border_dilation > 0:
+        kernel = np.ones((3, 3), np.uint8)
+        labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
+
+    if DEBUG:
+        plt.subplot(224)
+        plt.cla()
+        plt.imshow(im[0, ...])
+        plt.contour(labels_borders, levels=np.unique(labels_borders), colors='black')
+
+    return labels, labels_borders
 
 
 def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):

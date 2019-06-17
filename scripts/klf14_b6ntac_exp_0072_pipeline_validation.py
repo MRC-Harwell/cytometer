@@ -130,6 +130,10 @@ for i_fold in range(n_folds):
     file_list_test = np.array(file_list)[idx_test_all[i_fold]]
     # file_list_train = np.array(file_list)[idx_train_all[i_fold]]
 
+    # correct file path
+    file_list_test = cytometer.data.change_home_directory(list(file_list_test),
+                                                          '/users/rittscher/rcasero', home, check_isfile=True)
+
     # load quality model
     quality_model_filename = os.path.join(saved_models_dir, quality_model_basename + '_fold_' + str(i_fold) + '.h5')
     quality_model = keras.models.load_model(quality_model_filename)
