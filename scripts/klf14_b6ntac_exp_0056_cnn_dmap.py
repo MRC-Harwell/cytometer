@@ -7,6 +7,9 @@ Training vs testing is done at the histology slide level, not at the window leve
 the network has not been trained with data sampled from the same image as the test data.
 '''
 
+# script name to identify this experiment
+experiment_id = 'klf14_b6ntac_exp_0056_cnn_dmap'
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
@@ -72,13 +75,6 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour'
-
-# script name to identify this experiment
-experiment_id = inspect.getfile(inspect.currentframe())
-if experiment_id == '<input>':
-    experiment_id = 'unknownscript'
-else:
-    experiment_id = os.path.splitext(os.path.basename(experiment_id))[0]
 
 '''CNN Model
 '''
