@@ -40,9 +40,9 @@ sudo apt install -y dvipng
 sudo apt install -y r-base r-cran-lme4
 
 # create or update environment for development with Keras
-~/Software/python_setup/bin/install_keras_environment.sh cytometer
+~/Software/python_setup/bin/install_keras_environment.sh -e cytometer_tensorflow -b tensorflow
 
-source activate cytometer
+source activate cytometer_tensorflow
 
 # install other python packages
 conda install -y matplotlib pillow 
@@ -55,4 +55,4 @@ conda install -y pandas six
 ########################################################################
 ## python environment for DeepCell
 
-~/Software/python_setup/bin/install_deepcell_environment.sh
+#~/Software/python_setup/bin/install_deepcell_environment.sh
