@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import six
 import matplotlib.pyplot as plt
-from PIL import Image
+from PIL import Image, TiffImagePlugin
 from statistics import mode
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage import median_filter
@@ -18,10 +18,10 @@ from skimage.morphology import watershed, remove_small_objects, remove_small_hol
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color, show_rag, merge_hierarchical
 from skimage.measure import regionprops
-from skimage.segmentation import clear_border, active_contour, morphological_chan_vese, \
-    morphological_geodesic_active_contour, inverse_gaussian_gradient
+from skimage.segmentation import clear_border
 from skimage.transform import EuclideanTransform, AffineTransform, warp, matrix_transform
 from skimage.color import rgb2hsv, hsv2rgb
+from skimage.filters import threshold_local
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
 from mahotas.labeled import borders
@@ -687,15 +687,34 @@ def segment_dmap_contour(dmap, contour=None,
 
 # contour_model = contour_model_filename
 # dmap_model = dmap_model_filename
-def segment_dmap_contour_v3(im_array, contour_model, dmap_model, version=3):
+def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3):
 
-    # make sure input image is (n, row, col, 3)
-    if im_array.shape[-1] != 3:
+    # auxiliary functions for merge_hierarchical() taken from
+    # https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_rag_merge.html#sphx-glr-auto-examples-segmentation-plot-rag-merge-py
+    #
+    # For the purpose of this function, the details of what they do are not very important
+    def _weight_mean_color(graph, src, dst, n):
+        diff = graph.node[dst]['mean color'] - graph.node[n]['mean color']
+        diff = np.linalg.norm(diff)
+        return {'weight': diff}
+
+    def merge_mean_color(graph, src, dst):
+        graph.node[dst]['total color'] += graph.node[src]['total color']
+        graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
+        graph.node[dst]['mean color'] = (graph.node[dst]['total color'] / graph.node[dst]['pixel count'])
+
+    # convert usual im types to float32 [0.0, 1.0]
+    if type(im) == TiffImagePlugin.TiffImageFile or im.dtype == np.uint8:
+        im = np.array(im, dtype=np.float32)
+        im /= 255
+
+    # make sure image shape is (n, row, col, 3)
+    if im.shape[-1] != 3:
         raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
-    if im_array.ndim < 3:
+    if im.ndim < 3:
         raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
-    elif im_array.ndim == 3:
-        im_array = np.expand_dims(im_array, axis=0)
+    elif im.ndim == 3:
+        im = np.expand_dims(im, axis=0)
     else:
         raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
 
@@ -705,15 +724,57 @@ def segment_dmap_contour_v3(im_array, contour_model, dmap_model, version=3):
     if isinstance(dmap_model, six.string_types):
         dmap_model = keras.models.load_model(dmap_model)
 
-    # set input layer of dmap to size of images
-    if dmap_model.input_shape[1:] == im_array.shape:
-        dmap_model = change_input_size(dmap_model, batch_shape=(None,) + im_array.shape)
+    # set models' input layers to the appropriate sizes if necessary
+    if dmap_model.input_shape[1:3] != im.shape[1:3]:
+        dmap_model = change_input_size(dmap_model, batch_shape=im.shape)
+    if contour_model.input_shape[1:3] != dmap_model.output_shape[1:3]:
+        contour_model = change_input_size(contour_model, batch_shape=dmap_model.output_shape)
 
-    contour_model = change_input_size(contour_model, batch_shape=(None,) + im_array.shape)
+    # run histology image through models
+    dmap_pred = dmap_model.predict(im)
+    contour_pred = contour_model.predict(dmap_pred)
 
-    # run histology image through network
-    contour_pred = contour_model.predict(np.expand_dims(im_array, axis=0))
-    dmap_pred = dmap_model.predict(np.expand_dims(im_array, axis=0))
+    if DEBUG:
+        plt.clf()
+        plt.subplot(131)
+        plt.imshow(im[0, ...])
+        plt.axis('off')
+
+        plt.subplot(132)
+        plt.imshow(dmap_pred[0, :, :, 0])
+        plt.axis('off')
+
+        plt.subplot(133)
+        plt.imshow(contour_pred[0, :, :, 0])
+        plt.axis('off')
+
+    # sharpen edges in contours output
+    local_threshold = threshold_local(contour_pred[0, :, :, 0], block_size=41, method='mean', mode='reflect')
+
+    # remove small holes from the segmentation of insides of cells
+    seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im[0, ...])
+        plt.axis('off')
+
+        plt.subplot(222)
+        plt.cla()
+        plt.imshow(contour_pred[0, :, :, 0])
+        plt.axis('off')
+
+        plt.subplot(223)
+        plt.cla()
+        plt.imshow(contour_pred[0, :, :, 0] > local_threshold)
+        plt.axis('off')
+
+        plt.subplot(224)
+        plt.cla()
+        plt.imshow(segments)
+        plt.axis('off')
+
 
 
 def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):

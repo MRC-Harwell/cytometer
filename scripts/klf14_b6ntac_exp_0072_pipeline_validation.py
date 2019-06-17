@@ -181,13 +181,18 @@ for i_fold in range(n_folds):
         '''Segmentation part of the pipeline. We segment whole test windows
         '''
 
+        # NOTE: quality network 0053 expects intensity values in [-255, 255], but contour and dmap expect [0, 1]
+
+        # filenames of contour and dmap models
+        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
+        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_fold_' + str(i_fold) + '.h5')
+
+        cytometer.utils.segment_dmap_contour_v3(im, contour_model=contour_model_filename, dmap_model=dmap_model_filename)
+
         # make array copy
         im_array = np.array(im, dtype=np.float32)
         im_array /= 255  # NOTE: quality network 0053 expects intensity values in [-255, 255], but contour and dmap expect [0, 1]
 
-        # load contour and dmap models
-        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
-        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_fold_' + str(i_fold) + '.h5')
 
         contour_model = keras.models.load_model(contour_model_filename)
         dmap_model = keras.models.load_model(dmap_model_filename)
