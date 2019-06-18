@@ -145,7 +145,9 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     morphological operators are applied to dilate and connect those pixels. Selected objects are those connected
     components larger than a given threashold (1e5 pixels by default).
 
-    :param filename: Path and filename of the microscope image. This file must be in a format understood by OpenSlice.
+    :param Input histology, in one of the following formats:
+      * filename: Path and filename of the microscope image. This file must be in a format understood by OpenSlice.
+      * im: PIL.TiffImagePlugin.TiffImageFile. This is the object you obtain with PIL.Image.open('file.tif').
     :param downsample_factor: (def 8) For speed, the image will be loaded at this downsampled resolution. This
     downsample factor must exist in the multilevel pyramid in the file.
     :param dilation_size: (def 25) Thresholded foreground pixels will be dilated with a (dilation_size, dilation_size)
@@ -158,20 +160,39 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     [im_downsampled]: if return_im=True, this is the downsampled image in filename.
     """
 
-    # load file
-    im = openslide.OpenSlide(filename)
+    if isinstance(filename, six.string_types):  # filename provided
 
-    # level that corresponds to the downsample factor
-    downsample_level = im.get_best_level_for_downsample(downsample_factor)
+        # load file
+        im = openslide.OpenSlide(filename)
 
-    if im.level_downsamples[downsample_level] != downsample_factor:
-        raise ValueError('File does not contain level with downsample factor ' + str(downsample_factor)
-                         + '.\nAvailable levels: ' + str(im.level_downsamples))
+        # level that corresponds to the downsample factor
+        downsample_level = im.get_best_level_for_downsample(downsample_factor)
 
-    # get downsampled image
-    im_downsampled = im.read_region(location=(0, 0), level=downsample_level, size=im.level_dimensions[downsample_level])
-    im_downsampled = np.array(im_downsampled)
-    im_downsampled = im_downsampled[:, :, 0:3]
+        if im.level_downsamples[downsample_level] != downsample_factor:
+            raise ValueError('File does not contain level with downsample factor ' + str(downsample_factor)
+                             + '.\nAvailable levels: ' + str(im.level_downsamples))
+
+        # get downsampled image
+        im_downsampled = im.read_region(location=(0, 0), level=downsample_level, size=im.level_dimensions[downsample_level])
+        im_downsampled = np.array(im_downsampled)
+        im_downsampled = im_downsampled[:, :, 0:3]
+
+    elif isinstance(filename, TiffImagePlugin.TiffImageFile):  # TIFF object provided
+
+        # get downsampled image
+        downsampled_size = tuple(np.round(np.array(filename.size) / downsample_factor).astype(np.int32))
+        im_downsampled = filename.resize(downsampled_size, resample=Image.BILINEAR)
+        im_downsampled = np.array(im_downsampled)
+
+    elif isinstance(filename, np.ndarray):
+
+        # get downsampled image
+        downsampled_size = tuple(np.round(np.array(filename.shape[0:2]) / downsample_factor).astype(np.int32))
+        im_downsampled = resize(filename, downsampled_size, resample=Image.BILINEAR)
+
+    else:
+
+        raise ValueError('Input histology has an unknown format')
 
     if DEBUG:
         plt.clf()
