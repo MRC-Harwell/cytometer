@@ -725,20 +725,6 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
       * labels_borders: np.array (rows, cols) Label edges.
     """
 
-    # auxiliary functions for merge_hierarchical() taken from
-    # https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_rag_merge.html#sphx-glr-auto-examples-segmentation-plot-rag-merge-py
-    #
-    # For the purpose of this function, the details of what they do are not very important
-    def _weight_mean_color(graph, src, dst, n):
-        diff = graph.node[dst]['mean color'] - graph.node[n]['mean color']
-        diff = np.linalg.norm(diff)
-        return {'weight': diff}
-
-    def merge_mean_color(graph, src, dst):
-        graph.node[dst]['total color'] += graph.node[src]['total color']
-        graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
-        graph.node[dst]['mean color'] = (graph.node[dst]['total color'] / graph.node[dst]['pixel count'])
-
     # convert usual im types to float32 [0.0, 1.0]
     if type(im) == TiffImagePlugin.TiffImageFile or im.dtype == np.uint8:
         im = np.array(im, dtype=np.float32)
