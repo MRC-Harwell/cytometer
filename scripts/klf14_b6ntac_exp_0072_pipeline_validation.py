@@ -79,6 +79,12 @@ closing_size = 11
 contour_seed_threshold = 0.005
 batch_size = 16
 
+# rough_foreground_mask() parameters
+downsample_factor = 8.0
+dilation_size = 25
+component_size_threshold = 0
+hole_size_treshold = 8000
+
 
 '''Directories and filenames
 '''
@@ -130,7 +136,7 @@ for i_fold in range(n_folds):
     file_list_test = np.array(file_list)[idx_test_all[i_fold]]
     # file_list_train = np.array(file_list)[idx_train_all[i_fold]]
 
-    # correct file path
+    # correct home directory in file paths
     file_list_test = cytometer.data.change_home_directory(list(file_list_test),
                                                           '/users/rittscher/rcasero', home, check_isfile=True)
 
@@ -156,6 +162,28 @@ for i_fold in range(n_folds):
         xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
         yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im)
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+
+        # rough segmentation of the tissue in the image
+        rough_mask, im_downsampled = \
+            cytometer.utils.rough_foreground_mask(im, downsample_factor=downsample_factor,
+                                                  dilation_size=dilation_size,
+                                                  component_size_threshold=component_size_threshold,
+                                                  hole_size_treshold=hole_size_treshold,
+                                                  return_im=True)
+
+        if DEBUG:
+            plt.subplot(222)
+            plt.imshow(im_downsampled)
+            plt.imshow(rough_mask, alpha=0.5)
+            plt.axis('off')
+            plt.title('Downsampled rough mask', fontsize=14)
+
         # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
         # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
         cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
@@ -178,10 +206,6 @@ for i_fold in range(n_folds):
         print('Brown: ' + str(len(brown_contours)))
         print('')
 
-        if DEBUG:
-            plt.clf()
-            plt.imshow(im)
-
         '''Segmentation part of the pipeline. We segment whole test windows
         '''
 
@@ -191,42 +215,31 @@ for i_fold in range(n_folds):
         contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
         dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_fold_' + str(i_fold) + '.h5')
 
-        cytometer.utils.segment_dmap_contour_v3(im, contour_model=contour_model_filename, dmap_model=dmap_model_filename)
+        # segment histology
+        labels, _ = cytometer.utils.segment_dmap_contour_v3(im, contour_model=contour_model_filename,
+                                                            dmap_model=dmap_model_filename)
 
-        # make array copy
-        im_array = np.array(im, dtype=np.float32)
-        im_array /= 255  # NOTE: quality network 0053 expects intensity values in [-255, 255], but contour and dmap expect [0, 1]
-
-
-        contour_model = keras.models.load_model(contour_model_filename)
-        dmap_model = keras.models.load_model(dmap_model_filename)
-
-        # set input layer to size of images
-        contour_model = cytometer.models.change_input_size(contour_model, batch_shape=(None,) + im_array.shape)
-        dmap_model = cytometer.models.change_input_size(dmap_model, batch_shape=(None,) + im_array.shape)
-
-        # run histology image through network
-        contour_pred = contour_model.predict(np.expand_dims(im_array, axis=0))
-        dmap_pred = dmap_model.predict(np.expand_dims(im_array, axis=0))
-
-        # combine pipeline branches for instance segmentation
-        labels, _ \
-            = cytometer.utils.segment_dmap_contour(dmap_pred[0, :, :, 0],
-                                                   contour=contour_pred[0, :, :, 0],
-                                                   border_dilation=0,
-                                                   boundary_threshold=0.1,
-                                                   median_size=median_size, closing_size=closing_size,
-                                                   contour_seed_threshold=contour_seed_threshold,
-                                                   version=2)
+        if DEBUG:
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(im)
+            plt.contour(labels, levels=np.unique(labels), colors='k')
+            plt.axis('off')
+            plt.title('Segmentation', fontsize=14)
 
         # remove labels that touch the edges, that are too small or that don't overlap enough with the rough foreground
         # mask
         labels \
             = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                                 mask=None)
+                                                 mask=rough_mask)
 
         if DEBUG:
-            plt.contour(labels, levels=np.unique(labels), colors='r')
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow(im)
+            plt.contour(labels, levels=np.unique(labels), colors='k')
+            plt.axis('off')
+            plt.title('Cleaned segmentation', fontsize=14)
 
         # list of unique segmentation labels (remove background)
         labels_seg = list(np.unique(labels))
@@ -235,11 +248,6 @@ for i_fold in range(n_folds):
 
         if len(labels_seg) == 0:
             warnings.warn('No labels produced!')
-
-        if DEBUG:
-            plt.clf()
-            plt.imshow(im_array)
-            plt.contour(labels, levels=np.unique(labels), colors='r')
 
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
@@ -260,12 +268,17 @@ for i_fold in range(n_folds):
             if DEBUG:
                 # centre of current cell
                 xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                plt.scatter(xy_c[0], xy_c[1])
+
+                # close the contour
+                contour_aux = contour.copy()
+                contour_aux.append(contour[0])
 
                 plt.clf()
-                plt.subplot(221)
-                plt.imshow(im_array)
-                plt.plot([p[0] for p in contour], [p[1] for p in contour], color='green')
-                plt.scatter(xy_c[0], xy_c[1])
+                plt.imshow(im)
+                plt.contour(labels, levels=np.unique(labels), colors='k')
+                plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='green')
+                plt.axis('off')
 
             # rasterise current ground truth segmentation
             cell_seg_gtruth = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
@@ -281,6 +294,9 @@ for i_fold in range(n_folds):
             if len(match_out) != 1:
                 warnings.warn('No correspondence found for contour: ' + str(j))
                 continue
+
+            if DEBUG:
+                plt.contour(labels == match_out['lab_ref'], levels=np.unique(labels), colors='r')
 
             # remove matched segmentation from list of remaining segmentations
             if match_out[0]['lab_ref'] in labels_seg:
