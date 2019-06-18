@@ -142,6 +142,7 @@ for i_fold in range(n_folds):
             plt.clf()
             plt.subplot(121)
             plt.imshow(im)
+            plt.axis('off')
 
         # load contour model
         contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
@@ -157,6 +158,7 @@ for i_fold in range(n_folds):
             plt.subplot(122)
             plt.cla()
             plt.imshow(contour[0, :, :, 0])
+            plt.axis('off')
 
 '''Check model weights
 '''
