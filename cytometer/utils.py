@@ -685,8 +685,7 @@ def segment_dmap_contour(dmap, contour=None,
     return labels, labels_borders
 
 
-def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3,
-                            local_threshold_block_size=41, border_dilation=0):
+def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block_size=41, border_dilation=0):
     """
     Segment cells in histology using the architecture pipeline v3:
       * distance transformation is estimated from histology using CNN.
@@ -698,7 +697,6 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3,
       * np.array: (1, rows, cols, 3), dtype=np.float32, values in [0.0, 1.0].
     :param contour_model: Keras CNN model. Input is (n, rows, cols, 3).
     :param dmap_model: Keras CNN model. Input is (n, rows, cols, 1).
-    :param version: (def 3). Unused.
     :param local_threshold_block_size: (def 41) Size of local neighbourhood used by the local threshold algorithm.
     :param border_dilation: (def 0) Number of iterations of the border dilation algorithm.
     :return:
@@ -778,6 +776,10 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, version=3,
         plt.cla()
         plt.imshow(contour_pred[0, :, :, 0])
         plt.axis('off')
+
+    # TODO: currently, we don't support n>1 in (n, rows, cols, 3) images
+    if im.shape[0] > 1:
+        raise ValueError('Currently, we don\'t support n>1 in (n, rows, cols, 3) images')
 
     # local threshold
     local_threshold = threshold_local(contour_pred[0, :, :, 0], block_size=local_threshold_block_size,
