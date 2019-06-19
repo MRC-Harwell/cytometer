@@ -223,12 +223,18 @@ for i_fold in range(n_folds):
                                                             dmap_model=dmap_model_filename)
 
         if DEBUG:
+            plt.subplot(222)
+            plt.cla()
+            plt.imshow(labels)
+            plt.axis('off')
+            plt.title('Segmentation', fontsize=14)
+
             plt.subplot(223)
             plt.cla()
             plt.imshow(im)
             plt.contour(labels, levels=np.unique(labels), colors='k')
             plt.axis('off')
-            plt.title('Segmentation', fontsize=14)
+            plt.title('Segmentation on histology', fontsize=14)
 
         # remove labels that touch the edges, that are too small or that don't overlap enough with the rough foreground
         # mask
@@ -256,7 +262,10 @@ for i_fold in range(n_folds):
                                                           values=[i_fold], values_tag='fold',
                                                           tags_to_keep=['id', 'ko', 'sex'])
 
-        '''Ground truth cell by cell processing
+        '''
+        ****************************************************************************************************
+        Ground truth cell by cell processing
+        ****************************************************************************************************
         '''
 
         # loop contours
@@ -268,8 +277,9 @@ for i_fold in range(n_folds):
             df['contour'] = j
 
             if DEBUG:
-                # # centre of current cell
+                # centre of current cell
                 # xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                # plt.text(xy_c[0], xy_c[1], 'j=' + str(j))
                 # plt.scatter(xy_c[0], xy_c[1])
 
                 # close the contour
@@ -300,11 +310,13 @@ for i_fold in range(n_folds):
                 continue
 
             if DEBUG:
-                plt.contour(labels == match_out['lab_ref'], levels=np.unique(labels), colors='r')
+                plt.contour(labels == match_out['lab_ref'], colors='r')
 
             # remove matched segmentation from list of remaining segmentations
             if match_out[0]['lab_ref'] in labels_seg:
                 labels_seg.remove(match_out[0]['lab_ref'])
+
+            '''Bounding boxes'''
 
             # isolate said segmented label
             cell_seg = (labels == match_out[0]['lab_ref']).astype(np.uint8)
@@ -395,31 +407,6 @@ for i_fold in range(n_folds):
             assert(window_seg.ndim == 3 and window_seg.dtype == np.float32)
             assert(window_seg_gtruth.ndim == 2 and window_seg_gtruth.dtype == np.float32)
 
-            '''Object classification as "white adipocyte" or "other"'''
-
-            # process histology for classification
-            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
-
-            # get classification label for each pixel
-            window_classifier_class = np.argmax(window_classifier_out, axis=3)
-
-            # proportion of "Other" pixels in the mask
-            window_other_prop = np.count_nonzero(window_seg * window_classifier_class) \
-                                / np.count_nonzero(window_seg)
-
-            # add to dataframe row
-            df['other_gtruth'] = contour_type_all[j]
-            df['other_prop'] = window_other_prop
-
-            if DEBUG:
-                # plot classification
-                plt.clf()
-                plt.imshow(window_classifier_class[0, :, :])
-                # plt.contour(window_seg_gtruth, linewidths=1, colors='green')
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
-                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
-                plt.axis('off')
-
             '''Segmentation correction'''
 
             # process (histology * mask) for quality
@@ -463,12 +450,40 @@ for i_fold in range(n_folds):
                 plt.contour(window_seg_corrected, linewidths=1, colors='black')
                 plt.axis('off')
 
+            '''Object classification as "white adipocyte" or "other"'''
+
+            # process histology for classification
+            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
+
+            # get classification label for each pixel
+            window_classifier_class = np.argmax(window_classifier_out, axis=3)
+
+            # proportion of "Other" pixels in the mask
+            window_other_prop = np.count_nonzero(window_seg_corrected * window_classifier_class) \
+                                / np.count_nonzero(window_seg_corrected)
+
+            # add to dataframe row
+            df['other_gtruth'] = contour_type_all[j]
+            df['other_prop'] = window_other_prop
+
+            if DEBUG:
+                # plot classification
+                plt.clf()
+                plt.imshow(window_classifier_class[0, :, :])
+                # plt.contour(window_seg_gtruth, linewidths=1, colors='green')
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
+                plt.axis('off')
+
             # append current results to global dataframe
             df_all = pd.concat([df_all, df])
 
         print('Time so far: ' + str(time.time() - time0) + ' s')
 
-        '''Automatic segmentation cell by cell processing
+        '''
+        ****************************************************************************************************
+        Automatic segmentations without ground truth
+        ****************************************************************************************************
         '''
 
         # segmentations have no corresponding contours here
@@ -487,7 +502,7 @@ for i_fold in range(n_folds):
 
             # add to dataframe: segmentation areas and Dice coefficient
             df['area_gtruth'] = np.nan
-            df['area_seg'] = match_out[0]['area_ref'] * xres * yres  # um^2
+            df['area_seg'] = np.count_nonzero(cell_seg) * xres * yres  # um^2
             df['dice'] = np.nan
 
             if DEBUG:
@@ -549,30 +564,6 @@ for i_fold in range(n_folds):
                    and np.min(window_masked_im) >= -255.0 and np.max(window_masked_im) <= 255.0)
             assert(window_seg.ndim == 3 and window_seg.dtype == np.float32)
 
-            '''Object classification as "white adipocyte" or "other"'''
-
-            # process histology for classification
-            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
-
-            # get classification label for each pixel
-            window_classifier_class = np.argmax(window_classifier_out, axis=3)
-
-            # proportion of "Other" pixels in the mask
-            window_other_prop = np.count_nonzero(window_seg * window_classifier_class) \
-                                / np.count_nonzero(window_seg)
-
-            # add to dataframe row
-            df['other_gtruth'] = -1
-            df['other_prop'] = window_other_prop
-
-            if DEBUG:
-                # plot classification
-                plt.clf()
-                plt.imshow(window_classifier_class[0, :, :])
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
-                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
-                plt.axis('off')
-
             '''Segmentation correction'''
 
             # process (histology * mask) for quality
@@ -613,6 +604,30 @@ for i_fold in range(n_folds):
                 plt.imshow(window_im[0, :, :, :])
                 plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
                 plt.contour(window_seg_corrected, linewidths=1, colors='black')
+                plt.axis('off')
+
+            '''Object classification as "white adipocyte" or "other"'''
+
+            # process histology for classification
+            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
+
+            # get classification label for each pixel
+            window_classifier_class = np.argmax(window_classifier_out, axis=3)
+
+            # proportion of "Other" pixels in the mask
+            window_other_prop = np.count_nonzero(window_seg_corrected * window_classifier_class) \
+                                / np.count_nonzero(window_seg_corrected)
+
+            # add to dataframe row
+            df['other_gtruth'] = -1
+            df['other_prop'] = window_other_prop
+
+            if DEBUG:
+                # plot classification
+                plt.clf()
+                plt.imshow(window_classifier_class[0, :, :])
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
                 plt.axis('off')
 
             # append current results to global dataframe
