@@ -31,6 +31,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from scipy.stats import linregress
+from skimage.morphology import remove_small_holes, binary_closing, binary_dilation
+from scipy.ndimage.morphology import binary_fill_holes
+import cv2
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
@@ -169,20 +172,20 @@ for i_fold in range(n_folds):
             plt.axis('off')
             plt.title('Histology', fontsize=14)
 
-        # rough segmentation of the tissue in the image
-        rough_mask, im_downsampled = \
-            cytometer.utils.rough_foreground_mask(im, downsample_factor=downsample_factor,
-                                                  dilation_size=dilation_size,
-                                                  component_size_threshold=component_size_threshold,
-                                                  hole_size_treshold=hole_size_treshold,
-                                                  return_im=True)
-
-        if DEBUG:
-            plt.subplot(222)
-            plt.imshow(im_downsampled)
-            plt.imshow(rough_mask, alpha=0.5)
-            plt.axis('off')
-            plt.title('Downsampled rough mask', fontsize=14)
+        # # rough segmentation of the tissue in the image
+        # rough_mask, im_downsampled = \
+        #     cytometer.utils.rough_foreground_mask(im, downsample_factor=downsample_factor,
+        #                                           dilation_size=dilation_size,
+        #                                           component_size_threshold=component_size_threshold,
+        #                                           hole_size_treshold=hole_size_treshold,
+        #                                           return_im=True)
+        #
+        # if DEBUG:
+        #     plt.subplot(222)
+        #     plt.imshow(im_downsampled)
+        #     plt.imshow(rough_mask, alpha=0.5)
+        #     plt.axis('off')
+        #     plt.title('Downsampled rough mask', fontsize=14)
 
         # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
         # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
@@ -230,8 +233,7 @@ for i_fold in range(n_folds):
         # remove labels that touch the edges, that are too small or that don't overlap enough with the rough foreground
         # mask
         labels \
-            = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                                 mask=rough_mask)
+            = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area)
 
         if DEBUG:
             plt.subplot(224)
@@ -266,9 +268,9 @@ for i_fold in range(n_folds):
             df['contour'] = j
 
             if DEBUG:
-                # centre of current cell
-                xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
-                plt.scatter(xy_c[0], xy_c[1])
+                # # centre of current cell
+                # xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                # plt.scatter(xy_c[0], xy_c[1])
 
                 # close the contour
                 contour_aux = contour.copy()
@@ -279,6 +281,8 @@ for i_fold in range(n_folds):
                 plt.contour(labels, levels=np.unique(labels), colors='k')
                 plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='green')
                 plt.axis('off')
+
+            '''Match hand-traced segmentation to automatic segmentation'''
 
             # rasterise current ground truth segmentation
             cell_seg_gtruth = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
@@ -322,44 +326,49 @@ for i_fold in range(n_folds):
             df['dice'] = match_out[0]['dice']
 
             if DEBUG:
-                plt.subplot(222)
-                plt.cla()
-                plt.imshow(im_array)
-                plt.contour(cell_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='red')
+                plt.clf()
+                plt.imshow(im)
+                plt.contour(cell_seg_gtruth, linewidths=1, colors='green')
+                plt.contour(cell_seg, linewidths=1, colors='red')
                 plt.plot((bbox_seg_gtruth_x0, bbox_seg_gtruth_xend, bbox_seg_gtruth_xend, bbox_seg_gtruth_x0, bbox_seg_gtruth_x0),
                          (bbox_seg_gtruth_y0, bbox_seg_gtruth_y0, bbox_seg_gtruth_yend, bbox_seg_gtruth_yend, bbox_seg_gtruth_y0),
                          color='green')
                 plt.plot((bbox_seg_x0, bbox_seg_xend, bbox_seg_xend, bbox_seg_x0, bbox_seg_x0),
                          (bbox_seg_y0, bbox_seg_y0, bbox_seg_yend, bbox_seg_yend, bbox_seg_y0),
                          color='red')
-                plt.xlim(0.9 * np.min((bbox_seg_gtruth_x0, bbox_seg_x0)),
-                         1.1 * np.max((bbox_seg_gtruth_xend, bbox_seg_xend)))
-                plt.ylim(1.1 * np.max((bbox_seg_gtruth_yend, bbox_seg_yend)),
-                         0.9 * np.min((bbox_seg_gtruth_y0, bbox_seg_y0)))
+                bbox_both_x0 = np.min((bbox_seg_gtruth_x0, bbox_seg_x0))
+                bbox_both_y0 = np.min((bbox_seg_gtruth_y0, bbox_seg_y0))
+                bbox_both_xend = np.max((bbox_seg_gtruth_xend, bbox_seg_xend))
+                bbox_both_yend = np.max((bbox_seg_gtruth_yend, bbox_seg_yend))
+                plt.xlim(bbox_both_x0 - (bbox_both_xend - bbox_both_x0) * 0.1,
+                         bbox_both_xend + (bbox_both_xend - bbox_both_x0) * 0.1)
+                plt.ylim(bbox_both_yend + (bbox_both_yend - bbox_both_y0) * 0.1,
+                         bbox_both_y0 - (bbox_both_yend - bbox_both_y0) * 0.1)
+                plt.axis('off')
 
             # crop image and masks according to bounding box of automatic segmentation
-            window_im = cytometer.utils.extract_bbox(im_array, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
+            window_im = cytometer.utils.extract_bbox(np.array(im), (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
             window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
             window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
 
             if DEBUG:
-                plt.subplot(223)
-                plt.cla()
+                plt.clf()
                 plt.imshow(window_im)
-                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(window_seg, linewidths=1, levels=0.5, colors='red')
+                plt.contour(window_seg_gtruth, linewidths=1, colors='green')
+                plt.contour(window_seg, linewidths=1, colors='red')
+                plt.axis('off')
+
+            '''Cropping and resizing of individual cell crop-outs'''
 
             # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
+            # NOTE: quality network 0053 expects values in [-255, 255], float32
             window_masked_im = \
                 cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
                                                    quality_model_type='-1_1')[0, :, :, :]
-            # NOTE: quality network 0053 expects values in [-255, 255], float32
-            window_masked_im *= 255
 
             # scaling factors for the training image
             training_size = (training_window_len, training_window_len)
-            scaling_factor = np.array(training_size) / np.array(window_masked_im.shape[0:2])
+            scaling_factor = np.array(training_size) / np.array(window_seg.shape[0:2])
             window_pixel_size = np.array([xres, yres]) / scaling_factor  # (um, um)
 
             # resize the images to training window size
@@ -374,40 +383,19 @@ for i_fold in range(n_folds):
             window_seg = np.expand_dims(window_seg, axis=0)
 
             # correct types
+            window_im = window_im.astype(np.float32) / 255.0
             window_seg = window_seg.astype(np.float32)
             window_seg_gtruth = window_seg_gtruth.astype(np.float32)
 
             # check sizes and types
-            assert(window_im.ndim == 4 and window_im.dtype == np.float32)
-            assert(window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32)
+            assert(window_im.ndim == 4 and window_im.dtype == np.float32
+                   and np.min(window_im) >= 0 and np.max(window_im) <= 1.0)
+            assert(window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32
+                   and np.min(window_masked_im) >= -255.0 and np.max(window_masked_im) <= 255.0)
             assert(window_seg.ndim == 3 and window_seg.dtype == np.float32)
             assert(window_seg_gtruth.ndim == 2 and window_seg_gtruth.dtype == np.float32)
 
-            # process (histology * mask) for quality
-            window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
-
-            # correction for segmentation
-            window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
-            window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
-            window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
-
-            # corrected segmentation
-            window_seg_corrected = window_seg[0, :, :].copy()
-            window_seg_corrected[window_seg_correction == 1] = 0
-            window_seg_corrected[window_seg_correction == -1] = 1
-
-            # corrected segmentation area
-            area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
-            df['area_seg_corrected'] = area_seg_corrected
-
-            if DEBUG:
-                # plot segmentation correction
-                plt.subplot(223)
-                plt.cla()
-                plt.imshow(window_im[0, :, :, :])
-                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
-                plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='black')
+            '''Object classification as "white adipocyte" or "other"'''
 
             # process histology for classification
             window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
@@ -425,12 +413,55 @@ for i_fold in range(n_folds):
 
             if DEBUG:
                 # plot classification
-                plt.subplot(224)
-                plt.cla()
+                plt.clf()
                 plt.imshow(window_classifier_class[0, :, :])
-                plt.contour(window_seg_gtruth, linewidths=1, levels=0.5, colors='green')
-                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
-                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
+                # plt.contour(window_seg_gtruth, linewidths=1, colors='green')
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
+                plt.axis('off')
+
+            '''Segmentation correction'''
+
+            # process (histology * mask) for quality
+            window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
+
+            # correction for segmentation
+            window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
+            window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
+            window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
+
+            # corrected segmentation
+            window_seg_corrected = window_seg[0, :, :].copy()
+            window_seg_corrected[window_seg_correction == 1] = 0
+            window_seg_corrected[window_seg_correction == -1] = 1
+
+            # change type
+            window_seg_corrected = window_seg_corrected.astype(np.uint8)
+
+            # fill holes
+            window_seg_corrected = binary_fill_holes(window_seg_corrected > 0).astype(window_seg_corrected.dtype)
+
+            # keep only the largest segmentation
+            _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(window_seg_corrected)
+            stats_aux = stats_aux[1:, :]  # remove 0 label stats
+            lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
+            window_seg_corrected = (labels_aux == lab).astype(np.uint8)
+
+            # smooth segmentation
+            window_seg_corrected = binary_closing(window_seg_corrected, selem=np.ones((11, 11)))
+
+            # corrected segmentation area
+            area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
+            df['area_seg_corrected'] = area_seg_corrected
+
+            if DEBUG:
+                # plot segmentation correction
+                plt.clf()
+                plt.imshow(window_im[0, :, :, :])
+                plt.contour(window_seg_gtruth, linewidths=1, colors='green')
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
+                plt.contour(window_seg_corrected, linewidths=1, colors='black')
+                plt.axis('off')
 
             # append current results to global dataframe
             df_all = pd.concat([df_all, df])
@@ -460,39 +491,40 @@ for i_fold in range(n_folds):
             df['dice'] = np.nan
 
             if DEBUG:
-                plt.subplot(222)
-                plt.cla()
-                plt.imshow(im_array)
-                plt.contour(cell_seg, linewidths=1, levels=0.5, colors='red')
+                plt.clf()
+                plt.imshow(im)
+                plt.contour(cell_seg, linewidths=1, colors='red')
                 plt.plot((bbox_seg_x0, bbox_seg_xend, bbox_seg_xend, bbox_seg_x0, bbox_seg_x0),
                          (bbox_seg_y0, bbox_seg_y0, bbox_seg_yend, bbox_seg_yend, bbox_seg_y0),
                          color='red')
-                plt.xlim(0.9 * bbox_seg_x0,
-                         1.1 * bbox_seg_xend)
-                plt.ylim(1.1 * bbox_seg_yend,
-                         0.9 * bbox_seg_y0)
+                plt.xlim(bbox_seg_x0 - (bbox_seg_xend - bbox_seg_x0) * 0.1,
+                         bbox_seg_xend + (bbox_seg_xend - bbox_seg_x0) * 0.1)
+                plt.ylim(bbox_seg_yend + (bbox_seg_yend - bbox_seg_y0) * 0.1,
+                         bbox_seg_y0 - (bbox_seg_yend - bbox_seg_y0) * 0.1)
+                plt.axis('off')
 
             # crop image and masks according to bounding box of automatic segmentation
-            window_im = cytometer.utils.extract_bbox(im_array, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
+            window_im = cytometer.utils.extract_bbox(np.array(im),
+                                                     (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
             window_seg = cytometer.utils.extract_bbox(cell_seg,
                                                       (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
 
             if DEBUG:
-                plt.subplot(223)
-                plt.cla()
+                plt.clf()
                 plt.imshow(window_im)
-                plt.contour(window_seg, linewidths=1, levels=0.5, colors='red')
+                plt.contour(window_seg, linewidths=1, colors='red')
+
+            '''Cropping and resizing of individual cell crop-outs'''
 
             # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
+            # NOTE: quality network 0053 expects values in [-255, 255], float32
             window_masked_im = \
                 cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
                                                    quality_model_type='-1_1')[0, :, :, :]
-            # NOTE: quality network 0053 expects values in [-255, 255], float32
-            window_masked_im *= 255
 
             # scaling factors for the training image
             training_size = (training_window_len, training_window_len)
-            scaling_factor = np.array(training_size) / np.array(window_masked_im.shape[0:2])
+            scaling_factor = np.array(training_size) / np.array(window_seg.shape[0:2])
             window_pixel_size = np.array([xres, yres]) / scaling_factor  # (um, um)
 
             # resize the images to training window size
@@ -506,37 +538,18 @@ for i_fold in range(n_folds):
             window_seg = np.expand_dims(window_seg, axis=0)
 
             # correct types
+            window_im = window_im.astype(np.float32) / 255.0
             window_seg = window_seg.astype(np.float32)
+            window_seg_gtruth = window_seg_gtruth.astype(np.float32)
 
             # check sizes and types
-            assert (window_im.ndim == 4 and window_im.dtype == np.float32)
-            assert (window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32)
-            assert (window_seg.ndim == 3 and window_seg.dtype == np.float32)
+            assert(window_im.ndim == 4 and window_im.dtype == np.float32
+                   and np.min(window_im) >= 0 and np.max(window_im) <= 1.0)
+            assert(window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32
+                   and np.min(window_masked_im) >= -255.0 and np.max(window_masked_im) <= 255.0)
+            assert(window_seg.ndim == 3 and window_seg.dtype == np.float32)
 
-            # process (histology * mask) for quality
-            window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
-
-            # correction for segmentation
-            window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
-            window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
-            window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
-
-            # corrected segmentation
-            window_seg_corrected = window_seg[0, :, :].copy()
-            window_seg_corrected[window_seg_correction == 1] = 0
-            window_seg_corrected[window_seg_correction == -1] = 1
-
-            # corrected segmentation area
-            area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
-            df['area_seg_corrected'] = area_seg_corrected
-
-            if DEBUG:
-                # plot segmentation correction
-                plt.subplot(223)
-                plt.cla()
-                plt.imshow(window_im[0, :, :, :])
-                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
-                plt.contour(window_seg_corrected, linewidths=1, levels=0.5, colors='black')
+            '''Object classification as "white adipocyte" or "other"'''
 
             # process histology for classification
             window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
@@ -554,11 +567,53 @@ for i_fold in range(n_folds):
 
             if DEBUG:
                 # plot classification
-                plt.subplot(224)
-                plt.cla()
+                plt.clf()
                 plt.imshow(window_classifier_class[0, :, :])
-                plt.contour(window_seg[0, :, :], linewidths=1, levels=0.5, colors='red')
-                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%')
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
+                plt.axis('off')
+
+            '''Segmentation correction'''
+
+            # process (histology * mask) for quality
+            window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
+
+            # correction for segmentation
+            window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
+            window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
+            window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
+
+            # corrected segmentation
+            window_seg_corrected = window_seg[0, :, :].copy()
+            window_seg_corrected[window_seg_correction == 1] = 0
+            window_seg_corrected[window_seg_correction == -1] = 1
+
+            # change type
+            window_seg_corrected = window_seg_corrected.astype(np.uint8)
+
+            # fill holes
+            window_seg_corrected = binary_fill_holes(window_seg_corrected > 0).astype(window_seg_corrected.dtype)
+
+            # keep only the largest segmentation
+            _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(window_seg_corrected)
+            stats_aux = stats_aux[1:, :]  # remove 0 label stats
+            lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
+            window_seg_corrected = (labels_aux == lab).astype(np.uint8)
+
+            # smooth segmentation
+            window_seg_corrected = binary_closing(window_seg_corrected, selem=np.ones((11, 11)))
+
+            # corrected segmentation area
+            area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
+            df['area_seg_corrected'] = area_seg_corrected
+
+            if DEBUG:
+                # plot segmentation correction
+                plt.clf()
+                plt.imshow(window_im[0, :, :, :])
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
+                plt.contour(window_seg_corrected, linewidths=1, colors='black')
+                plt.axis('off')
 
             # append current results to global dataframe
             df_all = pd.concat([df_all, df])
