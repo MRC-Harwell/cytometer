@@ -88,7 +88,6 @@ dilation_size = 25
 component_size_threshold = 0
 hole_size_treshold = 8000
 
-
 '''Directories and filenames
 '''
 
@@ -198,11 +197,9 @@ for i_fold in range(n_folds):
         contours = cell_contours + other_contours + brown_contours
 
         # make a list with the type of cell each contour is classified as
-        contour_type_all = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
-                            np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
-                            np.ones(shape=(len(brown_contours),),
-                                    dtype=np.uint8)]  # 1: brown cells (treated as "other" tissue)
-        contour_type_all = np.concatenate(contour_type_all)
+        contour_type_all = ['wat', ] * len(cell_contours) \
+                           + ['other', ] * len(other_contours) \
+                           + ['bat', ] * len(brown_contours)
 
         print('Cells: ' + str(len(cell_contours)))
         print('Other: ' + str(len(other_contours)))
@@ -236,8 +233,7 @@ for i_fold in range(n_folds):
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
-        # remove labels that touch the edges, that are too small or that don't overlap enough with the rough foreground
-        # mask
+        # remove labels that touch the edges or that are too small
         labels \
             = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area)
 
@@ -268,7 +264,7 @@ for i_fold in range(n_folds):
         ****************************************************************************************************
         '''
 
-        # loop contours
+        # loop cell contours
         for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
@@ -282,7 +278,7 @@ for i_fold in range(n_folds):
                 # plt.text(xy_c[0], xy_c[1], 'j=' + str(j))
                 # plt.scatter(xy_c[0], xy_c[1])
 
-                # close the contour
+                # close the contour for the plot
                 contour_aux = contour.copy()
                 contour_aux.append(contour[0])
 
@@ -292,66 +288,102 @@ for i_fold in range(n_folds):
                 plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='green')
                 plt.axis('off')
 
-            '''Match hand-traced segmentation to automatic segmentation'''
-
             # rasterise current ground truth segmentation
             cell_seg_gtruth = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
             draw = ImageDraw.Draw(cell_seg_gtruth)
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.uint8)
 
-            # find the segmented label that best overlaps with the ground truth label
-            match_out = \
-                cytometer.utils.match_overlapping_labels(labels_ref=labels, labels_test=cell_seg_gtruth,
-                                                         allow_repeat_ref=False)
+            if contour_type_all[j] == 'wat':  # contour type: white adipocyte tissue
 
-            if len(match_out) != 1:
-                warnings.warn('No correspondence found for contour: ' + str(j))
-                continue
+                '''Match hand-traced segmentation to automatic segmentation'''
 
-            if DEBUG:
-                plt.contour(labels == match_out['lab_ref'], colors='r')
+                # find the segmented label that best overlaps with the ground truth label
+                match_out = \
+                    cytometer.utils.match_overlapping_labels(labels_ref=labels, labels_test=cell_seg_gtruth,
+                                                             allow_repeat_ref=False)
 
-            # remove matched segmentation from list of remaining segmentations
-            if match_out[0]['lab_ref'] in labels_seg:
-                labels_seg.remove(match_out[0]['lab_ref'])
+                # save correspondence to dataframe
+                if len(match_out) == 1:
+                    df['label'] = match_out[0]['lab_ref']
+
+                    if DEBUG:
+                        plt.contour(labels == df['label'][0], colors='r')
+
+                    # remove matched segmentation from list of remaining segmentations
+                    if df['label'][0] in labels_seg:
+                        labels_seg.remove(df['label'][0])
+                else:
+                    warnings.warn('No correspondence found for contour: ' + str(j))
+                    df['label'] = -1
+
+            elif contour_type_all[j] in ['other', 'bat']:  # contour type: other cells or brown adipose tissue
+
+                # it makes no sense to match an other or bat contour to a segmenation label, because they were
+                # hand-traced without trying to follow any contours
+                df['label'] = -1
+
+            else:  # contour type: unknown
+
+                raise ValueError('Unrecognised contour type: ' + contour_type_all[j])
 
             '''Bounding boxes'''
 
-            # isolate said segmented label
-            cell_seg = (labels == match_out[0]['lab_ref']).astype(np.uint8)
-
-            # compute bounding box for the ground truth cell and the corresponding segmentation
+            # compute bounding box for the contour
             bbox_seg_gtruth_x0, bbox_seg_gtruth_y0, bbox_seg_gtruth_xend, bbox_seg_gtruth_yend = \
                 cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='xy', inc=1.00)
             bbox_seg_gtruth_r0, bbox_seg_gtruth_c0, bbox_seg_gtruth_rend, bbox_seg_gtruth_cend = \
                 cytometer.utils.bounding_box_with_margin(cell_seg_gtruth, coordinates='rc', inc=1.00)
 
-            bbox_seg_x0, bbox_seg_y0, bbox_seg_xend, bbox_seg_yend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
-            bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+            # isolate matched segmented label
+            if df['label'][0] != -1:  # WAT cells have a corresponding segmentation
+                cell_seg = (labels == df['label'][0]).astype(np.uint8)
 
-            # add to dataframe: segmentation areas and Dice coefficient
-            df['area_gtruth'] = match_out[0]['area_test'] * xres * yres  # um^2
-            df['area_seg'] = match_out[0]['area_ref'] * xres * yres  # um^2
-            df['dice'] = match_out[0]['dice']
+                bbox_seg_x0, bbox_seg_y0, bbox_seg_xend, bbox_seg_yend = \
+                    cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+                bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend = \
+                    cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+
+                # add to dataframe: segmentation areas and Dice coefficient
+                df['area_gtruth'] = match_out[0]['area_test'] * xres * yres  # um^2
+                df['area_seg'] = match_out[0]['area_ref'] * xres * yres  # um^2
+                df['dice'] = match_out[0]['dice']
+
+            else:  # "other" and BAT have no corresponding segmentation
+
+                # add to dataframe: contour area
+                df['area_gtruth'] = np.count_nonzero(cell_seg_gtruth) * xres * yres  # um^2
+                df['area_seg'] = np.nan
+                df['dice'] = np.nan
 
             if DEBUG:
                 plt.clf()
                 plt.imshow(im)
                 plt.contour(cell_seg_gtruth, linewidths=1, colors='green')
-                plt.contour(cell_seg, linewidths=1, colors='red')
+
                 plt.plot((bbox_seg_gtruth_x0, bbox_seg_gtruth_xend, bbox_seg_gtruth_xend, bbox_seg_gtruth_x0, bbox_seg_gtruth_x0),
                          (bbox_seg_gtruth_y0, bbox_seg_gtruth_y0, bbox_seg_gtruth_yend, bbox_seg_gtruth_yend, bbox_seg_gtruth_y0),
                          color='green')
-                plt.plot((bbox_seg_x0, bbox_seg_xend, bbox_seg_xend, bbox_seg_x0, bbox_seg_x0),
-                         (bbox_seg_y0, bbox_seg_y0, bbox_seg_yend, bbox_seg_yend, bbox_seg_y0),
-                         color='red')
-                bbox_both_x0 = np.min((bbox_seg_gtruth_x0, bbox_seg_x0))
-                bbox_both_y0 = np.min((bbox_seg_gtruth_y0, bbox_seg_y0))
-                bbox_both_xend = np.max((bbox_seg_gtruth_xend, bbox_seg_xend))
-                bbox_both_yend = np.max((bbox_seg_gtruth_yend, bbox_seg_yend))
+
+                if df['label'][0] != -1:
+
+                    plt.plot((bbox_seg_x0, bbox_seg_xend, bbox_seg_xend, bbox_seg_x0, bbox_seg_x0),
+                             (bbox_seg_y0, bbox_seg_y0, bbox_seg_yend, bbox_seg_yend, bbox_seg_y0),
+                             color='red')
+                    plt.contour(cell_seg, linewidths=1, colors='red')
+
+                    bbox_both_x0 = np.min((bbox_seg_gtruth_x0, bbox_seg_x0))
+                    bbox_both_y0 = np.min((bbox_seg_gtruth_y0, bbox_seg_y0))
+                    bbox_both_xend = np.max((bbox_seg_gtruth_xend, bbox_seg_xend))
+                    bbox_both_yend = np.max((bbox_seg_gtruth_yend, bbox_seg_yend))
+
+                else:
+
+                    bbox_both_x0 = bbox_seg_gtruth_x0
+                    bbox_both_y0 = bbox_seg_gtruth_y0
+                    bbox_both_xend = bbox_seg_gtruth_xend
+                    bbox_both_yend = bbox_seg_gtruth_yend
+
                 plt.xlim(bbox_both_x0 - (bbox_both_xend - bbox_both_x0) * 0.1,
                          bbox_both_xend + (bbox_both_xend - bbox_both_x0) * 0.1)
                 plt.ylim(bbox_both_yend + (bbox_both_yend - bbox_both_y0) * 0.1,
@@ -361,16 +393,18 @@ for i_fold in range(n_folds):
             # crop image and masks according to bounding box of automatic segmentation
             window_im = cytometer.utils.extract_bbox(np.array(im), (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
             window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
-            window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
+            if df['label'][0] != -1:
+                window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend))
 
             if DEBUG:
                 plt.clf()
                 plt.imshow(window_im)
                 plt.contour(window_seg_gtruth, linewidths=1, colors='green')
-                plt.contour(window_seg, linewidths=1, colors='red')
+                if df['label'][0] != -1:
+                    plt.contour(window_seg, linewidths=1, colors='red')
                 plt.axis('off')
 
-            '''Cropping and resizing of individual cell crop-outs'''
+            '''Cropping and resizing of individual cell'''
 
             # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
             # NOTE: quality network 0053 expects values in [-255, 255], float32
@@ -642,6 +676,22 @@ df_all.reset_index(drop=True, inplace=True)
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe.pkl')
 df_all.to_pickle(dataframe_filename)
 
+'''Save segmentation results to image files
+'''
+
+# dataframe:
+#  ['id', 'ko', 'sex', 'fold', 'im', 'contour', 'area_gtruth', 'area_seg',
+#   'dice', 'area_seg_corrected', 'other_gtruth', 'other_prop']
+
+# load results
+dataframe_filename_0072 = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0072_pipeline_validation_dataframe.pkl')
+df_0072 = pd.read_pickle(dataframe_filename_0072)
+
+for row in range(df_0072.shape[0]):
+
+    pass
+
+
 '''Dataframe analysis of segmentations with corresponding ground truth
 '''
 
@@ -654,6 +704,9 @@ df_all.to_pickle(dataframe_filename)
 # load results
 dataframe_filename_0072 = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0072_pipeline_validation_dataframe.pkl')
 df_0072 = pd.read_pickle(dataframe_filename_0072)
+
+# remove rows of non-cell contours
+
 
 # remove rows with segmentations that have no corresponding ground truth
 idx = df_0072['other_gtruth'] != -1
