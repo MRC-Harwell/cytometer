@@ -26,11 +26,12 @@ import pandas as pd
 import time
 
 # other imports
+from enum import IntEnum
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
-from scipy.stats import linregress
+from scipy.stats import linregress, mode
 from skimage.morphology import remove_small_holes, binary_closing, binary_dilation
 from scipy.ndimage.morphology import binary_fill_holes
 import cv2
@@ -121,8 +122,18 @@ n_im = len(file_list)
 metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
-'''Validation of classifier
 '''
+************************************************************************************************************************
+CLASSIFIER SANITY CHECK:
+
+  Apply classifier trained with each 10 folds to the other fold testing objects. 
+  
+  Note that here the "other" and "BAT" objects are going to be quite different from the carefully and more or less
+  consistent WAT cell.
+************************************************************************************************************************
+'''
+
+## Create dataframe with validation measures
 
 time0 = time.time()
 df_all = pd.DataFrame()
@@ -255,8 +266,8 @@ for i_fold in range(n_folds):
                 plt.imshow(im)
                 plt.contour(cell_seg_contour, linewidths=1, colors='green')
 
-                plt.plot((bbox_seg_contour_x0, bbox_seg_contour_xend, bbox_seg_contour_xend, bbox_seg_contour_x0, bbox_seg_contour_x0),
-                         (bbox_seg_contour_y0, bbox_seg_contour_y0, bbox_seg_contour_yend, bbox_seg_contour_yend, bbox_seg_contour_y0),
+                plt.plot((bbox_total_x0, bbox_total_xend, bbox_total_xend, bbox_total_x0, bbox_total_x0),
+                         (bbox_total_y0, bbox_total_y0, bbox_total_yend, bbox_total_yend, bbox_total_y0),
                          color='green')
 
                 plt.xlim(bbox_total_x0 - (bbox_total_xend - bbox_total_x0) * 0.1,
@@ -333,6 +344,450 @@ df_all.reset_index(drop=True, inplace=True)
 # save results
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier.pkl')
 df_all.to_pickle(dataframe_filename)
+
+## Results analysis
+
+# load results
+dataframe_filename_0072 = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier.pkl')
+df_0072 = pd.read_pickle(dataframe_filename_0072)
+
+## show imbalance between classes
+n_tot = len(df_0072['contour_type'])
+n_wat = np.count_nonzero(df_0072['contour_type'] == 'wat')
+n_other = np.count_nonzero(df_0072['contour_type'] == 'other')
+n_bat = np.count_nonzero(df_0072['contour_type'] == 'bat')
+n_non_wat = n_tot - n_wat
+print('Number of WAT cells: ' + str(n_wat) + ' (%0.1f' % (n_wat / n_tot * 100) + '%)')
+print('Number of Other objects: ' + str(n_wat) + ' (%0.1f' % (n_other / n_tot * 100) + '%)')
+print('Number of BAT objects: ' + str(n_bat) + ' (%0.1f' % (n_bat / n_tot * 100) + '%)')
+print('Number of non-WAT objects: ' + str(n_non_wat) + ' (%0.1f' % (n_non_wat / n_tot * 100) + '%)')
+
+## ROC
+
+# classifier ROC (we make cell=1, other/brown=0 for clarity of the results)
+fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['contour_type'] == 'wat',
+                                         y_score=1 - df_0072['contour_type_prop'])
+roc_auc_0072 = auc(fpr_0072, tpr_0072)
+
+# find point in the curve for False Positive Rate close to 10%
+idx_0072 = np.argmin(np.abs(fpr_0072 - 0.1))
+
+# plots for both classifiers
+
+if DEBUG:
+    # ROC curve before and after data augmentation
+    plt.clf()
+    plt.plot(fpr_0072, tpr_0072, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc_0072)
+    plt.scatter(fpr_0072[idx_0072], tpr_0072[idx_0072],
+                label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
+                      % (thr_0072[idx_0072], fpr_0072[idx_0072], tpr_0072[idx_0072]),
+                color='r')
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
+    plt.legend(loc="lower right")
+
+
+# classifier confusion matrix
+cytometer.utils.plot_confusion_matrix(y_true=df_0072['contour_type'] == 'wat',
+                                      y_pred=1 - df_0072['contour_type_prop'] >= thr_0072[idx_0072],
+                                      normalize=True,
+                                      title='With data augmentation',
+                                      xlabel='"WAT" predicted',
+                                      ylabel='"WAT" is ground truth',
+                                      cmap=plt.cm.Blues,
+                                      colorbar=False)
+
+## Boxplots
+
+if DEBUG:
+    plt.clf()
+    idx_wat = df_0072['contour_type'] == 'wat'
+    plt.boxplot([1 - df_0072['contour_type_prop'][np.logical_not(idx_wat)],
+                1 - df_0072['contour_type_prop'][idx_wat]], labels=['Not WAT', 'WAT'])
+    plt.plot([0.75, 2.25], [thr_0072[idx_0072], thr_0072[idx_0072]], 'r', linewidth=2)
+    plt.tick_params(axis='both', labelsize=14)
+    plt.ylabel('WAT pixels / Segmentation pixels', fontsize=14)
+    plt.tight_layout()
+
+'''
+************************************************************************************************************************
+CLASSIFIER VALIDATION OF AUTOMATIC SEGMENTATION:
+
+  Apply segmentation trained with each 10 folds to the images in the other fold. This produces a lot of automatic
+  segmentations.
+  
+  We then have to label each automatic segmentation as being a "WAT" / "Other" / "BAT" according to hand traced
+  contours.
+  
+  We then apply the classifier to each automatic segmentation.
+
+  Note that here the "other" and "BAT" objects are going to be quite different from the carefully and more or less
+  consistent WAT cell.
+************************************************************************************************************************
+'''
+
+# types of pixels
+class PixelType(IntEnum):
+    UNDETERMINED = 0
+    WAT = 1
+    NON_WAT = 2
+
+## Create dataframe with validation measures
+
+time0 = time.time()
+df_all = pd.DataFrame()
+
+for i_fold in range(n_folds):
+
+    print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+
+    '''Load data
+    '''
+
+    # list of test files in this fold
+    file_list_test = np.array(file_list)[idx_test_all[i_fold]]
+    # file_list_train = np.array(file_list)[idx_train_all[i_fold]]
+
+    # correct home directory in file paths
+    file_list_test = cytometer.data.change_home_directory(list(file_list_test),
+                                                          '/users/rittscher/rcasero', home, check_isfile=True)
+
+    # load classifier model
+    classifier_model_filename = os.path.join(saved_models_dir,
+                                             classifier_model_basename + '_fold_' + str(i_fold) + '.h5')
+    classifier_model = keras.models.load_model(classifier_model_filename)
+
+    for i, file_svg in enumerate(file_list_test):
+
+        print('file ' + str(i) + '/' + str(len(idx_test_all[i_fold]) - 1))
+
+        # change file extension from .svg to .tif
+        file_tif = file_svg.replace('.svg', '.tif')
+
+        # open histology testing image
+        im = Image.open(file_tif)
+
+        # read pixel size information
+        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(im)
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+
+        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                                minimum_npoints=3)
+        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        contours = cell_contours + other_contours + brown_contours
+
+        # make a list with the type of cell each contour is classified as
+        contour_type_all = ['wat', ] * len(cell_contours) \
+                           + ['other', ] * len(other_contours) \
+                           + ['bat', ] * len(brown_contours)
+
+        print('Cells: ' + str(len(cell_contours)))
+        print('Other: ' + str(len(other_contours)))
+        print('Brown: ' + str(len(brown_contours)))
+        print('')
+
+        '''Label pixels of image as either WAT/non-WAT'''
+
+        # initialise arrays to keep track of which pixels are WAT/Other/BAT
+        pixel_type_wat = np.zeros(shape=im.size, dtype=np.uint16)
+        pixel_type_non_wat = np.zeros(shape=im.size, dtype=np.uint16)
+
+        # loop contours
+        for j, contour in enumerate(contours):
+
+            if DEBUG:
+                # centre of current cell
+                xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                plt.text(xy_c[0], xy_c[1], 'j=' + str(j))
+                plt.scatter(xy_c[0], xy_c[1])
+
+                # close the contour for the plot
+                contour_aux = contour.copy()
+                contour_aux.append(contour[0])
+
+                plt.clf()
+                plt.imshow(im)
+                plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='green')
+                plt.axis('off')
+
+            # rasterise object described by contour
+            cell_seg_contour = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+            draw = ImageDraw.Draw(cell_seg_contour)
+            draw.polygon(contour, outline="white", fill="white")
+            cell_seg_contour = np.array(cell_seg_contour, dtype=np.uint8)
+
+            # add the object to the pixel label arrays
+            if contour_type_all[j] == 'wat':
+                pixel_type_wat += cell_seg_contour
+            else:
+                pixel_type_non_wat += cell_seg_contour
+
+        # each pixel now can be labelled as WAT/non-WAT/undetermined
+        pixel_type = np.full(shape=pixel_type_wat.shape, fill_value=PixelType.UNDETERMINED, dtype=PixelType)
+        pixel_type[pixel_type_wat > pixel_type_non_wat] = PixelType.WAT
+        pixel_type[pixel_type_wat < pixel_type_non_wat] = PixelType.NON_WAT
+        del pixel_type_wat
+        del pixel_type_non_wat
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(pixel_type.astype(np.uint8))
+
+        '''Automatic segmentation of image'''
+
+        # filenames of contour and dmap models
+        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
+        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_fold_' + str(i_fold) + '.h5')
+
+        # segment histology
+        labels, _ = cytometer.utils.segment_dmap_contour_v3(im, contour_model=contour_model_filename,
+                                                            dmap_model=dmap_model_filename)
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im)
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+
+            plt.subplot(222)
+            plt.cla()
+            plt.imshow(labels)
+            plt.axis('off')
+            plt.title('Segmentation', fontsize=14)
+
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(im)
+            plt.contour(labels, levels=np.unique(labels), colors='k')
+            plt.axis('off')
+            plt.title('Segmentation on histology', fontsize=14)
+
+        # remove labels that touch the edges or that are too small
+        labels \
+            = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area)
+
+        if DEBUG:
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow(im)
+            plt.contour(labels, levels=np.unique(labels), colors='k')
+            plt.axis('off')
+            plt.title('Cleaned segmentation', fontsize=14)
+
+        # list of unique segmentation labels (remove background)
+        labels_seg = list(np.unique(labels))
+        if 0 in labels_seg:
+            labels_seg.remove(0)
+
+        if len(labels_seg) == 0:
+            raise ValueError('No labels produced!')
+
+        # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
+        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                          values=[i_fold], values_tag='fold',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
+
+        # loop automatic segmentations
+        for j, lab in enumerate(labels_seg):
+
+            # start dataframe row for this contour
+            df = df_im.copy()
+            df['im'] = i
+            df['lab'] = lab
+
+            # boolean indices of current segmentation
+            cell_seg = labels == lab
+
+            # segmentation label is the most common pixel label
+            seg_type = mode(pixel_type[cell_seg])[0][0]
+
+            # add to dataframe if WAT/non-WAT, or skip if undetermined
+            if seg_type == PixelType.WAT:
+                df['seg_type'] = 'wat'
+            elif seg_type == PixelType.NON_WAT:
+                df['seg_type'] = 'non_wat'
+            elif seg_type == PixelType.UNDETERMINED:
+                continue
+            else:
+                raise ValueError('Unrecognised segmentation type')
+
+            '''Bounding boxes'''
+
+            # compute bounding box for the automatic segmentation
+            bbox_seg_x0, bbox_seg_y0, bbox_seg_xend, bbox_seg_yend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+            bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend = \
+                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+
+            # this renaming here is redundant, but it'll be useful in later validation
+            bbox_total_x0 = bbox_seg_x0
+            bbox_total_y0 = bbox_seg_y0
+            bbox_total_xend = bbox_seg_xend
+            bbox_total_yend = bbox_seg_yend
+
+            bbox_total_r0 = bbox_seg_r0
+            bbox_total_c0 = bbox_seg_c0
+            bbox_total_rend = bbox_seg_rend
+            bbox_total_cend = bbox_seg_cend
+            bbox_total = (bbox_total_r0, bbox_total_c0, bbox_total_rend, bbox_total_cend)
+
+            if DEBUG:
+                plt.clf()
+                plt.imshow(im)
+                plt.contour(cell_seg, linewidths=1, colors='green')
+
+                plt.plot((bbox_total_x0, bbox_total_xend, bbox_total_xend, bbox_total_x0, bbox_total_x0),
+                         (bbox_total_y0, bbox_total_y0, bbox_total_yend, bbox_total_yend, bbox_total_y0),
+                         color='green')
+
+                plt.xlim(bbox_total_x0 - (bbox_total_xend - bbox_total_x0) * 0.1,
+                         bbox_total_xend + (bbox_total_xend - bbox_total_x0) * 0.1)
+                plt.ylim(bbox_total_yend + (bbox_total_yend - bbox_total_y0) * 0.1,
+                         bbox_total_y0 - (bbox_total_yend - bbox_total_y0) * 0.1)
+                plt.axis('off')
+
+            # crop image and masks according to bounding box of automatic segmentation
+            window_im = cytometer.utils.extract_bbox(np.array(im), bbox_total)
+            window_seg = cytometer.utils.extract_bbox(cell_seg.astype(np.uint8), bbox_total)
+
+            if DEBUG:
+                plt.clf()
+                plt.imshow(window_im)
+                plt.contour(window_seg, linewidths=1, colors='green')
+                plt.axis('off')
+
+            '''Cropping and resizing of individual contour'''
+
+            # scaling factors for the training image
+            training_size = (training_window_len, training_window_len)
+            scaling_factor = np.array(training_size) / np.array(window_seg.shape[0:2])
+            window_pixel_size = np.array([xres, yres]) / scaling_factor  # (um, um)
+
+            # resize the images to training window size
+            window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
+            window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
+
+            # add dummy dimensions for keras
+            window_im = np.expand_dims(window_im, axis=0)
+
+            # correct types
+            window_im = window_im.astype(np.float32) / 255.0
+            # window_seg = window_seg.astype(np.float32)
+
+            # check sizes and types
+            assert (window_im.ndim == 4 and window_im.dtype == np.float32
+                    and np.min(window_im) >= 0 and np.max(window_im) <= 1.0)
+            # assert (window_seg.ndim == 2 and window_seg.dtype == np.float32)
+
+            '''Object classification as "WAT" or "other"'''
+
+            # process histology for classification
+            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
+
+            # get classification label for each pixel
+            window_classifier_class = np.argmax(window_classifier_out, axis=3)
+
+            # proportion of "Other" pixels in the mask
+            window_other_prop = np.count_nonzero(window_seg * window_classifier_class) \
+                                / np.count_nonzero(window_seg)
+
+            # add to dataframe row
+            df['seg_type_prop'] = window_other_prop
+
+            if DEBUG:
+                # plot classification
+                plt.clf()
+                plt.imshow(window_classifier_class[0, :, :])
+                plt.contour(window_seg, linewidths=1, colors='green')
+                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
+                plt.axis('off')
+
+            # append current results to global dataframe
+            df_all = pd.concat([df_all, df])
+
+        print('Time so far: ' + str(time.time() - time0) + ' s')
+
+# reset indices
+df_all.reset_index(drop=True, inplace=True)
+
+# save results
+dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier_automatic.pkl')
+df_all.to_pickle(dataframe_filename)
+
+## Results analysis
+
+# load results
+dataframe_filename_0072 = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier_automatic.pkl')
+df_0072 = pd.read_pickle(dataframe_filename_0072)
+
+## show imbalance between classes
+n_tot = len(df_0072['seg_type'])
+n_wat = np.count_nonzero(df_0072['seg_type'] == 'wat')
+n_non_wat = np.count_nonzero(df_0072['seg_type'] == 'non_wat')
+
+print('Number of WAT cells: ' + str(n_wat) + ' (%0.1f' % (n_wat / n_tot * 100) + '%)')
+print('Number of non-WAT objects: ' + str(n_non_wat) + ' (%0.1f' % (n_non_wat / n_tot * 100) + '%)')
+
+## ROC
+
+# classifier ROC (we make cell=1, other/brown=0 for clarity of the results)
+fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['seg_type'] == 'wat',
+                                         y_score=1 - df_0072['seg_type_prop'])
+roc_auc_0072 = auc(fpr_0072, tpr_0072)
+
+# find point in the curve for False Positive Rate close to 10%
+idx_0072 = np.argmin(np.abs(fpr_0072 - 0.1))
+
+if DEBUG:
+    # ROC curve before and after data augmentation
+    plt.clf()
+    plt.plot(fpr_0072, tpr_0072, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc_0072)
+    plt.scatter(fpr_0072[idx_0072], tpr_0072[idx_0072],
+                label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
+                      % (thr_0072[idx_0072], fpr_0072[idx_0072], tpr_0072[idx_0072]),
+                color='r')
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+
+
+# classifier confusion matrix
+cytometer.utils.plot_confusion_matrix(y_true=df_0072['seg_type'] == 'wat',
+                                      y_pred=1 - df_0072['seg_type_prop'] >= thr_0072[idx_0072],
+                                      normalize=True,
+                                      title='With data augmentation',
+                                      xlabel='"WAT" predicted',
+                                      ylabel='"WAT" is ground truth',
+                                      cmap=plt.cm.Blues,
+                                      colorbar=False)
+
+## Boxplots
+
+if DEBUG:
+    plt.clf()
+    idx_wat = df_0072['seg_type'] == 'wat'
+    plt.boxplot([1 - df_0072['seg_type_prop'][np.logical_not(idx_wat)],
+                1 - df_0072['seg_type_prop'][idx_wat]], labels=['Not WAT', 'WAT'])
+    plt.plot([0.75, 2.25], [thr_0072[idx_0072], thr_0072[idx_0072]], 'r', linewidth=2)
+    plt.tick_params(axis='both', labelsize=14)
+    plt.ylabel('WAT pixels / Segmentation pixels', fontsize=14)
+    plt.tight_layout()
+
 
 '''
 ************************************************************************************************************************
@@ -938,11 +1393,11 @@ df_0072 = df_0072.loc[idx, :]
 
 # add columns for cell estimates. This could be computed on the fly in the plots, but this way makes the code below
 # a bit easier to read, and less likely to have bugs if we forget the 1-x operation
-df_0072['cell_gtruth'] = 1 - df_0072['contour_type']
+df_0072['contour_type'] = 1 - df_0072['contour_type']
 df_0072['cell_prop'] = 1 - df_0072['contour_type_prop']
 
 # classifier ROC (we make cell=1, other=0 for clarity of the results)
-fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['cell_gtruth'],
+fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['contour_type'],
                                          y_score=df_0072['cell_prop'])
 roc_auc_0072 = auc(fpr_0072, tpr_0072)
 
@@ -950,10 +1405,10 @@ roc_auc_0072 = auc(fpr_0072, tpr_0072)
 idx_0072 = np.where(fpr_0072 > 0.1)[0][0]
 
 ## show imbalance between classes
-n_cell = np.count_nonzero(df_0072['cell_gtruth'] == 1)
-n_other = np.count_nonzero(df_0072['contour_type'] == 1)
-print('Number of cell objects: ' + str(n_cell) + ' (%0.1f' % (n_cell / (n_cell + n_other) * 100) + '%)')
-print('Number of other objects: ' + str(n_other) + ' (%0.1f' % (n_other / (n_cell + n_other) * 100) + '%)')
+n_wat = np.count_nonzero(df_0072['contour_type'] == 1)
+n_non_wat = np.count_nonzero(df_0072['contour_type'] == 1)
+print('Number of cell objects: ' + str(n_wat) + ' (%0.1f' % (n_wat / (n_wat + n_non_wat) * 100) + '%)')
+print('Number of other objects: ' + str(n_non_wat) + ' (%0.1f' % (n_non_wat / (n_wat + n_non_wat) * 100) + '%)')
 
 ## plots for both classifiers
 
@@ -972,7 +1427,7 @@ if DEBUG:
 
 
 # classifier confusion matrix
-cytometer.utils.plot_confusion_matrix(y_true=df_0072['cell_gtruth'],
+cytometer.utils.plot_confusion_matrix(y_true=df_0072['contour_type'],
                                       y_pred=df_0072['cell_prop'] >= thr_0072[idx_0072],
                                       normalize=True,
                                       title='With data augmentation',
@@ -984,7 +1439,7 @@ cytometer.utils.plot_confusion_matrix(y_true=df_0072['cell_gtruth'],
 ## segmentation correction
 
 # indices of "Cell" objects
-idx_cell = df_0072['cell_gtruth'] == 1
+idx_cell = df_0072['contour_type'] == 1
 
 # linear regression
 slope_0072_seg, intercept_0072_seg, \
