@@ -14,7 +14,8 @@ from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep
 from skimage import measure
 from skimage.exposure import rescale_intensity
-from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing, binary_dilation
+from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing, \
+    binary_dilation, binary_erosion, skeletonize, thin
 from skimage.feature import peak_local_max
 from skimage.future.graph import rag_mean_color, show_rag, merge_hierarchical
 from skimage.measure import regionprops
@@ -805,6 +806,12 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
     # remove small holes from the segmentation of insides of cells
     seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
 
+    # thin the contours
+    seg = thin(1 - seg, max_iter=20)
+
+    # erode the insides of cells to connect incomplete contours
+    seg = binary_erosion(1 - seg, selem=np.ones(shape=(29, 29), dtype=np.uint8))
+
     if DEBUG:
         plt.subplot(224)
         plt.cla()
@@ -813,7 +820,7 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
 
     # assign different label to each connected components
     # Note: cv2.connectedComponentsWithStats is 10x faster than skimage.measure.label
-    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
+    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg.astype(np.uint8))
 
     if DEBUG:
         plt.subplot(223)
