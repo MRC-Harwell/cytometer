@@ -345,70 +345,70 @@ df_all.reset_index(drop=True, inplace=True)
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier.pkl')
 df_all.to_pickle(dataframe_filename)
 
-# ## Results analysis
-#
-# # load results
-# dataframe_filename_0072 = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier.pkl')
-# df_0072 = pd.read_pickle(dataframe_filename_0072)
-#
-# ## show imbalance between classes
-# n_tot = len(df_0072['contour_type'])
-# n_wat = np.count_nonzero(df_0072['contour_type'] == 'wat')
-# n_other = np.count_nonzero(df_0072['contour_type'] == 'other')
-# n_bat = np.count_nonzero(df_0072['contour_type'] == 'bat')
-# n_non_wat = n_tot - n_wat
-# print('Number of WAT cells: ' + str(n_wat) + ' (%0.1f' % (n_wat / n_tot * 100) + '%)')
-# print('Number of Other objects: ' + str(n_wat) + ' (%0.1f' % (n_other / n_tot * 100) + '%)')
-# print('Number of BAT objects: ' + str(n_bat) + ' (%0.1f' % (n_bat / n_tot * 100) + '%)')
-# print('Number of non-WAT objects: ' + str(n_non_wat) + ' (%0.1f' % (n_non_wat / n_tot * 100) + '%)')
-#
-# ## ROC
-#
-# # classifier ROC (we make cell=1, other/brown=0 for clarity of the results)
-# fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['contour_type'] == 'wat',
-#                                          y_score=1 - df_0072['contour_type_prop'])
-# roc_auc_0072 = auc(fpr_0072, tpr_0072)
-#
-# # find point in the curve for False Positive Rate close to 10%
-# idx_0072 = np.argmin(np.abs(fpr_0072 - 0.1))
-#
-# # plots for both classifiers
-#
-# if DEBUG:
-#     # ROC curve before and after data augmentation
-#     plt.clf()
-#     plt.plot(fpr_0072, tpr_0072, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc_0072)
-#     plt.scatter(fpr_0072[idx_0072], tpr_0072[idx_0072],
-#                 label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
-#                       % (thr_0072[idx_0072], fpr_0072[idx_0072], tpr_0072[idx_0072]),
-#                 color='r')
-#     plt.tick_params(labelsize=16)
-#     plt.xlabel('False Positive Rate', fontsize=16)
-#     plt.ylabel('True Positive Rate', fontsize=16)
-#     plt.legend(loc="lower right")
-#
-#
-# # classifier confusion matrix
-# cytometer.utils.plot_confusion_matrix(y_true=df_0072['contour_type'] == 'wat',
-#                                       y_pred=1 - df_0072['contour_type_prop'] >= thr_0072[idx_0072],
-#                                       normalize=True,
-#                                       title='With data augmentation',
-#                                       xlabel='"WAT" predicted',
-#                                       ylabel='"WAT" is ground truth',
-#                                       cmap=plt.cm.Blues,
-#                                       colorbar=False)
-#
-# ## Boxplots
-#
-# if DEBUG:
-#     plt.clf()
-#     idx_wat = df_0072['contour_type'] == 'wat'
-#     plt.boxplot([1 - df_0072['contour_type_prop'][np.logical_not(idx_wat)],
-#                 1 - df_0072['contour_type_prop'][idx_wat]], labels=['Not WAT', 'WAT'])
-#     plt.plot([0.75, 2.25], [thr_0072[idx_0072], thr_0072[idx_0072]], 'r', linewidth=2)
-#     plt.tick_params(axis='both', labelsize=14)
-#     plt.ylabel('WAT pixels / Segmentation pixels', fontsize=14)
-#     plt.tight_layout()
+## Results analysis
+
+# load results
+dataframe_filename_0072 = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier.pkl')
+df_0072 = pd.read_pickle(dataframe_filename_0072)
+
+## show imbalance between classes
+n_tot = len(df_0072['contour_type'])
+n_wat = np.count_nonzero(df_0072['contour_type'] == 'wat')
+n_other = np.count_nonzero(df_0072['contour_type'] == 'other')
+n_bat = np.count_nonzero(df_0072['contour_type'] == 'bat')
+n_non_wat = n_tot - n_wat
+print('Number of WAT cells: ' + str(n_wat) + ' (%0.1f' % (n_wat / n_tot * 100) + '%)')
+print('Number of Other objects: ' + str(n_wat) + ' (%0.1f' % (n_other / n_tot * 100) + '%)')
+print('Number of BAT objects: ' + str(n_bat) + ' (%0.1f' % (n_bat / n_tot * 100) + '%)')
+print('Number of non-WAT objects: ' + str(n_non_wat) + ' (%0.1f' % (n_non_wat / n_tot * 100) + '%)')
+
+## ROC
+
+# classifier ROC (we make cell=1, other/brown=0 for clarity of the results)
+fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['contour_type'] == 'wat',
+                                         y_score=1 - df_0072['contour_type_prop'])
+roc_auc_0072 = auc(fpr_0072, tpr_0072)
+
+# find point in the curve for False Positive Rate close to 10%
+idx_0072 = np.argmin(np.abs(fpr_0072 - 0.1))
+
+# plots for both classifiers
+
+if DEBUG:
+    # ROC curve before and after data augmentation
+    plt.clf()
+    plt.plot(fpr_0072, tpr_0072, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc_0072)
+    plt.scatter(fpr_0072[idx_0072], tpr_0072[idx_0072],
+                label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
+                      % (thr_0072[idx_0072], fpr_0072[idx_0072], tpr_0072[idx_0072]),
+                color='r')
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
+    plt.legend(loc="lower right")
+
+
+# classifier confusion matrix
+cytometer.utils.plot_confusion_matrix(y_true=df_0072['contour_type'] == 'wat',
+                                      y_pred=1 - df_0072['contour_type_prop'] >= thr_0072[idx_0072],
+                                      normalize=True,
+                                      title='With data augmentation',
+                                      xlabel='"WAT" predicted',
+                                      ylabel='"WAT" is ground truth',
+                                      cmap=plt.cm.Blues,
+                                      colorbar=False)
+
+## Boxplots
+
+if DEBUG:
+    plt.clf()
+    idx_wat = df_0072['contour_type'] == 'wat'
+    plt.boxplot([1 - df_0072['contour_type_prop'][np.logical_not(idx_wat)],
+                1 - df_0072['contour_type_prop'][idx_wat]], labels=['Not WAT', 'WAT'])
+    plt.plot([0.75, 2.25], [thr_0072[idx_0072], thr_0072[idx_0072]], 'r', linewidth=2)
+    plt.tick_params(axis='both', labelsize=14)
+    plt.ylabel('WAT pixels / Segmentation pixels', fontsize=14)
+    plt.tight_layout()
 
 '''
 ************************************************************************************************************************
@@ -727,66 +727,66 @@ df_all.reset_index(drop=True, inplace=True)
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier_automatic.pkl')
 df_all.to_pickle(dataframe_filename)
 
-# ## Results analysis
-#
-# # load results
-# dataframe_filename_0072 = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier_automatic.pkl')
-# df_0072 = pd.read_pickle(dataframe_filename_0072)
-#
-# ## show imbalance between classes
-# n_tot = len(df_0072['seg_type'])
-# n_wat = np.count_nonzero(df_0072['seg_type'] == 'wat')
-# n_non_wat = np.count_nonzero(df_0072['seg_type'] == 'non_wat')
-#
-# print('Number of WAT cells: ' + str(n_wat) + ' (%0.1f' % (n_wat / n_tot * 100) + '%)')
-# print('Number of non-WAT objects: ' + str(n_non_wat) + ' (%0.1f' % (n_non_wat / n_tot * 100) + '%)')
-#
-# ## ROC
-#
-# # classifier ROC (we make cell=1, other/brown=0 for clarity of the results)
-# fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['seg_type'] == 'wat',
-#                                          y_score=1 - df_0072['seg_type_prop'])
-# roc_auc_0072 = auc(fpr_0072, tpr_0072)
-#
-# # find point in the curve for False Positive Rate close to 10%
-# idx_0072 = np.argmin(np.abs(fpr_0072 - 0.1))
-#
-# if DEBUG:
-#     # ROC curve before and after data augmentation
-#     plt.clf()
-#     plt.plot(fpr_0072, tpr_0072, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc_0072)
-#     plt.scatter(fpr_0072[idx_0072], tpr_0072[idx_0072],
-#                 label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
-#                       % (thr_0072[idx_0072], fpr_0072[idx_0072], tpr_0072[idx_0072]),
-#                 color='r')
-#     plt.tick_params(labelsize=16)
-#     plt.xlabel('False Positive Rate', fontsize=16)
-#     plt.ylabel('True Positive Rate', fontsize=16)
-#     plt.legend(loc="lower right")
-#     plt.tight_layout()
-#
-#
-# # classifier confusion matrix
-# cytometer.utils.plot_confusion_matrix(y_true=df_0072['seg_type'] == 'wat',
-#                                       y_pred=1 - df_0072['seg_type_prop'] >= thr_0072[idx_0072],
-#                                       normalize=True,
-#                                       title='With data augmentation',
-#                                       xlabel='"WAT" predicted',
-#                                       ylabel='"WAT" is ground truth',
-#                                       cmap=plt.cm.Blues,
-#                                       colorbar=False)
-#
-# ## Boxplots
-#
-# if DEBUG:
-#     plt.clf()
-#     idx_wat = df_0072['seg_type'] == 'wat'
-#     plt.boxplot([1 - df_0072['seg_type_prop'][np.logical_not(idx_wat)],
-#                 1 - df_0072['seg_type_prop'][idx_wat]], labels=['Not WAT', 'WAT'])
-#     plt.plot([0.75, 2.25], [thr_0072[idx_0072], thr_0072[idx_0072]], 'r', linewidth=2)
-#     plt.tick_params(axis='both', labelsize=14)
-#     plt.ylabel('WAT pixels / Segmentation pixels', fontsize=14)
-#     plt.tight_layout()
+## Results analysis
+
+# load results
+dataframe_filename_0072 = os.path.join(saved_models_dir, experiment_id + '_dataframe_classifier_automatic.pkl')
+df_0072 = pd.read_pickle(dataframe_filename_0072)
+
+## show imbalance between classes
+n_tot = len(df_0072['seg_type'])
+n_wat = np.count_nonzero(df_0072['seg_type'] == 'wat')
+n_non_wat = np.count_nonzero(df_0072['seg_type'] == 'non_wat')
+
+print('Number of WAT cells: ' + str(n_wat) + ' (%0.1f' % (n_wat / n_tot * 100) + '%)')
+print('Number of non-WAT objects: ' + str(n_non_wat) + ' (%0.1f' % (n_non_wat / n_tot * 100) + '%)')
+
+## ROC
+
+# classifier ROC (we make cell=1, other/brown=0 for clarity of the results)
+fpr_0072, tpr_0072, thr_0072 = roc_curve(y_true=df_0072['seg_type'] == 'wat',
+                                         y_score=1 - df_0072['seg_type_prop'])
+roc_auc_0072 = auc(fpr_0072, tpr_0072)
+
+# find point in the curve for False Positive Rate close to 10%
+idx_0072 = np.argmin(np.abs(fpr_0072 - 0.1))
+
+if DEBUG:
+    # ROC curve before and after data augmentation
+    plt.clf()
+    plt.plot(fpr_0072, tpr_0072, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc_0072)
+    plt.scatter(fpr_0072[idx_0072], tpr_0072[idx_0072],
+                label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
+                      % (thr_0072[idx_0072], fpr_0072[idx_0072], tpr_0072[idx_0072]),
+                color='r')
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+
+
+# classifier confusion matrix
+cytometer.utils.plot_confusion_matrix(y_true=df_0072['seg_type'] == 'wat',
+                                      y_pred=1 - df_0072['seg_type_prop'] >= thr_0072[idx_0072],
+                                      normalize=True,
+                                      title='With data augmentation',
+                                      xlabel='"WAT" predicted',
+                                      ylabel='"WAT" is ground truth',
+                                      cmap=plt.cm.Blues,
+                                      colorbar=False)
+
+## Boxplots
+
+if DEBUG:
+    plt.clf()
+    idx_wat = df_0072['seg_type'] == 'wat'
+    plt.boxplot([1 - df_0072['seg_type_prop'][np.logical_not(idx_wat)],
+                1 - df_0072['seg_type_prop'][idx_wat]], labels=['Not WAT', 'WAT'])
+    plt.plot([0.75, 2.25], [thr_0072[idx_0072], thr_0072[idx_0072]], 'r', linewidth=2)
+    plt.tick_params(axis='both', labelsize=14)
+    plt.ylabel('WAT pixels / Segmentation pixels', fontsize=14)
+    plt.tight_layout()
 
 
 '''
@@ -1152,6 +1152,13 @@ if DEBUG:
     plt.clf()
     plt.scatter(df_0072['area_contour'], df_0072['dice'])
 
+## Population cell area profiles
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot([df_0072['area_contour'], df_0072['area_seg'], df_0072['area_seg_corrected']], notch=True,
+                labels=['Manual', 'Automatic', 'Corrected'])
+
 ## Area scatter plots
 
 # linear regression
@@ -1262,6 +1269,14 @@ if DEBUG:
     cbar = plt.colorbar()
     cbar.ax.set_title('Dice coeff.')
     plt.tight_layout()
+
+## Population cell area profiles
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot([df_0072['area_contour'], df_0072['area_seg'], df_0072['area_seg_corrected']], notch=True,
+                labels=['Manual', 'Automatic', 'Corrected'])
+
 
 
 
