@@ -1589,18 +1589,22 @@ def clean_segmentation(labels, remove_edge_labels=False, min_cell_area=0, mask=N
     # remove labels that are not substantially within the mask
     if mask is not None:
 
-        # count number of pixels in each label after we multiply by the mask
-        props_masked = regionprops(labels * mask)
+        # count number of pixels in each label
+        prop = regionprops(labels)
+        prop_masked = regionprops(labels * mask)
 
-        # create a lookup table for quick search of masked label area
-        max_label = np.max([p.label for p in props_masked])
+        # create a lookup table for quick search of label area
+        max_label = np.max([p.label for p in prop])
+        area_lut = np.zeros(shape=(max_label + 1,))
         area_masked_lut = np.zeros(shape=(max_label + 1,))
-        for p_masked in props_masked:
-            area_masked_lut[p_masked.label] = p_masked.area
+        for p in prop:
+            area_lut[p.label] = p.area
+        for p in prop_masked:
+            area_masked_lut[p.label] = p.area
 
         # check for each original label whether it is at least min_mask_overlap (def 60%) covered by the mask
-        for p in props_masked:
-            if area_masked_lut[p.label] < p.area * min_mask_overlap:
+        for p in prop:
+            if area_masked_lut[p.label] < area_lut[p.label] * min_mask_overlap:
                 labels[labels == p.label] = 0
 
     if DEBUG:
