@@ -868,7 +868,8 @@ for i_fold in range(n_folds):
 
         # segment histology
         labels, _ = cytometer.utils.segment_dmap_contour_v3(im, contour_model=contour_model_filename,
-                                                            dmap_model=dmap_model_filename)
+                                                            dmap_model=dmap_model_filename,
+                                                            local_threshold_block_size=41, border_dilation=0)
 
         if DEBUG:
             plt.clf()
@@ -1761,6 +1762,28 @@ print('25%: ' + str(100 * (contour_perc_25_corrected - contour_perc_25_manual) /
 print('Median: ' + str(100 * (contour_perc_50_corrected - contour_perc_50_manual) / contour_perc_50_manual) + '%')
 print('75%: ' + str(100 * (contour_perc_75_corrected - contour_perc_75_manual) / contour_perc_75_manual) + '%')
 print('Top whisker: ' + str(100 * (contour_perc_wend_corrected - contour_perc_wend_manual) / contour_perc_wend_manual) + '%')
+
+## Compare female/male cells sizes in manual and corrected datasets
+
+# objects that are cells are those with 90% of "wat" pixels
+idx_cell_manual_f = df_0072_manual['sex'] == 'f'
+idx_cell_manual_m = np.logical_not(idx_cell_manual_f)
+idx_cell_auto_f = np.logical_and((1 - df_0072_auto['seg_type_prop']) >= 0.9,
+                                 df_0072_auto['sex'] == 'f')
+idx_cell_auto_m = np.logical_and((1 - df_0072_auto['seg_type_prop']) >= 0.9,
+                                 df_0072_auto['sex'] == 'm')
+
+if DEBUG:
+    plt.clf()
+    boxp = plt.boxplot([df_0072_manual['area_contour'][idx_cell_manual_f],
+                        df_0072_manual['area_contour'][idx_cell_manual_m],
+                        df_0072_auto['area_seg_corrected'][idx_cell_auto_f],
+                        df_0072_auto['area_seg_corrected'][idx_cell_auto_m]],
+                       notch=True, labels=['Manual F', 'Manual M', 'Auto\ncorrected F', 'Auto\ncorrected M'],
+                       positions=[1, 1.5, 2.5, 3])
+    plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
 
 
 '''
