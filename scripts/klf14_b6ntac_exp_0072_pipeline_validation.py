@@ -1308,6 +1308,9 @@ df_all = pd.DataFrame()
 for i_fold in range(n_folds):
 
     print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+    if (i_fold <= 6):
+        print('Skipping, done')
+        continue
 
     '''Load data
     '''
@@ -1453,7 +1456,8 @@ for i_fold in range(n_folds):
             labels_seg.remove(0)
 
         if len(labels_seg) == 0:
-            raise ValueError('No labels produced!')
+            warnings.warn('No labels produced!')
+            continue
 
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
@@ -1686,7 +1690,7 @@ if DEBUG:
     plt.clf()
     plt.hist(1 - df_0072_auto['seg_type_prop'], bins=100)
 
-np.count_nonzero((1 - df_0072_auto['seg_type_prop']) >= 0.9) / len(df_0072_auto['seg_type_prop'])
+print('Prop. classifier OK objects: ' + str(np.count_nonzero((1 - df_0072_auto['seg_type_prop']) >= 0.9) / len(df_0072_auto['seg_type_prop'])))
 
 ## Population cell area profiles
 
@@ -1695,16 +1699,68 @@ idx_cell_auto = (1 - df_0072_auto['seg_type_prop']) >= 0.9
 
 if DEBUG:
     plt.clf()
-    plt.boxplot([df_0072_manual['area_contour'],
-                 df_0072_auto['area_seg'][idx_cell_auto],
-                 df_0072_auto['area_seg_corrected'][idx_cell_auto]],
-                notch=True, labels=['Manual', 'Automatic,\nno correction', 'Automatic,\nwith correction'])
+    boxp = plt.boxplot([df_0072_manual['area_contour'],
+                        df_0072_auto['area_seg'][idx_cell_auto],
+                        df_0072_auto['area_seg_corrected'][idx_cell_auto]],
+                       notch=True, labels=['Manual', 'Automatic,\nno correction', 'Automatic,\nwith correction'])
     plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.tight_layout()
 
+    # points of interest in the manual contours boxplot
+    contour_perc_w0_manual = boxp['whiskers'][0].get_data()[1][1]
+    contour_perc_25_manual = boxp['boxes'][0].get_data()[1][1]
+    contour_perc_50_manual = boxp['medians'][0].get_data()[1][0]
+    contour_perc_75_manual = boxp['boxes'][0].get_data()[1][5]
+    contour_perc_wend_manual = boxp['whiskers'][1].get_data()[1][1]
+
+    # points of interest in the auto, no correction boxplot
+    contour_perc_w0_auto = boxp['whiskers'][2].get_data()[1][1]
+    contour_perc_25_auto = boxp['boxes'][1].get_data()[1][1]
+    contour_perc_50_auto = boxp['medians'][1].get_data()[1][0]
+    contour_perc_75_auto = boxp['boxes'][1].get_data()[1][5]
+    contour_perc_wend_auto = boxp['whiskers'][3].get_data()[1][1]
+
+    # points of interest in the auto, correction boxplot
+    contour_perc_w0_corrected = boxp['whiskers'][4].get_data()[1][1]
+    contour_perc_25_corrected = boxp['boxes'][2].get_data()[1][1]
+    contour_perc_50_corrected = boxp['medians'][2].get_data()[1][0]
+    contour_perc_75_corrected = boxp['boxes'][2].get_data()[1][5]
+    contour_perc_wend_corrected = boxp['whiskers'][5].get_data()[1][1]
+
     plt.ylim(-250, 6800)
-    plt.plot([0.75, 3.25], np.array([1, 1]) * np.median(df_0072_manual['area_contour']), 'C1')
+
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_w0_manual, 'k--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_25_manual, 'k--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_50_manual, 'C1--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_75_manual, 'k--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_wend_manual, 'k--')
+
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_w0_auto, 'k--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_25_auto, 'k--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_50_auto, 'C1--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_75_auto, 'k--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_wend_auto, 'k--')
+    #
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_w0_corrected, 'k--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_25_corrected, 'k--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_50_corrected, 'C1--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_75_corrected, 'k--')
+    # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_wend_corrected, 'k--')
+
+print('From manual to auto, no correction')
+print('Bottom whisker: ' + str(100 * (contour_perc_w0_auto - contour_perc_w0_manual) / contour_perc_w0_manual) + '%')
+print('25%: ' + str(100 * (contour_perc_25_auto - contour_perc_25_manual) / contour_perc_25_manual) + '%')
+print('Median: ' + str(100 * (contour_perc_50_auto - contour_perc_50_manual) / contour_perc_50_manual) + '%')
+print('75%: ' + str(100 * (contour_perc_75_auto - contour_perc_75_manual) / contour_perc_75_manual) + '%')
+print('Top whisker: ' + str(100 * (contour_perc_wend_auto - contour_perc_wend_manual) / contour_perc_wend_manual) + '%')
+
+print('From manual to auto, correction')
+print('Bottom whisker: ' + str(100 * (contour_perc_w0_corrected - contour_perc_w0_manual) / contour_perc_w0_manual) + '%')
+print('25%: ' + str(100 * (contour_perc_25_corrected - contour_perc_25_manual) / contour_perc_25_manual) + '%')
+print('Median: ' + str(100 * (contour_perc_50_corrected - contour_perc_50_manual) / contour_perc_50_manual) + '%')
+print('75%: ' + str(100 * (contour_perc_75_corrected - contour_perc_75_manual) / contour_perc_75_manual) + '%')
+print('Top whisker: ' + str(100 * (contour_perc_wend_corrected - contour_perc_wend_manual) / contour_perc_wend_manual) + '%')
 
 
 '''
