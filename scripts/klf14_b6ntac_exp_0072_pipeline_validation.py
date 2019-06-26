@@ -1308,11 +1308,6 @@ df_all = pd.DataFrame()
 
 for i_fold in range(n_folds):
 
-    print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
-    if (i_fold <= 6):
-        print('Skipping, done')
-        continue
-
     '''Load data
     '''
 
@@ -1465,7 +1460,7 @@ for i_fold in range(n_folds):
                                                           values=[i_fold], values_tag='fold',
                                                           tags_to_keep=['id', 'ko', 'sex'])
 
-        '''Find the automatic segmentation that best overlaps with each cell contour'''
+        '''Iterate segmentation labels'''
 
         # loop segmentation labels
         for j, lab in enumerate(labels_seg):
@@ -1534,8 +1529,6 @@ for i_fold in range(n_folds):
                 plt.contour(window_seg, linewidths=1, colors='red')
                 plt.axis('off')
 
-            '''Segmentation correction'''
-
             # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
             # NOTE: quality network 0053 expects values in [-255, 255], float32
             window_masked_im = \
@@ -1573,7 +1566,7 @@ for i_fold in range(n_folds):
             assert (window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32
                     and np.min(window_masked_im) >= -255 and np.max(window_masked_im) <= 255)
 
-            # process (histology * mask) for quality
+            # process (histology * mask) for segmentation correction
             window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
 
             # correction for segmentation
@@ -1611,8 +1604,8 @@ for i_fold in range(n_folds):
                 # plot segmentation correction
                 plt.clf()
                 plt.imshow(window_im[0, :, :, :])
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
-                plt.contour(window_seg_corrected, linewidths=1, colors='black')
+                plt.contour(window_seg[0, :, :], linewidths=1, colors='greenyellow')
+                plt.contour(window_seg_corrected, linewidths=1, colors='white')
                 plt.axis('off')
 
             '''Object classification as "WAT" or "other"'''
@@ -1624,7 +1617,7 @@ for i_fold in range(n_folds):
             window_classifier_class = np.argmax(window_classifier_out, axis=3)
 
             # proportion of "Other" pixels in the mask
-            window_other_prop = np.count_nonzero(window_seg * window_classifier_class) \
+            window_other_prop = np.count_nonzero(window_seg_corrected * window_classifier_class[0, :, :]) \
                                 / np.count_nonzero(window_seg)
 
             # add to dataframe row
@@ -1634,7 +1627,7 @@ for i_fold in range(n_folds):
                 # plot classification
                 plt.clf()
                 plt.imshow(window_classifier_class[0, :, :])
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='red')
+                plt.contour(window_seg_corrected, linewidths=1, colors='red')
                 plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
                 plt.axis('off')
 
