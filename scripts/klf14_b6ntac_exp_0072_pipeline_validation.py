@@ -1781,6 +1781,158 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
+ANALYSIS OF MANUAL CONTOUR DATA:
+
+************************************************************************************************************************
+'''
+
+time0 = time.time()
+df_all = pd.DataFrame()
+
+# correct home directory in file paths
+file_list = cytometer.data.change_home_directory(list(file_list), '/users/rittscher/rcasero', home, check_isfile=True)
+
+for i, file_svg in enumerate(file_list):
+
+    print('file ' + str(i) + '/' + str(len(file_list) - 1))
+
+    # change file extension from .svg to .tif
+    file_tif = file_svg.replace('.svg', '.tif')
+
+    # open histology testing image
+    im = Image.open(file_tif)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    if DEBUG:
+        plt.clf()
+        plt.imshow(im)
+        plt.axis('off')
+        plt.title('Histology', fontsize=14)
+
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                            minimum_npoints=3)
+    contours = cell_contours
+
+    print('Cells: ' + str(len(cell_contours)))
+    print('')
+
+    # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
+    df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                      values=[i], values_tag='file',
+                                                      tags_to_keep=['id', 'ko', 'sex'])
+
+    # loop contours
+    for j, contour in enumerate(contours):
+
+        # start dataframe row for this contour
+        df = df_im.copy()
+        df['im'] = i
+        df['contour'] = j
+
+        if DEBUG:
+            # centre of current cell
+            xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+            plt.text(xy_c[0], xy_c[1], 'j=' + str(j))
+            plt.scatter(xy_c[0], xy_c[1])
+
+            # close the contour for the plot
+            contour_aux = contour.copy()
+            contour_aux.append(contour[0])
+
+            plt.clf()
+            plt.imshow(im)
+            plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='green')
+            plt.axis('off')
+
+        # rasterise object described by contour
+        cell_seg_contour = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+        draw = ImageDraw.Draw(cell_seg_contour)
+        draw.polygon(contour, outline="white", fill="white")
+        cell_seg_contour = np.array(cell_seg_contour, dtype=np.uint8)
+
+        # add to dataframe
+        df['area_contour'] = np.count_nonzero(cell_seg_contour) * xres * yres
+
+        # append current results to global dataframe
+        df_all = pd.concat([df_all, df])
+
+    print('Time so far: ' + str(time.time() - time0) + ' s')
+
+# reset indices
+df_all.reset_index(drop=True, inplace=True)
+
+## boxplots of PAT vs MAT in male
+
+idx_f_mat = np.logical_and(df_all['sex'] == 'f', df_all['ko'] == 'MAT')
+idx_f_pat = np.logical_and(df_all['sex'] == 'f', df_all['ko'] == 'PAT')
+idx_m_mat = np.logical_and(df_all['sex'] == 'm', df_all['ko'] == 'MAT')
+idx_m_pat = np.logical_and(df_all['sex'] == 'm', df_all['ko'] == 'PAT')
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot([df_all['area_contour'][idx_m_pat],
+                 df_all['area_contour'][idx_m_mat]],
+                labels=['PAT', 'MAT'],
+                notch=True)
+    plt.ylim(-875, 10e3)
+    plt.title('Male', fontsize=14)
+    plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
+
+# difference in medians
+area_median_m_pat = np.median(df_all['area_contour'][idx_m_pat])
+area_median_m_mat = np.median(df_all['area_contour'][idx_m_mat])
+
+print((area_median_m_pat - area_median_m_mat) / area_median_m_pat)
+
+# compute all percentiles
+area_perc_m_pat = np.percentile(df_all['area_contour'][idx_m_pat], range(0, 101))
+area_perc_m_mat = np.percentile(df_all['area_contour'][idx_m_mat], range(0, 101))
+
+area_change_m_pat2mat = (area_perc_m_mat - area_perc_m_pat) / area_perc_m_pat
+
+if DEBUG:
+    plt.clf()
+    plt.plot(range(0, 101), area_change_m_pat2mat * 100)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
+    plt.ylim(-25, 0)
+    plt.tight_layout()
+
+# permutation testing
+quantiles, pval, reject = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
+                                                        num_perms=10000, multitest_method=None)
+quantiles_corr, pval_corr, reject_corr = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
+                                                                       num_perms=10000, multitest_method='fdr_by')
+
+if DEBUG:
+    plt.clf()
+    plt.subplot(211)
+    plt.plot(range(0, 101), area_change_m_pat2mat * 100)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
+    plt.ylim(-25, 0)
+
+    plt.subplot(212)
+    plt.plot(range(0, 101), pval, label='Uncorrected')
+    plt.plot(range(0, 101), pval_corr, label='Benjamini-Yekutieli')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('p-value', fontsize=14)
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+
+
+'''
+************************************************************************************************************************
 FROM HERE ONWARDS, CODE NEEDS TO BE REWRITTEN
 ************************************************************************************************************************
 '''
