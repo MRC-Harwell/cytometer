@@ -4,7 +4,7 @@ Validate pipeline v3:
    * dmap (0056)
    * contour (0070)
  * classifier (0061)
- * segmentation quality (0053) networks
+ * segmentation correction (0053) networks
 
 """
 
