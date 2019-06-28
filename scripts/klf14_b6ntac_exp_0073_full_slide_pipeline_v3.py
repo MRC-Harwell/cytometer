@@ -185,7 +185,7 @@ for i_file, file in enumerate(files_list):
     time0 = time.time()
     while np.count_nonzero(lores_istissue) > 0:
 
-        # next step
+        # next step (it starts from 0)
         step += 1
 
         print('File ' + str(i_file) + '/' + str(len(files_list)) + ': step ' +
@@ -216,25 +216,23 @@ for i_file, file in enumerate(files_list):
                               size=(last_col - first_col, last_row - first_row))
         tile = np.array(tile)
         tile = tile[:, :, 0:3]
-        tile = np.reshape(tile, (1,) + tile.shape)
-        # tile = tile.astype(np.float32)
-        # tile /= 255
 
         # interpolate coarse tissue segmentation to full resolution
         istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
-        
-        istissue_tile = PIL.Image.fromarray(istissue_tile)
-        istissue_tile = istissue_tile.resize((last_col - first_col, last_row - first_row), resample=PIL.Image.NEAREST)
-        istissue_tile = np.array(istissue_tile)
-        istissue_tile = np.reshape(istissue_tile, newshape=(1,) + istissue_tile.shape)
-        istissue_tile = (istissue_tile != 0).astype(np.uint8)
+        istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
+                                               resample=PIL.Image.NEAREST)
 
-        cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
+        if DEBUG:
+            plt.clf()
+            plt.imshow(tile)
+            plt.contour(istissue_tile, colors='k')
 
         # segment histology
-        labels, labels_info = cytometer.utils.segmentation_pipeline2(tile,
-                                                                     contour_model, dmap_model,
-                                                                     correction_model, classifier_model,
+        labels, labels_info = cytometer.utils.segmentation_pipeline3(tile,
+                                                                     contour_model=contour_model_file,
+                                                                     dmap_model=dmap_model_file,
+                                                                     correction_model=correction_model_file,
+                                                                     classifier_model=classifier_model_file,
                                                                      mask=istissue_tile,
                                                                      min_mask_overlap=min_mask_overlap,
                                                                      min_cell_area=min_cell_area,
