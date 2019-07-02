@@ -226,6 +226,7 @@ for i_file, file in enumerate(files_list):
             plt.clf()
             plt.imshow(tile)
             plt.contour(istissue_tile, colors='k')
+            plt.axis('off')
 
         # segment histology
         labels, labels_info = cytometer.utils.segmentation_pipeline3(tile,
@@ -233,6 +234,7 @@ for i_file, file in enumerate(files_list):
                                                                      dmap_model=dmap_model_file,
                                                                      correction_model=correction_model_file,
                                                                      classifier_model=classifier_model_file,
+                                                                     local_threshold_block_size=41,
                                                                      mask=istissue_tile,
                                                                      min_mask_overlap=min_mask_overlap,
                                                                      min_cell_area=min_cell_area,
