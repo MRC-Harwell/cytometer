@@ -577,9 +577,10 @@ for i_fold in range(n_folds):
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
-        # remove labels that touch the edges or that are too small
+        # remove labels that touch the edges, that are too small or that are completely surrounded by another cell
         labels \
-            = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area)
+            = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
+                                                 phagocytosis=True)
 
         if DEBUG:
             plt.subplot(224)
@@ -1146,6 +1147,7 @@ if DEBUG:
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Dice coeff.', fontsize=14)
     plt.ylabel('Cell counts', fontsize=14)
+    plt.tight_layout()
 
 print('Segmentations with Dice < 0.5: ' + str(np.count_nonzero(df_0072['dice'] < 0.5) / df_0072.shape[0]))
 
@@ -1220,14 +1222,23 @@ for i_fold in range(n_folds):
 
 if DEBUG:
     plt.clf()
-    plt.boxplot([df_0072['area_seg'] / df_0072['area_contour'],
-                 df_0072['area_seg_corrected'] / df_0072['area_contour']], labels=['No correction', 'Corrected'],
-                notch=True)
+    boxp = plt.boxplot([df_0072['area_seg'] / df_0072['area_contour'],
+                        df_0072['area_seg_corrected'] / df_0072['area_contour']], labels=['No correction', 'Corrected'],
+                       notch=True)
     plt.plot([0.75, 2.25], [1.0, 1.0], color='red')
     plt.tick_params(axis='both', labelsize=14)
     plt.ylabel('Auto segmentation area / Manual segmentation area', fontsize=14)
     plt.ylim(0, 4)
     plt.tight_layout()
+
+# points of interest in the auto, no correction boxplot
+contour_perc_50_auto = boxp['medians'][0].get_data()[1][0]
+
+# points of interest in the auto, correction boxplot
+contour_perc_50_corrected = boxp['medians'][1].get_data()[1][0]
+
+print('Median from auto segmentation: ' + str(contour_perc_50_auto * 100) + '%')
+print('Median from corrected segmentation: ' + str(contour_perc_50_corrected * 100) + '%')
 
 ## Area scatter plots
 
@@ -1277,9 +1288,40 @@ if DEBUG:
 
 if DEBUG:
     plt.clf()
-    plt.boxplot([df_0072['area_contour'], df_0072['area_seg'], df_0072['area_seg_corrected']], notch=True,
-                labels=['Manual', 'Automatic', 'Corrected'])
+    boxp = plt.boxplot([df_0072['area_contour'], df_0072['area_seg'], df_0072['area_seg_corrected']], notch=True,
+                       labels=['Manual', 'Automatic', 'Corrected'])
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.ylabel('Auto segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.tight_layout()
 
+    # points of interest in the manual contours boxplot
+    contour_perc_w0_manual = boxp['whiskers'][0].get_data()[1][1]
+    contour_perc_25_manual = boxp['boxes'][0].get_data()[1][1]
+    contour_perc_50_manual = boxp['medians'][0].get_data()[1][0]
+    contour_perc_75_manual = boxp['boxes'][0].get_data()[1][5]
+    contour_perc_wend_manual = boxp['whiskers'][1].get_data()[1][1]
+
+    # points of interest in the auto, no correction boxplot
+    contour_perc_w0_auto = boxp['whiskers'][2].get_data()[1][1]
+    contour_perc_25_auto = boxp['boxes'][1].get_data()[1][1]
+    contour_perc_50_auto = boxp['medians'][1].get_data()[1][0]
+    contour_perc_75_auto = boxp['boxes'][1].get_data()[1][5]
+    contour_perc_wend_auto = boxp['whiskers'][3].get_data()[1][1]
+
+    # points of interest in the auto, correction boxplot
+    contour_perc_w0_corrected = boxp['whiskers'][4].get_data()[1][1]
+    contour_perc_25_corrected = boxp['boxes'][2].get_data()[1][1]
+    contour_perc_50_corrected = boxp['medians'][2].get_data()[1][0]
+    contour_perc_75_corrected = boxp['boxes'][2].get_data()[1][5]
+    contour_perc_wend_corrected = boxp['whiskers'][5].get_data()[1][1]
+
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_w0_manual, 'k--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_25_manual, 'k--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_50_manual, 'C1--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_75_manual, 'k--')
+    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_wend_manual, 'k--')
+
+    plt.ylim(-250, 7500)
 
 '''
 ************************************************************************************************************************
@@ -1307,6 +1349,11 @@ time0 = time.time()
 df_all = pd.DataFrame()
 
 for i_fold in range(n_folds):
+
+    print('## Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+
+    if i_fold <= 6:
+        continue
 
     '''Load data
     '''
@@ -1433,9 +1480,8 @@ for i_fold in range(n_folds):
             plt.title('Segmentation on histology', fontsize=14)
 
         # remove labels that touch the edges or that are too small
-        labels \
-            = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                                 mask=rough_mask_crop)
+        labels = cytometer.utils.clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
+                                                    mask=rough_mask_crop, min_mask_overlap=0.6, phagocytosis=True)
 
         if DEBUG:
             plt.subplot(224)
@@ -1676,7 +1722,7 @@ df_0072_auto.reset_index(drop=True, inplace=True)
 # number of cells per fold
 for i_fold in range(n_folds):
     print('fold = ' + str(i_fold) + ', ' + str(np.count_nonzero(df_0072_manual['fold'] == i_fold)) + ' (manual), '
-          + str(np.count_nonzero(df_0072_auto['fold'] == i_fold)) + ' (auto), ')
+          + str(np.count_nonzero(df_0072_auto['fold'] == i_fold)) + ' (auto)')
 
 ## Boxplot of "cell" proportion in the automatic segmentation (in the manual segmentation, all "wat" contours are valid)
 
@@ -1722,13 +1768,13 @@ if DEBUG:
     contour_perc_75_corrected = boxp['boxes'][2].get_data()[1][5]
     contour_perc_wend_corrected = boxp['whiskers'][5].get_data()[1][1]
 
-    plt.ylim(-250, 6800)
-
     plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_w0_manual, 'k--')
     plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_25_manual, 'k--')
     plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_50_manual, 'C1--')
     plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_75_manual, 'k--')
     plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_wend_manual, 'k--')
+
+    plt.ylim(-250, 6800)
 
     # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_w0_auto, 'k--')
     # plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_25_auto, 'k--')
