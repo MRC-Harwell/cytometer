@@ -1547,7 +1547,11 @@ def edge_labels(labels):
     return edge_labels
 
 
-def clean_segmentation(labels, remove_edge_labels=False, min_cell_area=0, mask=None, min_mask_overlap=0.6):
+def clean_segmentation(labels,
+                       min_cell_area=0,
+                       remove_edge_labels=False,
+                       mask=None, min_mask_overlap=0.6,
+                       phagocytosis=False):
     """
     The function packs several methods to remove unwanted labels from a segmentation:
       * Remove labels that touch the edges of the segmentation.
@@ -1555,18 +1559,44 @@ def clean_segmentation(labels, remove_edge_labels=False, min_cell_area=0, mask=N
       * Remove labels that don't overlap enough with a binary mask.
     
     :param labels: (row, col) np.ndarray with segmentation labels.
-    :param remove_edge_labels: (def False) Boolean to remove labels that touch the edge of the image.
     :param min_cell_area: (def 0) Remove labels with area < min_cell_area.
+    :param remove_edge_labels: (def False) Boolean to remove labels that touch the edge of the image.
     :param mask: (def None) (row, col) np.ndarray binary mask. If provided, remove labels that don't overlap
     enough with the mask.
     :param min_mask_overlap: (def 0.6) Remove labels that don't have at least min_mask_overlap of their pixels
     within the mask.
+    :param phagocytosis: (def False) Boolean to merge labels that are completely surrounded by another label to the
+    surrounding label.
     :return: (row, col) np.ndarray with removed labels as requested.
     """
+
+    # auxiliary functions for merge_hierarchical() taken from
+    # https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_rag_merge.html#sphx-glr-auto-examples-segmentation-plot-rag-merge-py
+    #
+    # For the purpose of this function, the details of what they do are not very important
+    def _weight_mean_color(graph, src, dst, n):
+        diff = graph.node[dst]['mean color'] - graph.node[n]['mean color']
+        diff = np.linalg.norm(diff)
+        return {'weight': diff}
+
+    def merge_mean_color(graph, src, dst):
+        graph.node[dst]['total color'] += graph.node[src]['total color']
+        graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
+        graph.node[dst]['mean color'] = (graph.node[dst]['total color'] / graph.node[dst]['pixel count'])
 
     if DEBUG:
         plt.clf()
         plt.subplot(221)
+        plt.imshow(labels)
+
+    # remove labels that are too small (this removes small gaps created by removing small labels)
+    labels = remove_small_objects(labels, min_size=min_cell_area)
+
+    # use watershed to expand the seeds
+    labels = watershed(labels, labels, watershed_line=False)
+
+    if DEBUG:
+        plt.subplot(222)
         plt.imshow(labels)
 
     # remove edge segmentations, because in general they correspond to incomplete objects
@@ -1574,13 +1604,6 @@ def clean_segmentation(labels, remove_edge_labels=False, min_cell_area=0, mask=N
         labels_edge = edge_labels(labels)
         idx = np.isin(labels, test_elements=labels_edge)
         labels[idx] = 0
-
-    if DEBUG:
-        plt.subplot(222)
-        plt.imshow(labels)
-
-    # remove labels that are too small
-    labels = remove_small_objects(labels, min_size=min_cell_area)
 
     if DEBUG:
         plt.subplot(223)
@@ -1610,6 +1633,33 @@ def clean_segmentation(labels, remove_edge_labels=False, min_cell_area=0, mask=N
     if DEBUG:
         plt.subplot(224)
         plt.imshow(labels)
+
+    # remove labels that are completely surrounded by another label
+    background = 0  # background label
+    labels_list = np.unique(labels)
+    n_non_background_labels = np.count_nonzero(labels_list != background)
+    if phagocytosis and n_non_background_labels >= 2:
+        # compute Region Adjacency Graph (RAG) for labels. Note that we don't care about the mean colour difference
+        # between regions. We only care about whether labels are adjacent to others or not
+        rag = rag_mean_color(image=labels, labels=labels)
+
+        # a label is completely surrounded by another label if it has only one neighbour that is not the background.
+        # It doesn't matter which label surrounds which, as we just need to give both the same label to merge them.
+        # iterate pairs of adjacent labels (note that if rag.edges has (1,2), it doesn't also have (2,1))
+        for lab in rag.nodes:
+
+            # number of neighbours of this label
+            neigh = list(rag.neighbors(lab))
+
+            # if there's one and only one neighbour, and it's not the background, both labels should be merged
+            if len(neigh) == 1 and neigh[0] != background:
+                if DEBUG:
+                    print('Merging ' + str((lab, neigh[0])))
+                nx.set_edge_attributes(rag, {(lab, neigh[0]): {'weight': 0}})
+
+        # update the labels by greedy merging
+        labels = merge_hierarchical(labels, rag, thresh=0.1, rag_copy=False, in_place_merge=True,
+                                    merge_func=merge_mean_color, weight_func=_weight_mean_color)
 
     return labels
 
@@ -1976,7 +2026,8 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 def segmentation_pipeline3(im,
                            contour_model, dmap_model, classifier_model, correction_model=None,
                            local_threshold_block_size=41,
-                           mask=None, min_mask_overlap=0.6, min_cell_area=804, batch_size=16):
+                           min_cell_area=804, mask=None, min_mask_overlap=0.6, phagocytosis=True,
+                           batch_size=16):
 
     # load model if filename provided
     if isinstance(contour_model, six.string_types):
@@ -1993,7 +2044,6 @@ def segmentation_pipeline3(im,
         plt.imshow(im)
         plt.contour(mask, colors='k')
         plt.axis('off')
-
 
     # segment histology
     labels, _ = segment_dmap_contour_v3(im, contour_model=contour_model, dmap_model=dmap_model,
@@ -2019,209 +2069,210 @@ def segmentation_pipeline3(im,
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
-        # remove labels that touch the edges or that are too small
-        labels = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area, mask=mask)
+    # remove labels that touch the edges or that are too small
+    labels = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area, mask=mask,
+                                phagocytosis=True)
 
-        if DEBUG:
-            plt.subplot(224)
-            plt.cla()
-            plt.imshow(im)
-            plt.contour(labels, levels=np.unique(labels), colors='k')
-            plt.contour(mask, levels=np.unique(labels), colors='r')
-            plt.axis('off')
-            plt.title('Cleaned segmentation', fontsize=14)
+    if DEBUG:
+        plt.subplot(224)
+        plt.cla()
+        plt.imshow(im)
+        plt.contour(labels, levels=np.unique(labels), colors='k')
+        plt.contour(mask, levels=np.unique(labels), colors='r')
+        plt.axis('off')
+        plt.title('Cleaned segmentation', fontsize=14)
 
-        # list of unique segmentation labels (remove background)
-        labels_seg = list(np.unique(labels))
-        if 0 in labels_seg:
-            labels_seg.remove(0)
+    # list of unique segmentation labels (remove background)
+    labels_seg = list(np.unique(labels))
+    if 0 in labels_seg:
+        labels_seg.remove(0)
 
-        if len(labels_seg) == 0:
-            warnings.warn('No labels produced!')
-            continue
-
-        # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
-        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                          values=[i_fold], values_tag='fold',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
-
-        '''Iterate segmentation labels'''
-
-        # loop segmentation labels
-        for j, lab in enumerate(labels_seg):
-
-            # start dataframe row for this contour
-            df = df_im.copy()
-            df['im'] = i
-
-            # isolate current segmentation
-            cell_seg = (labels == lab).astype(np.uint8)
-
-            if DEBUG:
-                plt.clf()
-                plt.imshow(im)
-                plt.contour(cell_seg, colors='red')
-                plt.axis('off')
-
-            # add to dataframe
-            df['label_seg'] = lab
-            df['area_seg'] = np.count_nonzero(cell_seg) * xres * yres  # um^2
-
-            '''Bounding boxes'''
-
-            # compute bounding box for the automatic segmentation
-            bbox_seg_x0, bbox_seg_y0, bbox_seg_xend, bbox_seg_yend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
-            bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
-
-            # this renaming here is redundant, but it'll be useful in later validation
-            bbox_total_x0 = bbox_seg_x0
-            bbox_total_y0 = bbox_seg_y0
-            bbox_total_xend = bbox_seg_xend
-            bbox_total_yend = bbox_seg_yend
-
-            bbox_total_r0 = bbox_seg_r0
-            bbox_total_c0 = bbox_seg_c0
-            bbox_total_rend = bbox_seg_rend
-            bbox_total_cend = bbox_seg_cend
-            bbox_total = (bbox_total_r0, bbox_total_c0, bbox_total_rend, bbox_total_cend)
-
-            if DEBUG:
-                plt.clf()
-                plt.imshow(im)
-                plt.contour(cell_seg, linewidths=1, colors='red')
-
-                plt.plot((bbox_total_x0, bbox_total_xend, bbox_total_xend, bbox_total_x0, bbox_total_x0),
-                         (bbox_total_y0, bbox_total_y0, bbox_total_yend, bbox_total_yend, bbox_total_y0),
-                         color='green')
-                plt.axis('off')
-
-                plt.xlim(bbox_total_x0 - (bbox_total_xend - bbox_total_x0) * 0.1,
-                         bbox_total_xend + (bbox_total_xend - bbox_total_x0) * 0.1)
-                plt.ylim(bbox_total_yend + (bbox_total_yend - bbox_total_y0) * 0.1,
-                         bbox_total_y0 - (bbox_total_yend - bbox_total_y0) * 0.1)
-
-            '''Cropping and resizing of individual contour'''
-
-            # crop image and masks according to bounding box of automatic segmentation
-            window_im = cytometer.utils.extract_bbox(np.array(im), bbox_total)
-            window_seg = cytometer.utils.extract_bbox(cell_seg.astype(np.uint8), bbox_total)
-
-            if DEBUG:
-                plt.clf()
-                plt.imshow(window_im)
-                plt.contour(window_seg, linewidths=1, colors='red')
-                plt.axis('off')
-
-            # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
-            # NOTE: quality network 0053 expects values in [-255, 255], float32
-            window_masked_im = \
-                cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
-                                                   quality_model_type='-1_1')[0, :, :, :]
-
-            if DEBUG:
-                plt.clf()
-                plt.imshow(window_im)
-                plt.contour(np.any(window_masked_im > 0, axis=2), linewidths=1, colors='k')
-                plt.imshow(np.any(window_masked_im > 0, axis=2), alpha=0.5)
-                plt.axis('off')
-
-            # scaling factors for the training image
-            training_size = (training_window_len, training_window_len)
-            scaling_factor = np.array(training_size) / np.array(window_seg.shape[0:2])
-            window_pixel_size = np.array([xres, yres]) / scaling_factor  # (um, um)
-
-            # resize the images to training window size
-            window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
-            window_masked_im = cytometer.utils.resize(window_masked_im, size=training_size, resample=Image.LINEAR)
-            window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
-
-            # add dummy dimensions for keras
-            window_im = np.expand_dims(window_im, axis=0)
-            window_masked_im = np.expand_dims(window_masked_im, axis=0)
-            window_seg = np.expand_dims(window_seg, axis=0)
-
-            # correct types
-            window_im = window_im.astype(np.float32) / 255.0
-
-            # check sizes and types
-            assert (window_im.ndim == 4 and window_im.dtype == np.float32
-                    and np.min(window_im) >= 0 and np.max(window_im) <= 1.0)
-            assert (window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32
-                    and np.min(window_masked_im) >= -255 and np.max(window_masked_im) <= 255)
-
-            # process (histology * mask) for segmentation correction
-            window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
-
-            # correction for segmentation
-            window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
-            window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
-            window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
-
-            # corrected segmentation
-            window_seg_corrected = window_seg[0, :, :].copy()
-            window_seg_corrected[window_seg_correction == 1] = 0
-            window_seg_corrected[window_seg_correction == -1] = 1
-
-            # change type
-            window_seg_corrected = window_seg_corrected.astype(np.uint8)
-
-            # fill holes
-            window_seg_corrected = binary_fill_holes(window_seg_corrected > 0).astype(window_seg_corrected.dtype)
-
-            # keep only the largest segmentation
-            _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(window_seg_corrected)
-            stats_aux = stats_aux[1:, :]  # remove 0 label stats
-            lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
-            window_seg_corrected = (labels_aux == lab).astype(np.uint8)
-
-            # smooth segmentation
-            window_seg_corrected = binary_closing(window_seg_corrected, selem=np.ones((11, 11)))
-
-            # corrected segmentation area
-            area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
-
-            # add to dataframe
-            df['area_seg_corrected'] = area_seg_corrected
-
-            if DEBUG:
-                # plot segmentation correction
-                plt.clf()
-                plt.imshow(window_im[0, :, :, :])
-                plt.contour(window_seg[0, :, :], linewidths=1, colors='greenyellow')
-                plt.contour(window_seg_corrected, linewidths=1, colors='white')
-                plt.axis('off')
-
-            '''Object classification as "WAT" or "other"'''
-
-            # process histology for classification
-            window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
-
-            # get classification label for each pixel
-            window_classifier_class = np.argmax(window_classifier_out, axis=3)
-
-            # proportion of "Other" pixels in the mask
-            window_other_prop = np.count_nonzero(window_seg_corrected * window_classifier_class[0, :, :]) \
-                                / np.count_nonzero(window_seg)
-
-            # add to dataframe row
-            df['seg_type_prop'] = window_other_prop
-
-            if DEBUG:
-                # plot classification
-                plt.clf()
-                plt.imshow(window_classifier_class[0, :, :])
-                plt.contour(window_seg_corrected, linewidths=1, colors='red')
-                plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
-                plt.axis('off')
-
-            '''Wrap things up in this loop'''
-
-            # append current results to global dataframe
-            df_all = pd.concat([df_all, df])
-
-        print('Time so far: ' + str(time.time() - time0) + ' s')
+    # if len(labels_seg) == 0:
+    #     warnings.warn('No labels produced!')
+    #     continue
+    #
+    # # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
+    # df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+    #                                                   values=[i_fold], values_tag='fold',
+    #                                                   tags_to_keep=['id', 'ko', 'sex'])
+    #
+    # '''Iterate segmentation labels'''
+    #
+    # # loop segmentation labels
+    # for j, lab in enumerate(labels_seg):
+    #
+    #     # start dataframe row for this contour
+    #     df = df_im.copy()
+    #     df['im'] = i
+    #
+    #     # isolate current segmentation
+    #     cell_seg = (labels == lab).astype(np.uint8)
+    #
+    #     if DEBUG:
+    #         plt.clf()
+    #         plt.imshow(im)
+    #         plt.contour(cell_seg, colors='red')
+    #         plt.axis('off')
+    #
+    #     # add to dataframe
+    #     df['label_seg'] = lab
+    #     df['area_seg'] = np.count_nonzero(cell_seg) * xres * yres  # um^2
+    #
+    #     '''Bounding boxes'''
+    #
+    #     # compute bounding box for the automatic segmentation
+    #     bbox_seg_x0, bbox_seg_y0, bbox_seg_xend, bbox_seg_yend = \
+    #         cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+    #     bbox_seg_r0, bbox_seg_c0, bbox_seg_rend, bbox_seg_cend = \
+    #         cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+    #
+    #     # this renaming here is redundant, but it'll be useful in later validation
+    #     bbox_total_x0 = bbox_seg_x0
+    #     bbox_total_y0 = bbox_seg_y0
+    #     bbox_total_xend = bbox_seg_xend
+    #     bbox_total_yend = bbox_seg_yend
+    #
+    #     bbox_total_r0 = bbox_seg_r0
+    #     bbox_total_c0 = bbox_seg_c0
+    #     bbox_total_rend = bbox_seg_rend
+    #     bbox_total_cend = bbox_seg_cend
+    #     bbox_total = (bbox_total_r0, bbox_total_c0, bbox_total_rend, bbox_total_cend)
+    #
+    #     if DEBUG:
+    #         plt.clf()
+    #         plt.imshow(im)
+    #         plt.contour(cell_seg, linewidths=1, colors='red')
+    #
+    #         plt.plot((bbox_total_x0, bbox_total_xend, bbox_total_xend, bbox_total_x0, bbox_total_x0),
+    #                  (bbox_total_y0, bbox_total_y0, bbox_total_yend, bbox_total_yend, bbox_total_y0),
+    #                  color='green')
+    #         plt.axis('off')
+    #
+    #         plt.xlim(bbox_total_x0 - (bbox_total_xend - bbox_total_x0) * 0.1,
+    #                  bbox_total_xend + (bbox_total_xend - bbox_total_x0) * 0.1)
+    #         plt.ylim(bbox_total_yend + (bbox_total_yend - bbox_total_y0) * 0.1,
+    #                  bbox_total_y0 - (bbox_total_yend - bbox_total_y0) * 0.1)
+    #
+    #     '''Cropping and resizing of individual contour'''
+    #
+    #     # crop image and masks according to bounding box of automatic segmentation
+    #     window_im = cytometer.utils.extract_bbox(np.array(im), bbox_total)
+    #     window_seg = cytometer.utils.extract_bbox(cell_seg.astype(np.uint8), bbox_total)
+    #
+    #     if DEBUG:
+    #         plt.clf()
+    #         plt.imshow(window_im)
+    #         plt.contour(window_seg, linewidths=1, colors='red')
+    #         plt.axis('off')
+    #
+    #     # input to segmentation quality CNN: multiply histology by +1/-1 segmentation mask
+    #     # NOTE: quality network 0053 expects values in [-255, 255], float32
+    #     window_masked_im = \
+    #         cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
+    #                                            quality_model_type='-1_1')[0, :, :, :]
+    #
+    #     if DEBUG:
+    #         plt.clf()
+    #         plt.imshow(window_im)
+    #         plt.contour(np.any(window_masked_im > 0, axis=2), linewidths=1, colors='k')
+    #         plt.imshow(np.any(window_masked_im > 0, axis=2), alpha=0.5)
+    #         plt.axis('off')
+    #
+    #     # scaling factors for the training image
+    #     training_size = (training_window_len, training_window_len)
+    #     scaling_factor = np.array(training_size) / np.array(window_seg.shape[0:2])
+    #     window_pixel_size = np.array([xres, yres]) / scaling_factor  # (um, um)
+    #
+    #     # resize the images to training window size
+    #     window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
+    #     window_masked_im = cytometer.utils.resize(window_masked_im, size=training_size, resample=Image.LINEAR)
+    #     window_seg = cytometer.utils.resize(window_seg, size=training_size, resample=Image.NEAREST)
+    #
+    #     # add dummy dimensions for keras
+    #     window_im = np.expand_dims(window_im, axis=0)
+    #     window_masked_im = np.expand_dims(window_masked_im, axis=0)
+    #     window_seg = np.expand_dims(window_seg, axis=0)
+    #
+    #     # correct types
+    #     window_im = window_im.astype(np.float32) / 255.0
+    #
+    #     # check sizes and types
+    #     assert (window_im.ndim == 4 and window_im.dtype == np.float32
+    #             and np.min(window_im) >= 0 and np.max(window_im) <= 1.0)
+    #     assert (window_masked_im.ndim == 4 and window_masked_im.dtype == np.float32
+    #             and np.min(window_masked_im) >= -255 and np.max(window_masked_im) <= 255)
+    #
+    #     # process (histology * mask) for segmentation correction
+    #     window_quality_out = quality_model.predict(window_masked_im, batch_size=batch_size)
+    #
+    #     # correction for segmentation
+    #     window_seg_correction = (window_seg[0, :, :].copy() * 0).astype(np.int8)
+    #     window_seg_correction[window_quality_out[0, :, :, 0] >= 0.5] = 1  # the segmentation went too far
+    #     window_seg_correction[window_quality_out[0, :, :, 0] <= -0.5] = -1  # the segmentation fell short
+    #
+    #     # corrected segmentation
+    #     window_seg_corrected = window_seg[0, :, :].copy()
+    #     window_seg_corrected[window_seg_correction == 1] = 0
+    #     window_seg_corrected[window_seg_correction == -1] = 1
+    #
+    #     # change type
+    #     window_seg_corrected = window_seg_corrected.astype(np.uint8)
+    #
+    #     # fill holes
+    #     window_seg_corrected = binary_fill_holes(window_seg_corrected > 0).astype(window_seg_corrected.dtype)
+    #
+    #     # keep only the largest segmentation
+    #     _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(window_seg_corrected)
+    #     stats_aux = stats_aux[1:, :]  # remove 0 label stats
+    #     lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
+    #     window_seg_corrected = (labels_aux == lab).astype(np.uint8)
+    #
+    #     # smooth segmentation
+    #     window_seg_corrected = binary_closing(window_seg_corrected, selem=np.ones((11, 11)))
+    #
+    #     # corrected segmentation area
+    #     area_seg_corrected = np.count_nonzero(window_seg_corrected) * window_pixel_size[0] * window_pixel_size[1]
+    #
+    #     # add to dataframe
+    #     df['area_seg_corrected'] = area_seg_corrected
+    #
+    #     if DEBUG:
+    #         # plot segmentation correction
+    #         plt.clf()
+    #         plt.imshow(window_im[0, :, :, :])
+    #         plt.contour(window_seg[0, :, :], linewidths=1, colors='greenyellow')
+    #         plt.contour(window_seg_corrected, linewidths=1, colors='white')
+    #         plt.axis('off')
+    #
+    #     '''Object classification as "WAT" or "other"'''
+    #
+    #     # process histology for classification
+    #     window_classifier_out = classifier_model.predict(window_im, batch_size=batch_size)
+    #
+    #     # get classification label for each pixel
+    #     window_classifier_class = np.argmax(window_classifier_out, axis=3)
+    #
+    #     # proportion of "Other" pixels in the mask
+    #     window_other_prop = np.count_nonzero(window_seg_corrected * window_classifier_class[0, :, :]) \
+    #                         / np.count_nonzero(window_seg)
+    #
+    #     # add to dataframe row
+    #     df['seg_type_prop'] = window_other_prop
+    #
+    #     if DEBUG:
+    #         # plot classification
+    #         plt.clf()
+    #         plt.imshow(window_classifier_class[0, :, :])
+    #         plt.contour(window_seg_corrected, linewidths=1, colors='red')
+    #         plt.title('"Other" prop = ' + str("{:.0f}".format(window_other_prop * 100)) + '%', fontsize=14)
+    #         plt.axis('off')
+    #
+    #     '''Wrap things up in this loop'''
+    #
+    #     # append current results to global dataframe
+    #     df_all = pd.concat([df_all, df])
+    #
+    # print('Time so far: ' + str(time.time() - time0) + ' s')
 
 
 def colour_labels_with_receptive_field(labels, receptive_field):
