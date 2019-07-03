@@ -322,7 +322,7 @@ for i_fold in range(len(idx_test_all)):
             plt.axis('off')
             plt.subplot(212)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(predict_class_test[i, :, :, 0].astype(np.uint8), alpha=0.5)
+            plt.imshow(predict_class_test[i, :, :, 0], alpha=0.5)
             plt.title('Predicted class', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
