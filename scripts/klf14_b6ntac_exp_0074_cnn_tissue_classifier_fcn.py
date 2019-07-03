@@ -42,7 +42,7 @@ import time
 import random
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -253,7 +253,7 @@ for i, file_svg in enumerate(file_list):
     print('Other: ' + str(len(other_contours)))
     print('Brown: ' + str(len(brown_contours)))
 
-    if (len(cell_contours) + len(other_contours) + len(brown_contours) == 0):
+    if (len(contours) == 0):
         print('No contours... skipping')
         continue
 
@@ -396,6 +396,10 @@ gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 for i_fold in range(len(idx_test_all)):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+    ## HACK
+    if i_fold < 8:
+        print('Skipping')
+    continue
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]
