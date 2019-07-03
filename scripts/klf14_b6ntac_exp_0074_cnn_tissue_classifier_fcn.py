@@ -396,10 +396,6 @@ gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
 for i_fold in range(len(idx_test_all)):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
-    ## HACK
-    if i_fold < 8:
-        print('Skipping')
-    continue
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]
