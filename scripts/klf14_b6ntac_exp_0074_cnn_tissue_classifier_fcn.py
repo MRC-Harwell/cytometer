@@ -10,6 +10,7 @@ Use hand traced areas of white adipocytes and "other" tissues to train classifie
   * 0: "Cell" = white adipocyte
   * 1: "Other" = other types of tissue
   * 1: "Brown" = brown adipocytes
+  * 0: "Background" = flat background
 
 We assign cells to train or test sets grouped by image. This way, we guarantee that at testing time, the
 network has not seen neighbour cells to the ones used for training.
@@ -71,7 +72,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of epochs for training
-epochs = 25
+epochs = 10
 
 # data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
 augment_factor = 10
@@ -152,10 +153,12 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
     else:
         x = Activation('relu')(x)
 
-    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    # x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    x = Conv2D(filters=2, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
 
     # classification output
-    classification_output = Activation('hard_sigmoid', name='classification_output')(x)
+    # classification_output = Activation('hard_sigmoid', name='classification_output')(x)
+    classification_output = Activation('softmax', name='classification_output')(x)
 
     return Model(inputs=cnn_input, outputs=[classification_output])
 
@@ -240,18 +243,22 @@ for i, file_svg in enumerate(file_list):
                                                              minimum_npoints=3)
     brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
                                                              minimum_npoints=3)
-    contours = cell_contours + other_contours + brown_contours
+    background_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Background', add_offset_from_filename=False,
+                                                                  minimum_npoints=3)
+    contours = cell_contours + other_contours + brown_contours + background_contours
 
     # make a list with the type of cell each contour is classified as
     contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
                     np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
-                    np.ones(shape=(len(brown_contours),), dtype=np.uint8)]  # 1: brown cells (treated as "other" tissue)
+                    np.ones(shape=(len(brown_contours),), dtype=np.uint8),  # 1: brown cells (treated as "other" tissue)
+                    np.zeros(shape=(len(background_contours),), dtype=np.uint8)] # 0: background
     contour_type = np.concatenate(contour_type)
     contour_type_all.append(contour_type)
 
     print('Cells: ' + str(len(cell_contours)))
     print('Other: ' + str(len(other_contours)))
     print('Brown: ' + str(len(brown_contours)))
+    print('Background: ' + str(len(background_contours)))
 
     if (len(contours) == 0):
         print('No contours... skipping')
@@ -391,7 +398,8 @@ out_mask_all = np.concatenate(out_mask_all)
 device_list = K.get_session().list_devices()
 
 # number of GPUs
-gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
+# gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
+gpu_number = 2
 
 for i_fold in range(len(idx_test_all)):
 
@@ -417,6 +425,10 @@ for i_fold in range(len(idx_test_all)):
 
     out_mask_train = out_mask_all[idx_train, :, :]
     out_mask_test = out_mask_all[idx_test, :, :]
+
+    # one-hot encoding of the class
+    out_class_train = np.concatenate((1-out_class_train, out_class_train), axis=3)
+    out_class_test = np.concatenate((1-out_class_test, out_class_test), axis=3)
 
     # instantiate model
     with tf.device('/cpu:0'):
