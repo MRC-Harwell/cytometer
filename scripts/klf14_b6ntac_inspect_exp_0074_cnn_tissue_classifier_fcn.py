@@ -39,7 +39,7 @@ from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-import random
+from sklearn.metrics import roc_curve, auc
 
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
@@ -262,11 +262,11 @@ out_mask_all = np.concatenate(out_mask_all)
     function
     '''
 
-# list all CPUs and GPUs
-device_list = K.get_session().list_devices()
-
-# number of GPUs
-gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
+# init
+im_array_test_all = []
+out_class_test_all = []
+out_mask_test_all = []
+predict_class_test_all = []
 
 for i_fold in range(len(idx_test_all)):
 
@@ -306,6 +306,12 @@ for i_fold in range(len(idx_test_all)):
     # apply classification to test data
     predict_class_test = classifier_model.predict(im_array_test, batch_size=batch_size)
 
+    # append data for total output
+    im_array_test_all.append(im_array_test)
+    out_class_test_all.append(out_class_test)
+    out_mask_test_all.append(out_mask_test)
+    predict_class_test_all.append(predict_class_test)
+
     if DEBUG:
         for i in range(len(idx_test)):
 
@@ -322,11 +328,68 @@ for i_fold in range(len(idx_test_all)):
             plt.axis('off')
             plt.subplot(212)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(predict_class_test[i, :, :, 0], alpha=0.5)
+            plt.imshow(predict_class_test[i, :, :, 1], alpha=0.5)
             plt.title('Predicted class', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
             plt.pause(5)
+
+# collapse lists into arrays
+im_array_test_all = np.concatenate(im_array_test_all)
+out_class_test_all = np.concatenate(out_class_test_all)
+out_mask_test_all = np.concatenate(out_mask_test_all)
+predict_class_test_all = np.concatenate(predict_class_test_all)
+
+# vectors of pixels where we know whether they are WAT or Other
+out_mask_test_all = out_mask_test_all.astype(np.bool)
+out_class_test_all = out_class_test_all[:, :, :, 0]
+y_true = out_class_test_all[out_mask_test_all]
+predict_class_test_all = predict_class_test_all[:, :, :, 1]
+y_predict = predict_class_test_all[out_mask_test_all]
+
+# classifier ROC (we make cell=1, other=0 for clarity of the results)
+fpr, tpr, thr = roc_curve(y_true=y_true, y_score=y_predict)
+roc_auc = auc(fpr, tpr)
+
+# find point in the curve for False Positive Rate ~ 10%
+idx_thr = np.where(fpr >= 0.1)[0][0]
+
+if DEBUG:
+    # ROC curve before and after data augmentation
+    plt.clf()
+    plt.plot(fpr, tpr, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.scatter(fpr[idx_thr], tpr[idx_thr],
+                label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
+                      % (thr[idx_thr], fpr[idx_thr], tpr[idx_thr]),
+                color='blue', s=200)
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
+    plt.legend(loc="lower right")
+
+    # boxplot
+    plt.clf()
+    plt.boxplot([y_predict[y_true == 0], y_predict[y_true == 1]], labels=('WAT/Background', 'Other'),
+                notch=True)
+    plt.plot([0.75, 2.25], [thr[idx_thr],] * 2, 'r', linewidth=2)
+    plt.xlabel('Ground truth class', fontsize=14)
+    plt.ylabel('Softmax prediction', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
+
+    # classifier confusion matrix
+    cytometer.utils.plot_confusion_matrix(y_true=y_true,
+                                          y_pred=y_predict >= thr[idx_thr],
+                                          normalize=True,
+                                          title='Tissue classifier',
+                                          xlabel='Predicted',
+                                          ylabel='Ground truth',
+                                          cmap=plt.cm.Blues,
+                                          colorbar=False)
+    plt.xticks([0, 1], ('Cell/\nBg', 'Other'))
+    plt.yticks([0, 1], ('Cell/\nBg', 'Other'))
+    plt.tight_layout()
+
 
 
 '''Save the log of computations
