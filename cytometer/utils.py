@@ -715,8 +715,8 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
 
     :param im: Input histology. Accepted types are
       * PIL.TiffImagePlugin.TiffImageFile with RGB channels.
-      * np.array: (1, rows, cols, 3), dtype=np.uint8, values in [0, 255].
-      * np.array: (1, rows, cols, 3), dtype=np.float32, values in [0.0, 1.0].
+      * np.array: (n, rows, cols, 3), dtype=np.uint8, values in [0, 255].
+      * np.array: (n, rows, cols, 3), dtype=np.float32, values in [0.0, 1.0].
     :param contour_model: Keras CNN model. Input is (n, rows, cols, 3).
     :param dmap_model: Keras CNN model. Input is (n, rows, cols, 1).
     :param local_threshold_block_size: (def 41) Size of local neighbourhood used by the local threshold algorithm.
@@ -738,6 +738,8 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
         raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
     elif im.ndim == 3:
         im = np.expand_dims(im, axis=0)
+    elif im.ndim == 4:
+        pass
     else:
         raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
 
@@ -785,79 +787,87 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
         plt.imshow(contour_pred[0, :, :, 0])
         plt.axis('off')
 
-    # TODO: currently, we don't support n>1 in (n, rows, cols, 3) images
-    if im.shape[0] > 1:
-        raise ValueError('Currently, we don\'t support n>1 in (n, rows, cols, 3) images')
+    labels_all = []
+    labels_borders_all = []
+    for i in range(im.shape[0]):
 
-    # local threshold
-    local_threshold = threshold_local(contour_pred[0, :, :, 0], block_size=local_threshold_block_size,
-                                      method='mean', mode='reflect')
-    seg = (contour_pred[0, :, :, 0] > local_threshold).astype(np.uint8)
+        # local threshold
+        local_threshold = threshold_local(contour_pred[i, :, :, 0], block_size=local_threshold_block_size,
+                                          method='mean', mode='reflect')
+        seg = (contour_pred[i, :, :, 0] > local_threshold).astype(np.uint8)
 
-    if DEBUG:
-        plt.subplot(223)
-        plt.cla()
-        plt.imshow(seg)
-        plt.axis('off')
+        if DEBUG:
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(seg)
+            plt.axis('off')
 
-    # invert the segmentation
-    seg = 1 - seg
+        # invert the segmentation
+        seg = 1 - seg
 
-    # remove small holes from the segmentation of insides of cells
-    seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
+        # remove small holes from the segmentation of insides of cells
+        seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
 
-    # thin the contours
-    seg = thin(1 - seg, max_iter=20)
+        # thin the contours
+        seg = thin(1 - seg, max_iter=20)
 
-    # erode the insides of cells to connect incomplete contours
-    seg = binary_erosion(1 - seg, selem=np.ones(shape=(29, 29), dtype=np.uint8))
+        # erode the insides of cells to connect incomplete contours
+        seg = binary_erosion(1 - seg, selem=np.ones(shape=(29, 29), dtype=np.uint8))
 
-    if DEBUG:
-        plt.subplot(224)
-        plt.cla()
-        plt.imshow(seg)
-        plt.axis('off')
+        if DEBUG:
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow(seg)
+            plt.axis('off')
 
-    # assign different label to each connected components
-    # Note: cv2.connectedComponentsWithStats is 10x faster than skimage.measure.label
-    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg.astype(np.uint8))
+        # assign different label to each connected components
+        # Note: cv2.connectedComponentsWithStats is 10x faster than skimage.measure.label
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg.astype(np.uint8))
 
-    if DEBUG:
-        plt.subplot(223)
-        plt.cla()
-        plt.imshow(labels)
-        plt.axis('off')
+        if DEBUG:
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(labels)
+            plt.axis('off')
 
-    # use watershed to expand the seeds
-    labels = watershed(-dmap_pred[0, :, :, 0], labels, watershed_line=False)
+        # use watershed to expand the seeds
+        labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
 
-    if DEBUG:
-        plt.subplot(224)
-        plt.cla()
-        plt.imshow(labels)
-        plt.axis('off')
+        if DEBUG:
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow(labels)
+            plt.axis('off')
 
-        plt.subplot(223)
-        plt.cla()
-        plt.imshow(im[0, ...])
-        plt.contour(labels, levels=np.unique(labels), colors='black')
-        plt.axis('off')
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(im[i, ...])
+            plt.contour(labels, levels=np.unique(labels), colors='black')
+            plt.axis('off')
 
-    # extract borders of watershed regions for plots
-    labels_borders = borders(labels)
+        # extract borders of watershed regions for plots
+        labels_borders = borders(labels)
 
-    # dilate borders for easier visualization
-    if border_dilation > 0:
-        kernel = np.ones((3, 3), np.uint8)
-        labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
+        # dilate borders for easier visualization
+        if border_dilation > 0:
+            kernel = np.ones((3, 3), np.uint8)
+            labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
 
-    if DEBUG:
-        plt.subplot(224)
-        plt.cla()
-        plt.imshow(im[0, ...])
-        plt.contour(labels_borders, levels=np.unique(labels_borders), colors='black')
+        if DEBUG:
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow(im[i, ...])
+            plt.contour(labels_borders, levels=np.unique(labels_borders), colors='black')
 
-    return labels, labels_borders
+        # append results to output list
+        labels_all.append(np.expand_dims(labels, axis=0))
+        labels_borders_all.append(np.expand_dims(labels_borders, axis=0))
+
+    # convert list into array
+    labels_all = np.concatenate(labels_all)
+    labels_borders_all = np.concatenate(labels_borders_all)
+
+    return labels_all, labels_borders_all
 
 
 def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
