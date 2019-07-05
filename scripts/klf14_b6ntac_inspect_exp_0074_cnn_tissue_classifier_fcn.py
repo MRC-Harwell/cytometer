@@ -114,7 +114,7 @@ idx_train_all = aux['idx_train']
 # number of images
 n_im = len(file_list)
 
-'''Inspect the data
+'''Load the test data
 '''
 
 # start timer
@@ -256,11 +256,11 @@ im_array_all = np.concatenate(im_array_all)
 out_class_all = np.concatenate(out_class_all)
 out_mask_all = np.concatenate(out_mask_all)
 
-'''Convolutional neural network training
+'''Apply the classification CNN to histology images
 
-    Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
-    function
-    '''
+   Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
+   function
+'''
 
 # init
 im_array_test_all = []
