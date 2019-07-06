@@ -1594,82 +1594,95 @@ def clean_segmentation(labels,
         graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
         graph.node[dst]['mean color'] = (graph.node[dst]['total color'] / graph.node[dst]['pixel count'])
 
-    if DEBUG:
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(labels)
+    # to simply code, we treat (row, col) labels as (1, row, col)
+    labels_is2d = labels.ndim == 2
+    if labels_is2d:
+        labels = np.expand_dims(labels, axis=0)
 
-    # remove labels that are too small (this removes small gaps created by removing small labels)
-    labels = remove_small_objects(labels, min_size=min_cell_area)
+    for i in range(labels.shape[0]):
 
-    # use watershed to expand the seeds
-    labels = watershed(labels, labels, watershed_line=False)
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(labels[i, :, :])
 
-    if DEBUG:
-        plt.subplot(222)
-        plt.imshow(labels)
+        # remove labels that are too small (this removes small gaps created by removing small labels)
+        labels[i, :, :] = remove_small_objects(labels[i, :, :], min_size=min_cell_area)
 
-    # remove edge segmentations, because in general they correspond to incomplete objects
-    if remove_edge_labels:
-        labels_edge = edge_labels(labels)
-        idx = np.isin(labels, test_elements=labels_edge)
-        labels[idx] = 0
+        # use watershed to expand the seeds
+        labels[i, :, :] = watershed(labels[i, :, :], labels[i, :, :], watershed_line=False)
 
-    if DEBUG:
-        plt.subplot(223)
-        plt.imshow(labels)
+        if DEBUG:
+            plt.subplot(222)
+            plt.imshow(labels[i, :, :])
 
-    # remove labels that are not substantially within the mask
-    if mask is not None:
+        # remove edge segmentations, because in general they correspond to incomplete objects
+        if remove_edge_labels:
+            labels_edge = edge_labels(labels[i, :, :])
+            idx = np.isin(labels[i, :, :], test_elements=labels_edge)
+            aux = labels[i, :, :]
+            aux[idx] = 0
 
-        # count number of pixels in each label
-        prop = regionprops(labels)
-        prop_masked = regionprops(labels * mask)
+        if DEBUG:
+            plt.subplot(223)
+            plt.imshow(labels[i, :, :])
 
-        # create a lookup table for quick search of label area
-        max_label = np.max([p.label for p in prop])
-        area_lut = np.zeros(shape=(max_label + 1,))
-        area_masked_lut = np.zeros(shape=(max_label + 1,))
-        for p in prop:
-            area_lut[p.label] = p.area
-        for p in prop_masked:
-            area_masked_lut[p.label] = p.area
+        # remove labels that are not substantially within the mask
+        if mask is not None:
 
-        # check for each original label whether it is at least min_mask_overlap (def 60%) covered by the mask
-        for p in prop:
-            if area_masked_lut[p.label] < area_lut[p.label] * min_mask_overlap:
-                labels[labels == p.label] = 0
+            # count number of pixels in each label
+            prop = regionprops(labels[i, :, :])
+            prop_masked = regionprops(labels[i, :, :] * mask[i, :, :])
 
-    if DEBUG:
-        plt.subplot(224)
-        plt.imshow(labels)
+            # create a lookup table for quick search of label area
+            max_label = np.max([p.label for p in prop])
+            area_lut = np.zeros(shape=(max_label + 1,))
+            area_masked_lut = np.zeros(shape=(max_label + 1,))
+            for p in prop:
+                area_lut[p.label] = p.area
+            for p in prop_masked:
+                area_masked_lut[p.label] = p.area
 
-    # remove labels that are completely surrounded by another label
-    background = 0  # background label
-    labels_list = np.unique(labels)
-    n_non_background_labels = np.count_nonzero(labels_list != background)
-    if phagocytosis and n_non_background_labels >= 2:
-        # compute Region Adjacency Graph (RAG) for labels. Note that we don't care about the mean colour difference
-        # between regions. We only care about whether labels are adjacent to others or not
-        rag = rag_mean_color(image=labels, labels=labels)
+            # check for each original label whether it is at least min_mask_overlap (def 60%) covered by the mask
+            for p in prop:
+                if area_masked_lut[p.label] < area_lut[p.label] * min_mask_overlap:
+                    aux = labels[i, :, :]
+                    aux[labels[i, :, :] == p.label] = 0
 
-        # a label is completely surrounded by another label if it has only one neighbour that is not the background.
-        # It doesn't matter which label surrounds which, as we just need to give both the same label to merge them.
-        # iterate pairs of adjacent labels (note that if rag.edges has (1,2), it doesn't also have (2,1))
-        for lab in rag.nodes:
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(labels[i, :, :])
 
-            # number of neighbours of this label
-            neigh = list(rag.neighbors(lab))
+        # remove labels that are completely surrounded by another label
+        background = 0  # background label
+        labels_list = np.unique(labels[i, :, :])
+        n_non_background_labels = np.count_nonzero(labels_list != background)
+        if phagocytosis and n_non_background_labels >= 2:
+            # compute Region Adjacency Graph (RAG) for labels. Note that we don't care about the mean colour difference
+            # between regions. We only care about whether labels are adjacent to others or not
+            rag = rag_mean_color(image=labels[i, :, :], labels=labels[i, :, :])
 
-            # if there's one and only one neighbour, and it's not the background, both labels should be merged
-            if len(neigh) == 1 and neigh[0] != background:
-                if DEBUG:
-                    print('Merging ' + str((lab, neigh[0])))
-                nx.set_edge_attributes(rag, {(lab, neigh[0]): {'weight': 0}})
+            # a label is completely surrounded by another label if it has only one neighbour that is not the background.
+            # It doesn't matter which label surrounds which, as we just need to give both the same label to merge them.
+            # iterate pairs of adjacent labels (note that if rag.edges has (1,2), it doesn't also have (2,1))
+            for lab in rag.nodes:
 
-        # update the labels by greedy merging
-        labels = merge_hierarchical(labels, rag, thresh=0.1, rag_copy=False, in_place_merge=True,
-                                    merge_func=merge_mean_color, weight_func=_weight_mean_color)
+                # number of neighbours of this label
+                neigh = list(rag.neighbors(lab))
+
+                # if there's one and only one neighbour, and it's not the background, both labels should be merged
+                if len(neigh) == 1 and neigh[0] != background:
+                    if DEBUG:
+                        print('Merging ' + str((lab, neigh[0])))
+                    nx.set_edge_attributes(rag, {(lab, neigh[0]): {'weight': 0}})
+
+            # update the labels by greedy merging
+            labels[i, :, :] = merge_hierarchical(labels[i, :, :], rag, thresh=0.1, rag_copy=False, in_place_merge=True,
+                                                 merge_func=merge_mean_color, weight_func=_weight_mean_color)
+
+    # remove dummy dimension if the input was 2D
+    if labels_is2d:
+        labels = [0, ...]
 
     return labels
 
