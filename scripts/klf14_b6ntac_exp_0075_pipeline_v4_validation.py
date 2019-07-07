@@ -332,8 +332,22 @@ rough_mask_all = np.concatenate(rough_mask_all)
 out_class_all = np.concatenate(out_class_all)
 out_mask_all = np.concatenate(out_mask_all)
 
+# save results to avoid having to recompute them every time
+data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
+np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all, out_class_all=out_class_all,
+         out_mask_all=out_mask_all, i_all=i_all)
+
 '''Apply the pipeline v4 to histology images
 '''
+
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
+with np.load(data_filename) as data:
+    im_array_all = data['im_array_all']
+    rough_mask_all = data['rough_mask_all']
+    out_class_all = data['out_class_all']
+    out_mask_all = data['out_mask_all']
+    i_all = data['i_all']
 
 # init
 im_array_test_all = []
@@ -425,9 +439,14 @@ for i_fold in range(len(idx_test_all)):
 
     # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
     # the rough foreground mask
-    pred_seg_test_clean \
+    pred_seg_test \
         = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
                                              mask=None, phagocytosis=True)
+
+    # loop each segmentation label of each image
+    for i in range(pred_seg_test.shape[0]):
+        for lab in np.unique(pred_seg_test[i, :, :]):
+
 
     if DEBUG:
         for i in range(len(idx_test)):
@@ -442,28 +461,23 @@ for i_fold in range(len(idx_test_all)):
             plt.subplot(222)
             plt.imshow(im_array_test[i, :, :, :])
             plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.title('Automatic segs', fontsize=14)
+            plt.title('Cleaned automatic segs', fontsize=14)
             plt.axis('off')
             plt.subplot(223)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test_clean[i, :, :], levels=np.unique(pred_seg_test_clean[i, :, :]), colors='k')
-            plt.title('Cleaned automatic segs', fontsize=14)
-            plt.axis('off')
-            plt.subplot(224)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test_clean[i, :, :], levels=np.unique(pred_seg_test_clean[i, :, :]), colors='k')
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.21, alpha=0.5)
-            plt.title('Cleaned automatic segs', fontsize=14)
+            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+            plt.imshow(pred_class_test[i, :, :, 1] > 0.4, alpha=0.5)
+            plt.title('Classifier thr > 0.4', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
             plt.pause(5)
 
 
-        # append data for total output
-        im_array_test_all.append(im_array_test)
-        out_class_test_all.append(out_class_test)
-        out_mask_test_all.append(out_mask_test)
-        pred_class_test_all.append(pred_class_test)
+    # append data for total output
+    im_array_test_all.append(im_array_test)
+    out_class_test_all.append(out_class_test)
+    out_mask_test_all.append(out_mask_test)
+    pred_class_test_all.append(pred_class_test)
 
 # collapse lists into arrays
 im_array_test_all = np.concatenate(im_array_test_all)
