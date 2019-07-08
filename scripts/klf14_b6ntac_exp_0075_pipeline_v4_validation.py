@@ -126,7 +126,10 @@ metainfo = pd.read_csv(metainfo_csv_file)
 
 '''
 ************************************************************************************************************************
-PREPARE THE TESTING DATA:
+Prepare the testing data:
+
+  You can skip this if this section has already been run and saved to 
+  'klf14_b6ntac_exp_0075_pipeline_v4_validation_data.npz'.
 
   Apply classifier trained with each 10 folds to the other fold. 
 ************************************************************************************************************************
@@ -337,7 +340,10 @@ data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all, out_class_all=out_class_all,
          out_mask_all=out_mask_all, i_all=i_all)
 
-'''Apply the pipeline v4 to histology images
+'''
+************************************************************************************************************************
+Apply the pipeline v4 to histology images
+************************************************************************************************************************
 '''
 
 # correct home directory in file paths
@@ -473,6 +479,8 @@ for i_fold in range(len(idx_test_all)):
         # remove "0" label
         labels_count_ref = labels_count_ref[labels_unique_ref != 0]
         labels_unique_ref = labels_unique_ref[labels_unique_ref != 0]
+        # largest label
+        lab_max = np.max(labels_unique_ref)
 
         ## create dataframe for this image
         im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
@@ -484,76 +492,49 @@ for i_fold in range(len(idx_test_all)):
 
         ## compute proportion of "Mask" pixels in each automatically segmented label
 
-        # init vector to get proportion of "Mask" pixels in each label
-        lab_max = np.max(labels_unique_ref)
-        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
-        # compute proportion of "Mask" pixels to total number of pixels in each label
-        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * out_mask_test[i, :, :].astype(np.int32),
-                                                return_counts=True)
-        labels_prop_other[labels_unique] = labels_count
-        labels_prop_other[labels_unique_ref] /= labels_count_ref
+        def pixel_proportion(lab_max, labels, mask, labels_unique_ref, labels_count_ref):
+            # init vector to get proportion of "Mask" pixels in each label
+            labels_prop = np.zeros(shape=(lab_max + 1,))
+            # compute proportion of "Mask" pixels to total number of pixels in each label
+            labels_unique, labels_count = np.unique(labels * mask, return_counts=True)
+            labels_prop[labels_unique] = labels_count
+            labels_prop[labels_unique_ref] /= labels_count_ref
+            return labels_prop[labels_unique_ref]
 
-        # add to dataframe
-        df_im['prop_mask'] = labels_prop_other[labels_unique_ref]
+        df_im['prop_mask'] = pixel_proportion(lab_max,
+                                              labels=pred_seg_test[i, :, :],
+                                              mask=out_mask_test[i, :, :].astype(np.int32),
+                                              labels_unique_ref=labels_unique_ref,
+                                              labels_count_ref=labels_count_ref)
 
         ## compute proportion of ground truth "Other" pixels in each automatically segmented label
 
-        # init vector to get proportion of "Other" pixels in each label
-        lab_max = np.max(labels_unique_ref)
-        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
-        # compute proportion of "Other" pixels to total number of pixels in each label
-        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * out_class_test[i, :, :, 0].astype(np.int32),
-                                                return_counts=True)
-        labels_prop_other[labels_unique] = labels_count
-        labels_prop_other[labels_unique_ref] /= labels_count_ref
-
-        # add to dataframe
-        df_im['prop_gtruth_other'] = labels_prop_other[labels_unique_ref]
+        df_im['prop_other_gtruth'] = pixel_proportion(lab_max,
+                                                      labels=pred_seg_test[i, :, :],
+                                                      mask=out_class_test[i, :, :, 0].astype(np.int32),
+                                                      labels_unique_ref=labels_unique_ref,
+                                                      labels_count_ref=labels_count_ref)
 
         ## compute proportion of classifier "Other" pixels in each automatically segmented label for several softmax
         ## thresholds
 
-        # init vector to get proportion of "Other" pixels in each label
-        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
-        # threshold the classifier score. We can compare this to "out_class_test"
-        pred_thr_class_test_20 = pred_class_test[i, :, :, 1] > 0.20
-        # compute proportion of "Other" pixels to total number of pixels in each label
-        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * pred_thr_class_test_20,
-                                                return_counts=True)
-        labels_prop_other[labels_unique] = labels_count
-        labels_prop_other[labels_unique_ref] /= labels_count_ref
-        # put results in dataframe: one cell per row, tagged with mouse metainformation
-        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
-        # add to dataframe
-        df_im['prop_seg_other_20'] = labels_prop_other[labels_unique_ref]
+        df_im['prop_other_seg_20'] = pixel_proportion(lab_max,
+                                                      labels=pred_seg_test[i, :, :],
+                                                      mask=pred_class_test[i, :, :, 1] > 0.20,
+                                                      labels_unique_ref=labels_unique_ref,
+                                                      labels_count_ref=labels_count_ref)
 
-        # init vector to get proportion of "Other" pixels in each label
-        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
-        # threshold the classifier score. We can compare this to "out_class_test"
-        pred_thr_class_test_30 = pred_class_test[i, :, :, 1] > 0.30
-        # compute proportion of "Other" pixels to total number of pixels in each label
-        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * pred_thr_class_test_30,
-                                                return_counts=True)
-        labels_prop_other[labels_unique] = labels_count
-        labels_prop_other[labels_unique_ref] /= labels_count_ref
-        # put results in dataframe: one cell per row, tagged with mouse metainformation
-        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
-        # add to dataframe
-        df_im['prop_seg_other_30'] = labels_prop_other[labels_unique_ref]
+        df_im['prop_other_seg_30'] = pixel_proportion(lab_max,
+                                                      labels=pred_seg_test[i, :, :],
+                                                      mask=pred_class_test[i, :, :, 1] > 0.30,
+                                                      labels_unique_ref=labels_unique_ref,
+                                                      labels_count_ref=labels_count_ref)
 
-        # init vector to get proportion of "Other" pixels in each label
-        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
-        # threshold the classifier score. We can compare this to "out_class_test"
-        pred_thr_class_test_40 = pred_class_test[i, :, :, 1] > 0.40
-        # compute proportion of "Other" pixels to total number of pixels in each label
-        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * pred_thr_class_test_40,
-                                                return_counts=True)
-        labels_prop_other[labels_unique] = labels_count
-        labels_prop_other[labels_unique_ref] /= labels_count_ref
-        # put results in dataframe: one cell per row, tagged with mouse metainformation
-        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
-        # add to dataframe
-        df_im['prop_seg_other_40'] = labels_prop_other[labels_unique_ref]
+        df_im['prop_other_seg_40'] = pixel_proportion(lab_max,
+                                                      labels=pred_seg_test[i, :, :],
+                                                      mask=pred_class_test[i, :, :, 1] > 0.40,
+                                                      labels_unique_ref=labels_unique_ref,
+                                                      labels_count_ref=labels_count_ref)
 
         # contatenate current dataframe to general dataframe
         df_all.append(df_im)
@@ -582,19 +563,19 @@ for i_fold in range(len(idx_test_all)):
             plt.subplot(234)
             plt.imshow(im_array_test[i, :, :, :])
             plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.imshow(pred_thr_class_test_20, alpha=0.5)
+            plt.imshow(pred_class_test[i, :, :, 1] > 0.20, alpha=0.5)
             plt.title('Classifier thr > 0.20', fontsize=14)
             plt.axis('off')
             plt.subplot(235)
             plt.imshow(im_array_test[i, :, :, :])
             plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.imshow(pred_thr_class_test_30, alpha=0.5)
+            plt.imshow(pred_class_test[i, :, :, 1] > 0.30, alpha=0.5)
             plt.title('Classifier thr > 0.30', fontsize=14)
             plt.axis('off')
             plt.subplot(236)
             plt.imshow(im_array_test[i, :, :, :])
             plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.imshow(pred_thr_class_test_40, alpha=0.5)
+            plt.imshow(pred_class_test[i, :, :, 1] > 0.40, alpha=0.5)
             plt.title('Classifier thr > 0.40', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
