@@ -340,6 +340,9 @@ np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all
 '''Apply the pipeline v4 to histology images
 '''
 
+# correct home directory in file paths
+file_list = cytometer.data.change_home_directory(list(file_list), '/users/rittscher/rcasero', home, check_isfile=True)
+
 # load data computed in the previous section
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 with np.load(data_filename) as data:
@@ -362,6 +365,9 @@ for i_fold in range(len(idx_test_all)):
     # test and training image indices. These indices refer to file_list
     idx_test = idx_test_all[i_fold]
     idx_train = idx_train_all[i_fold]
+
+    # list of test files (used later for the dataframe)
+    file_list_test = np.array(file_list)[idx_test]
 
     # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
     # skipped)
@@ -408,20 +414,25 @@ for i_fold in range(len(idx_test_all)):
             plt.imshow(out_class_test[i, :, :, 0].astype(np.uint8), alpha=0.5)
             plt.title('Ground truth class', fontsize=14)
             plt.axis('off')
-            plt.subplot(234)
+            plt.subplot(233)
             plt.imshow(im_array_test[i, :, :, :])
             plt.imshow(pred_class_test[i, :, :, 1], alpha=0.5)
             plt.title('Softmax score', fontsize=14)
             plt.axis('off')
+            plt.subplot(234)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(pred_class_test[i, :, :, 1] > 0.20, alpha=0.5)
+            plt.title('Score > 0.20', fontsize=14)
+            plt.axis('off')
             plt.subplot(235)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.50, alpha=0.5)
-            plt.title('Softmax\nscore > 0.5', fontsize=14)
+            plt.imshow(pred_class_test[i, :, :, 1] > 0.30, alpha=0.5)
+            plt.title('Score > 0.30', fontsize=14)
             plt.axis('off')
             plt.subplot(236)
             plt.imshow(im_array_test[i, :, :, :])
             plt.imshow(pred_class_test[i, :, :, 1] > 0.40, alpha=0.5)
-            plt.title('Softmax\nscore > 0.4', fontsize=14)
+            plt.title('Score > 0.40', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
             plt.pause(5)
@@ -443,31 +454,148 @@ for i_fold in range(len(idx_test_all)):
         = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
                                              mask=None, phagocytosis=True)
 
-    # loop each segmentation label of each image
+    # loop test images
+    df_all = pd.DataFrame()
     for i in range(pred_seg_test.shape[0]):
-        for lab in np.unique(pred_seg_test[i, :, :]):
 
+        # open full resolution histology slide
+        file_tif = file_list_test[i].replace('.svg', '.tif')
+        im = Image.open(file_tif)
+
+        # read pixel size information
+        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+        ## number of pixels per auto segmentation label
+
+        # count number of pixels for each label
+        labels_unique_ref, labels_count_ref = np.unique(pred_seg_test[i, :, :], return_counts=True)
+        # remove "0" label
+        labels_count_ref = labels_count_ref[labels_unique_ref != 0]
+        labels_unique_ref = labels_unique_ref[labels_unique_ref != 0]
+
+        ## create dataframe for this image
+        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
+        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                          values=im_idx, values_tag='im',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
+        df_im['lab'] = labels_unique_ref
+        df_im['area'] = labels_count_ref * xres * yres
+
+        ## compute proportion of "Mask" pixels in each automatically segmented label
+
+        # init vector to get proportion of "Mask" pixels in each label
+        lab_max = np.max(labels_unique_ref)
+        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
+        # compute proportion of "Mask" pixels to total number of pixels in each label
+        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * out_mask_test[i, :, :].astype(np.int32),
+                                                return_counts=True)
+        labels_prop_other[labels_unique] = labels_count
+        labels_prop_other[labels_unique_ref] /= labels_count_ref
+
+        # add to dataframe
+        df_im['prop_mask'] = labels_prop_other[labels_unique_ref]
+
+        ## compute proportion of ground truth "Other" pixels in each automatically segmented label
+
+        # init vector to get proportion of "Other" pixels in each label
+        lab_max = np.max(labels_unique_ref)
+        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
+        # compute proportion of "Other" pixels to total number of pixels in each label
+        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * out_class_test[i, :, :, 0].astype(np.int32),
+                                                return_counts=True)
+        labels_prop_other[labels_unique] = labels_count
+        labels_prop_other[labels_unique_ref] /= labels_count_ref
+
+        # add to dataframe
+        df_im['prop_gtruth_other'] = labels_prop_other[labels_unique_ref]
+
+        ## compute proportion of classifier "Other" pixels in each automatically segmented label for several softmax
+        ## thresholds
+
+        # init vector to get proportion of "Other" pixels in each label
+        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
+        # threshold the classifier score. We can compare this to "out_class_test"
+        pred_thr_class_test_20 = pred_class_test[i, :, :, 1] > 0.20
+        # compute proportion of "Other" pixels to total number of pixels in each label
+        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * pred_thr_class_test_20,
+                                                return_counts=True)
+        labels_prop_other[labels_unique] = labels_count
+        labels_prop_other[labels_unique_ref] /= labels_count_ref
+        # put results in dataframe: one cell per row, tagged with mouse metainformation
+        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
+        # add to dataframe
+        df_im['prop_seg_other_20'] = labels_prop_other[labels_unique_ref]
+
+        # init vector to get proportion of "Other" pixels in each label
+        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
+        # threshold the classifier score. We can compare this to "out_class_test"
+        pred_thr_class_test_30 = pred_class_test[i, :, :, 1] > 0.30
+        # compute proportion of "Other" pixels to total number of pixels in each label
+        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * pred_thr_class_test_30,
+                                                return_counts=True)
+        labels_prop_other[labels_unique] = labels_count
+        labels_prop_other[labels_unique_ref] /= labels_count_ref
+        # put results in dataframe: one cell per row, tagged with mouse metainformation
+        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
+        # add to dataframe
+        df_im['prop_seg_other_30'] = labels_prop_other[labels_unique_ref]
+
+        # init vector to get proportion of "Other" pixels in each label
+        labels_prop_other = np.zeros(shape=(lab_max + 1, ))
+        # threshold the classifier score. We can compare this to "out_class_test"
+        pred_thr_class_test_40 = pred_class_test[i, :, :, 1] > 0.40
+        # compute proportion of "Other" pixels to total number of pixels in each label
+        labels_unique, labels_count = np.unique(pred_seg_test[i, :, :] * pred_thr_class_test_40,
+                                                return_counts=True)
+        labels_prop_other[labels_unique] = labels_count
+        labels_prop_other[labels_unique_ref] /= labels_count_ref
+        # put results in dataframe: one cell per row, tagged with mouse metainformation
+        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
+        # add to dataframe
+        df_im['prop_seg_other_40'] = labels_prop_other[labels_unique_ref]
+
+        # contatenate current dataframe to general dataframe
+        df_all.append(df_im)
 
     if DEBUG:
         for i in range(len(idx_test)):
 
-            # thresholds at 0.5 and 0.4
             plt.clf()
-            plt.subplot(221)
+            plt.subplot(231)
             plt.imshow(im_array_test[i, :, :, :])
             plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
             plt.title('Training mask', fontsize=14)
             plt.axis('off')
-            plt.subplot(222)
+            plt.subplot(232)
             plt.imshow(im_array_test[i, :, :, :])
             plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+            plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
             plt.title('Cleaned automatic segs', fontsize=14)
             plt.axis('off')
-            plt.subplot(223)
+            plt.subplot(233)
             plt.imshow(im_array_test[i, :, :, :])
             plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.4, alpha=0.5)
-            plt.title('Classifier thr > 0.4', fontsize=14)
+            plt.imshow(out_class_test[i, :, :, 0], alpha=0.5)
+            plt.title('Class ground truth', fontsize=14)
+            plt.axis('off')
+            plt.subplot(234)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+            plt.imshow(pred_thr_class_test_20, alpha=0.5)
+            plt.title('Classifier thr > 0.20', fontsize=14)
+            plt.axis('off')
+            plt.subplot(235)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+            plt.imshow(pred_thr_class_test_30, alpha=0.5)
+            plt.title('Classifier thr > 0.30', fontsize=14)
+            plt.axis('off')
+            plt.subplot(236)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+            plt.imshow(pred_thr_class_test_40, alpha=0.5)
+            plt.title('Classifier thr > 0.40', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
             plt.pause(5)
