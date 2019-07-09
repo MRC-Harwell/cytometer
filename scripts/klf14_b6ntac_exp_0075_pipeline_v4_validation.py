@@ -107,7 +107,7 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap_model'
 contour_model_basename = 'klf14_b6ntac_exp_0070_cnn_contour_after_dmap_model'
 classifier_model_basename = 'klf14_b6ntac_exp_0074_cnn_tissue_classifier_fcn'
-correction_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours_model'
+correction_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours'
 
 # load list of images, and indices for training vs. testing indices
 kfold_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0055_cnn_contour_kfold_info.pickle')
@@ -342,7 +342,7 @@ np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all
 
 '''
 ************************************************************************************************************************
-Apply the pipeline v4 to histology images
+Apply the pipeline v4 to training histology images (segmentation, classification)
 ************************************************************************************************************************
 '''
 
@@ -358,11 +358,15 @@ with np.load(data_filename) as data:
     out_mask_all = data['out_mask_all']
     i_all = data['i_all']
 
+# start timer
+t0 = time.time()
+
 # init
 im_array_test_all = []
 out_class_test_all = []
 out_mask_test_all = []
 pred_class_test_all = []
+df_all = pd.DataFrame()
 
 for i_fold in range(len(idx_test_all)):
 
@@ -399,6 +403,10 @@ for i_fold in range(len(idx_test_all)):
     classifier_model_filename = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     classifier_model = keras.models.load_model(classifier_model_filename)
 
+    # load correction model
+    correction_model_filename = os.path.join(saved_models_dir, correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    correction_model = keras.models.load_model(correction_model_filename)
+
     # reshape model input
     classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=im_array_test.shape)
 
@@ -408,7 +416,6 @@ for i_fold in range(len(idx_test_all)):
     if DEBUG:
         for i in range(len(idx_test)):
 
-            # thresholds at 0.5 and 0.4
             plt.clf()
             plt.subplot(231)
             plt.imshow(im_array_test[i, :, :, :])
@@ -460,9 +467,21 @@ for i_fold in range(len(idx_test_all)):
         = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
                                              mask=None, phagocytosis=True)
 
+    (a, b, c), index_list, scaling_factor_list \
+        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test, pred_seg_test),
+                                           resize_to=(training_window_len, training_window_len),
+                                           resample=(Image.NEAREST, Image.LINEAR, Image.LINEAR))
+
+    # split segmentation into labels and correct segmentations
+    cytometer.utils.correct_segmentation(im=im_array_test, labels=pred_seg_test,
+                                                   correction_model=correction_model)
+
+
     # loop test images
-    df_all = pd.DataFrame()
     for i in range(pred_seg_test.shape[0]):
+
+        print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
+              + str(i) + '/' + str(pred_seg_test.shape[0] - 1))
 
         # open full resolution histology slide
         file_tif = file_list_test[i].replace('.svg', '.tif')
@@ -536,8 +555,9 @@ for i_fold in range(len(idx_test_all)):
                                                       labels_unique_ref=labels_unique_ref,
                                                       labels_count_ref=labels_count_ref)
 
+
         # contatenate current dataframe to general dataframe
-        df_all.append(df_im)
+        df_all = df_all.append(df_im)
 
     if DEBUG:
         for i in range(len(idx_test)):
@@ -588,11 +608,37 @@ for i_fold in range(len(idx_test_all)):
     out_mask_test_all.append(out_mask_test)
     pred_class_test_all.append(pred_class_test)
 
+    # end of image loop
+    print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
+
 # collapse lists into arrays
 im_array_test_all = np.concatenate(im_array_test_all)
 out_class_test_all = np.concatenate(out_class_test_all)
 out_mask_test_all = np.concatenate(out_mask_test_all)
 pred_class_test_all = np.concatenate(pred_class_test_all)
+
+# reindex the dataframe
+df_all.reset_index(drop=True, inplace=True)
+
+# save results to avoid having to recompute them every time (730 s on 2 Titan RTX GPUs)
+data_filename = os.path.join(saved_models_dir, experiment_id + '_seg_test.npz')
+np.savez(data_filename, im_array_test_all=im_array_test_all, out_class_test_all=out_class_test_all,
+         out_mask_test_all=out_mask_test_all, pred_class_test_all=pred_class_test_all, df_all=df_all)
+
+'''
+************************************************************************************************************************
+Analyse automatic segmentation and classification results 
+************************************************************************************************************************
+'''
+
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_seg_test.npz')
+with np.load(data_filename, allow_pickle=True) as data:
+    im_array_test_all = data['im_array_test_all']
+    out_class_test_all = data['out_class_test_all']
+    out_mask_test_all = data['out_mask_test_all']
+    pred_class_test_all = data['pred_class_test_all']
+    df_all = data['df_all']
 
 # vectors of pixels where we know whether they are WAT or Other
 out_mask_test_all = out_mask_test_all.astype(np.bool)

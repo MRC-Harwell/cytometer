@@ -1029,12 +1029,12 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     Then, Dice coefficient values are computed for the matches.
 
     :param dataset_im: numpy.ndarray (image, width, height, channel). Histology images.
-    :param dataset_lab_test: numpy.ndarray (image, width, height, 1). Instance segmentation of the histology
-    to be tested. Each label gives the segmentation of one cell. Not all cells need to have been segmented. Label=0
-    corresponds to the background and will be ignored.
-    :param dataset_lab_ref: (def None) numpy.ndarray (image, width, height, 1). Ground truth instance segmentation of
-    the histology. Each label gives the segmentation of one cell. Not all cells need to have been segmented. Label=0
-    corresponds to the background and will be ignored.
+    :param dataset_lab_test: numpy.ndarray (image, width, height) or (image, width, height, 1).
+    Instance segmentation of the histology to be tested. Each label gives the segmentation of one cell. Not all cells
+    need to have been segmented. Label=0 corresponds to the background and will be ignored.
+    :param dataset_lab_ref: (def None) numpy.ndarray (image, width, height) or (image, width, height, 1). Ground truth
+    instance segmentation of the histology. Each label gives the segmentation of one cell. Not all cells need to have
+    been segmented. Label=0 corresponds to the background and will be ignored.
     :param training_window_len: (def 401) Each cell will be extracted to a (training_window_len, training_window_len)
     window.
     :param smallest_cell_area: (def 804) Labels with less than smallest_cell_area pixels will be ignored as segmentation
@@ -1065,6 +1065,12 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
     # (r,c) size of the image
     n_row = dataset_im.shape[1]
     n_col = dataset_im.shape[2]
+
+    # if dataset_lab_test is only (n, row, col), extend to (n, row, col, 1)
+    if dataset_lab_test.ndim == 3:
+        dataset_lab_test = np.expand_dims(dataset_lab_test, axis=3)
+    if dataset_lab_ref is not None and dataset_lab_ref.ndim == 3:
+        dataset_lab_ref = np.expand_dims(dataset_lab_ref, axis=3)
 
     if K.image_data_format() != 'channels_last':
         raise ValueError('Only implemented for K.image_data_format() == \'channels_last\'')
@@ -1244,6 +1250,252 @@ def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
         return training_windows_list, testlabel_windows_list, index_list, reflabel_windows_list, dice_list
 
 
+def bounding_box_with_margin(label, inc=0.0, coordinates='xy'):
+    """
+    Create a square bounding box around a segmentation mask, with optional enlargement/reduction.
+    The output is given as (x0, y0, xend, yend) for plotting or (r0, c0, rend, cend) for indexing arrays.
+
+    Note that because we need integers for indexing, the bounding box may not be completely centered on the segmentation
+    mask.
+
+    Note also that the bounding box may have negative indices, or indices beyond the image size.
+
+    :param label: 2D numpy.array with segmentation mask.
+    :param inc: (def 0.0) Scalar. The size of the box will be increased (or decreased with negative value) 100*inc%.
+    E.g. if inc=0.20, the size of the box will be increased by 20% with respect to the smallest box that encloses the
+    segmentation.
+    :param coordinates: (def 'xy') 'xy' or 'rc'.
+    :return: Coordinates of the bottom left and top right corners of the box.
+    If coordinates=='xy': (x0, y0, xend, yend): These are the true coordinates of the box corners, and these values
+    can be directly used for plotting.
+    If coordinates=='rc': (r0, c0, rend, cend): These are rounded row/column indices that can be used for indexing
+    an array, e.g. x[r0:rend, c0:cend]. Note that
+        cend = xend+1
+        rend = yend+1
+    (the +1 is necessary because python drops the last index when slicing an array).
+    """
+
+    # compute region properties
+    props = regionprops((label != 0).astype(np.uint8), coordinates='rc')
+    assert (len(props) == 1)
+
+    # box enclosing segmentation
+    bbox = props[0]['bbox']
+
+    # ease nomenclature of box corners
+    (bbox_r0, bbox_c0, bbox_rend, bbox_cend) = bbox
+
+    # make the box square
+    bbox_r_len = bbox_rend - bbox_r0
+    bbox_c_len = bbox_cend - bbox_c0
+    bbox_len = np.max((bbox_r_len, bbox_c_len))
+
+    if inc != 0.0:
+        # increase or decrease the box size by the scalar
+        bbox_len = np.round(bbox_len * (1 + inc))
+
+    # bottom left corner of the box
+    bbox_r0 -= np.round((bbox_len - bbox_r_len) / 2.0)
+    bbox_c0 -= np.round((bbox_len - bbox_c_len) / 2.0)
+
+    # top right corner of the box (+1 so that we can use it for indexing)
+    bbox_rend = bbox_r0 + bbox_len
+    bbox_cend = bbox_c0 + bbox_len
+
+    if coordinates == 'xy':
+        return np.float64(bbox_c0), np.float64(bbox_r0), np.float64(bbox_cend - 1), np.float64(bbox_rend - 1)
+    elif coordinates == 'rc':
+        return np.int64(bbox_r0), np.int64(bbox_c0), np.int64(bbox_rend), np.int64(bbox_cend)
+    else:
+        raise ValueError('Unknown "coordinates" value.')
+
+
+def extract_bbox(im, bbox):
+    """
+    Crop bounding box from an image. Note that bounding boxes that go beyond the image boundaries are allowed. In that
+    case, external pixels will be set to zero.
+
+    :param im: (row, col) or (row, col, channels) np.ndarray image.
+    :param bbox: (r0, c0, rend, cend)-tuple with bottom left and top right vertices of the bounding box.
+    :return:
+    * out: Cropping of the image, as numpy.ndarray with the same number of channels as im.
+    """
+
+    # for simplify code, consider 2D images as images with 1 channel
+    if im.ndim < 2 or im.ndim > 3:
+        raise ValueError('im must be a (row, col) or (row, col, channel) array')
+    elif im.ndim == 2:
+        DIM2 = True
+        im = np.expand_dims(im, axis=2)
+    else:
+        DIM2 = False
+
+    # easier nomenclature
+    r0, c0, rend, cend = bbox
+
+    # initialise output
+    out = np.zeros(shape=(rend - r0, cend - c0, im.shape[2]), dtype=im.dtype)
+
+    # if indices are beyond the image limits, we have to account for that when cropping the input
+    if r0 < 0:
+        r0_out = -r0
+        r0 = 0
+    else:
+        r0_out = 0
+    if c0 < 0:
+        c0_out = -c0
+        c0 = 0
+    else:
+        c0_out = 0
+
+    if rend > im.shape[0]:
+        rend_out = out.shape[0] - (rend - im.shape[0])
+        rend = im.shape[0]
+    else:
+        rend_out = out.shape[0]
+    if cend > im.shape[1]:
+        cend_out = out.shape[1] - (cend - im.shape[1])
+        cend = im.shape[1]
+    else:
+        cend_out = out.shape[1]
+
+    # crop the image
+    out[r0_out:rend_out, c0_out:cend_out, :] = im[r0:rend, c0:cend, :]
+
+    # output has the same number of dimensions as the input
+    if DIM2:
+        return out[:, :, 0]
+    else:
+        return out
+
+
+def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0):
+    """
+    Crop a squared bounding box around each label in a segmentation array. Optionally, more volumes of the same size
+    can be provided and they will be cropped according to the same labels (this is useful if e.g. you want to also crop
+    the image the segmentation was computed on).
+
+    Also optionally, the crops can all be scaled to the same size. This is useful to create inputs for a neural network.
+
+    A typical syntax of this function is
+
+        (labels_crop, im_crop), index, scaling = one_image_per_label_v2((labels, im), resize_to=(401, 401),
+                                                                        resample=(Image.NEAREST, Image.LINEAR),
+                                                                        bbox_inc=1.0)
+
+    :param vols: Input np.arrays to be cropped. At least one needs to be provided. This volume is expected to have size
+    (rows, cols) or (n, rows, cols), and contain labels from a segmentation. The cropping bounding boxes will be
+    computed from these labels.
+
+    Optionally, a tuple or list of volumes can be provided too, e.g. [labels, vol0, vol1, vol2]. Each of the other
+    volumes needs to have the same (n, rows, cols), but can have a different number of channels. For instance,
+    labels = (n, rows, cols)
+    vol0 = (n, rows, cols, 3)
+    vol1 = (n, rows, cols)
+    vol2 = (n, rows, cols, 16)
+
+    All volumes will be cropped according to the bounding boxes computed from the first volume.
+
+    :param resize_to: (def None) (rows_to, cols_to) Tuple with the final size of the croppings after resizing.
+    :param resample: (def None) List with the resampling method for each volume. By default (None), we use
+    Image.NEAREST for all volumes, which is appropriate for labels. For RBG or grayscale images, you can also use
+    Image.LINEAR.
+    :param bbox_inc: (def 1.0) Increment in size applied to the bounding box.
+
+    First, the bounding box is computed as the tightest square that contains the label. Then, this size is increased by
+    bbox_inc*100%. For example, bbox_inc=0.2 will increase the size by 20%. By default, bbox_inc=1.0 increases the size
+    by 100%, i.e. it doubles it.
+
+    :return:
+    * vols_crop: tuple with the cropped windows, e.g. (labels_crop, vol0_crop, vol1_crop, vol2_crop).
+
+        If resize_to=None, each element in the tuple is a list with the different-sized crops.
+
+        If resize_to had some value, e.g. (401, 401), each list has been collapsed into an array, e.g.
+
+            labels = (m, 401, 401)
+            vol0 = (m, 401, 401, 3)
+            vol1 = (m, 401, 401)
+            vol2 = (m, 401, 401, 16)
+
+        where m is the total number of labels found in the first volume.
+
+    * index_list: List of tuples (i, lab), where i is the image index, and lab is the segmentation label of each
+    crop.
+
+    * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
+    """
+
+    # input preprocessing
+    if type(vols) == tuple:
+        vols = list(vols)
+    vols_islist = type(vols) == list  # used at the end to return an array or a list of arrays
+    if not vols_islist:
+        vols = [vols]  # for code simplicity, we treat an input array as a list with one array
+    labels = vols[0]  # pointer to the labels volume, for convenience
+    if labels.ndim < 2 or labels.ndim > 3:
+        raise ValueError('Input labels array expected to be (row, col) or (n, row, col)')
+    if labels.ndim == 2:
+        # if labels are (row, col), convert all volumes to (1, row, col, ...)
+        for i, vol in enumerate(vols):
+            vols[i] = np.expand_dims(vol, axis=0)
+    # init empty lists to place crops of vols
+    vols_crop = [[] for foo in range(len(vols))]
+    if resize_to is not None and resample is None:
+        resample = (Image.NEAREST, ) * len(vols)
+
+    # loop labels in each image (we could also use regionprops() and reuse code from one_image_per_label, but this way
+    # the code is a lot shorter and clearer)
+    index_list = []
+    scaling_factor_list = []
+    for i in range(labels.shape[0]):
+        for lab in np.unique(labels[i, :, :]):
+
+            if lab == 0:
+                # skip background label
+                continue
+
+            # bounding box for current label
+            bbox_rc = bounding_box_with_margin(labels[i, :, :] == lab, inc=bbox_inc, coordinates='rc')
+
+            # compute scaling factor
+            if resize_to is None:
+                scaling_factor = np.array([1., 1.])
+            else:
+                # scaling factor for the cropped image
+                scaling_factor = np.array(resize_to) / np.array([bbox_rc[2] - bbox_rc[0],
+                                                                 bbox_rc[3] - bbox_rc[1]])
+
+            # append results to output
+            scaling_factor_list.append(scaling_factor)
+            index_list.append((i, lab))
+
+            # loop vols
+            for k, vol in enumerate(vols):
+
+                # crop image with bounding box
+                vol_bbox = extract_bbox(vol[i, ...], bbox_rc)
+
+                if resize_to is not None:
+                    # resize the image to target window size
+                    vol_bbox = resize(vol_bbox, size=resize_to, resample=resample[k])
+
+                # append results to output
+                vols_crop[k].append(np.expand_dims(vol_bbox, axis=0))
+
+    # if all crops are resized to the same size, they can be collapsed into an array
+    if resize_to is not None:
+        for k, vol_crop in enumerate(vols_crop):
+            vols_crop[k] = np.concatenate(vols_crop[k], axis=0)
+
+    # if the input was a single array, we return an array too, not a list with a single array
+    if not vols_islist:
+        vols_crop = vols_crop[0]
+
+    # exit function
+    return vols_crop, index_list, scaling_factor_list
+
+
 def quality_model_mask(seg, im=None, quality_model_type='0_1', quality_model_type_param=None):
     """
     Compute masks to apply to cell images for quality network.
@@ -1408,125 +1660,6 @@ def quality_model_mask(seg, im=None, quality_model_type='0_1', quality_model_typ
         return masked_im
 
 
-def bounding_box_with_margin(label, inc=0.0, coordinates='xy'):
-    """
-    Create a square bounding box around a segmentation mask, with optional enlargement/reduction.
-    The output is given as (x0, y0, xend, yend) for plotting or (r0, c0, rend, cend) for indexing arrays.
-
-    Note that because we need integers for indexing, the bounding box may not be completely centered on the segmentation
-    mask.
-
-    Note also that the bounding box may have negative indices, or indices beyond the image size.
-
-    :param label: 2D numpy.array with segmentation mask.
-    :param inc: (def 0.0) Scalar. The size of the box will be increased (or decreased with negative value) 100*inc%.
-    E.g. if inc=0.20, the size of the box will be increased by 20% with respect to the smallest box that encloses the
-    segmentation.
-    :param coordinates: (def 'xy') 'xy' or 'rc'.
-    :return: Coordinates of the bottom left and top right corners of the box.
-    If coordinates=='xy': (x0, y0, xend, yend): These are the true coordinates of the box corners, and these values
-    can be directly used for plotting.
-    If coordinates=='rc': (r0, c0, rend, cend): These are rounded row/column indices that can be used for indexing
-    an array, e.g. x[r0:rend, c0:cend]. Note that
-        cend = xend+1
-        rend = yend+1
-    (the +1 is necessary because python drops the last index when slicing an array).
-    """
-
-    # compute region properties
-    props = regionprops((label != 0).astype(np.uint8), coordinates='rc')
-    assert (len(props) == 1)
-
-    # box enclosing segmentation
-    bbox = props[0]['bbox']
-
-    # ease nomenclature of box corners
-    (bbox_r0, bbox_c0, bbox_rend, bbox_cend) = bbox
-
-    # make the box square
-    bbox_r_len = bbox_rend - bbox_r0
-    bbox_c_len = bbox_cend - bbox_c0
-    bbox_len = np.max((bbox_r_len, bbox_c_len))
-
-    if inc != 0.0:
-        # increase or decrease the box size by the scalar
-        bbox_len = np.round(bbox_len * (1 + inc))
-
-    # bottom left corner of the box
-    bbox_r0 -= np.round((bbox_len - bbox_r_len) / 2.0)
-    bbox_c0 -= np.round((bbox_len - bbox_c_len) / 2.0)
-
-    # top right corner of the box (+1 so that we can use it for indexing)
-    bbox_rend = bbox_r0 + bbox_len
-    bbox_cend = bbox_c0 + bbox_len
-
-    if coordinates == 'xy':
-        return np.float64(bbox_c0), np.float64(bbox_r0), np.float64(bbox_cend - 1), np.float64(bbox_rend - 1)
-    elif coordinates == 'rc':
-        return np.int64(bbox_r0), np.int64(bbox_c0), np.int64(bbox_rend), np.int64(bbox_cend)
-    else:
-        raise ValueError('Unknown "coordinates" value.')
-
-
-def extract_bbox(im, bbox):
-    """
-    Crop bounding box from an image. Note that bounding boxes that go beyond the image boundaries are allowed. In that
-    case, external pixels will be set to zero.
-
-    :param im: (row, col) or (row, col, channels) np.ndarray image.
-    :param bbox: (r0, c0, rend, cend)-tuple with bottom left and top right vertices of the bounding box.
-    :return:
-    * out: Cropping of the image, as numpy.ndarray with the same number of channels as im.
-    """
-
-    # for simplify code, consider 2D images as images with 1 channel
-    if im.ndim < 2 or im.ndim > 3:
-        raise ValueError('im must be a (row, col) or (row, col, channel) array')
-    elif im.ndim == 2:
-        DIM2 = True
-        im = np.expand_dims(im, axis=2)
-    else:
-        DIM2 = False
-
-    # easier nomenclature
-    r0, c0, rend, cend = bbox
-
-    # initialise output
-    out = np.zeros(shape=(rend - r0, cend - c0, im.shape[2]), dtype=im.dtype)
-
-    # if indices are beyond the image limits, we have to account for that when cropping the input
-    if r0 < 0:
-        r0_out = -r0
-        r0 = 0
-    else:
-        r0_out = 0
-    if c0 < 0:
-        c0_out = -c0
-        c0 = 0
-    else:
-        c0_out = 0
-
-    if rend > im.shape[0]:
-        rend_out = out.shape[0] - (rend - im.shape[0])
-        rend = im.shape[0]
-    else:
-        rend_out = out.shape[0]
-    if cend > im.shape[1]:
-        cend_out = out.shape[1] - (cend - im.shape[1])
-        cend = im.shape[1]
-    else:
-        cend_out = out.shape[1]
-
-    # crop the image
-    out[r0_out:rend_out, c0_out:cend_out, :] = im[r0:rend, c0:cend, :]
-
-    # output has the same number of dimensions as the input
-    if DIM2:
-        return out[:, :, 0]
-    else:
-        return out
-
-
 def edge_labels(labels):
     """
     Find which labels touch the borders of the image. The background label (0) will be ignored.
@@ -1685,6 +1818,19 @@ def clean_segmentation(labels,
         labels = [0, ...]
 
     return labels
+
+
+def correct_segmentation(im, labels, correction_model, training_window_len=401):
+
+    # split segmentation into individual labels
+    _, labels_window, index_list = one_image_per_label(dataset_im=im, dataset_lab_test=labels, dataset_lab_ref=None,
+                                                       training_window_len=training_window_len, smallest_cell_area=0,
+                                                       clear_border_lab=False, smallest_dice=0.0,
+                                                       allow_repeat_ref=False)
+
+    # if needed, load correction model
+    if isinstance(correction_model, six.string_types):
+        correction_model = keras.models.load_model(correction_model)
 
 
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
