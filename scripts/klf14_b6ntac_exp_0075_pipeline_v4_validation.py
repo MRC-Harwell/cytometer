@@ -390,13 +390,13 @@ for i_fold in range(len(idx_test_all)):
     print('## len(idx_test) = ' + str(len(idx_test)))
 
     # split data into training and testing
-    im_array_train = im_array_all[idx_train, :, :, :]
+    # im_array_train = im_array_all[idx_train, :, :, :]
     im_array_test = im_array_all[idx_test, :, :, :]
 
-    out_class_train = out_class_all[idx_train, :, :, :]
+    # out_class_train = out_class_all[idx_train, :, :, :]
     out_class_test = out_class_all[idx_test, :, :, :]
 
-    out_mask_train = out_mask_all[idx_train, :, :]
+    # out_mask_train = out_mask_all[idx_train, :, :]
     out_mask_test = out_mask_all[idx_test, :, :]
 
     # load classification model
@@ -468,31 +468,52 @@ for i_fold in range(len(idx_test_all)):
                                              mask=None, phagocytosis=True)
 
     # split segmentation into separate labels, and scale to same size
-    (window_seg_test, window_im_test), index_list, scaling_factor_list \
-        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test),
+    (window_seg_test, window_im_test, window_class_test), index_list, scaling_factor_list \
+        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test, pred_class_test[:, :, :, 1]),
                                                  resize_to=(training_window_len, training_window_len),
-                                                 resample=(Image.NEAREST, Image.LINEAR),
+                                                 resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST),
                                                  only_central_label=True)
 
+    # correct segmentations
+    window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test * 255, seg=window_seg_test,
+                                                                     correction_model=correction_model,
+                                                                     model_type='-1_1', batch_size=batch_size,
+                                                                     smoothing=11)
+
+    # corrected segmentation areas
+    area_seg_corrected = np.count_nonzero(window_seg_corrected_test, axis=(1, 2)) * window_pixel_size[0] * window_pixel_size[1]
 
 
     if DEBUG:
         for j in range(window_seg_test.shape[0]):
             plt.clf()
-            plt.subplot(121)
+            plt.subplot(221)
             plt.imshow(window_im_test[j, ...])
             plt.contour(window_seg_test[j, ...], colors='k')
+            plt.title('Histology', fontsize=14)
             plt.axis('off')
-            plt.subplot(122)
-            plt.imshow(window_seg_test[j, ...])
+            plt.subplot(222)
+            plt.imshow(window_class_test[j, ...] > 0.2)
+            plt.contour(window_seg_test[j, ...], colors='k')
+            plt.title('Classifier > 0.2', fontsize=14)
             plt.axis('off')
-            plt.tight_layout()
+            plt.subplot(223)
+            plt.imshow(window_class_test[j, ...] > 0.3)
+            plt.contour(window_seg_test[j, ...], colors='k')
+            plt.title('Classifier > 0.3', fontsize=14)
+            plt.axis('off')
+            plt.subplot(224)
+            plt.imshow(window_class_test[j, ...] > 0.4)
+            plt.contour(window_seg_test[j, ...], colors='k')
+            plt.title('Classifier > 0.4', fontsize=14)
+            plt.axis('off')
+            # plt.tight_layout()
             plt.pause(5)
 
 
     # split segmentation into labels and correct segmentations
-    cytometer.utils.correct_segmentation(im=im_array_test, labels=pred_seg_test,
-                                                   correction_model=correction_model)
+    cytometer.utils.correct_segmentation(im=im_array_test, seg=pred_seg_test,
+                                         correction_model=correction_model)
 
 
     # loop test images
