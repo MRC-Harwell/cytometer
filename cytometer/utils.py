@@ -1369,19 +1369,23 @@ def extract_bbox(im, bbox):
         return out
 
 
-def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0):
+def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, only_central_label=False):
     """
     Crop a squared bounding box around each label in a segmentation array. Optionally, more volumes of the same size
     can be provided and they will be cropped according to the same labels (this is useful if e.g. you want to also crop
     the image the segmentation was computed on).
 
-    Also optionally, the crops can all be scaled to the same size. This is useful to create inputs for a neural network.
+    Also optionally:
+
+        * The crops can all be scaled to the same size. This is useful to create inputs for a neural network.
+
+        * The labels volume can be masked so that only the label used to compute the bounding box is output.
 
     A typical syntax of this function is
 
         (labels_crop, im_crop), index, scaling = one_image_per_label_v2((labels, im), resize_to=(401, 401),
                                                                         resample=(Image.NEAREST, Image.LINEAR),
-                                                                        bbox_inc=1.0)
+                                                                        bbox_inc=1.0, only_central_label=True)
 
     :param vols: Input np.arrays to be cropped. At least one needs to be provided. This volume is expected to have size
     (rows, cols) or (n, rows, cols), and contain labels from a segmentation. The cropping bounding boxes will be
@@ -1475,6 +1479,10 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0):
 
                 # crop image with bounding box
                 vol_bbox = extract_bbox(vol[i, ...], bbox_rc)
+
+                # mask central label
+                if only_central_label and k == 0:
+                    vol_bbox = (vol_bbox == lab).astype(vol_bbox.dtype)
 
                 if resize_to is not None:
                     # resize the image to target window size
