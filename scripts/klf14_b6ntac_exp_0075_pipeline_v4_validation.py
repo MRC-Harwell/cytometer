@@ -480,41 +480,35 @@ for i_fold in range(len(idx_test_all)):
                                                                      model_type='-1_1', batch_size=batch_size,
                                                                      smoothing=11)
 
-    # corrected segmentation areas
-    area_seg_corrected = np.count_nonzero(window_seg_corrected_test, axis=(1, 2)) * window_pixel_size[0] * window_pixel_size[1]
-
-
     if DEBUG:
         for j in range(window_seg_test.shape[0]):
             plt.clf()
             plt.subplot(221)
             plt.imshow(window_im_test[j, ...])
             plt.contour(window_seg_test[j, ...], colors='k')
+            plt.contour(window_seg_corrected_test[j, ...], colors='r')
             plt.title('Histology', fontsize=14)
             plt.axis('off')
             plt.subplot(222)
             plt.imshow(window_class_test[j, ...] > 0.2)
             plt.contour(window_seg_test[j, ...], colors='k')
+            plt.contour(window_seg_corrected_test[j, ...], colors='r')
             plt.title('Classifier > 0.2', fontsize=14)
             plt.axis('off')
             plt.subplot(223)
             plt.imshow(window_class_test[j, ...] > 0.3)
             plt.contour(window_seg_test[j, ...], colors='k')
+            plt.contour(window_seg_corrected_test[j, ...], colors='r')
             plt.title('Classifier > 0.3', fontsize=14)
             plt.axis('off')
             plt.subplot(224)
             plt.imshow(window_class_test[j, ...] > 0.4)
             plt.contour(window_seg_test[j, ...], colors='k')
+            plt.contour(window_seg_corrected_test[j, ...], colors='r')
             plt.title('Classifier > 0.4', fontsize=14)
             plt.axis('off')
             # plt.tight_layout()
             plt.pause(5)
-
-
-    # split segmentation into labels and correct segmentations
-    cytometer.utils.correct_segmentation(im=im_array_test, seg=pred_seg_test,
-                                         correction_model=correction_model)
-
 
     # loop test images
     for i in range(pred_seg_test.shape[0]):
@@ -547,6 +541,11 @@ for i_fold in range(len(idx_test_all)):
                                                           tags_to_keep=['id', 'ko', 'sex'])
         df_im['lab'] = labels_unique_ref
         df_im['area'] = labels_count_ref * xres * yres
+
+        # corrected segmentation areas
+        area_seg_corrected = np.count_nonzero(window_seg_corrected_test, axis=(1, 2)) * window_pixel_size[0] * \
+                             window_pixel_size[1]
+
 
         ## compute proportion of "Mask" pixels in each automatically segmented label
 
