@@ -467,10 +467,28 @@ for i_fold in range(len(idx_test_all)):
         = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
                                              mask=None, phagocytosis=True)
 
-    (a, b, c), index_list, scaling_factor_list \
-        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test, pred_seg_test),
-                                           resize_to=(training_window_len, training_window_len),
-                                           resample=(Image.NEAREST, Image.LINEAR, Image.LINEAR))
+    # split segmentation into separate labels, and scale to same size
+    (window_seg_test, window_im_test), index_list, scaling_factor_list \
+        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test),
+                                                 resize_to=(training_window_len, training_window_len),
+                                                 resample=(Image.NEAREST, Image.LINEAR),
+                                                 only_central_label=True)
+
+
+
+    if DEBUG:
+        for j in range(window_seg_test.shape[0]):
+            plt.clf()
+            plt.subplot(121)
+            plt.imshow(window_im_test[j, ...])
+            plt.contour(window_seg_test[j, ...], colors='k')
+            plt.axis('off')
+            plt.subplot(122)
+            plt.imshow(window_seg_test[j, ...])
+            plt.axis('off')
+            plt.tight_layout()
+            plt.pause(5)
+
 
     # split segmentation into labels and correct segmentations
     cytometer.utils.correct_segmentation(im=im_array_test, labels=pred_seg_test,
