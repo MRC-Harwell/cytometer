@@ -9,14 +9,12 @@ from statistics import mode
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage import median_filter
 from scipy.ndimage.filters import gaussian_filter
-from scipy.ndimage.morphology import binary_fill_holes
+from scipy.ndimage.morphology import binary_fill_holes, generate_binary_structure
 from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep
 from skimage import measure
-from skimage.exposure import rescale_intensity
 from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing, \
-    binary_dilation, binary_erosion, skeletonize, thin
-from skimage.feature import peak_local_max
+    binary_erosion, thin
 from skimage.future.graph import rag_mean_color, show_rag, merge_hierarchical
 from skimage.measure import regionprops
 from skimage.segmentation import clear_border
@@ -1828,17 +1826,75 @@ def clean_segmentation(labels,
     return labels
 
 
-def correct_segmentation(im, labels, correction_model, training_window_len=401):
+def correct_segmentation(im, seg, correction_model, model_type='-1_1', batch_size=16, smoothing=11):
+    """
+    Correct histology segmentation using a fully convolutional neural network.
 
-    # split segmentation into individual labels
-    _, labels_window, index_list = one_image_per_label(dataset_im=im, dataset_lab_test=labels, dataset_lab_ref=None,
-                                                       training_window_len=training_window_len, smallest_cell_area=0,
-                                                       clear_border_lab=False, smallest_dice=0.0,
-                                                       allow_repeat_ref=False)
+    This methods follows the following steps:
+        * Use keras model to estimate which pixels have been underestimated/overestimated in the segmentation, and
+          correct segmentation accordingly.
+        * Fill holes.
+        * Keep only the largest component in each segmentation.
+        * Smooth segmentation using binary closing.
+
+    :param im: (n, row, col, 3) np.array with the histology patches.
+    :param seg: (n, row, col) np.array with the corresponding segmentation candidates.
+    :param correction_model: keras fully convolutional neural network, or file path to it.
+    :param model_type: (def '-1_1') How the segmentation and histology are combined for the model. E.g. '-1_1' means
+    that outside of the segmentation the histology intensity values are multiplied by -1, and by 1 inside. A list of
+    all types can be found in the help for quality_model_mask().
+    :param batch_size: (def 16) Size of the batch processed at a time by the keras model. Larger values make better use
+    of GPU parallelisation, but they also require more GPU memory.
+    :param smoothing: (def 11) Size of the smoothing kernel for each segmentation.
+    :return:
+    * corrected_seg: (n, row, col) Corrected segmentations.
+    """
 
     # if needed, load correction model
     if isinstance(correction_model, six.string_types):
         correction_model = keras.models.load_model(correction_model)
+
+    # adapt model input size to size of image
+    correction_model = change_input_size(correction_model, batch_shape=im.shape)
+
+    # correct dimensions
+    if seg.ndim == 3:
+        seg = np.expand_dims(seg, axis=3)
+
+    # multiply image by mask
+    im = quality_model_mask(seg, im=im, quality_model_type=model_type)
+
+    # process (histology * mask) to estimate which pixels are underestimated and which overestimated in the segmentation
+    im = correction_model.predict(im, batch_size=batch_size)
+
+    # compute the correction to be applied to the segmentation
+    correction = (im[:, :, :, 0].copy() * 0).astype(np.int8)
+    correction[im[:, :, :, 0] >= 0.5] = 1  # the segmentation went too far
+    correction[im[:, :, :, 0] <= -0.5] = -1  # the segmentation fell short
+
+    # correct segmentation
+    seg[correction == 1] = 0
+    seg[correction == -1] = 1
+
+    # fill holes, but only image by image
+    seg = seg[:, :, :, 0].astype(np.bool)
+    structure = generate_binary_structure(2, 1)  # structure element for 2D
+    structure = np.expand_dims(structure, axis=0)  # add dummy dimension
+    seg = binary_fill_holes(seg, structure=structure).astype(np.uint8)
+
+    # keep only the largest component in each segmentation
+    for i in range(seg.shape[0]):
+        _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(seg[i, :, :])
+        stats_aux = stats_aux[1:, :]  # remove 0 label stats
+        lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
+        seg[i, :, :] = (labels_aux == lab).astype(np.uint8)
+
+    # smooth segmentation
+    selem = np.ones((smoothing, smoothing))
+    for i in range(seg.shape[0]):
+        seg[i, :, :] = binary_closing(seg[i, :, :], selem=selem)
+
+    return seg
 
 
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
