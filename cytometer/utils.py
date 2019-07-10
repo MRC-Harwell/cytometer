@@ -1858,11 +1858,12 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', batch_siz
     correction_model = change_input_size(correction_model, batch_shape=im.shape)
 
     # correct dimensions
-    if seg.ndim == 3:
-        seg = np.expand_dims(seg, axis=3)
+    seg_out = seg.copy()  # to avoid changes by reference to the input segmentation
+    if seg_out.ndim == 3:
+        seg_out = np.expand_dims(seg_out, axis=3)
 
     # multiply image by mask
-    im = quality_model_mask(seg, im=im, quality_model_type=model_type)
+    im = quality_model_mask(seg_out, im=im, quality_model_type=model_type)
 
     # process (histology * mask) to estimate which pixels are underestimated and which overestimated in the segmentation
     im = correction_model.predict(im, batch_size=batch_size)
@@ -1873,28 +1874,28 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', batch_siz
     correction[im[:, :, :, 0] <= -0.5] = -1  # the segmentation fell short
 
     # correct segmentation
-    seg[correction == 1] = 0
-    seg[correction == -1] = 1
+    seg_out[correction == 1] = 0
+    seg_out[correction == -1] = 1
 
     # fill holes, but only image by image
-    seg = seg[:, :, :, 0].astype(np.bool)
+    seg_out = seg_out[:, :, :, 0].astype(np.bool)
     structure = generate_binary_structure(2, 1)  # structure element for 2D
     structure = np.expand_dims(structure, axis=0)  # add dummy dimension
-    seg = binary_fill_holes(seg, structure=structure).astype(np.uint8)
+    seg_out = binary_fill_holes(seg_out, structure=structure).astype(np.uint8)
 
     # keep only the largest component in each segmentation
-    for i in range(seg.shape[0]):
-        _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(seg[i, :, :])
+    for i in range(seg_out.shape[0]):
+        _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(seg_out[i, :, :])
         stats_aux = stats_aux[1:, :]  # remove 0 label stats
         lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
-        seg[i, :, :] = (labels_aux == lab).astype(np.uint8)
+        seg_out[i, :, :] = (labels_aux == lab).astype(np.uint8)
 
     # smooth segmentation
     selem = np.ones((smoothing, smoothing))
-    for i in range(seg.shape[0]):
-        seg[i, :, :] = binary_closing(seg[i, :, :], selem=selem)
+    for i in range(seg_out.shape[0]):
+        seg_out[i, :, :] = binary_closing(seg_out[i, :, :], selem=selem)
 
-    return seg
+    return seg_out
 
 
 def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
