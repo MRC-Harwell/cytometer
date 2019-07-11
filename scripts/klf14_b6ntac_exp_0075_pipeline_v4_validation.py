@@ -388,9 +388,6 @@ for i_fold in range(len(idx_test_all)):
     # im_array_train = im_array_all[idx_train, :, :, :]
     im_array_test = im_array_all[idx_test, :, :, :]
 
-    # rough_mask_train = rough_mask_all[idx_train, :, :]
-    rough_mask_test = rough_mask_all[idx_test, :, :]
-
     # out_class_train = out_class_all[idx_train, :, :, :]
     out_class_test = out_class_all[idx_test, :, :, :]
 
@@ -507,7 +504,9 @@ for i_fold in range(len(idx_test_all)):
 
             # compute proportions for different thresholds of Otherness
             df_im.loc[j, 'prop_20'] = np.count_nonzero(scores > 0.2) / len(scores)
+            df_im.loc[j, 'prop_25'] = np.count_nonzero(scores > 0.25) / len(scores)
             df_im.loc[j, 'prop_30'] = np.count_nonzero(scores > 0.3) / len(scores)
+            df_im.loc[j, 'prop_35'] = np.count_nonzero(scores > 0.35) / len(scores)
             df_im.loc[j, 'prop_40'] = np.count_nonzero(scores > 0.4) / len(scores)
 
             if DEBUG:
@@ -554,7 +553,7 @@ for i_fold in range(len(idx_test_all)):
                 plt.axis('off')
                 plt.tight_layout()
 
-        # contatenate current dataframe to general dataframe
+        # concatenate current dataframe to general dataframe
         df_all = df_all.append(df_im)
 
 # reindex the dataframe
@@ -564,7 +563,54 @@ df_all.reset_index(drop=True, inplace=True)
 data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.npz')
 np.savez(data_filename, df_all=df_all)
 
-''' Analyse result '''
+''' Analyse results '''
+
+y_true = df_all['type'] == 'other'
+y_score_20 = df_all['prop_20']
+y_score_25 = df_all['prop_25']
+y_score_30 = df_all['prop_30']
+y_score_35 = df_all['prop_35']
+y_score_40 = df_all['prop_40']
+
+# classifier ROC (True = "other", and score is a measure of "otherness")
+fpr_20, tpr_20, thr_20 = roc_curve(y_true=y_true, y_score=y_score_20)
+roc_auc_20 = auc(fpr_20, tpr_20)
+
+fpr_25, tpr_25, thr_25 = roc_curve(y_true=y_true, y_score=y_score_25)
+roc_auc_25 = auc(fpr_25, tpr_25)
+
+fpr_30, tpr_30, thr_30 = roc_curve(y_true=y_true, y_score=y_score_30)
+roc_auc_30 = auc(fpr_30, tpr_30)
+
+fpr_35, tpr_35, thr_35 = roc_curve(y_true=y_true, y_score=y_score_35)
+roc_auc_35 = auc(fpr_35, tpr_35)
+
+fpr_40, tpr_40, thr_40 = roc_curve(y_true=y_true, y_score=y_score_40)
+roc_auc_40 = auc(fpr_40, tpr_40)
+
+# find point in the curve for softmax score thr > 0.5
+idx_thr_20 = np.where(thr_20 > 0.5)[0][-1]
+
+if DEBUG:
+    # find point in the curve for softmax score thr > 0.5
+    idx_thr_20 = np.where(thr_20 > 0.5)[0][-1]
+
+    # ROC curve before and after data augmentation
+    plt.clf()
+    plt.plot(fpr_20, tpr_20, color='C0', lw=2, label='Area = %0.2f' % roc_auc_20)
+    plt.plot(fpr_25, tpr_25, color='C1', lw=2, label='Area = %0.2f' % roc_auc_25)
+    plt.plot(fpr_30, tpr_30, color='C2', lw=2, label='Area = %0.2f' % roc_auc_30)
+    plt.plot(fpr_35, tpr_35, color='C3', lw=2, label='Area = %0.2f' % roc_auc_35)
+    plt.plot(fpr_40, tpr_40, color='C4', lw=2, label='Area = %0.2f' % roc_auc_40)
+    plt.scatter(fpr_20[idx_thr_20], tpr_20[idx_thr_20],
+                label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
+                      % (thr_20[idx_thr_20], fpr_20[idx_thr_20], tpr_20[idx_thr_20]),
+                color='blue', s=200)
+    plt.tick_params(labelsize=16)
+    plt.xlabel('False Positive Rate', fontsize=16)
+    plt.ylabel('True Positive Rate', fontsize=16)
+    plt.legend(loc="lower right")
+    plt.tight_layout()
 
 plt.clf()
 plt.boxplot((df_all['prop_20'][df_all['type'] == 'wat'], df_all['prop_20'][df_all['type'] != 'wat'],
