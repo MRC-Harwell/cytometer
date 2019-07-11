@@ -342,6 +342,243 @@ np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all
 
 '''
 ************************************************************************************************************************
+Object-wise classification
+************************************************************************************************************************
+'''
+
+# correct home directory in file paths
+file_list = cytometer.data.change_home_directory(list(file_list), '/users/rittscher/rcasero', home, check_isfile=True)
+
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
+with np.load(data_filename) as data:
+    im_array_all = data['im_array_all']
+    out_class_all = data['out_class_all']
+    out_mask_all = data['out_mask_all']
+    i_all = data['i_all']
+
+# start timer
+t0 = time.time()
+
+# init
+df_all = pd.DataFrame()
+
+for i_fold in range(len(idx_test_all)):
+
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+
+    # test and training image indices. These indices refer to file_list
+    idx_test = idx_test_all[i_fold]
+    # idx_train = idx_train_all[i_fold]
+
+    # list of test files (used later for the dataframe)
+    file_list_test = np.array(file_list)[idx_test]
+
+    # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
+    # skipped)
+    idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
+    idx_lut[i_all] = range(len(i_all))
+    # idx_train = idx_lut[idx_train]
+    idx_test = idx_lut[idx_test]
+
+    # print('## len(idx_train) = ' + str(len(idx_train)))
+    print('## len(idx_test) = ' + str(len(idx_test)))
+
+    # split data into training and testing
+    # im_array_train = im_array_all[idx_train, :, :, :]
+    im_array_test = im_array_all[idx_test, :, :, :]
+
+    # rough_mask_train = rough_mask_all[idx_train, :, :]
+    rough_mask_test = rough_mask_all[idx_test, :, :]
+
+    # out_class_train = out_class_all[idx_train, :, :, :]
+    out_class_test = out_class_all[idx_test, :, :, :]
+
+    # out_mask_train = out_mask_all[idx_train, :, :]
+    out_mask_test = out_mask_all[idx_test, :, :]
+
+    # loop test images
+    for i, file_svg in enumerate(file_list_test):
+
+        print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
+              + str(i) + '/' + str(len(idx_test) - 1))
+
+        ''' Tissue classification (applied pixel by pixel to the whole image) '''
+
+        # load classification model
+        classifier_model_filename = os.path.join(saved_models_dir,
+                                                 classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        classifier_model = keras.models.load_model(classifier_model_filename)
+
+        # reshape model input
+        classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=im_array_test.shape)
+
+        # apply classification to test data
+        pred_class_test = classifier_model.predict(np.expand_dims(im_array_test[i, ...], axis=0), batch_size=batch_size)
+
+        ''' Ground truth contours '''
+
+        # change file extension from .svg to .tif
+        file_tif = file_svg.replace('.svg', '.tif')
+
+        # open histology testing image
+        im = Image.open(file_tif)
+
+        # read pixel size information
+        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(121)
+            plt.imshow(im)
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+            plt.subplot(122)
+            plt.cla()
+            plt.imshow(pred_class_test[0, :, :, 1], cmap='plasma')
+            plt.title('Classifier score', fontsize=14)
+            plt.axis('off')
+            plt.tight_layout()
+
+
+        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                                minimum_npoints=3)
+        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        contours = cell_contours + other_contours + brown_contours
+
+        # make a list with the type of cell each contour is classified as
+        contour_type_all = ['wat', ] * len(cell_contours) \
+                           + ['other', ] * len(other_contours) \
+                           + ['bat', ] * len(brown_contours)
+
+        print('Cells: ' + str(len(cell_contours)))
+        print('Other: ' + str(len(other_contours)))
+        print('Brown: ' + str(len(brown_contours)))
+        print('')
+
+        # create dataframe for this image
+        im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
+        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                          values=im_idx, values_tag='im',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
+        df_im['contour'] = range(len(contours))
+        df_im['type'] = contour_type_all
+
+        '''Label pixels of image as either WAT/non-WAT'''
+
+        # loop contours
+        for j, contour in enumerate(contours):
+
+            if DEBUG:
+                # close the contour for the plot
+                contour_aux = contour.copy()
+                contour_aux.append(contour[0])
+
+                plt.subplot(121)
+                plt.cla()
+                plt.imshow(im)
+                plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0')
+                plt.axis('off')
+                plt.title('Histology', fontsize=14)
+                plt.axis('off')
+                plt.subplot(122)
+                plt.cla()
+                plt.imshow(pred_class_test[0, :, :, 1], cmap='plasma')
+                plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='w')
+                plt.title('Classifier score', fontsize=14)
+                plt.axis('off')
+                plt.tight_layout()
+
+            # rasterise object described by contour
+            cell_seg_contour = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+            draw = ImageDraw.Draw(cell_seg_contour)
+            draw.polygon(contour, outline="white", fill="white")
+            cell_seg_contour = np.array(cell_seg_contour, dtype=np.uint8)
+
+            # get scores from within the object
+            aux = pred_class_test[0, :, :, 1]
+            scores = aux[cell_seg_contour == 1]
+
+            # compute proportions for different thresholds of Otherness
+            df_im.loc[j, 'prop_20'] = np.count_nonzero(scores > 0.2) / len(scores)
+            df_im.loc[j, 'prop_30'] = np.count_nonzero(scores > 0.3) / len(scores)
+            df_im.loc[j, 'prop_40'] = np.count_nonzero(scores > 0.4) / len(scores)
+
+            if DEBUG:
+                # close the contour for the plot
+                contour_aux = contour.copy()
+                contour_aux.append(contour[0])
+
+                plt.clf()
+                plt.subplot(231)
+                plt.cla()
+                plt.imshow(im)
+                plt.contour(cell_seg_contour, colors='C0')
+                plt.axis('off')
+                plt.title('Histology', fontsize=14)
+                plt.axis('off')
+                plt.subplot(232)
+                plt.cla()
+                plt.imshow(pred_class_test[0, :, :, 1], cmap='plasma')
+                cb = plt.colorbar(shrink=0.8)
+                cb.ax.tick_params(labelsize=12)
+                plt.contour(cell_seg_contour, colors='w')
+                plt.title('Pixel-wise classifier score', fontsize=14)
+                plt.axis('off')
+                plt.subplot(234)
+                plt.cla()
+                plt.imshow(pred_class_test[0, :, :, 1] > 0.2, cmap='plasma')
+                plt.contour(cell_seg_contour, colors='r')
+                aux = df_im.loc[j, 'prop_20']*100
+                plt.title('Prop(Score > 0.2) = %0.1f%%' % aux, fontsize=14)
+                plt.axis('off')
+                plt.subplot(235)
+                plt.cla()
+                plt.imshow(pred_class_test[0, :, :, 1] > 0.3, cmap='plasma')
+                plt.contour(cell_seg_contour, colors='r')
+                aux = df_im.loc[j, 'prop_30']*100
+                plt.title('Prop(Score > 0.3) = %0.1f%%' % aux, fontsize=14)
+                plt.axis('off')
+                plt.subplot(236)
+                plt.cla()
+                plt.imshow(pred_class_test[0, :, :, 1] > 0.4, cmap='plasma')
+                plt.contour(cell_seg_contour, colors='r')
+                aux = df_im.loc[j, 'prop_40']*100
+                plt.title('Prop(Score > 0.4) = %0.1f%%' % aux, fontsize=14)
+                plt.axis('off')
+                plt.tight_layout()
+
+        # contatenate current dataframe to general dataframe
+        df_all = df_all.append(df_im)
+
+# reindex the dataframe
+df_all.reset_index(drop=True, inplace=True)
+
+# save results
+data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.npz')
+np.savez(data_filename, df_all=df_all)
+
+''' Analyse result '''
+
+plt.clf()
+plt.boxplot((df_all['prop_20'][df_all['type'] == 'wat'], df_all['prop_20'][df_all['type'] != 'wat'],
+             df_all['prop_30'][df_all['type'] == 'wat'], df_all['prop_30'][df_all['type'] != 'wat'],
+             df_all['prop_40'][df_all['type'] == 'wat'], df_all['prop_40'][df_all['type'] != 'wat']),
+            labels=('WAT\n>20%', 'Other\n>20%', 'WAT\n>30%', 'Other\n>30%', 'WAT\n>40%', 'Other\n>40%'),
+            positions=(1, 2, 4, 5, 7, 8), notch=True)
+plt.xlabel('Contour type according to pixel-wise threshold', fontsize=14)
+plt.ylabel('Prop(Other)', fontsize=14)
+plt.tick_params(axis="both", labelsize=14)
+plt.tight_layout()
+
+'''
+************************************************************************************************************************
 Apply the pipeline v4 to training histology images (segmentation, classification)
 ************************************************************************************************************************
 '''
@@ -660,6 +897,13 @@ df_all.reset_index(drop=True, inplace=True)
 # save results to avoid having to recompute them every time (730 s on 2 Titan RTX GPUs)
 data_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.npz')
 np.savez(data_filename, df_all=df_all)
+
+'''
+************************************************************************************************************************
+OLD CODE BELOW THIS (it needs to be rewritten or deleted)
+************************************************************************************************************************
+'''
+
 
 '''
 ************************************************************************************************************************
