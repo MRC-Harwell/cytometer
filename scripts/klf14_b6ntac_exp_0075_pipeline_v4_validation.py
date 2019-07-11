@@ -362,10 +362,6 @@ with np.load(data_filename) as data:
 t0 = time.time()
 
 # init
-im_array_test_all = []
-out_class_test_all = []
-out_mask_test_all = []
-pred_class_test_all = []
 df_all = pd.DataFrame()
 
 for i_fold in range(len(idx_test_all)):
@@ -374,7 +370,7 @@ for i_fold in range(len(idx_test_all)):
 
     # test and training image indices. These indices refer to file_list
     idx_test = idx_test_all[i_fold]
-    idx_train = idx_train_all[i_fold]
+    # idx_train = idx_train_all[i_fold]
 
     # list of test files (used later for the dataframe)
     file_list_test = np.array(file_list)[idx_test]
@@ -383,15 +379,18 @@ for i_fold in range(len(idx_test_all)):
     # skipped)
     idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
     idx_lut[i_all] = range(len(i_all))
-    idx_train = idx_lut[idx_train]
+    # idx_train = idx_lut[idx_train]
     idx_test = idx_lut[idx_test]
 
-    print('## len(idx_train) = ' + str(len(idx_train)))
+    # print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
 
     # split data into training and testing
     # im_array_train = im_array_all[idx_train, :, :, :]
     im_array_test = im_array_all[idx_test, :, :, :]
+
+    # rough_mask_train = rough_mask_all[idx_train, :, :]
+    rough_mask_test = rough_mask_all[idx_test, :, :]
 
     # out_class_train = out_class_all[idx_train, :, :, :]
     out_class_test = out_class_all[idx_test, :, :, :]
@@ -399,119 +398,8 @@ for i_fold in range(len(idx_test_all)):
     # out_mask_train = out_mask_all[idx_train, :, :]
     out_mask_test = out_mask_all[idx_test, :, :]
 
-    # load classification model
-    classifier_model_filename = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-    classifier_model = keras.models.load_model(classifier_model_filename)
-
-    # load correction model
-    correction_model_filename = os.path.join(saved_models_dir, correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-    correction_model = keras.models.load_model(correction_model_filename)
-
-    # reshape model input
-    classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=im_array_test.shape)
-
-    # apply classification to test data
-    pred_class_test = classifier_model.predict(im_array_test, batch_size=batch_size)
-
-    if DEBUG:
-        for i in range(len(idx_test)):
-
-            plt.clf()
-            plt.subplot(231)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
-            plt.title('Training mask', fontsize=14)
-            plt.axis('off')
-            plt.subplot(232)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(out_class_test[i, :, :, 0].astype(np.uint8), alpha=0.5)
-            plt.title('Ground truth class', fontsize=14)
-            plt.axis('off')
-            plt.subplot(233)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[i, :, :, 1], alpha=0.5)
-            plt.title('Softmax score', fontsize=14)
-            plt.axis('off')
-            plt.subplot(234)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.20, alpha=0.5)
-            plt.title('Score > 0.20', fontsize=14)
-            plt.axis('off')
-            plt.subplot(235)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.30, alpha=0.5)
-            plt.title('Score > 0.30', fontsize=14)
-            plt.axis('off')
-            plt.subplot(236)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.40, alpha=0.5)
-            plt.title('Score > 0.40', fontsize=14)
-            plt.axis('off')
-            plt.tight_layout()
-            plt.pause(5)
-
-    # contour and dmap models
-    contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
-    dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_fold_' + str(i_fold) + '.h5')
-
-    # segment histology
-    pred_seg_test, _ = cytometer.utils.segment_dmap_contour_v3(im_array_test,
-                                                               contour_model=contour_model_filename,
-                                                               dmap_model=dmap_model_filename,
-                                                               local_threshold_block_size=local_threshold_block_size,
-                                                               border_dilation=0)
-
-    # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
-    # the rough foreground mask
-    pred_seg_test \
-        = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                             mask=None, phagocytosis=True)
-
-    # split segmentation into separate labels, and scale to same size
-    (window_seg_test, window_im_test, window_class_test), index_list, scaling_factor_list \
-        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test, pred_class_test[:, :, :, 1]),
-                                                 resize_to=(training_window_len, training_window_len),
-                                                 resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST),
-                                                 only_central_label=True)
-
-    # correct segmentations
-    window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test * 255, seg=window_seg_test,
-                                                                     correction_model=correction_model,
-                                                                     model_type='-1_1', batch_size=batch_size,
-                                                                     smoothing=11)
-
-    if DEBUG:
-        for j in range(window_seg_test.shape[0]):
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(window_im_test[j, ...])
-            plt.contour(window_seg_test[j, ...], colors='k')
-            plt.contour(window_seg_corrected_test[j, ...], colors='r')
-            plt.title('Histology', fontsize=14)
-            plt.axis('off')
-            plt.subplot(222)
-            plt.imshow(window_class_test[j, ...] > 0.2)
-            plt.contour(window_seg_test[j, ...], colors='k')
-            plt.contour(window_seg_corrected_test[j, ...], colors='r')
-            plt.title('Classifier > 0.2', fontsize=14)
-            plt.axis('off')
-            plt.subplot(223)
-            plt.imshow(window_class_test[j, ...] > 0.3)
-            plt.contour(window_seg_test[j, ...], colors='k')
-            plt.contour(window_seg_corrected_test[j, ...], colors='r')
-            plt.title('Classifier > 0.3', fontsize=14)
-            plt.axis('off')
-            plt.subplot(224)
-            plt.imshow(window_class_test[j, ...] > 0.4)
-            plt.contour(window_seg_test[j, ...], colors='k')
-            plt.contour(window_seg_corrected_test[j, ...], colors='r')
-            plt.title('Classifier > 0.4', fontsize=14)
-            plt.axis('off')
-            # plt.tight_layout()
-            plt.pause(5)
-
     # loop test images
-    for i in range(pred_seg_test.shape[0]):
+    for i in range(len(idx_test)):
 
         print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
               + str(i) + '/' + str(pred_seg_test.shape[0] - 1))
@@ -524,28 +412,155 @@ for i_fold in range(len(idx_test_all)):
         xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
         yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
-        ## number of pixels per auto segmentation label
+        ''' Tissue classification (applied pixel by pixel to the whole image) '''
 
-        # count number of pixels for each label
-        labels_unique_ref, labels_count_ref = np.unique(pred_seg_test[i, :, :], return_counts=True)
-        # remove "0" label
-        labels_count_ref = labels_count_ref[labels_unique_ref != 0]
-        labels_unique_ref = labels_unique_ref[labels_unique_ref != 0]
+        # load classification model
+        classifier_model_filename = os.path.join(saved_models_dir,
+                                                 classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        classifier_model = keras.models.load_model(classifier_model_filename)
+
+        # reshape model input
+        classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=im_array_test.shape)
+
+        # apply classification to test data
+        pred_class_test = classifier_model.predict(np.expand_dims(im_array_test[i, ...], axis=0), batch_size=batch_size)
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(231)
+            aux = np.stack((rough_mask_test[i, :, :], ) * 3, axis=2)
+            plt.imshow(im_array_test[i, :, :, :] * aux)
+            plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
+            plt.title('Training mask', fontsize=14)
+            plt.axis('off')
+            plt.subplot(232)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(out_class_test[i, :, :, 0].astype(np.uint8), alpha=0.5)
+            plt.title('Ground truth class', fontsize=14)
+            plt.axis('off')
+            plt.subplot(233)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(pred_class_test[0, :, :, 1], alpha=0.5)
+            plt.title('Softmax score', fontsize=14)
+            plt.axis('off')
+            plt.subplot(234)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(pred_class_test[0, :, :, 1] > 0.20, alpha=0.5)
+            plt.title('Score > 0.20', fontsize=14)
+            plt.axis('off')
+            plt.subplot(235)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(pred_class_test[0, :, :, 1] > 0.30, alpha=0.5)
+            plt.title('Score > 0.30', fontsize=14)
+            plt.axis('off')
+            plt.subplot(236)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(pred_class_test[0, :, :, 1] > 0.40, alpha=0.5)
+            plt.title('Score > 0.40', fontsize=14)
+            plt.axis('off')
+            plt.tight_layout()
+
+        ''' Segmentation into non-overlapping objects '''
+
+        # contour and dmap models
+        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
+        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_fold_' + str(i_fold) + '.h5')
+
+        # segment histology
+        pred_seg_test, _ = cytometer.utils.segment_dmap_contour_v3(np.expand_dims(im_array_test[i, ...], axis=0),
+                                                                   contour_model=contour_model_filename,
+                                                                   dmap_model=dmap_model_filename,
+                                                                   local_threshold_block_size=local_threshold_block_size,
+                                                                   border_dilation=0)
+
+        # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
+        # the rough foreground mask
+        pred_seg_test \
+            = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
+                                                 mask=rough_mask_test, phagocytosis=True)
+
+        ''' Split image into individual labels and correct segmentation to take overlaps into account '''
+
+        # load correction model
+        correction_model_filename = os.path.join(saved_models_dir,
+                                                 correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        correction_model = keras.models.load_model(correction_model_filename)
+
+        # split segmentation into separate labels, and scale to same size
+        (window_seg_test, window_im_test, window_class_test), index_list, scaling_factor_list \
+            = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test, pred_class_test[:, :, :, 1]),
+                                                     resize_to=(training_window_len, training_window_len),
+                                                     resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST),
+                                                     only_central_label=True)
+
+        # correct segmentations
+        window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test * 255, seg=window_seg_test,
+                                                                         correction_model=correction_model,
+                                                                         model_type='-1_1', batch_size=batch_size,
+                                                                         smoothing=11)
+
+        if DEBUG:
+            for j in range(window_seg_test.shape[0]):
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(window_im_test[j, ...])
+                plt.contour(window_seg_test[j, ...], colors='k')
+                plt.contour(window_seg_corrected_test[j, ...], colors='r')
+                plt.title('Histology', fontsize=14)
+                plt.axis('off')
+                plt.subplot(222)
+                plt.imshow(window_class_test[j, ...] > 0.2)
+                plt.contour(window_seg_test[j, ...], colors='k')
+                plt.contour(window_seg_corrected_test[j, ...], colors='r')
+                plt.title('Classifier > 0.2', fontsize=14)
+                plt.axis('off')
+                plt.subplot(223)
+                plt.imshow(window_class_test[j, ...] > 0.3)
+                plt.contour(window_seg_test[j, ...], colors='k')
+                plt.contour(window_seg_corrected_test[j, ...], colors='r')
+                plt.title('Classifier > 0.3', fontsize=14)
+                plt.axis('off')
+                plt.subplot(224)
+                plt.imshow(window_class_test[j, ...] > 0.4)
+                plt.contour(window_seg_test[j, ...], colors='k')
+                plt.contour(window_seg_corrected_test[j, ...], colors='r')
+                plt.title('Classifier > 0.4', fontsize=14)
+                plt.axis('off')
+                # plt.tight_layout()
+                plt.pause(5)
+
+        ''' Quantitative measures '''
+
+        # list of labels (for convenience)
+        labels_unique_ref = [x[1] for x in index_list]
+
+        # count number of pixels for each non-overlap label
+        labels_count_ref = np.count_nonzero(window_seg_test, axis=(1, 2))
+
         # largest label
         lab_max = np.max(labels_unique_ref)
 
-        ## create dataframe for this image
-        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)
+        # count number of pixels for each corrected label
+        corrected_count_ref = np.count_nonzero(window_seg_corrected_test, axis=(1, 2))
+
+        # pixel size in the resized images (note: they are provided as (sr, sc) in index_list
+        sx = np.array([x[1] for x in scaling_factor_list])
+        sy = np.array([x[0] for x in scaling_factor_list])
+
+        # create dataframe for this image
+        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)  # absolute index of current test image
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=im_idx, values_tag='im',
                                                           tags_to_keep=['id', 'ko', 'sex'])
         df_im['lab'] = labels_unique_ref
-        df_im['area'] = labels_count_ref * xres * yres
+        df_im['area'] = labels_count_ref * xres * yres / sx / sy
+        df_im['area_corrected'] = corrected_count_ref * xres * yres / sx / sy
 
-        # corrected segmentation areas
-        area_seg_corrected = np.count_nonzero(window_seg_corrected_test, axis=(1, 2)) * window_pixel_size[0] * \
-                             window_pixel_size[1]
-
+        if DEBUG:
+            plt.clf()
+            plt.scatter(df_im['area'], df_im['area_corrected'])
+            aux = np.max(df_im['area_corrected'])
+            plt.plot([0, aux], [0, aux], 'C1')
 
         ## compute proportion of "Mask" pixels in each automatically segmented label
 
@@ -559,7 +574,7 @@ for i_fold in range(len(idx_test_all)):
             return labels_prop[labels_unique_ref]
 
         df_im['prop_mask'] = pixel_proportion(lab_max,
-                                              labels=pred_seg_test[i, :, :],
+                                              labels=pred_seg_test[0, :, :],
                                               mask=out_mask_test[i, :, :].astype(np.int32),
                                               labels_unique_ref=labels_unique_ref,
                                               labels_count_ref=labels_count_ref)
@@ -567,7 +582,7 @@ for i_fold in range(len(idx_test_all)):
         ## compute proportion of ground truth "Other" pixels in each automatically segmented label
 
         df_im['prop_other_gtruth'] = pixel_proportion(lab_max,
-                                                      labels=pred_seg_test[i, :, :],
+                                                      labels=pred_seg_test[0, :, :],
                                                       mask=out_class_test[i, :, :, 0].astype(np.int32),
                                                       labels_unique_ref=labels_unique_ref,
                                                       labels_count_ref=labels_count_ref)
@@ -576,20 +591,20 @@ for i_fold in range(len(idx_test_all)):
         ## thresholds
 
         df_im['prop_other_seg_20'] = pixel_proportion(lab_max,
-                                                      labels=pred_seg_test[i, :, :],
-                                                      mask=pred_class_test[i, :, :, 1] > 0.20,
+                                                      labels=pred_seg_test[0, :, :],
+                                                      mask=pred_class_test[0, :, :, 1] > 0.20,
                                                       labels_unique_ref=labels_unique_ref,
                                                       labels_count_ref=labels_count_ref)
 
         df_im['prop_other_seg_30'] = pixel_proportion(lab_max,
-                                                      labels=pred_seg_test[i, :, :],
-                                                      mask=pred_class_test[i, :, :, 1] > 0.30,
+                                                      labels=pred_seg_test[0, :, :],
+                                                      mask=pred_class_test[0, :, :, 1] > 0.30,
                                                       labels_unique_ref=labels_unique_ref,
                                                       labels_count_ref=labels_count_ref)
 
         df_im['prop_other_seg_40'] = pixel_proportion(lab_max,
-                                                      labels=pred_seg_test[i, :, :],
-                                                      mask=pred_class_test[i, :, :, 1] > 0.40,
+                                                      labels=pred_seg_test[0, :, :],
+                                                      mask=pred_class_test[0, :, :, 1] > 0.40,
                                                       labels_unique_ref=labels_unique_ref,
                                                       labels_count_ref=labels_count_ref)
 
@@ -597,9 +612,7 @@ for i_fold in range(len(idx_test_all)):
         # contatenate current dataframe to general dataframe
         df_all = df_all.append(df_im)
 
-    if DEBUG:
-        for i in range(len(idx_test)):
-
+        if DEBUG:
             plt.clf()
             plt.subplot(231)
             plt.imshow(im_array_test[i, :, :, :])
@@ -608,60 +621,45 @@ for i_fold in range(len(idx_test_all)):
             plt.axis('off')
             plt.subplot(232)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
             plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
             plt.title('Cleaned automatic segs', fontsize=14)
             plt.axis('off')
             plt.subplot(233)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
             plt.imshow(out_class_test[i, :, :, 0], alpha=0.5)
             plt.title('Class ground truth', fontsize=14)
             plt.axis('off')
             plt.subplot(234)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.20, alpha=0.5)
+            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
+            plt.imshow(pred_class_test[0, :, :, 1] > 0.20, alpha=0.5)
             plt.title('Classifier thr > 0.20', fontsize=14)
             plt.axis('off')
             plt.subplot(235)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.30, alpha=0.5)
+            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
+            plt.imshow(pred_class_test[0, :, :, 1] > 0.30, alpha=0.5)
             plt.title('Classifier thr > 0.30', fontsize=14)
             plt.axis('off')
             plt.subplot(236)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
-            plt.imshow(pred_class_test[i, :, :, 1] > 0.40, alpha=0.5)
+            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
+            plt.imshow(pred_class_test[0, :, :, 1] > 0.40, alpha=0.5)
             plt.title('Classifier thr > 0.40', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
-            plt.pause(5)
-
-
-    # append data for total output
-    im_array_test_all.append(im_array_test)
-    out_class_test_all.append(out_class_test)
-    out_mask_test_all.append(out_mask_test)
-    pred_class_test_all.append(pred_class_test)
 
     # end of image loop
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
-
-# collapse lists into arrays
-im_array_test_all = np.concatenate(im_array_test_all)
-out_class_test_all = np.concatenate(out_class_test_all)
-out_mask_test_all = np.concatenate(out_mask_test_all)
-pred_class_test_all = np.concatenate(pred_class_test_all)
 
 # reindex the dataframe
 df_all.reset_index(drop=True, inplace=True)
 
 # save results to avoid having to recompute them every time (730 s on 2 Titan RTX GPUs)
-data_filename = os.path.join(saved_models_dir, experiment_id + '_seg_test.npz')
-np.savez(data_filename, im_array_test_all=im_array_test_all, out_class_test_all=out_class_test_all,
-         out_mask_test_all=out_mask_test_all, pred_class_test_all=pred_class_test_all, df_all=df_all)
+data_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.npz')
+np.savez(data_filename, df_all=df_all)
 
 '''
 ************************************************************************************************************************
