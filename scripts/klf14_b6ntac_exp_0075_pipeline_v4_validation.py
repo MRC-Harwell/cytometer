@@ -342,7 +342,168 @@ np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all
 
 '''
 ************************************************************************************************************************
-Object-wise classification
+Pixel-wise classification validation
+************************************************************************************************************************
+'''
+
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
+with np.load(data_filename) as data:
+    im_array_all = data['im_array_all']
+    out_class_all = data['out_class_all']
+    out_mask_all = data['out_mask_all']
+    i_all = data['i_all']
+
+# init
+im_array_test_all = []
+out_class_test_all = []
+out_mask_test_all = []
+predict_class_test_all = []
+
+for i_fold in range(len(idx_test_all)):
+
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+
+    # test and training image indices. These indices refer to file_list
+    idx_test = idx_test_all[i_fold]
+    idx_train = idx_train_all[i_fold]
+
+    # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
+    # skipped)
+    idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
+    idx_lut[i_all] = range(len(i_all))
+    idx_train = idx_lut[idx_train]
+    idx_test = idx_lut[idx_test]
+
+    print('## len(idx_train) = ' + str(len(idx_train)))
+    print('## len(idx_test) = ' + str(len(idx_test)))
+
+    # split data into training and testing
+    im_array_train = im_array_all[idx_train, :, :, :]
+    im_array_test = im_array_all[idx_test, :, :, :]
+
+    out_class_train = out_class_all[idx_train, :, :, :]
+    out_class_test = out_class_all[idx_test, :, :, :]
+
+    out_mask_train = out_mask_all[idx_train, :, :]
+    out_mask_test = out_mask_all[idx_test, :, :]
+
+    # load classification model
+    classifier_model_filename = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    classifier_model = keras.models.load_model(classifier_model_filename)
+
+    # reshape model input
+    classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=im_array_test.shape)
+
+    # apply classification to test data
+    predict_class_test = classifier_model.predict(im_array_test, batch_size=batch_size)
+
+    # append data for total output
+    im_array_test_all.append(im_array_test)
+    out_class_test_all.append(out_class_test)
+    out_mask_test_all.append(out_mask_test)
+    predict_class_test_all.append(predict_class_test)
+
+    if DEBUG:
+        for i in range(len(idx_test)):
+
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
+            plt.title('i = ' + str(i) + ', Mask', fontsize=14)
+            plt.axis('off')
+            plt.subplot(222)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(out_class_test[i, :, :, 0].astype(np.uint8), alpha=0.5)
+            plt.title('Class', fontsize=14)
+            plt.axis('off')
+            plt.subplot(212)
+            plt.imshow(im_array_test[i, :, :, :])
+            plt.imshow(predict_class_test[i, :, :, 1], alpha=0.5)
+            plt.title('Predicted class', fontsize=14)
+            plt.axis('off')
+            plt.tight_layout()
+            plt.pause(5)
+
+# collapse lists into arrays
+im_array_test_all = np.concatenate(im_array_test_all)
+out_class_test_all = np.concatenate(out_class_test_all)
+out_mask_test_all = np.concatenate(out_mask_test_all)
+predict_class_test_all = np.concatenate(predict_class_test_all)
+
+# save results
+data_filename = os.path.join(saved_models_dir, experiment_id + '_pixel_classifier.npz')
+np.savez(data_filename, im_array_test_all=im_array_test_all, out_class_test_all=out_class_test_all,
+         out_mask_test_all=out_mask_test_all, predict_class_test_all=predict_class_test_all)
+
+''' Analyse results '''
+
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_pixel_classifier.npz')
+with np.load(data_filename) as data:
+    im_array_test_all = data['im_array_test_all']
+    out_class_test_all = data['out_class_test_all']
+    out_mask_test_all = data['out_mask_test_all']
+    predict_class_test_all = data['predict_class_test_all']
+
+# vectors of pixels where we know whether they are WAT or Other
+out_mask_test_all = out_mask_test_all.astype(np.bool)
+out_class_test_all = 1 - out_class_test_all[:, :, :, 0]  # wat == 1
+y_true = out_class_test_all[out_mask_test_all]
+predict_class_test_all = predict_class_test_all[:, :, :, 0]  # wat larger score
+y_predict = predict_class_test_all[out_mask_test_all]
+
+# classifier ROC (we make WAT=1, other=0 for clarity of the results)
+fpr, tpr, thr = roc_curve(y_true=y_true, y_score=y_predict)
+roc_auc = auc(fpr, tpr)
+
+# interpolate values for thr = 0.25 (this is the optimal pixel threshold we find later with the object-wise
+# classification)
+thr_target = 0.25
+tpr_target = np.interp(thr_target, thr[::-1], tpr[::-1])
+fpr_target = np.interp(thr_target, thr[::-1], fpr[::-1])
+
+if DEBUG:
+    # ROC curve
+    plt.clf()
+    plt.plot(fpr * 100, tpr * 100, color='C0', lw=2, label='Pixel ROC curve. Area = %0.2f' % roc_auc)
+    plt.scatter(fpr_target * 100, tpr_target * 100,
+                label='Thr. =  %0.2f, FPR = %0.0f%%, TPR = %0.0f%%' % (thr_target, fpr_target * 100, tpr_target * 100),
+                color='C0', s=100)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Pixel WAT False Positive Rate (FPR)', fontsize=14)
+    plt.ylabel('Pixel WAT True Positive Rate (TPR)', fontsize=14)
+    plt.legend(loc="lower right", prop={'size': 12})
+    plt.tight_layout()
+
+    # boxplot
+    plt.clf()
+    plt.boxplot([y_predict[y_true == 0], y_predict[y_true == 1]], labels=('WAT/Background', 'Other'),
+                notch=True)
+    plt.plot([0.75, 2.25], [thr[idx_thr], ] * 2, 'r', linewidth=2)
+    plt.xlabel('Ground truth class', fontsize=14)
+    plt.ylabel('Softmax prediction', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
+
+    # classifier confusion matrix
+    cytometer.utils.plot_confusion_matrix(y_true=y_true,
+                                          y_pred=y_predict >= thr[idx_thr],
+                                          normalize=True,
+                                          title='Tissue classifier',
+                                          xlabel='Predicted',
+                                          ylabel='Ground truth',
+                                          cmap=plt.cm.Blues,
+                                          colorbar=False)
+    plt.xticks([0, 1], ('Cell/\nBg', 'Other'))
+    plt.yticks([0, 1], ('Cell/\nBg', 'Other'))
+    plt.tight_layout()
+
+
+'''
+************************************************************************************************************************
+Object-wise classification validation
 ************************************************************************************************************************
 '''
 
@@ -652,11 +813,11 @@ if DEBUG:
 
     # ROC curve before and after data augmentation
     plt.clf()
-    plt.plot(fpr_20, tpr_20, color='C0', lw=2, label='ROC from pixel WAT score thr = 0.20. Area = %0.2f' % roc_auc_20)
-    plt.plot(fpr_25, tpr_25, color='C1', lw=2, label='ROC from pixel WAT score thr = 0.25. Area = %0.2f' % roc_auc_25)
-    plt.plot(fpr_30, tpr_30, color='C2', lw=2, label='ROC from pixel WAT score thr = 0.30. Area = %0.2f' % roc_auc_30)
-    plt.plot(fpr_35, tpr_35, color='C3', lw=2, label='ROC from pixel WAT score thr = 0.35. Area = %0.2f' % roc_auc_35)
-    plt.plot(fpr_40, tpr_40, color='C4', lw=2, label='ROC from pixel WAT score thr = 0.40. Area = %0.2f' % roc_auc_40)
+    plt.plot(fpr_20, tpr_20, color='C0', lw=2, label='Object ROC from pixel WAT score thr = 0.20. Area = %0.2f' % roc_auc_20)
+    plt.plot(fpr_25, tpr_25, color='C1', lw=2, label='Object ROC from pixel WAT score thr = 0.25. Area = %0.2f' % roc_auc_25)
+    plt.plot(fpr_30, tpr_30, color='C2', lw=2, label='Object ROC from pixel WAT score thr = 0.30. Area = %0.2f' % roc_auc_30)
+    plt.plot(fpr_35, tpr_35, color='C3', lw=2, label='Object ROC from pixel WAT score thr = 0.35. Area = %0.2f' % roc_auc_35)
+    plt.plot(fpr_40, tpr_40, color='C4', lw=2, label='Object ROC from pixel WAT score thr = 0.40. Area = %0.2f' % roc_auc_40)
     plt.plot([fpr_target, fpr_target], [0.0, 1.0], 'k--')
     plt.scatter(fpr_target, tpr_20_target, label='Object WAT prop. thr =  %0.0f%% for FPR = %0.0f%%, TPR = %0.0f%%'
                 % (thr_20_target * 100, fpr_target * 100, tpr_20_target * 100), color='C0', s=100)
