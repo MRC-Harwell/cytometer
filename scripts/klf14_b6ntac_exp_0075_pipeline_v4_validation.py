@@ -503,11 +503,17 @@ for i_fold in range(len(idx_test_all)):
             scores = aux[cell_seg_contour == 1]
 
             # compute proportions for different thresholds of Otherness
-            df_im.loc[j, 'prop_20'] = np.count_nonzero(scores > 0.2) / len(scores)
+            df_im.loc[j, 'prop_20'] = np.count_nonzero(scores > 0.20) / len(scores)
+            df_im.loc[j, 'prop_21'] = np.count_nonzero(scores > 0.21) / len(scores)
+            df_im.loc[j, 'prop_22'] = np.count_nonzero(scores > 0.22) / len(scores)
+            df_im.loc[j, 'prop_23'] = np.count_nonzero(scores > 0.23) / len(scores)
+            df_im.loc[j, 'prop_24'] = np.count_nonzero(scores > 0.24) / len(scores)
             df_im.loc[j, 'prop_25'] = np.count_nonzero(scores > 0.25) / len(scores)
-            df_im.loc[j, 'prop_30'] = np.count_nonzero(scores > 0.3) / len(scores)
+            df_im.loc[j, 'prop_26'] = np.count_nonzero(scores > 0.26) / len(scores)
+            df_im.loc[j, 'prop_27'] = np.count_nonzero(scores > 0.27) / len(scores)
+            df_im.loc[j, 'prop_30'] = np.count_nonzero(scores > 0.30) / len(scores)
             df_im.loc[j, 'prop_35'] = np.count_nonzero(scores > 0.35) / len(scores)
-            df_im.loc[j, 'prop_40'] = np.count_nonzero(scores > 0.4) / len(scores)
+            df_im.loc[j, 'prop_40'] = np.count_nonzero(scores > 0.40) / len(scores)
 
             if DEBUG:
                 # close the contour for the plot
@@ -560,24 +566,52 @@ for i_fold in range(len(idx_test_all)):
 df_all.reset_index(drop=True, inplace=True)
 
 # save results
-data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.npz')
-np.savez(data_filename, df_all=df_all)
+data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.pkl')
+df_all.to_pickle(data_filename)
 
 ''' Analyse results '''
 
-y_true = df_all['type'] == 'other'
-y_score_20 = df_all['prop_20']
-y_score_25 = df_all['prop_25']
-y_score_30 = df_all['prop_30']
-y_score_35 = df_all['prop_35']
-y_score_40 = df_all['prop_40']
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.pkl')
+df_all = pd.read_pickle(data_filename)
 
-# classifier ROC (True = "other", and score is a measure of "otherness")
+y_true = df_all['type'] == 'wat'
+y_score_20 = 1 - df_all['prop_20']
+y_score_21 = 1 - df_all['prop_21']
+y_score_22 = 1 - df_all['prop_22']
+y_score_23 = 1 - df_all['prop_23']
+y_score_24 = 1 - df_all['prop_24']
+y_score_25 = 1 - df_all['prop_25']
+y_score_26 = 1 - df_all['prop_26']
+y_score_27 = 1 - df_all['prop_27']
+y_score_30 = 1 - df_all['prop_30']
+y_score_35 = 1 - df_all['prop_35']
+y_score_40 = 1 - df_all['prop_40']
+
+# classifier ROC (True = "wat", and score is a measure of "WAT-ness")
 fpr_20, tpr_20, thr_20 = roc_curve(y_true=y_true, y_score=y_score_20)
 roc_auc_20 = auc(fpr_20, tpr_20)
 
+fpr_21, tpr_21, thr_21 = roc_curve(y_true=y_true, y_score=y_score_21)
+roc_auc_21 = auc(fpr_21, tpr_21)
+
+fpr_22, tpr_22, thr_22 = roc_curve(y_true=y_true, y_score=y_score_22)
+roc_auc_22 = auc(fpr_22, tpr_22)
+
+fpr_23, tpr_23, thr_23 = roc_curve(y_true=y_true, y_score=y_score_23)
+roc_auc_23 = auc(fpr_23, tpr_23)
+
+fpr_24, tpr_24, thr_24 = roc_curve(y_true=y_true, y_score=y_score_24)
+roc_auc_24 = auc(fpr_24, tpr_24)
+
 fpr_25, tpr_25, thr_25 = roc_curve(y_true=y_true, y_score=y_score_25)
 roc_auc_25 = auc(fpr_25, tpr_25)
+
+fpr_26, tpr_26, thr_26 = roc_curve(y_true=y_true, y_score=y_score_26)
+roc_auc_26 = auc(fpr_26, tpr_26)
+
+fpr_27, tpr_27, thr_27 = roc_curve(y_true=y_true, y_score=y_score_27)
+roc_auc_27 = auc(fpr_27, tpr_27)
 
 fpr_30, tpr_30, thr_30 = roc_curve(y_true=y_true, y_score=y_score_30)
 roc_auc_30 = auc(fpr_30, tpr_30)
@@ -588,40 +622,119 @@ roc_auc_35 = auc(fpr_35, tpr_35)
 fpr_40, tpr_40, thr_40 = roc_curve(y_true=y_true, y_score=y_score_40)
 roc_auc_40 = auc(fpr_40, tpr_40)
 
-# find point in the curve for softmax score thr > 0.5
-idx_thr_20 = np.where(thr_20 > 0.5)[0][-1]
+# interpolate TPR and prop. threshold for FPR = 0.05
+fpr_target = 0.05
+tpr_20_target = np.interp(fpr_target, fpr_20, tpr_20)
+tpr_21_target = np.interp(fpr_target, fpr_21, tpr_21)
+tpr_22_target = np.interp(fpr_target, fpr_22, tpr_22)
+tpr_23_target = np.interp(fpr_target, fpr_23, tpr_23)
+tpr_24_target = np.interp(fpr_target, fpr_24, tpr_24)
+tpr_25_target = np.interp(fpr_target, fpr_25, tpr_25)
+tpr_26_target = np.interp(fpr_target, fpr_26, tpr_26)
+tpr_27_target = np.interp(fpr_target, fpr_27, tpr_27)
+tpr_30_target = np.interp(fpr_target, fpr_30, tpr_30)
+tpr_35_target = np.interp(fpr_target, fpr_35, tpr_35)
+tpr_40_target = np.interp(fpr_target, fpr_40, tpr_40)
+
+thr_20_target = np.interp(fpr_target, fpr_20, thr_20)
+thr_21_target = np.interp(fpr_target, fpr_21, thr_21)
+thr_22_target = np.interp(fpr_target, fpr_22, thr_22)
+thr_23_target = np.interp(fpr_target, fpr_23, thr_23)
+thr_24_target = np.interp(fpr_target, fpr_24, thr_24)
+thr_25_target = np.interp(fpr_target, fpr_25, thr_25)
+thr_26_target = np.interp(fpr_target, fpr_26, thr_26)
+thr_27_target = np.interp(fpr_target, fpr_27, thr_27)
+thr_30_target = np.interp(fpr_target, fpr_30, thr_30)
+thr_35_target = np.interp(fpr_target, fpr_35, thr_35)
+thr_40_target = np.interp(fpr_target, fpr_40, thr_40)
 
 if DEBUG:
-    # find point in the curve for softmax score thr > 0.5
-    idx_thr_20 = np.where(thr_20 > 0.5)[0][-1]
 
     # ROC curve before and after data augmentation
     plt.clf()
-    plt.plot(fpr_20, tpr_20, color='C0', lw=2, label='Area = %0.2f' % roc_auc_20)
-    plt.plot(fpr_25, tpr_25, color='C1', lw=2, label='Area = %0.2f' % roc_auc_25)
-    plt.plot(fpr_30, tpr_30, color='C2', lw=2, label='Area = %0.2f' % roc_auc_30)
-    plt.plot(fpr_35, tpr_35, color='C3', lw=2, label='Area = %0.2f' % roc_auc_35)
-    plt.plot(fpr_40, tpr_40, color='C4', lw=2, label='Area = %0.2f' % roc_auc_40)
-    plt.scatter(fpr_20[idx_thr_20], tpr_20[idx_thr_20],
-                label='Thr =  %0.3f, FPR = %0.3f, TPR = %0.3f'
-                      % (thr_20[idx_thr_20], fpr_20[idx_thr_20], tpr_20[idx_thr_20]),
-                color='blue', s=200)
-    plt.tick_params(labelsize=16)
-    plt.xlabel('False Positive Rate', fontsize=16)
-    plt.ylabel('True Positive Rate', fontsize=16)
-    plt.legend(loc="lower right")
+    plt.plot(fpr_20, tpr_20, color='C0', lw=2, label='ROC from pixel WAT score thr = 0.20. Area = %0.2f' % roc_auc_20)
+    plt.plot(fpr_25, tpr_25, color='C1', lw=2, label='ROC from pixel WAT score thr = 0.25. Area = %0.2f' % roc_auc_25)
+    plt.plot(fpr_30, tpr_30, color='C2', lw=2, label='ROC from pixel WAT score thr = 0.30. Area = %0.2f' % roc_auc_30)
+    plt.plot(fpr_35, tpr_35, color='C3', lw=2, label='ROC from pixel WAT score thr = 0.35. Area = %0.2f' % roc_auc_35)
+    plt.plot(fpr_40, tpr_40, color='C4', lw=2, label='ROC from pixel WAT score thr = 0.40. Area = %0.2f' % roc_auc_40)
+    plt.plot([fpr_target, fpr_target], [0.0, 1.0], 'k--')
+    plt.scatter(fpr_target, tpr_20_target, label='Object WAT prop. thr =  %0.0f%% for FPR = %0.0f%%, TPR = %0.0f%%'
+                % (thr_20_target * 100, fpr_target * 100, tpr_20_target * 100), color='C0', s=100)
+    plt.scatter(fpr_target, tpr_25_target, label='Object WAT prop. thr =  %0.0f%% for FPR = %0.0f%%, TPR = %0.0f%%'
+                % (thr_25_target * 100, fpr_target * 100, tpr_25_target * 100), color='C1', s=100)
+    plt.scatter(fpr_target, tpr_30_target, label='Object WAT prop. thr =  %0.0f%% for FPR = %0.0f%%, TPR = %0.0f%%'
+                % (thr_30_target * 100, fpr_target * 100, tpr_30_target * 100), color='C2', s=100)
+    plt.scatter(fpr_target, tpr_35_target, label='Object WAT prop. thr =  ~100%% for FPR = %0.0f%%, TPR = %0.0f%%'
+                % (fpr_target * 100, tpr_35_target * 100), color='C3', s=100)
+    plt.scatter(fpr_target, tpr_40_target, label='Object WAT prop. thr =  ~100%% for FPR = %0.0f%%, TPR = %0.0f%%'
+                % (fpr_target * 100, tpr_40_target * 100), color='C4', s=100)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Object WAT False Positive Rate (FPR)', fontsize=14)
+    plt.ylabel('Object WAT True Positive Rate (TPR)', fontsize=14)
+    plt.legend(loc="lower right", prop={'size': 12})
     plt.tight_layout()
 
-plt.clf()
-plt.boxplot((df_all['prop_20'][df_all['type'] == 'wat'], df_all['prop_20'][df_all['type'] != 'wat'],
-             df_all['prop_30'][df_all['type'] == 'wat'], df_all['prop_30'][df_all['type'] != 'wat'],
-             df_all['prop_40'][df_all['type'] == 'wat'], df_all['prop_40'][df_all['type'] != 'wat']),
-            labels=('WAT\n>20%', 'Other\n>20%', 'WAT\n>30%', 'Other\n>30%', 'WAT\n>40%', 'Other\n>40%'),
-            positions=(1, 2, 4, 5, 7, 8), notch=True)
-plt.xlabel('Contour type according to pixel-wise threshold', fontsize=14)
-plt.ylabel('Prop(Other)', fontsize=14)
-plt.tick_params(axis="both", labelsize=14)
-plt.tight_layout()
+if DEBUG:
+    plt.clf()
+    plt.subplot(121)
+    plt.plot(np.array([20, 21, 22, 23, 24, 25, 26, 27, 30, 35, 40]) / 100,
+             np.array([tpr_20_target, tpr_21_target, tpr_22_target, tpr_23_target, tpr_24_target, tpr_25_target,
+              tpr_26_target, tpr_27_target, tpr_30_target, tpr_35_target, tpr_40_target]) * 100)
+    plt.plot([.25, .25], [34, tpr_25_target * 100], '--C0')
+    plt.scatter([.25], [tpr_25_target * 100], label='Pixel WAT score thr. = 0.25\nObject WAT FPR = 5%%\nObject WAT TPR = %0.0f%%'
+                                                    % (tpr_25_target * 100), s=100)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Pixel WAT score threshold', fontsize=14)
+    plt.ylabel('Object WAT TPR (%%) for FPR = %0.0f%%' % (fpr_target * 100), fontsize=14)
+    plt.legend(loc='lower center', prop={'size': 12})
+    plt.subplot(122)
+    plt.plot(np.array([20, 21, 22, 23, 24, 25, 26, 27, 30, 35, 40]) / 100,
+             np.array([thr_20_target, thr_21_target, thr_22_target, thr_23_target, thr_24_target, thr_25_target,
+              thr_26_target, thr_27_target, thr_30_target, thr_35_target, 1.0]) * 100, 'C0')
+    plt.plot([.25, .25], [10, thr_25_target * 100], '--C0')
+    plt.scatter([.25], [thr_25_target * 100], label='Pixel WAT score thr. = 0.25\nObject WAT prop. thr. = %0.1f%%'
+                                                   % (thr_25_target * 100), s=100)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Pixel WAT score threshold', fontsize=14)
+    plt.ylabel('Object WAT prop. thr. (%)', fontsize=14)
+    plt.legend(loc='lower right', prop={'size': 12})
+    plt.tight_layout()
+
+if DEBUG:
+    # classifier confusion matrix
+    cytometer.utils.plot_confusion_matrix(y_true=y_true,
+                                          y_pred=y_score_25 > thr_25_target,
+                                          normalize=True,
+                                          title='Object classifier',
+                                          xlabel='Predicted',
+                                          ylabel='Ground truth',
+                                          cmap=plt.cm.Blues,
+                                          colorbar=False)
+    plt.xticks([0, 1], ('Other', 'WAT'))
+    plt.yticks([0, 1], ('Other', 'WAT'))
+    plt.tight_layout()
+
+
+if DEBUG:
+    plt.clf()
+    idx_wat = df_all['type'] == 'wat'
+    plt.boxplot((100 * y_score_23[np.logical_not(idx_wat)],
+                 100 * y_score_23[idx_wat],
+                 100 * y_score_25[np.logical_not(idx_wat)],
+                 100 * y_score_25[idx_wat],
+                 100 * y_score_30[np.logical_not(idx_wat)],
+                 100 * y_score_30[idx_wat]),
+                labels=('Other\nthr=0.23', 'WAT\nthr=0.23', 'Other\nthr=0.25', 'WAT\nthr=0.25',
+                        'Other\nthr=0.30', 'WAT\nthr=0.30'),
+                positions=(1, 2, 4, 5, 7, 8), notch=True)
+    plt.plot([0.5, 2.5], [100 * thr_23_target, ] * 2, 'r')
+    plt.plot([3.5, 5.5], [100 * thr_25_target, ] * 2, 'r')
+    plt.plot([6.5, 8.5], [100 * thr_30_target, ] * 2, 'r')
+    plt.xlabel('Object classification as function of pixel-wise threshold', fontsize=14)
+    plt.ylabel('Object WAT prop. (%)', fontsize=14)
+    plt.title('Object prop. thresholds for FPR = 5%', fontsize=16)
+    plt.tick_params(axis="both", labelsize=14)
+    plt.tight_layout()
 
 '''
 ************************************************************************************************************************
