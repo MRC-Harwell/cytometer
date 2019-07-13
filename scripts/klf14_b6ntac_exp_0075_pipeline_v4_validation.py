@@ -426,6 +426,7 @@ for i_fold in range(len(idx_test_all)):
             plt.tight_layout()
             plt.pause(5)
 
+
 # collapse lists into arrays
 im_array_test_all = np.concatenate(im_array_test_all)
 out_class_test_all = np.concatenate(out_class_test_all)
@@ -590,7 +591,6 @@ for i_fold in range(len(idx_test_all)):
             plt.axis('off')
             plt.tight_layout()
 
-
         # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
         # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
         cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
@@ -620,6 +620,38 @@ for i_fold in range(len(idx_test_all)):
         df_im['type'] = contour_type_all
 
         '''Label pixels of image as either WAT/non-WAT'''
+
+        if DEBUG:
+
+            plt.clf()
+            plt.subplot(121)
+            plt.imshow(im)
+            # plt.contour(out_mask_test[i, :, :], colors='r')
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+            plt.subplot(122)
+            plt.imshow(im)
+            first_wat = True
+            first_other = True
+            for j, contour in enumerate(contours):
+                # close the contour for the plot
+                contour_aux = contour.copy()
+                contour_aux.append(contour[0])
+                if first_wat and contour_type_all[j] == 'wat':
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2,
+                             label='WAT contour')
+                    first_wat = False
+                elif contour_type_all[j] == 'wat':
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2)
+                elif first_other and contour_type_all[j] != 'wat':
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2,
+                             label='Other contour')
+                    first_other = False
+                else:
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2)
+            plt.legend()
+            plt.axis('off')
+            plt.title('Manual contours', fontsize=14)
 
         # loop contours
         for j, contour in enumerate(contours):
