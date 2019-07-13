@@ -452,24 +452,25 @@ out_mask_test_all = out_mask_test_all.astype(np.bool)
 out_class_test_all = 1 - out_class_test_all[:, :, :, 0]  # wat == 1
 y_wat_true = out_class_test_all[out_mask_test_all]
 predict_class_test_all = predict_class_test_all[:, :, :, 0]  # wat = larger score
-y_predict = predict_class_test_all[out_mask_test_all]
+y_wat_predict = predict_class_test_all[out_mask_test_all]
 
 # classifier ROC (we make WAT=1, other=0 for clarity of the results)
-fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=y_predict)
+fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=y_wat_predict)
 roc_auc = auc(fpr, tpr)
 
-# interpolate values for thr = 0.25 (this is the optimal pixel threshold we find later with the object-wise
+# interpolate values for thr = 0.75 (this is the optimal pixel threshold we find later with the object-wise
 # classification)
-thr_target = 0.25
+thr_target = 0.75
 tpr_target = np.interp(thr_target, thr[::-1], tpr[::-1])
 fpr_target = np.interp(thr_target, thr[::-1], fpr[::-1])
 
 if DEBUG:
     # ROC curve
     plt.clf()
-    plt.plot(fpr * 100, tpr * 100, color='C0', lw=2, label='Pixel ROC curve. Area = %0.2f' % roc_auc)
+    plt.plot(fpr * 100, tpr * 100, color='C0', lw=2, label='Pixel ROC. Area = %0.2f' % roc_auc)
     plt.scatter(fpr_target * 100, tpr_target * 100,
-                label='Thr. =  %0.2f, FPR = %0.0f%%, TPR = %0.0f%%' % (thr_target, fpr_target * 100, tpr_target * 100),
+                label='Pixel score thr. =  %0.2f, FPR = %0.0f%%, TPR = %0.0f%%'
+                      % (thr_target, fpr_target * 100, tpr_target * 100),
                 color='C0', s=100)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Pixel WAT False Positive Rate (FPR)', fontsize=14)
@@ -477,27 +478,17 @@ if DEBUG:
     plt.legend(loc="lower right", prop={'size': 12})
     plt.tight_layout()
 
-    # boxplot
-    plt.clf()
-    plt.boxplot([y_predict[y_wat_true == 0], y_predict[y_wat_true == 1]], labels=('WAT/Background', 'Other'),
-                notch=True)
-    plt.plot([0.75, 2.25], [thr[idx_thr], ] * 2, 'r', linewidth=2)
-    plt.xlabel('Ground truth class', fontsize=14)
-    plt.ylabel('Softmax prediction', fontsize=14)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.tight_layout()
-
     # classifier confusion matrix
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
-                                          y_pred=y_predict >= thr[idx_thr],
+                                          y_pred=y_wat_predict >= thr_target,
                                           normalize=True,
-                                          title='Tissue classifier',
+                                          title='Pixel classifier',
                                           xlabel='Predicted',
                                           ylabel='Ground truth',
                                           cmap=plt.cm.Blues,
                                           colorbar=False)
-    plt.xticks([0, 1], ('Cell/\nBg', 'Other'))
-    plt.yticks([0, 1], ('Cell/\nBg', 'Other'))
+    plt.xticks([0, 1], ('Other', 'WAT'))
+    plt.yticks([0, 1], ('Other', 'WAT'))
     plt.tight_layout()
 
 
@@ -1236,10 +1227,10 @@ out_mask_test_all = out_mask_test_all.astype(np.bool)
 out_class_test_all = out_class_test_all[:, :, :, 0]
 y_wat_true = out_class_test_all[out_mask_test_all]
 pred_class_test_all = pred_class_test_all[:, :, :, 1]
-y_predict = pred_class_test_all[out_mask_test_all]
+y_wat_predict = pred_class_test_all[out_mask_test_all]
 
 # classifier ROC (we make cell=1, other=0 for clarity of the results)
-fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=y_predict)
+fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=y_wat_predict)
 roc_auc = auc(fpr, tpr)
 
 # find point in the curve for softmax score thr > 0.5
@@ -1264,7 +1255,7 @@ if DEBUG:
 
     # boxplot
     plt.clf()
-    plt.boxplot([y_predict[y_wat_true == 0], y_predict[y_wat_true == 1]], labels=('WAT/Background', 'Other'),
+    plt.boxplot([y_wat_predict[y_wat_true == 0], y_wat_predict[y_wat_true == 1]], labels=('WAT/Background', 'Other'),
                 notch=True)
     plt.plot([0.75, 2.25], [thr[idx_thr], ] * 2, 'r', linewidth=2)
     plt.xlabel('Ground truth class', fontsize=14)
@@ -1274,7 +1265,7 @@ if DEBUG:
 
     # classifier confusion matrix
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
-                                          y_pred=y_predict >= thr[idx_thr],
+                                          y_pred=y_wat_predict >= thr[idx_thr],
                                           normalize=True,
                                           title='Tissue classifier',
                                           xlabel='Predicted',
@@ -1303,7 +1294,7 @@ if DEBUG:
 
     # boxplot
     plt.clf()
-    plt.boxplot([y_predict[y_wat_true == 0], y_predict[y_wat_true == 1]], labels=('WAT/Background', 'Other'),
+    plt.boxplot([y_wat_predict[y_wat_true == 0], y_wat_predict[y_wat_true == 1]], labels=('WAT/Background', 'Other'),
                 notch=True)
     plt.plot([0.75, 2.25], [thr[idx_thr], ] * 2, 'r', linewidth=2)
     plt.xlabel('Ground truth class', fontsize=14)
@@ -1313,7 +1304,7 @@ if DEBUG:
 
     # classifier confusion matrix
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
-                                          y_pred=y_predict >= thr[idx_thr],
+                                          y_pred=y_wat_predict >= thr[idx_thr],
                                           normalize=True,
                                           title='Tissue classifier',
                                           xlabel='Predicted',
@@ -1343,7 +1334,7 @@ if DEBUG:
 
     # boxplot
     plt.clf()
-    plt.boxplot([y_predict[y_wat_true == 0], y_predict[y_wat_true == 1]], labels=('WAT/Background', 'Other'),
+    plt.boxplot([y_wat_predict[y_wat_true == 0], y_wat_predict[y_wat_true == 1]], labels=('WAT/Background', 'Other'),
                 notch=True)
     plt.plot([0.75, 2.25], [thr[idx_thr],] * 2, 'r', linewidth=2)
     plt.xlabel('Ground truth class', fontsize=14)
@@ -1353,7 +1344,7 @@ if DEBUG:
 
     # classifier confusion matrix
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
-                                          y_pred=y_predict >= thr[idx_thr],
+                                          y_pred=y_wat_predict >= thr[idx_thr],
                                           normalize=True,
                                           title='Tissue classifier',
                                           xlabel='Predicted',
