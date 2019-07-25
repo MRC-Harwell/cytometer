@@ -1,14 +1,18 @@
 '''
 Dmap regression for all folds.
 
-(klf14_b6ntac_exp_0015_cnn_dmap.py only computes fold 0.)
-
 Training vs testing is done at the histology slide level, not at the window level. This way, we really guarantee that
 the network has not been trained with data sampled from the same image as the test data.
+
+Like 0056, but:
+    * k-folds = 10.
+    * Adding Gianluca's data.
+    * Fill small gaps in the training mask with a (3,3) dilation.
+    * Save training history variable, instead of relying on text output.
 '''
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0056_cnn_dmap'
+experiment_id = 'klf14_b6ntac_exp_0076_cnn_dmap'
 
 # cross-platform home directory
 from pathlib import Path
@@ -19,14 +23,13 @@ home = str(Path.home())
 import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
-import pickle
-import inspect
+import json
 
 # other imports
 import glob
-import shutil
 import datetime
 import numpy as np
+import cv2
 import matplotlib.pyplot as plt
 
 # limit number of GPUs
@@ -58,14 +61,16 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
+# number of folds to split the data into
+n_folds = 10
+
 # number of blocks to split each image into so that training fits into GPU memory
 nblocks = 2
 
 # number of epochs for training
 epochs = 20
 
-'''Directories and filenames
-'''
+'''Directories and filenames'''
 
 # data paths
 root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -74,71 +79,70 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-saved_contour_model_basename = 'klf14_b6ntac_exp_0055_cnn_contour'
-
-'''CNN Model
-'''
+'''CNN Model'''
 
 
 def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 
+    def activation_pooling_if(for_receptive_field, pool_size, x):
+        if for_receptive_field:
+            # for estimation of receptive field, we need to use linear operators
+            x = Activation('linear')(x)
+            x = AvgPool2D(pool_size=pool_size, strides=1, padding='same')(x)
+        else:
+            # for regular training and inference, we use non-linear operators
+            x = Activation('relu')(x)
+            x = MaxPooling2D(pool_size=pool_size, strides=1, padding='same')(x)
+        return x
+
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
-    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(3, 3), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(3, 3), strides=1, padding='same')(x)
+    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same',
+               kernel_initializer='he_uniform')(input)
+    x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(3, 3), x=x)
 
-    x = Conv2D(filters=int(96/2), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(5, 5), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(5, 5), strides=1, padding='same')(x)
+    x = Conv2D(filters=int(48), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same',
+               kernel_initializer='he_uniform')(x)
+    x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(5, 5), x=x)
 
-    x = Conv2D(filters=int(128/2), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(9, 9), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(9, 9), strides=1, padding='same')(x)
+    x = Conv2D(filters=int(64), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same',
+               kernel_initializer='he_uniform')(x)
+    x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(9, 9), x=x)
 
-    x = Conv2D(filters=int(196/2), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-        x = AvgPool2D(pool_size=(17, 17), strides=1, padding='same')(x)
-    else:
-        x = Activation('relu')(x)
-        x = MaxPooling2D(pool_size=(17, 17), strides=1, padding='same')(x)
+    x = Conv2D(filters=int(98), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same',
+               kernel_initializer='he_uniform')(x)
+    x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(17, 17), x=x)
 
-    x = Conv2D(filters=int(512/2), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
+    x = Conv2D(filters=int(256), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same',
+               kernel_initializer='he_uniform')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
     else:
         x = Activation('relu')(x)
 
     # regression output
-    regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same', name='regression_output')(x)
+    regression_output = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+                               kernel_initializer='he_uniform', name='regression_output')(x)
 
     return Model(inputs=input, outputs=[regression_output])
 
 
-'''Prepare folds
-'''
+'''Prepare folds'''
 
-# load list of images, and indices for training vs. testing indices
-contour_model_kfold_filename = os.path.join(saved_models_dir, saved_contour_model_basename + '_kfold_info.pickle')
-with open(contour_model_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-im_svg_file_list = aux['file_list']
-idx_orig_test_all = aux['idx_test']
+# we are interested only in .tif files for which we created hand segmented contours
+im_svg_file_list = glob.glob(os.path.join(training_dir, '*.svg'))
 
-# list of non-overlapped segmentations
+# number of images
+n_orig_im = len(im_svg_file_list)
+
+# split SVG files into training and testing for k-folds
+kfold_info_filename = os.path.join(saved_models_dir, experiment_id + '_kfold_info.pickle')
+idx_orig_train_all, idx_orig_test_all = cytometer.data.split_file_list_kfolds(
+    im_svg_file_list, n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=kfold_info_filename)
+
+'''Model training'''
+
+# TIF files that correspond to the SVG files
 im_orig_file_list = []
 for i, file in enumerate(im_svg_file_list):
     im_orig_file_list.append(file.replace('.svg', '.tif'))
@@ -149,15 +153,14 @@ for i, file in enumerate(im_svg_file_list):
 # for i_fold, idx_test in enumerate(idx_test_all):
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
-    '''Load data
-    '''
+    '''Load data'''
 
     # split the data list into training and testing lists
     im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
 
     # add the augmented image files
-    im_train_file_list = cytometer.data.augment_file_list(im_train_file_list, '_nan_', '_*_')
     im_test_file_list = cytometer.data.augment_file_list(im_test_file_list, '_nan_', '_*_')
+    im_train_file_list = cytometer.data.augment_file_list(im_train_file_list, '_nan_', '_*_')
 
     # load the train and test data: im, seg, dmap and mask data
     train_dataset, train_file_list, train_shuffle_idx = \
@@ -170,6 +173,15 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     # remove training data where the mask has very few valid pixels
     train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
     test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
+
+    # fill in the little gaps in the mask
+    kernel = np.ones((3, 3), np.uint8)
+    for i in range(test_dataset['mask'].shape[0]):
+        test_dataset['mask'][i, :, :, 0] = cv2.dilate(test_dataset['mask'][i, :, :, 0].astype(np.uint8),
+                                                      kernel=kernel, iterations=1)
+    for i in range(train_dataset['mask'].shape[0]):
+        train_dataset['mask'][i, :, :, 0] = cv2.dilate(train_dataset['mask'][i, :, :, 0].astype(np.uint8),
+                                                       kernel=kernel, iterations=1)
 
     if DEBUG:
         i = 150
@@ -202,7 +214,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     device_list = K.get_session().list_devices()
 
     # number of GPUs
-    gpu_number = np.count_nonzero(['GPU' in str(x) for x in device_list])
+    gpu_number = np.count_nonzero([':GPU:' in str(x) for x in device_list])
 
     # instantiate model
     with tf.device('/cpu:0'):
@@ -224,14 +236,14 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        parallel_model.fit(train_dataset['im'],
-                           {'regression_output': train_dataset['dmap']},
-                           sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                           validation_data=(test_dataset['im'],
-                                            {'regression_output': test_dataset['dmap']},
-                                            {'regression_output': test_dataset['mask'][..., 0]}),
-                           batch_size=10, epochs=epochs, initial_epoch=0,
-                           callbacks=[checkpointer])
+        history = parallel_model.fit(train_dataset['im'],
+                                     {'regression_output': train_dataset['dmap']},
+                                     sample_weight={'regression_output': train_dataset['mask'][..., 0]},
+                                     validation_data=(test_dataset['im'],
+                                                      {'regression_output': test_dataset['dmap']},
+                                                      {'regression_output': test_dataset['mask'][..., 0]}),
+                                     batch_size=10, epochs=epochs, initial_epoch=0,
+                                     callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
@@ -249,29 +261,28 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        model.fit(train_dataset['im'],
-                  {'regression_output': train_dataset['dmap']},
-                  sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                  validation_data=(test_dataset['im'],
-                                   {'regression_output': test_dataset['dmap']},
-                                   {'regression_output': test_dataset['mask'][..., 0]}),
-                  batch_size=10, epochs=epochs, initial_epoch=0,
-                  callbacks=[checkpointer])
+        history = model.fit(train_dataset['im'],
+                            {'regression_output': train_dataset['dmap']},
+                            sample_weight={'regression_output': train_dataset['mask'][..., 0]},
+                            validation_data=(test_dataset['im'],
+                                             {'regression_output': test_dataset['dmap']},
+                                             {'regression_output': test_dataset['mask'][..., 0]}),
+                            batch_size=10, epochs=epochs, initial_epoch=0,
+                            callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
 
-# if we run the script with qsub on the cluster, the standard output is in file
-# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
-# Save it to saved_models directory
-log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
-stdout_filename = glob.glob(stdout_filename)[0]
-if stdout_filename and os.path.isfile(stdout_filename):
-    shutil.copy2(stdout_filename, log_filename)
-else:
-    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
-    # Save it to saved_models directory
-    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
-    if os.path.isfile(nohup_filename):
-        shutil.copy2(nohup_filename, log_filename)
+# save training history
+history_filename = os.path.join(saved_models_dir, experiment_id + '_history.npz')
+with open(history_filename, 'w') as f:
+    json.dump(history.history, f)
+
+if DEBUG:
+    with open(history_filename, 'r') as f:
+        history = json.load(f)
+
+    plt.clf()
+    plt.plot(history['mean_squared_error'])
+    plt.plot(history['val_mean_squared_error'])
+    plt.plot(history['loss'])
+    plt.plot(history['val_loss'])
