@@ -218,6 +218,7 @@ for i, file in enumerate(im_svg_file_list):
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
+history = []
 for i_fold, idx_test in enumerate(idx_orig_test_all):
 
     '''Load data'''
@@ -303,16 +304,17 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        history = parallel_model.fit(train_dataset['im'],
-                                     {'regression_output': train_dataset['dmap']},
-                                     sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                                     validation_data=(test_dataset['im'],
-                                                      {'regression_output': test_dataset['dmap']},
-                                                      {'regression_output': test_dataset['mask'][..., 0]}),
-                                     batch_size=batch_size, epochs=epochs, initial_epoch=0,
-                                     callbacks=[checkpointer])
+        hist = parallel_model.fit(train_dataset['im'],
+                                  {'regression_output': train_dataset['dmap']},
+                                  sample_weight={'regression_output': train_dataset['mask'][..., 0]},
+                                  validation_data=(test_dataset['im'],
+                                                   {'regression_output': test_dataset['dmap']},
+                                                   {'regression_output': test_dataset['mask'][..., 0]}),
+                                  batch_size=batch_size, epochs=epochs, initial_epoch=0,
+                                  callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+        history.append(hist.history)
 
     else:  # compile and train model: One GPU
 
@@ -328,31 +330,32 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
         # train model
         tic = datetime.datetime.now()
-        history = model.fit(train_dataset['im'],
-                            {'regression_output': train_dataset['dmap']},
-                            sample_weight={'regression_output': train_dataset['mask'][..., 0]},
-                            validation_data=(test_dataset['im'],
-                                             {'regression_output': test_dataset['dmap']},
-                                             {'regression_output': test_dataset['mask'][..., 0]}),
-                            batch_size=batch_size, epochs=epochs, initial_epoch=0,
-                            callbacks=[checkpointer])
+        hist = model.fit(train_dataset['im'],
+                         {'regression_output': train_dataset['dmap']},
+                         sample_weight={'regression_output': train_dataset['mask'][..., 0]},
+                         validation_data=(test_dataset['im'],
+                                          {'regression_output': test_dataset['dmap']},
+                                          {'regression_output': test_dataset['mask'][..., 0]}),
+                         batch_size=batch_size, epochs=epochs, initial_epoch=0,
+                         callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+        history.append(hist.history)
 
 # save training history
 history_filename = os.path.join(saved_models_dir, experiment_id + '_history.npz')
 with open(history_filename, 'w') as f:
-    json.dump(history.history, f)
+    json.dump(history, f)
 
 if DEBUG:
     with open(history_filename, 'r') as f:
         history = json.load(f)
 
     plt.clf()
-    plt.plot(history['mean_absolute_error'], label='mean_absolute_error')
-    plt.plot(history['mean_squared_error'], label='mean_squared_error')
-    plt.plot(history['val_mean_absolute_error'], label='val_mean_absolute_error')
-    plt.plot(history['val_mean_squared_error'], label='val_mean_squared_error')
-    plt.plot(history['loss'], label='loss')
-    plt.plot(history['val_loss'], label='val_loss')
+    plt.plot(history[i_fold]['mean_absolute_error'], label='mean_absolute_error')
+    # plt.plot(history[i_fold]['mean_squared_error'], label='mean_squared_error')
+    plt.plot(history[i_fold]['val_mean_absolute_error'], label='val_mean_absolute_error')
+    # plt.plot(history[i_fold]['val_mean_squared_error'], label='val_mean_squared_error')
+    plt.plot(history[i_fold]['loss'], label='loss')
+    plt.plot(history[i_fold]['val_loss'], label='val_loss')
     plt.legend()
