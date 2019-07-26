@@ -34,21 +34,17 @@ import cv2
 import matplotlib.pyplot as plt
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
-
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
 
 import cytometer.data
 import cytometer.model_checkpoint_parallel
-import random
 import tensorflow as tf
 
 # # limit GPU memory used
@@ -65,11 +61,17 @@ DEBUG = False
 '''Directories and filenames'''
 
 # data paths
-root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
-training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+# klf14_training_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
+# klf14_training_non_overlap_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_non_overlap')
+klf14_training_augmented_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_augmented')
+#
+# c3h_root_data_dir = os.path.join(home, 'Data/cytometer_data/c3h')
+# c3h_training_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training')
+# c3h_training_non_overlap_data_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_non_overlap')
+# c3h_training_augmented_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_augmented')
+
+saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 
 '''Load folds'''
 
@@ -87,29 +89,21 @@ idx_train_all = aux['idx_train']
 im_orig_file_list = []
 for i, file in enumerate(im_svg_file_list):
     im_orig_file_list.append(file.replace('.svg', '.tif'))
-    im_orig_file_list[i] = os.path.join(training_augmented_dir, 'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
+    im_orig_file_list[i] = os.path.join(klf14_training_augmented_dir, 'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate(idx_orig_test_all):
+for i_fold, idx_test in enumerate(idx_test_all):
 
     '''Load data'''
 
-    # split the data list into training and testing lists
-    im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
+    # list of testing images
+    im_test_file_list = np.array(im_orig_file_list)[idx_test]
 
-    # add the augmented image files
-    im_test_file_list = cytometer.data.augment_file_list(im_test_file_list, '_nan_', '_*_')
-    im_train_file_list = cytometer.data.augment_file_list(im_train_file_list, '_nan_', '_*_')
-
-    # load the train and test data: im, seg, dmap and mask data
-    train_dataset, train_file_list, train_shuffle_idx = \
-        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
-                                     nblocks=nblocks, shuffle_seed=i_fold)
+    # load the test data: im, seg, dmap and mask data
     test_dataset, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
-                                     nblocks=nblocks, shuffle_seed=i_fold)
+        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'])
 
     # remove training data where the mask has very few valid pixels
     train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
