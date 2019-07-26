@@ -68,7 +68,7 @@ n_folds = 10
 nblocks = 2
 
 # training parameters
-epochs = 20
+epochs = 40
 batch_size = 10
 
 '''Directories and filenames'''
