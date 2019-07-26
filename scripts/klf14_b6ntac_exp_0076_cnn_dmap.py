@@ -180,7 +180,7 @@ idx_orig_test_all = [np.concatenate((x, (y + n_klf14))) for x, y in zip(idx_orig
 kfold_info_filename = os.path.join(saved_models_dir, experiment_id + '_kfold_info.pickle')
 with open(kfold_info_filename, 'wb') as f:
     x = {'file_list': im_svg_file_list, 'idx_train': idx_orig_train_all, 'idx_test': idx_orig_test_all,
-         'fold_seed': 0}
+         'fold_seed': 0, 'n_klf14': n_klf14, 'n_c3h': n_c3h}
     pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
 
 # inspect number of hand segmented objects per fold
