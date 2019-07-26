@@ -296,7 +296,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                                                                            verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(model, gpus=gpu_number)
-        parallel_model.compile(loss={'regression_output': 'mse'},
+        parallel_model.compile(loss={'regression_output': 'mean_absolute_error'},
                                optimizer='Adadelta',
                                metrics={'regression_output': ['mse', 'mae']},
                                sample_weight_mode='element')
@@ -321,7 +321,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                                                        verbose=1, save_best_only=True)
 
         # compile model
-        model.compile(loss={'regression_output': 'mse'},
+        model.compile(loss={'regression_output': 'mean_absolute_error'},
                       optimizer='Adadelta',
                       metrics={'regression_output': ['mse', 'mae']},
                       sample_weight_mode='element')
@@ -349,7 +349,10 @@ if DEBUG:
         history = json.load(f)
 
     plt.clf()
-    plt.plot(history['mean_squared_error'])
-    plt.plot(history['val_mean_squared_error'])
-    plt.plot(history['loss'])
-    plt.plot(history['val_loss'])
+    plt.plot(history['mean_absolute_error'], label='mean_absolute_error')
+    plt.plot(history['mean_squared_error'], label='mean_squared_error')
+    plt.plot(history['val_mean_absolute_error'], label='val_mean_absolute_error')
+    plt.plot(history['val_mean_squared_error'], label='val_mean_squared_error')
+    plt.plot(history['loss'], label='loss')
+    plt.plot(history['val_loss'], label='val_loss')
+    plt.legend()
