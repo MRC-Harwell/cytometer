@@ -24,6 +24,7 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import json
+import pickle
 
 # other imports
 import glob
@@ -47,7 +48,6 @@ from keras.utils import multi_gpu_model
 
 import cytometer.data
 import cytometer.model_checkpoint_parallel
-import random
 import tensorflow as tf
 
 # # limit GPU memory used
@@ -67,17 +67,24 @@ n_folds = 10
 # number of blocks to split each image into so that training fits into GPU memory
 nblocks = 2
 
-# number of epochs for training
+# training parameters
 epochs = 20
+batch_size = 10
 
 '''Directories and filenames'''
 
 # data paths
-root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
-training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
-training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+klf14_training_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
+klf14_training_non_overlap_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_non_overlap')
+klf14_training_augmented_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_augmented')
+
+c3h_root_data_dir = os.path.join(home, 'Data/cytometer_data/c3h')
+c3h_training_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training')
+c3h_training_non_overlap_data_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_non_overlap')
+c3h_training_augmented_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_augmented')
+
+saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 
 '''CNN Model'''
 
@@ -130,15 +137,74 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 '''Prepare folds'''
 
 # we are interested only in .tif files for which we created hand segmented contours
-im_svg_file_list = glob.glob(os.path.join(training_dir, '*.svg'))
+im_svg_file_list = glob.glob(os.path.join(klf14_training_dir, '*.svg')) \
+                   + glob.glob(os.path.join(c3h_training_dir, '*.svg'))
+
+# extract contours
+contours = {'cell': [], 'other': [], 'brown': []}
+for i, file in enumerate(im_svg_file_list):
+    contours['cell'].append(len(cytometer.data.read_paths_from_svg_file(file, tag='Cell')))
+    contours['other'].append(len(cytometer.data.read_paths_from_svg_file(file, tag='Other')))
+    contours['brown'].append(len(cytometer.data.read_paths_from_svg_file(file, tag='Brown')))
+contours['cell'] = np.array(contours['cell'])
+contours['other'] = np.array(contours['other'])
+contours['brown'] = np.array(contours['brown'])
+
+# inspect number of hand segmented objects
+n_klf14 = len(glob.glob(os.path.join(klf14_training_dir, '*.svg')))
+n_c3h = len(glob.glob(os.path.join(c3h_training_dir, '*.svg')))
+print('KLF14: ' + str(n_klf14) + ' files')
+print('    Cells: ' + str(np.sum(contours['cell'][0:n_klf14])))
+print('    Other: ' + str(np.sum(contours['other'][0:n_klf14])))
+print('    Brown: ' + str(np.sum(contours['brown'][0:n_klf14])))
+print('C3H: ' + str(n_c3h) + ' files')
+print('    Cells: ' + str(np.sum(contours['cell'][n_klf14:])))
+print('    Other: ' + str(np.sum(contours['other'][n_klf14:])))
+print('    Brown: ' + str(np.sum(contours['brown'][n_klf14:])))
 
 # number of images
 n_orig_im = len(im_svg_file_list)
 
-# split SVG files into training and testing for k-folds
+# split SVG files into training and testing for k-folds. We split the KLF14 and C3H datasets separately because C3H has
+# many more files than KLF14
+idx_orig_train_klf14, idx_orig_test_klf14 = cytometer.data.split_file_list_kfolds(
+    im_svg_file_list[0:n_klf14], n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=None)
+idx_orig_train_c3h, idx_orig_test_c3h = cytometer.data.split_file_list_kfolds(
+    im_svg_file_list[n_klf14:], n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=None)
+
+# concatenate KLF14 and C3H sets (correct the C3H indices so that they refer to the whole im_svg_file_list)
+idx_orig_train_all = [np.concatenate((x, (y + n_klf14))) for x, y in zip(idx_orig_train_klf14, idx_orig_train_c3h)]
+idx_orig_test_all = [np.concatenate((x, (y + n_klf14))) for x, y in zip(idx_orig_test_klf14, idx_orig_test_c3h)]
+
+# save folds
 kfold_info_filename = os.path.join(saved_models_dir, experiment_id + '_kfold_info.pickle')
-idx_orig_train_all, idx_orig_test_all = cytometer.data.split_file_list_kfolds(
-    im_svg_file_list, n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=kfold_info_filename)
+with open(kfold_info_filename, 'wb') as f:
+    x = {'file_list': im_svg_file_list, 'idx_train': idx_orig_train_all, 'idx_test': idx_orig_test_all,
+         'fold_seed': 0}
+    pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
+
+# inspect number of hand segmented objects per fold
+for k in range(n_folds):
+    print('Fold: ' + str(k))
+    print('    Train:')
+    print('        Cells: ' + str(np.sum(contours['cell'][idx_orig_train_all[k]])))
+    print('        Other: ' + str(np.sum(contours['other'][idx_orig_train_all[k]])))
+    print('        Brown: ' + str(np.sum(contours['brown'][idx_orig_train_all[k]])))
+    print('    Test:')
+    print('        Cells: ' + str(np.sum(contours['cell'][idx_orig_test_all[k]])))
+    print('        Other: ' + str(np.sum(contours['other'][idx_orig_test_all[k]])))
+    print('        Brown: ' + str(np.sum(contours['brown'][idx_orig_test_all[k]])))
+
+# inspect dataset origin in each fold
+for k in range(n_folds):
+    print('Fold: ' + str(k))
+    print('    Train:')
+    print('        KLF14: ' + str(np.count_nonzero(idx_orig_train_all[k] < n_klf14)))
+    print('        C3H: ' + str(np.count_nonzero(idx_orig_train_all[k] >= n_klf14)))
+    print('    Test:')
+    print('        KLF14: ' + str(np.count_nonzero(idx_orig_test_all[k] < n_klf14)))
+    print('        C3H: ' + str(np.count_nonzero(idx_orig_test_all[k] >= n_klf14)))
+
 
 '''Model training'''
 
@@ -146,7 +212,8 @@ idx_orig_train_all, idx_orig_test_all = cytometer.data.split_file_list_kfolds(
 im_orig_file_list = []
 for i, file in enumerate(im_svg_file_list):
     im_orig_file_list.append(file.replace('.svg', '.tif'))
-    im_orig_file_list[i] = os.path.join(training_augmented_dir, 'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
+    im_orig_file_list[i] = os.path.join(klf14_training_augmented_dir, 'im_seed_nan_'
+                                        + os.path.basename(im_orig_file_list[i]))
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
@@ -242,7 +309,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                                      validation_data=(test_dataset['im'],
                                                       {'regression_output': test_dataset['dmap']},
                                                       {'regression_output': test_dataset['mask'][..., 0]}),
-                                     batch_size=10, epochs=epochs, initial_epoch=0,
+                                     batch_size=batch_size, epochs=epochs, initial_epoch=0,
                                      callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
@@ -267,7 +334,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
                             validation_data=(test_dataset['im'],
                                              {'regression_output': test_dataset['dmap']},
                                              {'regression_output': test_dataset['mask'][..., 0]}),
-                            batch_size=10, epochs=epochs, initial_epoch=0,
+                            batch_size=batch_size, epochs=epochs, initial_epoch=0,
                             callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
