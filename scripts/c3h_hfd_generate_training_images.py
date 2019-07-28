@@ -1,3 +1,10 @@
+"""
+Read full .ndpi slides, rough segmentation of tissue areas, random selection of centroids, extract
+1001x1001 windows around centroids.
+
+The windows are saved with row_R_col_C, where R, C are the row, col offset of the image.
+"""
+
 import os
 import openslide
 import numpy as np
@@ -11,16 +18,16 @@ import glob
 
 DEBUG = False
 
-data_dir = '/home/gcientanni/scan_srv2_cox/Maz Yon'
-training_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_training'
-seg_dir = '/home/gcientanni/OneDrive/c3h/c3h_hfd_seg'
+data_dir = '/home/rcasero/data/roger_data'
+training_dir = '/home/rcasero/Dropbox/c3h/c3h_hfd_training'
+seg_dir = '/home/rcasero/Software/cytometer/data/c3h_hfd_seg'
 downsample_factor = 8.0
 
 box_size = 1001
 box_half_size = int((box_size - 1) / 2)
 n_samples = 5
 
-files_list = glob.glob(os.path.join(data_dir, 'C3H*.ndpi'))
+files_list = glob.glob(os.path.join(data_dir, '*.ndpi'))
 
 for file_i, file in enumerate(files_list):
 
@@ -72,7 +79,7 @@ for file_i, file in enumerate(files_list):
     lblareas = stats[:, cv2.CC_STAT_AREA]
 
     # labels of large components, that we assume correspond to tissue areas
-    labels_large = np.where(lblareas > 5e5)[0]
+    labels_large = np.where(lblareas > 1e5)[0]
     labels_large = list(labels_large)
 
     # label=0 is the background, so we remove it
@@ -105,10 +112,8 @@ for file_i, file in enumerate(files_list):
     sample_centroid_upsampled = []
     seed(file_i)
     while len(sample_centroid) < n_samples:
-
         row = randint(0, seg.shape[0]-1)
         col = randint(0, seg.shape[1]-1)
-
         # if the centroid is a pixel that belongs to tissue...
         if seg[row, col] != 0:
             # ... add it to the list of random samples
@@ -135,7 +140,8 @@ for file_i, file in enumerate(files_list):
 
         # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
         outfilename = os.path.basename(file)
-        outfilename = os.path.splitext(outfilename)[0] + '_row_'+ str(row).zfill(6) + '_col_' + str(col).zfill(6)
+        outfilename = os.path.splitext(outfilename)[0] + '_row_' + str(box_corner_row).zfill(6) \
+                      + '_col_' + str(box_corner_col).zfill(6)
         outfilename = os.path.join(training_dir, outfilename + '.tif')
         tifffile.imsave(outfilename, tile,
                         compress=9,
