@@ -89,7 +89,8 @@ idx_train_all = aux['idx_train']
 im_orig_file_list = []
 for i, file in enumerate(im_svg_file_list):
     im_orig_file_list.append(file.replace('.svg', '.tif'))
-    im_orig_file_list[i] = os.path.join(klf14_training_augmented_dir, 'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
+    im_orig_file_list[i] = os.path.join(os.path.dirname(im_orig_file_list[i]) + '_augmented',
+                                        'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
