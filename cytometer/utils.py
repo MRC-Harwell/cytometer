@@ -217,12 +217,14 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     seg[seg == 1] = 255
 
     # dilate the segmentation to fill gaps within tissue
-    kernel = np.ones((dilation_size, dilation_size), np.uint8)
-    seg = cv2.dilate(seg, kernel, iterations=1)
-    seg = cv2.erode(seg, kernel, iterations=1)
+    if dilation_size != 0:
+        kernel = np.ones((dilation_size, dilation_size), np.uint8)
+        seg = cv2.dilate(seg, kernel, iterations=1)
+        seg = cv2.erode(seg, kernel, iterations=1)
 
     # fill small holes
-    seg = remove_small_holes(seg > 0, area_threshold=hole_size_treshold).astype(seg.dtype)
+    if hole_size_treshold != 0:
+        seg = remove_small_holes(seg > 0, area_threshold=hole_size_treshold).astype(seg.dtype)
 
     # remove segmentation noise
     seg = remove_small_objects(seg > 0, min_size=component_size_threshold).astype(seg.dtype)
