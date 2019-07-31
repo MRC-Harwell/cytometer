@@ -2,10 +2,47 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
 from primesieve import *
+from scipy.signal import convolve2d
 
 
 # list of precomputed primes
 primes_list = np.array(primes(650e3))
+
+
+############################################################################################
+# number squares
+#
+# array([[ 1,  2,  3,  4,  5,  6,  7,  8],
+#        [ 9, 10, 11, 12, 13, 14, 15, 16],
+#        [17, 18, 19, 20, 21, 22, 23, 24],
+#        [25, 26, 27, 28, 29, 30, 31, 32],
+#        [33, 34, 35, 36, 37, 38, 39, 40],
+#        [41, 42, 43, 44, 45, 46, 47, 48],
+#        [49, 50, 51, 52, 53, 54, 55, 56],
+#        [57, 58, 59, 60, 61, 62, 63, 64]])
+############################################################################################
+
+n = 13
+first_number = 105
+last_number = first_number + n**2  # one past the last number, to make use of range() easier
+
+# sequence of numbers contained in the Fibonacci square
+x_list = np.array(range(first_number, last_number))
+
+# check whether each number is a prime number
+is_prime = np.array([x in primes_list for x in x_list])
+
+# number square with sequence of numbers
+x_square = x_list.reshape((n, n))
+is_prime_square = is_prime.reshape((n, n))
+
+plt.clf()
+plt.imshow(is_prime_square)
+loc = plticker.MultipleLocator(base=1)
+plt.gca().xaxis.set_major_locator(loc)
+plt.gca().yaxis.set_major_locator(loc)
+plt.grid(True, which='both')
+
 
 
 ############################################################################################
