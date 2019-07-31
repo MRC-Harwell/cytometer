@@ -70,6 +70,46 @@ def pixel_connectivity(is_prime_square, x_square):
     return df
 
 
+def diagonal_zigzag_square(x):
+    """
+    Fill square matrix in diagonal order.
+
+    x = [0, ..., 8]
+
+    y = diagonal_zigzag_square(x)
+
+    y = [[0 2 5]
+         [1 4 7]
+         [3 6 8]]
+    :param x: vector of length n**2.
+    :return: y
+    """
+    x = np.array(x)
+    # length of the square side
+    n = np.sqrt(len(x))
+    if n != int(n):
+        raise ValueError('Input vector needs to have n**2 elements')
+    n = int(n)
+
+    # init output matrix
+    y = np.zeros((n, n), dtype=x.dtype)
+
+    # number of elements in each diagonal
+    tot_diag = list(range(1, n)) + list(range(n, 0, -1))
+
+    # indices in x of the different segments that correspond to each diagonal
+    idx = np.cumsum([0] + tot_diag)
+
+    # loop diagonals
+    for k in range(2 * n - 1):
+        first_i = np.min((k, n-1))
+        i = np.array(range(first_i, first_i - tot_diag[k], -1))
+        j = k - i
+        # print(str(i_all) + ' -> ' + str(j_all))
+        y[i, j] = x[idx[k]:idx[k+1]]
+
+    return y
+
 
 ############################################################################################
 # example of number square
@@ -109,7 +149,7 @@ plt.grid(True, which='both')
 df = pixel_connectivity(is_prime_square, x_square)
 
 ############################################################################################
-# Loop of Fibonacci number squares
+# Loop of Fibonacci number squares. Fill all the squares row by row
 ############################################################################################
 
 # number of Fibonacci squares (without counting the initial 0 size)
@@ -191,26 +231,105 @@ for i_fibo in range(1, n_fibo + 1):
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         print(df_total)
 
+############################################################################################
+# Loop of Fibonacci number squares. Fill the squares with odd length in diagonal order.
+#
+# This experiment fails. Odd-Fibonacci squares now have primes touching both laterally and
+# diagonally.
+############################################################################################
 
+# number of Fibonacci squares (without counting the initial 0 size)
+n_fibo = 16
 
+# side length of each Fibonacci square
+fibo_len = fibonacci(0, 1, n_fibo + 1)
 
-# plot column and row patterns
-col_pattern = is_prime_square.copy().astype(np.float32)
-for j in range(col_pattern.shape[1]):
-    col_pattern[:, j] = np.sum(col_pattern[:, j])
+# init dataframe with results
+df_total = pd.DataFrame([], columns=['i_fibo', 'n', 'is_primes_rank', 'primes_with_neigh_d', 'primes_with_neigh_4',
+                                     'time'])
 
-row_pattern = is_prime_square.copy().astype(np.float32)
-for i in range(row_pattern.shape[0]):
-    row_pattern[i, :] = np.sum(row_pattern[i, :])
+# for debugging purposes, this can be used to directly get the initial parameters for any matrix, without having to
+# check for primes, etc.
+if DEBUG:
+    n_fibo_to_stop = 7
+    last_number = 1
+    for i_fibo in range(1, n_fibo_to_stop + 1):
+        # length of current Fibonacci square
+        n = fibo_len[i_fibo]
 
-plt.clf()
-plt.subplot(121)
-plt.imshow(row_pattern)
-plt.subplot(122)
-plt.imshow(col_pattern)
+        # first and last numbers in the square
+        first_number = last_number
+        last_number = first_number + n ** 2  # one past the last number, to make use of range() easier
 
-plt.clf()
-plt.subplot(121)
-plt.imshow(row_pattern > 0)
-plt.subplot(122)
-plt.imshow(col_pattern > 0)
+# loop Fibonacci squares
+last_number = 1
+for i_fibo in range(1, n_fibo + 1):
+
+    # to calculate how long it takes to compute each iteration
+    t0 = time.time()
+
+    # i_fibo += 1  ## for manual debugging
+
+    # length of current Fibonacci square
+    n = fibo_len[i_fibo]
+
+    # first and last numbers in the square
+    first_number = last_number
+    last_number = first_number + n**2  # one past the last number, to make use of range() easier
+
+    # list of precomputed primes
+    primes_list = np.array(primes(last_number))
+
+    # sequence of numbers contained in the Fibonacci square
+    x_list = np.array(range(first_number, last_number))
+
+    # skip the first empty square
+    if len(x_list) == 0:
+        continue
+
+    # check whether each number is a prime number
+    is_prime = np.array([x in primes_list for x in x_list])
+
+    # Fibonacci square filled with the sequence of numbers
+    if n % 2 == 1:  # Fibonacci square's length is odd
+        x_square = diagonal_zigzag_square(x_list)
+        is_prime_square = diagonal_zigzag_square(is_prime)
+    else:  # Fibonacci square's length is even
+        x_square = x_list.reshape((n, n))
+        is_prime_square = is_prime.reshape((n, n))
+
+    # plot Fibonacci square
+    if DEBUG:
+        plt.clf()
+        plt.imshow(is_prime_square)
+        loc = plticker.MultipleLocator(base=1)
+        plt.gca().xaxis.set_major_locator(loc)
+        plt.gca().yaxis.set_major_locator(loc)
+        plt.grid(which='major', axis='both', linestyle='-')
+
+        for i in range(n):
+            for j in range(n):
+                plt.text(j, i, '{:d}'.format(x_square[i, j]), color='w', ha='center', va='center', fontsize=int(72/n))
+
+    # compute neighbourhood connectivity
+    df = pixel_connectivity(is_prime_square, x_square)
+
+    # skip second square, that has a single non-prime number, so df is empty
+    if df.shape[0] == 0:
+        continue
+
+    # count how many primes have connectivity 0, 1, 2, 3, 4
+    idx, counts = np.unique(df['neigh_d'], return_counts=True)
+    counts_d = np.array([0, 0, 0, 0])
+    counts_d[idx] = counts
+    idx, counts = np.unique(df['neigh_4'], return_counts=True)
+    counts_4 = np.array([0, 0, 0, 0])
+    counts_4[idx] = counts
+
+    df_total = df_total.append({'i_fibo': i_fibo, 'n': n, 'is_primes_rank': np.linalg.matrix_rank(is_prime_square),
+                                'primes_with_neigh_d': counts_d, 'primes_with_neigh_4': counts_4,
+                                'time': (time.time() - t0)},
+                               ignore_index=True)
+
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        print(df_total)
