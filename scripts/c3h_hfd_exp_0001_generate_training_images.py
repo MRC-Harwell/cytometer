@@ -6,9 +6,8 @@ The windows are saved with row_R_col_C, where R, C are the row, col centroid of 
 image from the centroid as offset = centroid - box_half_size = centroid - 500.
 
 We include two version of the code:
-    * OLD_CODE=True: This is how things were done for the KLF14 training dataset. There's a bug because instead of using
-      the high resolution centroid we used the low resolution centroid. This still created a valid training dataset,
-      though.
+    * OLD_CODE=True: This is how things were done for the C3H training dataset. Unlike with the KLF14 data, here the
+      high resolution centroid is used.
     * OLD_CODE=False: This is how we would do things in future.
 """
 
