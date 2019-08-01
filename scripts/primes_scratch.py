@@ -7,10 +7,6 @@ import time
 
 DEBUG = False
 
-# list of precomputed primes
-primes_list = np.array(primes(650e3))
-
-
 def fibonacci(x=0, y=1, n_fibo=10):
     out = [x, y]
     for i in range(n_fibo - 2):
@@ -163,6 +159,9 @@ def prop_primes(x):
             plt.legend()
 
     return np.array(prop_fw), np.array(prop_bk)
+
+# list of precomputed primes
+primes_list = np.array(primes(650e3))
 
 
 ############################################################################################
@@ -425,3 +424,53 @@ for i_fibo in range(1, n_fibo + 1):
 
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         print(df_total)
+
+############################################################################################
+# Position of prime numbers within fibonacci intervals
+############################################################################################
+
+
+def cart2pol(x, y):
+    rho = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y, x)
+    return(rho, phi)
+
+def pol2cart(rho, phi):
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return(x, y)
+
+
+n_fibo = 30
+fibo = fibonacci(0, 1, n_fibo + 1)
+primes_list = np.array(primes(fibo[-1]))
+primes_lot = np.zeros(shape=(fibo[-1],), dtype=np.bool)
+primes_lot[primes_list] = True
+
+p_out = []
+i_out = []
+for i in range(len(fibo) - 1):
+    fibo_from = fibo[i]
+    fibo_to = fibo[i+1]
+
+    # normalize primes to the interval
+    p = np.where(primes_lot[fibo_from:fibo_to])[0] / (fibo_to - fibo_from)
+
+    # append to output vector
+    i_out = i_out + [i, ] * len(p)
+    p_out = np.concatenate((p_out, p))
+
+plt.clf()
+plt.hist(p_out, bins=21)
+
+# interpret as polar numbers
+x, y = pol2cart(i_out, p_out * 2 * np.pi)
+xmin = np.min(x)
+xmax = np.max(x)
+ymin = np.min(y)
+ymax = np.max(y)
+
+plt.clf()
+plt.plot([0, 0], [ymin, ymax], 'k')
+plt.plot([xmin, xmax], [0, 0], 'k')
+plt.scatter(x, y, s=20, color='C1')
