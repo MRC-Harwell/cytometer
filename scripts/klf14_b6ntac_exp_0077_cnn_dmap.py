@@ -27,7 +27,6 @@ import json
 import pickle
 
 # other imports
-import glob
 import datetime
 import numpy as np
 import cv2
@@ -86,6 +85,8 @@ c3h_training_augmented_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_a
 
 saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 
+saved_kfolds_filename = 'klf14_b6ntac_exp_0077_generate_kfolds.pickle'
+
 '''CNN Model'''
 
 
@@ -134,77 +135,15 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
     return Model(inputs=input, outputs=[regression_output])
 
 
-'''Prepare folds'''
+'''Load folds'''
 
-# we are interested only in .tif files for which we created hand segmented contours
-im_svg_file_list = glob.glob(os.path.join(klf14_training_dir, '*.svg')) \
-                   + glob.glob(os.path.join(c3h_training_dir, '*.svg'))
-
-# extract contours
-contours = {'cell': [], 'other': [], 'brown': []}
-for i, file in enumerate(im_svg_file_list):
-    contours['cell'].append(len(cytometer.data.read_paths_from_svg_file(file, tag='Cell')))
-    contours['other'].append(len(cytometer.data.read_paths_from_svg_file(file, tag='Other')))
-    contours['brown'].append(len(cytometer.data.read_paths_from_svg_file(file, tag='Brown')))
-contours['cell'] = np.array(contours['cell'])
-contours['other'] = np.array(contours['other'])
-contours['brown'] = np.array(contours['brown'])
-
-# inspect number of hand segmented objects
-n_klf14 = len(glob.glob(os.path.join(klf14_training_dir, '*.svg')))
-n_c3h = len(glob.glob(os.path.join(c3h_training_dir, '*.svg')))
-print('KLF14: ' + str(n_klf14) + ' files')
-print('    Cells: ' + str(np.sum(contours['cell'][0:n_klf14])))
-print('    Other: ' + str(np.sum(contours['other'][0:n_klf14])))
-print('    Brown: ' + str(np.sum(contours['brown'][0:n_klf14])))
-print('C3H: ' + str(n_c3h) + ' files')
-print('    Cells: ' + str(np.sum(contours['cell'][n_klf14:])))
-print('    Other: ' + str(np.sum(contours['other'][n_klf14:])))
-print('    Brown: ' + str(np.sum(contours['brown'][n_klf14:])))
-
-# number of images
-n_orig_im = len(im_svg_file_list)
-
-# split SVG files into training and testing for k-folds. We split the KLF14 and C3H datasets separately because C3H has
-# many more files than KLF14
-idx_orig_train_klf14, idx_orig_test_klf14 = cytometer.data.split_file_list_kfolds(
-    im_svg_file_list[0:n_klf14], n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=None)
-idx_orig_train_c3h, idx_orig_test_c3h = cytometer.data.split_file_list_kfolds(
-    im_svg_file_list[n_klf14:], n_folds, ignore_str='_row_.*', fold_seed=0, save_filename=None)
-
-# concatenate KLF14 and C3H sets (correct the C3H indices so that they refer to the whole im_svg_file_list)
-idx_orig_train_all = [np.concatenate((x, (y + n_klf14))) for x, y in zip(idx_orig_train_klf14, idx_orig_train_c3h)]
-idx_orig_test_all = [np.concatenate((x, (y + n_klf14))) for x, y in zip(idx_orig_test_klf14, idx_orig_test_c3h)]
-
-# save folds
-kfold_info_filename = os.path.join(saved_models_dir, experiment_id + '_kfold_info.pickle')
-with open(kfold_info_filename, 'wb') as f:
-    x = {'file_list': im_svg_file_list, 'idx_train': idx_orig_train_all, 'idx_test': idx_orig_test_all,
-         'fold_seed': 0, 'n_klf14': n_klf14, 'n_c3h': n_c3h}
-    pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
-
-# inspect number of hand segmented objects per fold
-for k in range(n_folds):
-    print('Fold: ' + str(k))
-    print('    Train:')
-    print('        Cells: ' + str(np.sum(contours['cell'][idx_orig_train_all[k]])))
-    print('        Other: ' + str(np.sum(contours['other'][idx_orig_train_all[k]])))
-    print('        Brown: ' + str(np.sum(contours['brown'][idx_orig_train_all[k]])))
-    print('    Test:')
-    print('        Cells: ' + str(np.sum(contours['cell'][idx_orig_test_all[k]])))
-    print('        Other: ' + str(np.sum(contours['other'][idx_orig_test_all[k]])))
-    print('        Brown: ' + str(np.sum(contours['brown'][idx_orig_test_all[k]])))
-
-# inspect dataset origin in each fold
-for k in range(n_folds):
-    print('Fold: ' + str(k))
-    print('    Train:')
-    print('        KLF14: ' + str(np.count_nonzero(idx_orig_train_all[k] < n_klf14)))
-    print('        C3H: ' + str(np.count_nonzero(idx_orig_train_all[k] >= n_klf14)))
-    print('    Test:')
-    print('        KLF14: ' + str(np.count_nonzero(idx_orig_test_all[k] < n_klf14)))
-    print('        C3H: ' + str(np.count_nonzero(idx_orig_test_all[k] >= n_klf14)))
-
+# load list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_list = aux['file_list']
+idx_test_all = aux['idx_test']
+idx_train_all = aux['idx_train']
 
 '''Model training'''
 
