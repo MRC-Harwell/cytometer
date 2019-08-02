@@ -32,7 +32,7 @@ import cv2
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 # set display for the server
 #os.environ['DISPLAY'] = 'localhost:11.0'
@@ -41,12 +41,12 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import cytometer.data
 
-# limit GPU memory used
-import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# import tensorflow as tf
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 1.0
+# set_session(tf.Session(config=config))
 
 
 DEBUG = False
