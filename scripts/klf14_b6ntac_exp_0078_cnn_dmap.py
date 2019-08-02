@@ -60,9 +60,6 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
-# number of folds to split the data into
-n_folds = 10
-
 # number of blocks to split each image into so that training fits into GPU memory
 nblocks = 2
 
@@ -141,18 +138,21 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
 with open(contour_model_kfold_filename, 'rb') as f:
     aux = pickle.load(f)
-file_list = aux['file_list']
+svg_file_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
 '''Model training'''
 
-# TIF files that correspond to the SVG files
+# TIF files that correspond to the SVG files (without augmentation)
 im_orig_file_list = []
-for i, file in enumerate(im_svg_file_list):
+for i, file in enumerate(svg_file_list):
     im_orig_file_list.append(file.replace('.svg', '.tif'))
     im_orig_file_list[i] = os.path.join(os.path.dirname(im_orig_file_list[i]) + '_augmented',
                                         'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
+
+    # check that file exists
+
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
