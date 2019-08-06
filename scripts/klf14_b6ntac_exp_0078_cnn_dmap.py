@@ -25,6 +25,7 @@ import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import json
 import pickle
+import warnings
 
 # other imports
 import datetime
@@ -151,8 +152,11 @@ for i, file in enumerate(svg_file_list):
     im_orig_file_list[i] = os.path.join(os.path.dirname(im_orig_file_list[i]) + '_augmented',
                                         'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
 
-    # check that file exists
-
+    # check that files exist
+    if not os.path.isfile(file):
+        warnings.warn('i = ' + str(i) + ': File does not exist: ' + file)
+    if not os.path.isfile(im_orig_file_list[i]):
+        warnings.warn('i = ' + str(i) + ': File does not exist: ' + im_orig_file_list[i])
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
