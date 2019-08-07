@@ -154,9 +154,9 @@ for i, file in enumerate(svg_file_list):
 
     # check that files exist
     if not os.path.isfile(file):
-        warnings.warn('i = ' + str(i) + ': File does not exist: ' + file)
+        warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(file))
     if not os.path.isfile(im_orig_file_list[i]):
-        warnings.warn('i = ' + str(i) + ': File does not exist: ' + im_orig_file_list[i])
+        warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(im_orig_file_list[i]))
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
