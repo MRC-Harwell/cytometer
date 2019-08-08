@@ -11,15 +11,13 @@ import os
 
 import glob
 import matplotlib.pyplot as plt
-import numpy as np
-from svgpathtools import svg2paths
-from PIL import Image
-import PIL.ImageDraw
+from PIL import Image, ImageDraw
 from PIL.TiffTags import TAGS
-import tifffile
+import numpy as np
+import cytometer.data
 from cv2 import watershed
 import mahotas
-import cytometer.data
+import tifffile
 
 DEBUG = False
 
@@ -46,7 +44,6 @@ for n, file_svg in enumerate(file_list):
         continue
     else:
         print('Processing file')
-        continue
 
     # load image
     im = Image.open(file_tif)
@@ -63,18 +60,19 @@ for n, file_svg in enumerate(file_list):
     cell_count = np.zeros(im.size[::-1], dtype=np.int32)
 
     # extract contours
-    polygon = cytometer.data.read_paths_from_svg_file(file_svg)
+    polygon = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell')
 
     # if there are no cells, we skip to the next file
     if len(polygon) == 0:
+        print('Skipping... no cell contours')
         continue
 
     # loop cells
     for i, pg in enumerate(polygon):
 
         # create empty arrays with the same size as image
-        cell_mask = PIL.Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
-        draw = PIL.ImageDraw.Draw(cell_mask)
+        cell_mask = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+        draw = ImageDraw.Draw(cell_mask)
 
         # rasterize current cell
         draw.polygon(pg, outline="white", fill="white")
