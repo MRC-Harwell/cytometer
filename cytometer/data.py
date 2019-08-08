@@ -507,11 +507,15 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, m
     objects in the SVG file (e.g. cells, edge cells, background, etc), but only read one type of objects.
 
     :param file: path and name of SVG file.
-    :param tag: (def 'Cell'). Only paths with a label that starts with this tag will be read.
+    :param tag: (def 'Cell'). Only paths with a label that starts with this tag will be read. The case (upper/lowercase)
+    is ignored.
     :param add_offset_from_filename: (def False)
     :param minimum_npoints: (def 3) Contours with less than this number of points will be ignored.
     :return: [ path0, path1, ...] = [ [(X0,Y0), (X1,Y1), ...], ...]
     """
+
+    # convert tag to lowercase, to avoid differentiating between "Cell" and "cell"
+    tag = tag.lower()
 
     # extract contour as a list of (X,Y) coordinates
     def extract_contour(path, x_offset=0, y_offset=0):
@@ -547,8 +551,11 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, m
     paths_out = []
     for path, attribute in zip(paths, attributes):
 
+        # convert the name of the object to lowercase, to avoid differentiating between "Cell" and "cell"
+        attribute_id = attribute['id'].lower()
+
         # skip if the contour's name doesn't start with the required tag, e.g. 'Cell'
-        if not attribute['id'].startswith(tag):
+        if not attribute_id.startswith(tag):
             continue
 
         # extract contour polygon from the path object
