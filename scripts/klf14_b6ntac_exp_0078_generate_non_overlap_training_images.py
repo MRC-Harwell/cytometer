@@ -62,11 +62,6 @@ for n, file_svg in enumerate(file_list):
     # extract contours
     polygon = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell')
 
-    # if there are no cells, we skip to the next file
-    if len(polygon) == 0:
-        print('Skipping... no cell contours')
-        continue
-
     # loop cells
     for i, pg in enumerate(polygon):
 
@@ -94,27 +89,29 @@ for n, file_svg in enumerate(file_list):
 
     ## find compromise for overlapping areas
 
-    # label non-cell areas
-    background_label = i + 2
-    labels[labels == 0] = background_label
+    if len(polygon) > 0:
 
-    # label overlapping areas
-    labels[cell_count > 1] = 0
+        # label non-cell areas
+        background_label = i + 2
+        labels[labels == 0] = background_label
 
-    # apply watershed algorithm to fill in overlap areas. The "image" entry is an array of zeros, so that the boundaries
-    # extend uniformly without paying attention to the original histology image (otherwise, the boundaries will be
-    # crooked)
-    labels = watershed(np.zeros(im.size[::-1] + (3,), dtype=np.uint8), np.array(labels))
+        # label overlapping areas
+        labels[cell_count > 1] = 0
 
-    # set background pixels back to zero
-    labels[labels == background_label] = 0
+        # apply watershed algorithm to fill in overlap areas. The "image" entry is an array of zeros, so that the
+        # boundaries extend uniformly without paying attention to the original histology image (otherwise, the
+        # boundaries will be crooked)
+        labels = watershed(np.zeros(im.size[::-1] + (3,), dtype=np.uint8), np.array(labels))
 
-    # compute borders between labels, because in some cases, adjacent cells have intermittent overlaps
-    # that produce interrupted 0 boundaries
-    borders = mahotas.labeled.borders(labels, mode='ignore')
+        # set background pixels back to zero
+        labels[labels == background_label] = 0
 
-    #add borders to the labels
-    labels[borders] = 0
+        # compute borders between labels, because in some cases, adjacent cells have intermittent overlaps
+        # that produce interrupted 0 boundaries
+        borders = mahotas.labeled.borders(labels, mode='ignore')
+
+        # add borders to the labels
+        labels[borders] = 0
 
     if DEBUG:
         plt.subplot(224)
