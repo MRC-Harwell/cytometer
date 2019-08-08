@@ -1,3 +1,8 @@
+"""
+Rasterise hand traced contours as polygons, and split overlapping areas between contributing cells using watershed.
+This script creates the data in c3h_hfd_training_non_overlap.
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
@@ -6,58 +11,19 @@ import os
 
 import glob
 import matplotlib.pyplot as plt
-import numpy as np
-from svgpathtools import svg2paths
-from PIL import Image
-import PIL.ImageDraw
+from PIL import Image, ImageDraw
 from PIL.TiffTags import TAGS
-import tifffile
+import numpy as np
+import cytometer.data
 from cv2 import watershed
 import mahotas
-
+import tifffile
 
 DEBUG = False
 
-root_data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_data_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training')
-training_nooverlap_data_dir = os.path.join(home, 'Data/cytometer_data/c3h/c3h_hfd_training_non_overlap')
-
-# extract contour as a list of (X,Y) coordinates
-def extract_contour(path, x_res=1.0, y_res=1.0):
-
-    contour = []
-    for pt in path:
-
-        # (X, Y) for each point
-        contour.append((np.real(pt.start) * x_res, np.imag(pt.start) * y_res))
-
-        if DEBUG:
-            plt.plot(*zip(*contour))
-
-    return contour
-
-
-# extract contours that correspond to non-edge cells in SVG file as list of polygons with (X,Y)-vertices
-def extract_cell_contours_from_file(file, x_res=1.0, y_res=1.0):
-
-    # extract all paths from the SVG file
-    paths, attributes = svg2paths(file)
-
-    # loop paths
-    paths_out = []
-    for path, attribute in zip(paths, attributes):
-
-        # skip if the countour is not a cell (we also skip edge cells, as they are incomplete, and thus their area
-        # is misleading)
-        if not attribute['id'].startswith('Cell'):
-            continue
-
-        # extract contour polygon from the path object, and compute area
-        contour = extract_contour(path, x_res=x_res, y_res=y_res)
-        paths_out.append(contour)
-
-    return paths_out
-
+root_data_dir = os.path.join(home, 'Data/cytometer_data/c3h')
+training_data_dir = os.path.join(root_data_dir, 'c3h_hfd_training')
+training_nooverlap_data_dir = os.path.join(root_data_dir, 'c3h_hfd_training_non_overlap')
 
 # we are interested only in .tif files for which we created hand segmented contours
 file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
@@ -68,6 +34,16 @@ for n, file_svg in enumerate(file_list):
 
     # change file extension from .svg to .tif
     file_tif = file_svg.replace('.svg', '.tif')
+
+    # name of output file
+    file_tif_out = file_tif.replace(training_data_dir, training_nooverlap_data_dir)
+
+    # skip if file has been processed already
+    if os.path.isfile(file_tif_out):
+        print('Skipping... file already processed')
+        continue
+    else:
+        print('Processing file')
 
     # load image
     im = Image.open(file_tif)
@@ -84,18 +60,19 @@ for n, file_svg in enumerate(file_list):
     cell_count = np.zeros(im.size[::-1], dtype=np.int32)
 
     # extract contours
-    polygon = extract_cell_contours_from_file(file_svg)
+    polygon = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell')
 
     # if there are no cells, we skip to the next file
     if len(polygon) == 0:
+        print('Skipping... no cell contours')
         continue
 
     # loop cells
     for i, pg in enumerate(polygon):
 
         # create empty arrays with the same size as image
-        cell_mask = PIL.Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
-        draw = PIL.ImageDraw.Draw(cell_mask)
+        cell_mask = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+        draw = ImageDraw.Draw(cell_mask)
 
         # rasterize current cell
         draw.polygon(pg, outline="white", fill="white")
@@ -144,7 +121,6 @@ for n, file_svg in enumerate(file_list):
         plt.imshow(labels)
 
     ## save segmentation results
-    file_tif_out = file_tif.replace(training_data_dir, training_nooverlap_data_dir)
 
     # TIFF tag codes
     xresolution_tag = 282
