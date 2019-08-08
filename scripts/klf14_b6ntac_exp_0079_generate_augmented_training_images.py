@@ -63,13 +63,12 @@ im_file_list = glob.glob(os.path.join(training_dir, '*.svg'))
 im_file_list = [x.replace('.svg', '.tif') for x in im_file_list]
 
 # list of corresponding automatic non-overlap segmentations
+non_overlap_file_list = []
 for file in im_file_list:
-    file_non_overlap = file.replace(training_dir, training_non_overlap_data_dir)
-    if not os.path.isfile(file_non_overlap):
-        raise FileExistsError('File does not exist: ' + file_non_overlap)
-
-# list of corresponding image patches
-im_file_list = [seg_file.replace(training_non_overlap_data_dir, training_dir) for seg_file in im_file_list]
+    non_overlap_file = file.replace(training_dir, training_non_overlap_data_dir)
+    if not os.path.isfile(non_overlap_file):
+        raise FileExistsError('File does not exist: ' + non_overlap_file)
+    non_overlap_file_list.append(non_overlap_file)
 
 # load segmentations and compute distance maps
 dmap, mask, seg = cytometer.data.load_watershed_seg_and_compute_dmap(non_overlap_file_list)
