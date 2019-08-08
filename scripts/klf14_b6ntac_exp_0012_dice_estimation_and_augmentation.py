@@ -97,7 +97,7 @@ fold_i = 0
 # load datasets.
 # we need to load all images, whether for training or testing, because otherwise
 # ImageDataGenerator is not going to produce the same transformations in
-# klf14_b6ntac_generate_augmented_training_images.py
+# klf14_b6ntac_exp_0079_generate_augmented_training_images.py
 datasets, _, _ = cytometer.data.load_datasets(im_file_list, prefix_from='im',
                                               prefix_to=['im', 'lab', 'seg', 'mask'], nblocks=1)
 im = datasets['im']
