@@ -145,7 +145,7 @@ idx_train_all = aux['idx_train']
 
 '''Model training'''
 
-# TIF files that correspond to the SVG files (without augmentation)
+# TIFF files that correspond to the SVG files (without augmentation)
 im_orig_file_list = []
 for i, file in enumerate(svg_file_list):
     im_orig_file_list.append(file.replace('.svg', '.tif'))
@@ -162,7 +162,7 @@ for i, file in enumerate(svg_file_list):
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
 history = []
-for i_fold, idx_test in enumerate(idx_orig_test_all):
+for i_fold, idx_test in enumerate(idx_test_all):
 
     '''Load data'''
 
@@ -173,7 +173,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
     im_test_file_list = cytometer.data.augment_file_list(im_test_file_list, '_nan_', '_*_')
     im_train_file_list = cytometer.data.augment_file_list(im_train_file_list, '_nan_', '_*_')
 
-    # load the train and test data: im, seg, dmap and mask data
+    # load the train and test data (im, dmap, mask)
     train_dataset, train_file_list, train_shuffle_idx = \
         cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
@@ -181,7 +181,8 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
-    # remove training data where the mask has very few valid pixels
+    # remove training data where the mask has very few valid pixels (note: this will discard all the images without
+    # cells)
     train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
     test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
 
