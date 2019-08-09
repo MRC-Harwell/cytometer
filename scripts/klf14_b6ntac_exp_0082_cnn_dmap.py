@@ -1,5 +1,5 @@
 '''
-Dmap regression for all folds.
+Dmap regression for all folds (KLF14 and C3H datasets).
 
 Training vs testing is done at the histology slide level, not at the window level. This way, we really guarantee that
 the network has not been trained with data sampled from the same image as the test data.
