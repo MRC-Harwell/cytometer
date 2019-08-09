@@ -1,5 +1,5 @@
 """
-scripts/klf14_b6ntac_exp_0079_generate_augmented_training_images.py
+scripts/klf14_b6ntac_exp_0078_generate_augmented_training_images.py
 
 Script to generate augmented training data for the klf14_b6ntac experiments.
 

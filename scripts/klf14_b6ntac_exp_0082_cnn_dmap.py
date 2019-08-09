@@ -12,7 +12,7 @@ Like 0056, but:
 '''
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0080_cnn_dmap'
+experiment_id = 'klf14_b6ntac_exp_0082_cnn_dmap'
 
 # cross-platform home directory
 from pathlib import Path
