@@ -6,7 +6,7 @@ Script to generate augmented training data for the klf14_b6ntac experiments.
 It loads instance segmentation, and computes  distance transformations. It augments
 the training dataset with random rotations, flips and scale changes (consistent between corresponding data).
 
-This script creates dmap, im, mask, seg and lab in klf14_b6ntac_training_augmented.
+This script creates dmap, im, mask, contour and lab in klf14_b6ntac_training_augmented.
 """
 
 # cross-platform home directory
@@ -36,6 +36,7 @@ from skimage.transform import warp
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import cytometer.data
+import cytometer.utils
 
 # # limit GPU memory used
 # import tensorflow as tf
@@ -69,11 +70,12 @@ for file in im_file_list:
     if not os.path.isfile(non_overlap_file):
         raise FileExistsError('File does not exist: ' + non_overlap_file)
     non_overlap_file_list.append(non_overlap_file)
+assert(len(im_file_list) == len(non_overlap_file_list))
 
 # load segmentations and compute distance maps
-dmap, mask, seg = cytometer.data.load_watershed_seg_and_compute_dmap(non_overlap_file_list)
+dmap, mask, lab = cytometer.data.load_watershed_seg_and_compute_dmap(non_overlap_file_list)
 
-# load corresponding images and convert to float format
+# load corresponding images and convert to float format in [0, 255]
 im = cytometer.data.load_file_list_to_array(im_file_list)
 im = im.astype('float32', casting='safe')
 im /= 255
@@ -82,17 +84,17 @@ im /= 255
 n_im = im.shape[0]
 
 # save copy of the labelled image
-lab = seg.copy()
+contour = lab.copy()
 
 # set all inside pixels of segmentation to same value
-seg = (seg < 2).astype(np.uint8)
+contour = (contour < 2).astype(np.uint8)
 
 # keep only the contours, not the background
-seg = seg * mask
+contour = contour * mask
 
 # dilate contours
 for i in range(n_im):
-    seg[i, :, :, 0] = cv2.dilate(seg[i, :, :, 0], kernel=np.ones(shape=(3, 3)))
+    contour[i, :, :, 0] = cv2.dilate(contour[i, :, :, 0], kernel=np.ones(shape=(3, 3)))
 
 '''Copy original data
 '''
@@ -110,7 +112,7 @@ for i, base_file in enumerate(im_file_list):
         plt.subplot(222)
         plt.imshow(mask[i, :, :, 0])
         plt.subplot(223)
-        plt.imshow(seg[i, :, :, 0])
+        plt.imshow(contour[i, :, :, 0])
         plt.subplot(224)
         plt.imshow(lab[i, :, :, 0])
 
@@ -124,10 +126,22 @@ for i, base_file in enumerate(im_file_list):
     im_file = os.path.join(training_augmented_dir, 'im_seed_nan_' + base_name)
     dmap_file = os.path.join(training_augmented_dir, 'dmap_seed_nan_' + base_name)
     mask_file = os.path.join(training_augmented_dir, 'mask_seed_nan_' + base_name)
-    seg_file = os.path.join(training_augmented_dir, 'seg_seed_nan_' + base_name)
+    contour_file = os.path.join(training_augmented_dir, 'contour_seed_nan_' + base_name)
     lab_file = os.path.join(training_augmented_dir, 'lab_seed_nan_' + base_name)
 
-    # copy the image file and create files for the dmap and mask
+    # check whether output files already exist
+    is_im_file = os.path.isfile(im_file)
+    is_dmap_file = os.path.isfile(dmap_file)
+    is_mask_file = os.path.isfile(mask_file)
+    is_contour_file = os.path.isfile(contour_file)
+    is_lab_file = os.path.isfile(lab_file)
+    if np.all([is_im_file, is_dmap_file, is_mask_file, is_contour_file, is_lab_file]):
+        print('Skipping ... output files already exist')
+        continue
+    else:
+        print('Saving')
+
+    # copy the image file
     shutil.copy2(base_file, im_file)
 
     # save distance transforms (note: we have to save as float mode)
@@ -139,8 +153,8 @@ for i, base_file in enumerate(im_file_list):
     im_out.save(mask_file)
 
     # set all contour pixels (note: we can save as black and white 1 byte)
-    im_out = Image.fromarray(seg[i, :, :, 0].astype(np.uint8), mode='L')
-    im_out.save(seg_file)
+    im_out = Image.fromarray(contour[i, :, :, 0].astype(np.uint8), mode='L')
+    im_out.save(contour_file)
 
     # save labels (0-255 levels with 1 byte)
     if np.max(lab[i, :, :, 0]) > 255:
@@ -180,42 +194,52 @@ for seed in range(augment_factor - 1):
     for i in range(n_im):
         # generate random transformation
         transform.append(datagen.get_random_transform(img_shape=im.shape[1:3],
-                                                      seed=random.randint(0, 2 ** 32)))
+                                                      seed=random.randint(0, 2**32)))
 
     # loop applying transformations to data
     for i in range(n_im):
 
         print('  ** Image: ' + str(i) + '/' + str(n_im - 1))
 
+        # create filenames based on the original foo.tif, so that we have im_seed_001_foo.tif, dmap_seed_001_foo.tif,
+        # mask_seed_001_foo.tif, where seed_001 means data augmented using seed=1
+        base_file = im_file_list[i]
+        base_path, base_name = os.path.split(base_file)
+        transform_file = os.path.join(training_augmented_dir, 'transform_seed_' + str(seed).zfill(3) + '_'
+                                      + base_name.replace('.tif', '.pickle'))
+        im_file = os.path.join(training_augmented_dir, 'im_seed_' + str(seed).zfill(3) + '_' + base_name)
+        dmap_file = os.path.join(training_augmented_dir, 'dmap_seed_' + str(seed).zfill(3) + '_' + base_name)
+        mask_file = os.path.join(training_augmented_dir, 'mask_seed_' + str(seed).zfill(3) + '_' + base_name)
+        contour_file = os.path.join(training_augmented_dir, 'contour_seed_' + str(seed).zfill(3) + '_' + base_name)
+        lab_file = os.path.join(training_augmented_dir, 'lab_seed_' + str(seed).zfill(3) + '_' + base_name)
+
+        # check whether output files already exist
+        is_im_file = os.path.isfile(im_file)
+        is_dmap_file = os.path.isfile(dmap_file)
+        is_mask_file = os.path.isfile(mask_file)
+        is_contour_file = os.path.isfile(contour_file)
+        is_lab_file = os.path.isfile(lab_file)
+        if np.all([is_im_file, is_dmap_file, is_mask_file, is_contour_file, is_lab_file]):
+            print('Skipping ... output files already exist')
+            continue
+        else:
+            print('Saving')
+
         # convert transform from keras to skimage format
-        transform_skimage = cytometer.utils.keras2skimage_transform(transform[i], shape=im.shape[1:3])
+        transform_skimage, _ = cytometer.utils.keras2skimage_transform(transform[i], input_shape=im.shape[1:3])
 
         # apply affine transformation
         im_augmented = warp(im[i, :, :, :], transform_skimage.inverse, order=1, preserve_range=True)
         dmap_augmented = warp(dmap[i, :, :, 0], transform_skimage.inverse, order=1, preserve_range=True)
         mask_augmented = warp(mask[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
-        seg_augmented = warp(seg[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
+        contour_augmented = warp(contour[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
         lab_augmented = warp(lab[i, :, :, 0], transform_skimage.inverse, order=0, preserve_range=True)
-
-        # apply flips
-        if transform[i]['flip_horizontal'] == 1:
-            im_augmented = im_augmented[:, ::-1, :]
-            dmap_augmented = dmap_augmented[:, ::-1]
-            mask_augmented = mask_augmented[:, ::-1]
-            seg_augmented = seg_augmented[:, ::-1]
-            lab_augmented = lab_augmented[:, ::-1]
-        if transform[i]['flip_vertical'] == 1:
-            im_augmented = im_augmented[::-1, :, :]
-            dmap_augmented = dmap_augmented[::-1, :]
-            mask_augmented = mask_augmented[::-1, :]
-            seg_augmented = seg_augmented[::-1, :]
-            lab_augmented = lab_augmented[::-1, :]
 
         # convert to types for display and save to file
         im_augmented = (255 * im_augmented).astype(np.uint8)
         dmap_augmented = dmap_augmented.astype(np.float32)
         mask_augmented = mask_augmented.astype(np.uint8)
-        seg_augmented = seg_augmented.astype(np.uint8)
+        contour_augmented = contour_augmented.astype(np.uint8)
         lab_augmented = lab_augmented.astype(np.uint8)
 
         if DEBUG:
@@ -229,21 +253,9 @@ for seed in range(augment_factor - 1):
             plt.subplot(324)
             plt.imshow(mask_augmented)
             plt.subplot(325)
-            plt.imshow(seg_augmented)
+            plt.imshow(contour_augmented)
             plt.subplot(326)
             plt.imshow(lab_augmented)
-
-        # create filenames based on the original foo.tif, so that we have im_seed_001_foo.tif, dmap_seed_001_foo.tif,
-        # mask_seed_001_foo.tif, where seed_001 means data augmented using seed=1
-        base_file = im_file_list[i]
-        base_path, base_name = os.path.split(base_file)
-        transform_file = os.path.join(training_augmented_dir, 'transform_seed_' + str(seed).zfill(3) + '_'
-                                      + base_name.replace('.tif', '.pickle'))
-        im_file = os.path.join(training_augmented_dir, 'im_seed_' + str(seed).zfill(3) + '_' + base_name)
-        dmap_file = os.path.join(training_augmented_dir, 'dmap_seed_' + str(seed).zfill(3) + '_' + base_name)
-        mask_file = os.path.join(training_augmented_dir, 'mask_seed_' + str(seed).zfill(3) + '_' + base_name)
-        seg_file = os.path.join(training_augmented_dir, 'seg_seed_' + str(seed).zfill(3) + '_' + base_name)
-        lab_file = os.path.join(training_augmented_dir, 'lab_seed_' + str(seed).zfill(3) + '_' + base_name)
 
         # save tranformation in keras format
         pickle.dump(transform[i], open(transform_file, 'wb'))
@@ -261,8 +273,8 @@ for seed in range(augment_factor - 1):
         im_out.save(mask_file)
 
         # save contours (note: we can save as black and white 1 byte)
-        im_out = Image.fromarray(seg_augmented, mode='L')
-        im_out.save(seg_file)
+        im_out = Image.fromarray(contour_augmented, mode='L')
+        im_out.save(contour_file)
 
         # save labels (note: we can save as black and white 1 byte)
         im_out = Image.fromarray(lab_augmented, mode='L')
