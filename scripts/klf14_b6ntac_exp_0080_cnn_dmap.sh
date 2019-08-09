@@ -13,7 +13,7 @@ module load Anaconda3/5.1.0
 
 source activate cytometer_tensorflow
 
-python klf14_b6ntac_exp_0078_cnn_dmap.py
+python klf14_b6ntac_exp_0080_cnn_dmap.py
 
 echo "Finished at :"`date`
 exit 0
