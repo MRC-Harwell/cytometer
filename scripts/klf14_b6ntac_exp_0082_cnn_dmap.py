@@ -260,6 +260,11 @@ for i_fold, idx_test in enumerate(idx_test_all):
         print('Training duration: ' + str(toc - tic))
         history.append(hist.history)
 
+        # save training history
+        history_filename = os.path.join(saved_models_dir, experiment_id + '_history.npz')
+        with open(history_filename, 'w') as f:
+            json.dump(history, f)
+
     else:  # compile and train model: One GPU
 
         # checkpoint to save model after each epoch
@@ -286,10 +291,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
         print('Training duration: ' + str(toc - tic))
         history.append(hist.history)
 
-# save training history
-history_filename = os.path.join(saved_models_dir, experiment_id + '_history.npz')
-with open(history_filename, 'w') as f:
-    json.dump(history, f)
+        # save training history
+        history_filename = os.path.join(saved_models_dir, experiment_id + '_history.npz')
+        with open(history_filename, 'w') as f:
+            json.dump(history, f)
 
 if DEBUG:
     with open(history_filename, 'r') as f:
