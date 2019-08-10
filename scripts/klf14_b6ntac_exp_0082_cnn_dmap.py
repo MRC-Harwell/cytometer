@@ -83,7 +83,7 @@ c3h_training_augmented_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_a
 
 saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 
-saved_kfolds_filename = 'klf14_b6ntac_exp_0080_generate_kfolds.pickle'
+saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
 
 '''CNN Model'''
 
