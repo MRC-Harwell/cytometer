@@ -158,6 +158,13 @@ for i, file in enumerate(svg_file_list):
 history = []
 for i_fold, idx_test in enumerate(idx_test_all):
 
+    print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
+
+    # HACK: skip folds already trained
+    if i_fold <= 8:
+        print('Already computed')
+        continue
+
     '''Load data'''
 
     # split the data list into training and testing lists
