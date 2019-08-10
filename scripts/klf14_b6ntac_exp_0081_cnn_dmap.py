@@ -137,6 +137,9 @@ svg_file_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
+# correct home directory
+svg_file_list = [x.replace('/home/rcasero', home) for x in svg_file_list]
+
 '''Model training'''
 
 # TIFF files that correspond to the SVG files (without augmentation)
@@ -148,9 +151,11 @@ for i, file in enumerate(svg_file_list):
 
     # check that files exist
     if not os.path.isfile(file):
-        warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(file))
+        # warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(file))
+        warnings.warn('i = ' + str(i) + ': File does not exist: ' + file)
     if not os.path.isfile(im_orig_file_list[i]):
-        warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(im_orig_file_list[i]))
+        # warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(im_orig_file_list[i]))
+        warnings.warn('i = ' + str(i) + ': File does not exist: ' + im_orig_file_list[i])
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different

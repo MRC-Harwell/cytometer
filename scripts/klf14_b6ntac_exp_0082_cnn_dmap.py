@@ -143,6 +143,9 @@ svg_file_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
+# correct home directory
+svg_file_list = [x.replace('/home/rcasero', home) for x in svg_file_list]
+
 '''Model training'''
 
 # TIFF files that correspond to the SVG files (without augmentation)
