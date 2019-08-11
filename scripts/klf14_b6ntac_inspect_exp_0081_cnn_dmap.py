@@ -27,34 +27,17 @@ import pickle
 import warnings
 
 # other imports
-import datetime
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
-
-# for data parallelism in keras models
-from keras.utils import multi_gpu_model
-
 import cytometer.data
 import cytometer.utils
 import cytometer.model_checkpoint_parallel
-import tensorflow as tf
-
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 1.0
-# set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
