@@ -52,11 +52,11 @@ import cytometer.data
 import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.9
-# set_session(tf.Session(config=config))
+# limit GPU memory used
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.9
+set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -172,6 +172,11 @@ history = []
 for i_fold, idx_test in enumerate(idx_test_all):
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
+
+    # HACK: skip folds already trained
+    if i_fold <= 3:
+        print('Already computed')
+        continue
 
     '''Load data
     '''
