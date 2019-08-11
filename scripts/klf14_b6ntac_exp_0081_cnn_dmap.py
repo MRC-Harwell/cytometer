@@ -101,19 +101,19 @@ def fcn_sherrah2016_regression(input_shape, for_receptive_field=False):
                kernel_initializer='he_uniform')(input)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(3, 3), x=x)
 
-    x = Conv2D(filters=int(48), kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same',
+    x = Conv2D(filters=48, kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same',
                kernel_initializer='he_uniform')(x)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(5, 5), x=x)
 
-    x = Conv2D(filters=int(64), kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same',
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same',
                kernel_initializer='he_uniform')(x)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(9, 9), x=x)
 
-    x = Conv2D(filters=int(98), kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same',
+    x = Conv2D(filters=98, kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same',
                kernel_initializer='he_uniform')(x)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(17, 17), x=x)
 
-    x = Conv2D(filters=int(256), kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same',
+    x = Conv2D(filters=256, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same',
                kernel_initializer='he_uniform')(x)
     if for_receptive_field:
         x = Activation('linear')(x)
