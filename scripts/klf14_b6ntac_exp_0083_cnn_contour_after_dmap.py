@@ -67,7 +67,7 @@ DEBUG = False
 nblocks = 2
 
 # number of epochs for training
-epochs = 75
+epochs = 100
 
 # this is used both in dmap.predict(im) and in training of the contour model
 batch_size = 10
@@ -91,6 +91,15 @@ dmap_model_basename = 'klf14_b6ntac_exp_0081_cnn_dmap'
 
 def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
 
+
+    def activation_if(for_receptive_field, x):
+        if for_receptive_field:
+            # for estimation of receptive field, we need to use linear operators
+            x = Activation('linear')(x)
+        else:
+            # for regular training and inference, we use non-linear operators
+            x = Activation('relu')(x)
+        return x
 
     def activation_pooling_if(for_receptive_field, pool_size, x):
         if for_receptive_field:
@@ -123,12 +132,17 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
 
     x = Conv2D(filters=256, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same',
                kernel_initializer='he_uniform')(x)
-    if for_receptive_field:
-        x = Activation('linear')(x)
-    else:
-        x = Activation('relu')(x)
+    x = activation_if(for_receptive_field=for_receptive_field, x=x)
 
     # dimensionality reduction to 1 feature map
+    x = Conv2D(filters=64, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+               kernel_initializer='he_uniform')(x)
+    x = activation_if(for_receptive_field=for_receptive_field, x=x)
+
+    x = Conv2D(filters=8, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+               kernel_initializer='he_uniform')(x)
+    x = activation_if(for_receptive_field=for_receptive_field, x=x)
+
     x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
                kernel_initializer='he_uniform')(x)
 
@@ -173,11 +187,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
 
-    # HACK: skip folds already trained
-    if i_fold <= 3:
-        print('Already computed')
-        continue
-
     '''Load data
     '''
 
@@ -190,16 +199,20 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # load the train and test data (im, dmap, mask)
     train_dataset, train_file_list, train_shuffle_idx = \
-        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask', 'contour'],
+        cytometer.data.load_datasets(im_train_file_list, prefix_from='im', prefix_to=['im', 'mask', 'contour'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
     test_dataset, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask', 'contour'],
+        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'mask', 'contour'],
                                      nblocks=nblocks, shuffle_seed=i_fold)
 
     # remove training data where the mask has very few valid pixels (note: this will discard all the images without
     # cells)
     train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
     test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
+
+    # add seg pixels to the mask, because the mask doesn't fully cover the contour
+    train_dataset['mask'] = np.logical_or(train_dataset['mask'], train_dataset['contour'])
+    test_dataset['mask'] = np.logical_or(test_dataset['mask'], test_dataset['contour'])
 
     # fill in the little gaps in the mask
     kernel = np.ones((3, 3), np.uint8)
@@ -209,6 +222,12 @@ for i_fold, idx_test in enumerate(idx_test_all):
     for i in range(train_dataset['mask'].shape[0]):
         train_dataset['mask'][i, :, :, 0] = cv2.dilate(train_dataset['mask'][i, :, :, 0].astype(np.uint8),
                                                        kernel=kernel, iterations=1)
+
+    # cast types for training
+    test_dataset['contour'] = test_dataset['contour'].astype(np.float32)
+    train_dataset['contour'] = train_dataset['contour'].astype(np.float32)
+    test_dataset['mask'] = test_dataset['mask'].astype(np.float32)
+    train_dataset['mask'] = train_dataset['mask'].astype(np.float32)
 
     if DEBUG:
         i = 150
@@ -237,8 +256,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
     dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     dmap_model = keras.models.load_model(dmap_model_filename)
 
-    # replace histology images by the estimated dmaps. The reason to replace instead of creating a new 'dmap'
-    # object is to save memory
+    # replace histology images by the estimated dmaps. The reason to replace instead of creating a new 'dmap' object is
+    # to save memory
     train_dataset['im'] = dmap_model.predict(train_dataset['im'], batch_size)
     test_dataset['im'] = dmap_model.predict(test_dataset['im'], batch_size)
 
