@@ -207,8 +207,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # remove training data where the mask has very few valid pixels (note: this will discard all the images without
     # cells)
-    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='mask', threshold=1000)
-    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
+    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='contour', threshold=1000)
+    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='contour', threshold=1000)
 
     # add seg pixels to the mask, because the mask doesn't fully cover the contour
     train_dataset['mask'] = np.logical_or(train_dataset['mask'], train_dataset['contour'])
@@ -301,10 +301,14 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                                                            verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(contour_model, gpus=gpu_number)
-        parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
+        parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.1, gamma=2)},
                                optimizer='Adadelta',
                                metrics={'classification_output': 'accuracy'},
                                sample_weight_mode='element')
+        # parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
+        #                        optimizer='Adadelta',
+        #                        metrics={'classification_output': 'accuracy'},
+        #                        sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
