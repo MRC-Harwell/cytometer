@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #$ -P rittscher.prjc -q gpu8.q
-#$ -l gpu=2 -l gputype=p100
+#$ -l gpu=4 -l gputype=p100
 #$ -cwd -V
-#$ -pe shmem 2
+#$ -pe shmem 4
 
 echo "job ID: " $JOB_ID
 echo "Run on: " `hostname`
