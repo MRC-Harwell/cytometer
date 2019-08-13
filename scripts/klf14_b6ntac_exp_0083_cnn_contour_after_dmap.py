@@ -43,12 +43,13 @@ import keras
 import keras.backend as K
 
 from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
+from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation, BatchNormalization
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
 
 import cytometer.data
+import cytometer.utils
 import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
@@ -96,19 +97,23 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
         if for_receptive_field:
             # for estimation of receptive field, we need to use linear operators
             x = Activation('linear')(x)
+            x = BatchNormalization(axis=3)(x)
         else:
             # for regular training and inference, we use non-linear operators
             x = Activation('relu')(x)
+            x = BatchNormalization(axis=3)(x)
         return x
 
     def activation_pooling_if(for_receptive_field, pool_size, x):
         if for_receptive_field:
             # for estimation of receptive field, we need to use linear operators
             x = Activation('linear')(x)
+            x = BatchNormalization(axis=3)(x)
             x = AvgPool2D(pool_size=pool_size, strides=1, padding='same')(x)
         else:
             # for regular training and inference, we use non-linear operators
             x = Activation('relu')(x)
+            x = BatchNormalization(axis=3)(x)
             x = MaxPooling2D(pool_size=pool_size, strides=1, padding='same')(x)
         return x
 
@@ -301,14 +306,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                                                            verbose=1, save_best_only=True)
         # compile model
         parallel_model = multi_gpu_model(contour_model, gpus=gpu_number)
-        parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.1, gamma=2)},
+        parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.9, gamma=2)},
                                optimizer='Adadelta',
                                metrics={'classification_output': 'accuracy'},
                                sample_weight_mode='element')
-        # parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
-        #                        optimizer='Adadelta',
-        #                        metrics={'classification_output': 'accuracy'},
-        #                        sample_weight_mode='element')
 
         # train model
         tic = datetime.datetime.now()
