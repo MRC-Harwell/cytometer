@@ -41,7 +41,6 @@ import matplotlib.pyplot as plt
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
-import keras_contrib.callbacks
 
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation, BatchNormalization
