@@ -107,6 +107,7 @@ if DEBUG:
     plt.ylabel('Accuracy', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
+    plt.tight_layout()
 
     plt.clf()
     for i_fold in range(len(history)):
@@ -115,6 +116,7 @@ if DEBUG:
     plt.ylabel('Validation accuracy', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
+    plt.tight_layout()
 
     plt.clf()
     for i_fold in range(len(history)):
@@ -123,6 +125,7 @@ if DEBUG:
     plt.ylabel('Loss', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
+    plt.tight_layout()
 
     plt.clf()
     for i_fold in range(len(history)):
@@ -131,6 +134,7 @@ if DEBUG:
     plt.ylabel('Validation loss', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
+    plt.tight_layout()
 
 
 '''Inspect model results'''
