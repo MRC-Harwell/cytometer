@@ -41,6 +41,7 @@ import matplotlib.pyplot as plt
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
+import keras_contrib.callbacks
 
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation, BatchNormalization
@@ -212,8 +213,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # remove training data where the mask has very few valid pixels (note: this will discard all the images without
     # cells)
-    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='contour', threshold=1000)
-    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='contour', threshold=1000)
+    train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='contour', threshold=1900)
+    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='contour', threshold=1900)
 
     # add seg pixels to the mask, because the mask doesn't fully cover the contour
     train_dataset['mask'] = np.logical_or(train_dataset['mask'], train_dataset['contour'])
@@ -235,25 +236,30 @@ for i_fold, idx_test in enumerate(idx_test_all):
     train_dataset['mask'] = train_dataset['mask'].astype(np.float32)
 
     if DEBUG:
-        i = 150
-        plt.clf()
-        for pi, prefix in enumerate(train_dataset.keys()):
-            plt.subplot(1, len(train_dataset.keys()), pi + 1)
-            if train_dataset[prefix].shape[-1] < 3:
-                plt.imshow(train_dataset[prefix][i, :, :, 0])
-            else:
-                plt.imshow(train_dataset[prefix][i, :, :, :])
-            plt.title('out[' + prefix + ']')
+        for i in range(train_dataset[list(train_dataset.keys())[0]].shape[0]):
+            plt.clf()
+            for pi, prefix in enumerate(train_dataset.keys()):
+                plt.subplot(1, len(train_dataset.keys()), pi + 1)
+                if train_dataset[prefix].shape[-1] < 3:
+                    plt.imshow(train_dataset[prefix][i, :, :, 0])
+                else:
+                    plt.imshow(train_dataset[prefix][i, :, :, :])
+                plt.title('out[' + prefix + ']')
+                plt.axis('off')
+            plt.title('out[' + prefix + ']: i = ' + str(i))
+            plt.pause(0.75)
 
-        i = 22
-        plt.clf()
-        for pi, prefix in enumerate(test_dataset.keys()):
-            plt.subplot(1, len(test_dataset.keys()), pi + 1)
-            if test_dataset[prefix].shape[-1] < 3:
-                plt.imshow(test_dataset[prefix][i, :, :, 0])
-            else:
-                plt.imshow(test_dataset[prefix][i, :, :, :])
-            plt.title('out[' + prefix + ']')
+        for i in range(test_dataset[list(test_dataset.keys())[0]].shape[0]):
+            plt.clf()
+            for pi, prefix in enumerate(test_dataset.keys()):
+                plt.subplot(1, len(test_dataset.keys()), pi + 1)
+                if test_dataset[prefix].shape[-1] < 3:
+                    plt.imshow(test_dataset[prefix][i, :, :, 0])
+                else:
+                    plt.imshow(test_dataset[prefix][i, :, :, :])
+                plt.title('out[' + prefix + ']')
+            plt.title('out[' + prefix + ']: i = ' + str(i))
+            plt.pause(0.75)
 
     '''Estimate dmaps'''
 
@@ -283,6 +289,13 @@ for i_fold, idx_test in enumerate(idx_test_all):
     with tf.device('/cpu:0'):
         contour_model = fcn_sherrah2016_classifier(input_shape=train_dataset['im'].shape[1:])
 
+    # call for cyclical learning rate
+    clr = keras_contrib.callbacks.CyclicLR(
+        mode='triangular2',
+        base_lr=1e-7,
+        max_lr=1e-2,
+        step_size=8 * (train_dataset['im'].shape[0] // batch_size))
+
     # # Block for transfer learning:
     # for lay in [1, 4, 7]:
     #     # transfer weights from dmap to contour model in the first 3 convolutional layers
@@ -304,6 +317,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
         # checkpoint to save model after each epoch
         checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
                                                                            verbose=1, save_best_only=True)
+
         # compile model
         parallel_model = multi_gpu_model(contour_model, gpus=gpu_number)
         parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.9, gamma=2)},
@@ -320,7 +334,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                                    {'classification_output': test_dataset['contour']},
                                                    {'classification_output': test_dataset['mask'][..., 0]}),
                                   batch_size=batch_size, epochs=epochs, initial_epoch=0,
-                                  callbacks=[checkpointer])
+                                  callbacks=[checkpointer, clr])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
         history.append(hist.history)
