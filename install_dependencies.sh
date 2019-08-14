@@ -45,6 +45,7 @@ sudo apt install -y r-base r-cran-lme4
 source activate cytometer_tensorflow
 
 # install other python packages
+pip install git+https://www.github.com/keras-team/keras-contrib.git
 conda install -y matplotlib pillow 
 conda install -y scikit-image scikit-learn h5py 
 conda install -y nose pytest
