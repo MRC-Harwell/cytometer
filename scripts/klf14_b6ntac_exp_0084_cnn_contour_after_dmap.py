@@ -66,13 +66,13 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of blocks to split each image into so that training fits into GPU memory
-nblocks = 2
+nblocks = 1
 
 # number of epochs for training
 epochs = 100
 
 # this is used both in dmap.predict(im) and in training of the contour model
-batch_size = 10
+batch_size = 2
 
 '''Directories and filenames
 '''
@@ -266,6 +266,8 @@ for i_fold, idx_test in enumerate(idx_test_all):
     # load dmap model that we are going to use as the basis for the contour model
     dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     dmap_model = keras.models.load_model(dmap_model_filename)
+    if dmap_model.input_shape[1:3] != test_dataset['im'].shape[1:3]:
+        dmap_model = cytometer.utils.change_input_size(dmap_model, batch_shape=test_dataset['im'].shape)
 
     # replace histology images by the estimated dmaps. The reason to replace instead of creating a new 'dmap' object is
     # to save memory
@@ -351,7 +353,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                                        verbose=1, save_best_only=True)
 
         # compile model
-        contour_model.compile(loss={'classification_output': 'binary_crossentropy'},
+        contour_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.9, gamma=2)},
                               optimizer='Adadelta',
                               metrics={'classification_output': 'accuracy'},
                               sample_weight_mode='element')
