@@ -209,3 +209,4 @@ for i_fold, idx_test in enumerate(idx_test_all):
             plt.subplot(236)
             plt.imshow(pred_contour[i, :, :, 0])
             plt.axis('off')
+            plt.pause(0.75)
