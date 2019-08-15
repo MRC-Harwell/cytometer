@@ -188,7 +188,6 @@ for i, file in enumerate(svg_file_list):
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
-history = []
 for i_fold, idx_test in enumerate(idx_test_all):
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
@@ -339,10 +338,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                   callbacks=[checkpointer, clr])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
-        history.append(hist.history)
+        history = hist.history
 
         # save training history
-        history_filename = os.path.join(saved_models_dir, experiment_id + '_history.npz')
+        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.npz')
         with open(history_filename, 'w') as f:
             json.dump(history, f)
 
@@ -370,10 +369,10 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                  callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
-        history.append(hist.history)
+        history = hist.history
 
         # save training history
-        history_filename = os.path.join(saved_models_dir, experiment_id + '_history.npz')
+        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.npz')
         with open(history_filename, 'w') as f:
             json.dump(history, f)
 
