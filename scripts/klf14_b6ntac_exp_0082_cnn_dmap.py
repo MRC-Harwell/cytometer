@@ -33,8 +33,8 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
