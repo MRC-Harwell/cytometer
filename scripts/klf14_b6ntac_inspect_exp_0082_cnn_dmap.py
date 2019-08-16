@@ -13,6 +13,7 @@ Like 0056, but:
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_inspect_exp_0082_cnn_dmap'
+original_experiment_id = 'klf14_b6ntac_exp_0082_cnn_dmap'
 
 # cross-platform home directory
 from pathlib import Path
@@ -56,6 +57,11 @@ klf14_training_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
 klf14_training_non_overlap_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_non_overlap')
 klf14_training_augmented_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_augmented')
 
+c3h_root_data_dir = os.path.join(home, 'Data/cytometer_data/c3h')
+c3h_training_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training')
+c3h_training_non_overlap_data_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_non_overlap')
+c3h_training_augmented_dir = os.path.join(c3h_root_data_dir, 'c3h_hfd_training_augmented')
+
 saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 
 saved_kfolds_filename = 'klf14_b6ntac_exp_0080_generate_kfolds.pickle'
@@ -92,39 +98,75 @@ for i, file in enumerate(svg_file_list):
 '''Inspect training convergence'''
 
 # load training history
+
+history_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0081_cnn_dmap_history.npz')
+with open(history_filename, 'r') as f:
+    history_0081 = json.load(f)
 history_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0082_cnn_dmap_history.npz')
 with open(history_filename, 'r') as f:
-    history = json.load(f)
+    history_0082 = json.load(f)
 
 if DEBUG:
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['mean_absolute_error'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(history_0081)):
+        if i_fold == 0:
+            plt.plot(history_0081[i_fold]['mean_absolute_error'], 'C0', label='KLF14')
+        else:
+            plt.plot(history_0081[i_fold]['mean_absolute_error'], 'C0')
+    for i_fold in range(len(history_0082)):
+        if i_fold == 0:
+            plt.plot(history_0082[i_fold]['mean_absolute_error'], 'C1', label='KLF14+C3H')
+        else:
+            plt.plot(history_0082[i_fold]['mean_absolute_error'], 'C1')
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Mean absolute error', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['val_mean_absolute_error'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(history_0081)):
+        if i_fold == 0:
+            plt.plot(history_0081[i_fold]['val_mean_absolute_error'], 'C0', label='KLF14')
+        else:
+            plt.plot(history_0081[i_fold]['val_mean_absolute_error'], 'C0')
+    for i_fold in range(len(history_0082)):
+        if i_fold == 0:
+            plt.plot(history_0082[i_fold]['val_mean_absolute_error'], 'C1', label='KLF14+C3H')
+        else:
+            plt.plot(history_0082[i_fold]['val_mean_absolute_error'], 'C1')
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Validation mean_absolute_error', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['loss'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(history_0081)):
+        if i_fold == 0:
+            plt.plot(history_0081[i_fold]['loss'], 'C0', label='KLF14')
+        else:
+            plt.plot(history_0081[i_fold]['loss'], 'C0')
+    for i_fold in range(len(history_0082)):
+        if i_fold == 0:
+            plt.plot(history_0082[i_fold]['loss'], 'C1', label='KLF14+C3H')
+        else:
+            plt.plot(history_0082[i_fold]['loss'], 'C1')
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Loss', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['val_loss'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(history_0081)):
+        if i_fold == 0:
+            plt.plot(history_0081[i_fold]['val_loss'], 'C0', label='KLF14')
+        else:
+            plt.plot(history_0081[i_fold]['val_loss'], 'C0')
+    for i_fold in range(len(history_0082)):
+        if i_fold == 0:
+            plt.plot(history_0082[i_fold]['val_loss'], 'C1', label='KLF14+C3H')
+        else:
+            plt.plot(history_0082[i_fold]['val_loss'], 'C1')
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Validation loss', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
