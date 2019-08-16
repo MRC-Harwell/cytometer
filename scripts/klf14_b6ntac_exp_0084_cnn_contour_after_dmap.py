@@ -338,10 +338,14 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                   callbacks=[checkpointer, clr])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+
+        # cast history values to a type that is JSON serializable
         history = hist.history
+        for key in history.keys():
+            history[key] = list(map(float, history[key]))
 
         # save training history
-        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.npz')
+        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.json')
         with open(history_filename, 'w') as f:
             json.dump(history, f)
 
@@ -369,20 +373,35 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                  callbacks=[checkpointer])
         toc = datetime.datetime.now()
         print('Training duration: ' + str(toc - tic))
+
+        # cast history values to a type that is JSON serializable
         history = hist.history
+        for key in history.keys():
+            history[key] = list(map(float, history[key]))
 
         # save training history
-        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.npz')
+        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.json')
         with open(history_filename, 'w') as f:
             json.dump(history, f)
 
 if DEBUG:
-    with open(history_filename, 'r') as f:
-        history = json.load(f)
+    for i_fold in range(len(idx_test_all)):
 
-    plt.clf()
-    plt.plot(history[i_fold]['acc'], label='acc')
-    plt.plot(history[i_fold]['val_acc'], label='val_acc')
-    plt.plot(history[i_fold]['loss'], label='loss')
-    plt.plot(history[i_fold]['val_loss'], label='val_loss')
-    plt.legend()
+        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.json')
+
+        with open(history_filename, 'r') as f:
+            history = json.load(f)
+
+        plt.clf()
+        plt.subplot(221)
+        plt.plot(history['acc'], label='acc')
+        plt.legend()
+        plt.subplot(222)
+        plt.plot(history['val_acc'], label='val_acc')
+        plt.legend()
+        plt.subplot(223)
+        plt.plot(history['loss'], label='loss')
+        plt.legend()
+        plt.subplot(224)
+        plt.plot(history['val_loss'], label='val_loss')
+        plt.legend()

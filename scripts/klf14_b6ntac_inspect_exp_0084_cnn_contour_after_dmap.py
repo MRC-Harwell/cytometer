@@ -93,16 +93,15 @@ for i, file in enumerate(svg_file_list):
 
 '''Inspect training convergence'''
 
-# load training history
-history_filename = os.path.join(saved_models_dir, original_experiment_id + '_history.npz')
-with open(history_filename, 'r') as f:
-    history = json.load(f)
-
 if DEBUG:
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['acc'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(idx_test_all)):
+        history_filename = os.path.join(saved_models_dir,
+                                        original_experiment_id + '_history_fold_' + str(i_fold) + '.json')
+        with open(history_filename, 'r') as f:
+            history = json.load(f)
+        plt.plot(history['acc'], label='fold = ' + str(i_fold))
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Accuracy', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
@@ -110,8 +109,12 @@ if DEBUG:
     plt.tight_layout()
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['val_acc'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(idx_test_all)):
+        history_filename = os.path.join(saved_models_dir,
+                                        original_experiment_id + '_history_fold_' + str(i_fold) + '.json')
+        with open(history_filename, 'r') as f:
+            history = json.load(f)
+        plt.plot(history['val_acc'], label='fold = ' + str(i_fold))
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Validation accuracy', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
@@ -119,8 +122,12 @@ if DEBUG:
     plt.tight_layout()
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['loss'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(idx_test_all)):
+        history_filename = os.path.join(saved_models_dir,
+                                        original_experiment_id + '_history_fold_' + str(i_fold) + '.json')
+        with open(history_filename, 'r') as f:
+            history = json.load(f)
+        plt.plot(history['loss'], label='fold = ' + str(i_fold))
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Loss', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
@@ -128,8 +135,12 @@ if DEBUG:
     plt.tight_layout()
 
     plt.clf()
-    for i_fold in range(len(history)):
-        plt.plot(history[i_fold]['val_loss'], label='fold = ' + str(i_fold))
+    for i_fold in range(len(idx_test_all)):
+        history_filename = os.path.join(saved_models_dir,
+                                        original_experiment_id + '_history_fold_' + str(i_fold) + '.json')
+        with open(history_filename, 'r') as f:
+            history = json.load(f)
+        plt.plot(history['val_loss'], label='fold = ' + str(i_fold))
     plt.tick_params(axis="both", labelsize=14)
     plt.ylabel('Validation loss', fontsize=14)
     plt.xlabel('Epoch', fontsize=14)
