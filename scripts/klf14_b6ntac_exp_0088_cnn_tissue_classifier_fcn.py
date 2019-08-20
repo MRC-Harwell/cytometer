@@ -43,6 +43,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import random
+import pysto
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
@@ -74,7 +75,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of epochs for training
-epochs = 10
+epochs = 100
 
 # data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
 augment_factor = 10
@@ -92,7 +93,7 @@ smallest_dice = 0.5
 dice_threshold = 0.9
 
 # batch size for training
-batch_size = 2
+batch_size = 10
 
 
 '''Directories and filenames
@@ -107,7 +108,6 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
-dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
 
 '''CNN Model
 '''
@@ -423,6 +423,21 @@ for i_fold, idx_test in enumerate(idx_test_all):
     out_class_train = 1 - out_class_train
     out_class_test = 1 - out_class_test
 
+    # split into blocks
+    _, im_array_train, _ = pysto.imgproc.block_split(im_array_train, nblocks=[1, 2, 2, 1])
+    im_array_train = np.concatenate(im_array_train, axis=0)
+    _, out_class_train, _ = pysto.imgproc.block_split(out_class_train, nblocks=[1, 2, 2, 1])
+    out_class_train = np.concatenate(out_class_train, axis=0)
+    _, out_mask_train, _ = pysto.imgproc.block_split(out_mask_train, nblocks=[1, 2, 2])
+    out_mask_train = np.concatenate(out_mask_train, axis=0)
+
+    _, im_array_test, _ = pysto.imgproc.block_split(im_array_test, nblocks=[1, 2, 2, 1])
+    im_array_test = np.concatenate(im_array_test, axis=0)
+    _, out_class_test, _ = pysto.imgproc.block_split(out_class_test, nblocks=[1, 2, 2, 1])
+    out_class_test = np.concatenate(out_class_test, axis=0)
+    _, out_mask_test, _ = pysto.imgproc.block_split(out_mask_test, nblocks=[1, 2, 2])
+    out_mask_test = np.concatenate(out_mask_test, axis=0)
+
     # instantiate model
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_classifier(input_shape=im_array_train.shape[1:])
@@ -441,7 +456,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # train model
     tic = datetime.datetime.now()
-
     hist = parallel_model.fit(im_array_train,
                               {'classification_output': out_class_train},
                               sample_weight={'classification_output': out_mask_train},
