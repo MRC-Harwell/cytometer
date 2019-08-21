@@ -478,6 +478,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_classifier(input_shape=im_array_train.shape[1:])
 
+    # output filenames
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
     saved_logs_dir = os.path.join(saved_models_dir, experiment_id + '_logs_fold_' + str(i_fold))
 
