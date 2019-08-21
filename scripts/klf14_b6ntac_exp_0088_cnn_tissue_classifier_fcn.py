@@ -51,9 +51,10 @@ import pysto
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
+import keras_contrib
 
 from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation
+from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation, BatchNormalization
 
 # for data parallelism in keras models
 from keras.utils import multi_gpu_model
@@ -93,7 +94,7 @@ smallest_dice = 0.5
 dice_threshold = 0.9
 
 # batch size for training
-batch_size = 10
+batch_size = 8
 
 
 '''Directories and filenames
@@ -119,9 +120,11 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
         if for_receptive_field:
             # for estimation of receptive field, we need to use linear operators
             x = Activation('linear')(x)
+            x = BatchNormalization(axis=3)(x)
         else:
             # for regular training and inference, we use non-linear operators
             x = Activation('relu')(x)
+            x = BatchNormalization(axis=3)(x)
         return x
 
     def activation_pooling_if(for_receptive_field, pool_size, x):
@@ -129,41 +132,50 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
             # for estimation of receptive field, we need to use linear operators
             x = Activation('linear')(x)
             x = AvgPool2D(pool_size=pool_size, strides=1, padding='same')(x)
+            x = BatchNormalization(axis=3)(x)
         else:
             # for regular training and inference, we use non-linear operators
             x = Activation('relu')(x)
             x = MaxPooling2D(pool_size=pool_size, strides=1, padding='same')(x)
+            x = BatchNormalization(axis=3)(x)
         return x
 
     input = Input(shape=input_shape, dtype='float32', name='input_image')
 
-    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same')(input)
+    x = Conv2D(filters=32, kernel_size=(5, 5), strides=1, dilation_rate=1, padding='same',
+               kernel_initializer='he_uniform')(input)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(3, 3), x=x)
 
-    x = Conv2D(filters=48, kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same')(x)
+    x = Conv2D(filters=48, kernel_size=(5, 5), strides=1, dilation_rate=2, padding='same',
+               kernel_initializer='he_uniform')(x)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(5, 5), x=x)
 
-    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same')(x)
+    x = Conv2D(filters=64, kernel_size=(3, 3), strides=1, dilation_rate=4, padding='same',
+               kernel_initializer='he_uniform')(x)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(9, 9), x=x)
 
-    x = Conv2D(filters=98, kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same')(x)
+    x = Conv2D(filters=98, kernel_size=(3, 3), strides=1, dilation_rate=8, padding='same',
+               kernel_initializer='he_uniform')(x)
     x = activation_pooling_if(for_receptive_field=for_receptive_field, pool_size=(17, 17), x=x)
 
-    x = Conv2D(filters=256, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same')(x)
+    x = Conv2D(filters=256, kernel_size=(3, 3), strides=1, dilation_rate=16, padding='same',
+               kernel_initializer='he_uniform')(x)
     x = activation_if(for_receptive_field=for_receptive_field, x=x)
 
     # dimensionality reduction to 1 feature map
-    x = Conv2D(filters=64, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    x = Conv2D(filters=64, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+               kernel_initializer='he_uniform')(x)
     x = activation_if(for_receptive_field=for_receptive_field, x=x)
 
-    x = Conv2D(filters=8, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    x = Conv2D(filters=8, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+               kernel_initializer='he_uniform')(x)
     x = activation_if(for_receptive_field=for_receptive_field, x=x)
 
-    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same')(x)
+    x = Conv2D(filters=1, kernel_size=(1, 1), strides=1, dilation_rate=1, padding='same',
+               kernel_initializer='he_uniform')(x)
 
     # classification output
-    # classification_output = Activation('hard_sigmoid', name='classification_output')(x)
-    classification_output = Activation('softmax', name='classification_output')(x)
+    classification_output = Activation('hard_sigmoid', name='classification_output')(x)
 
     return Model(inputs=input, outputs=[classification_output])
 
@@ -398,10 +410,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
-    if i_fold <= 0:
-        print('... Skipping')
-        continue
-
     # test and training image indices
     idx_test = idx_test_all[i_fold]
     idx_train = idx_train_all[i_fold]
@@ -423,7 +431,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
     out_mask_train = out_mask_all[idx_train, :, :]
     out_mask_test = out_mask_all[idx_test, :, :]
 
-    # encode as 0: other, 1: cell
+    # encode as 0: other, 1: WAT
     out_class_train = 1 - out_class_train
     out_class_test = 1 - out_class_test
 
@@ -442,18 +450,56 @@ for i_fold, idx_test in enumerate(idx_test_all):
     _, out_mask_test, _ = pysto.imgproc.block_split(out_mask_test, nblocks=[1, 2, 2])
     out_mask_test = np.concatenate(out_mask_test, axis=0)
 
+    if DEBUG:
+        i = 10
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im_array_train[i, :, :, :])
+        plt.subplot(222)
+        plt.imshow(out_class_train[i, :, :, 0])
+        plt.subplot(223)
+        plt.imshow(out_mask_train[i, :, :])
+
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im_array_test[i, :, :, :])
+        plt.subplot(222)
+        plt.imshow(out_class_test[i, :, :, 0])
+        plt.subplot(223)
+        plt.imshow(out_mask_test[i, :, :])
+
+    if DEBUG:
+        # proportion of WAT pixels
+        n_other = np.count_nonzero(np.logical_and(out_class_train[:, :, :, 0] == 0, out_mask_train))
+        n_wat = np.count_nonzero(np.logical_and(out_class_train[:, :, :, 0] == 1, out_mask_train))
+        alpha_training = n_wat / (n_wat + n_other)
+
     # instantiate model
     with tf.device('/cpu:0'):
         model = fcn_sherrah2016_classifier(input_shape=im_array_train.shape[1:])
 
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
+    saved_logs_dir = os.path.join(saved_models_dir, experiment_id + '_logs_fold_' + str(i_fold))
 
     # checkpoint to save model after each epoch
     checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                       verbose=1, save_best_only=True)
+                                                                       verbose=1, save_best_only=False)
+
+    # callback to write a log for TensorBoard
+    # Note: run this on the server where the training is happening:
+    #       tensorboard --logdir=saved_logs_dir
+    tensorboard = keras.callbacks.TensorBoard(log_dir=saved_logs_dir)
+
+    # call for cyclical learning rate
+    clr = keras_contrib.callbacks.CyclicLR(
+        mode='triangular2',
+        base_lr=1e-7,
+        max_lr=1e-2,
+        step_size=8 * (im_array_train.shape[0] // batch_size))
+
     # compile model
     parallel_model = multi_gpu_model(model, gpus=gpu_number)
-    parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
+    parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.80, gamma=2)},
                            optimizer='Adadelta',
                            metrics={'classification_output': 'accuracy'},
                            sample_weight_mode='element')
@@ -467,7 +513,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                                                {'classification_output': out_class_test},
                                                {'classification_output': out_mask_test}),
                               batch_size=batch_size, epochs=epochs, initial_epoch=0,
-                              callbacks=[checkpointer])
+                              callbacks=[checkpointer, tensorboard, clr])
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
