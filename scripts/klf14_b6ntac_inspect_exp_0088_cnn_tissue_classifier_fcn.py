@@ -46,6 +46,9 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
 
+from tensorboard.backend.event_processing import event_accumulator
+import pandas as pd
+
 import cytometer.data
 import cytometer.utils
 import cytometer.model_checkpoint_parallel
@@ -152,6 +155,53 @@ if DEBUG:
     plt.xlabel('Epoch', fontsize=14)
     plt.legend()
     plt.tight_layout()
+
+
+'''TensorBoard logs'''
+
+# list of metrics in the logs (we assume all folds have the same)
+size_guidance = {  # limit number of elements that can be loaded so that memory is not overfilled
+    event_accumulator.COMPRESSED_HISTOGRAMS: 500,
+    event_accumulator.IMAGES: 4,
+    event_accumulator.AUDIO: 4,
+    event_accumulator.SCALARS: 0,
+    event_accumulator.HISTOGRAMS: 1,
+}
+i_fold = 0
+saved_logs_dir = os.path.join(saved_models_dir, original_experiment_id + '_logs_fold_' + str(i_fold))
+ea = event_accumulator.EventAccumulator(saved_logs_dir, size_guidance=size_guidance)
+ea.Reload()  # loads events from file
+tags = ea.Tags()['scalars']
+
+if DEBUG:
+
+    plt.clf()
+
+    for i_fold in range(10):
+
+        saved_logs_dir = os.path.join(saved_models_dir, original_experiment_id + '_logs_fold_' + str(i_fold))
+        if not os.path.isdir(saved_logs_dir):
+            continue
+
+        # load log data for current fold
+        ea = event_accumulator.EventAccumulator(saved_logs_dir, size_guidance=size_guidance)
+        ea.Reload()
+
+        # plot curves for each metric
+        for i, tag in enumerate(tags):
+            df = pd.DataFrame(ea.Scalars(tag))
+
+            # plot
+            plt.subplot(2, 2, i + 1)
+            plt.plot(df['step'], df['value'], label='fold ' + str(i_fold))
+
+    for i, tag in enumerate(tags):
+        plt.subplot(2, 2, i + 1)
+        plt.tick_params(axis="both", labelsize=14)
+        plt.ylabel(tag, fontsize=14)
+        plt.xlabel('Epoch', fontsize=14)
+        plt.legend(fontsize=12)
+        plt.tight_layout()
 
 
 '''Compare training convergence between 0085 (full images for training) and 0081 (images split into 4 blocks)'''
