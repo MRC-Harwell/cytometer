@@ -299,25 +299,24 @@ for i_fold, idx_test in enumerate(idx_test_all):
         cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
                                      nblocks=1, shuffle_seed=None)
 
-    # remove training data where the mask has very few valid pixels (note: this will discard all the images without
-    # cells)
-    test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
+    # # remove training data where the mask has very few valid pixels (note: this will discard all the images without
+    # # cells)
+    # test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='mask', threshold=1000)
 
-    # fill in the little gaps in the mask
-    kernel = np.ones((3, 3), np.uint8)
-    for i in range(test_dataset['mask'].shape[0]):
-        test_dataset['mask'][i, :, :, 0] = cv2.dilate(test_dataset['mask'][i, :, :, 0].astype(np.uint8),
-                                                      kernel=kernel, iterations=1)
+    # # fill in the little gaps in the mask
+    # kernel = np.ones((3, 3), np.uint8)
+    # for i in range(test_dataset['mask'].shape[0]):
+    #     test_dataset['mask'][i, :, :, 0] = cv2.dilate(test_dataset['mask'][i, :, :, 0].astype(np.uint8),
+    #                                                   kernel=kernel, iterations=1)
 
-    # load dmap model, and adjust input size
-    saved_model_filename = os.path.join(saved_models_dir,
-                                        'klf14_b6ntac_exp_0081_cnn_dmap_model_fold_' + str(i_fold) + '.h5')
-    dmap_model = keras.models.load_model(saved_model_filename)
-    if dmap_model.input_shape[1:3] != test_dataset['im'].shape[1:3]:
-        dmap_model = cytometer.utils.change_input_size(dmap_model, batch_shape=test_dataset['im'].shape)
+    # load tissue classifier
+    saved_model_filename = os.path.join(saved_models_dir, original_experiment_id + '_model_fold_' + str(i_fold) + '.h5')
+    tissue_model = keras.models.load_model(saved_model_filename)
+    if tissue_model.input_shape[1:3] != test_dataset['im'].shape[1:3]:
+        tissue_model = cytometer.utils.change_input_size(tissue_model, batch_shape=test_dataset['im'].shape)
 
     # estimate dmaps
-    pred_dmap = dmap_model.predict(test_dataset['im'], batch_size=4)
+    pred_dmap = tissue_model.predict(test_dataset['im'], batch_size=4)
 
     if DEBUG:
         for i in range(test_dataset['im'].shape[0]):
