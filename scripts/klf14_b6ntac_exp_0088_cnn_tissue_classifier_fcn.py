@@ -76,7 +76,7 @@ K.set_image_data_format('channels_last')
 DEBUG = False
 
 # number of epochs for training
-epochs = 100
+epochs = 75
 
 # data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
 augment_factor = 10
