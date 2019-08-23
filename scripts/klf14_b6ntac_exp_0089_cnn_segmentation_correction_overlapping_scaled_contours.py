@@ -36,16 +36,14 @@ import pickle
 import json
 
 # other imports
-import glob
-import shutil
 import datetime
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+# limit number of GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -63,11 +61,11 @@ import cytometer.utils
 import cytometer.data
 import tensorflow as tf
 
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.95
-# set_session(tf.Session(config=config))
+# limit GPU memory used
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.95
+set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -346,7 +344,7 @@ for i, file_svg in enumerate(file_svg_list):
                 plt.contour(window_mask_loss, linewidths=1, levels=[0.5], colors='red')
 
             # add dummy dimensions for keras
-            window_im = np.expand_dims(window_im, axis=0)
+            window_im = np.expand_dims(window_im, axis=0).astype(np.float16)
 
             window_out = np.expand_dims(window_out, axis=0)
             window_out = np.expand_dims(window_out, axis=3)
@@ -354,7 +352,7 @@ for i, file_svg in enumerate(file_svg_list):
             window_mask_loss = np.expand_dims(window_mask_loss, axis=0)
 
             # check sizes and types
-            assert(window_im.ndim == 4 and window_im.dtype == np.float32)
+            assert(window_im.ndim == 4 and window_im.dtype == np.float16)
             assert(window_out.ndim == 4 and window_out.dtype == np.float32)
             assert(window_mask_loss.ndim == 3 and window_mask_loss.dtype == np.float32)
 
@@ -367,16 +365,17 @@ for i, file_svg in enumerate(file_svg_list):
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
 # collapse lists into arrays
-window_im_all = np.concatenate(window_im_all)
 window_out_all = np.concatenate(window_out_all)
 window_mask_loss_all = np.concatenate(window_mask_loss_all)
 window_idx_all = np.vstack(window_idx_all)
+window_im_all = np.concatenate(window_im_all)
+
+# save data to file
+np.savez(os.path.join(saved_models_dir, experiment_id + '_data.npz'),
+         window_im_all=window_im_all, window_out_all=window_out_all,
+         window_mask_loss_all=window_mask_loss_all, window_idx_all=window_idx_all)
 
 if DEBUG:
-    np.savez(os.path.join(saved_models_dir, experiment_id + '_data.npz'),
-             window_im_all=window_im_all, window_out_all=window_out_all,
-             window_mask_loss_all=window_mask_loss_all, window_idx_all=window_idx_all)
-
     result = np.load(os.path.join(saved_models_dir, experiment_id + '_data.npz'))
     window_im_all = result['window_im_all']
     window_out_all = result['window_out_all']
@@ -404,6 +403,10 @@ for i_fold in range(n_folds):
     idx_test = idx_test_all[i_fold]
     idx_train = idx_train_all[i_fold]
 
+    # memory-map the precomputed data
+    result = np.load(os.path.join(saved_models_dir, experiment_id + '_data.npz'), mmap_mode='r')
+    window_idx_all = result['window_idx_all']
+
     # get cell indices for test and training, based on the image indices
     idx_test = np.where([x in idx_test for x in window_idx_all[:, 0]])[0]
     idx_train = np.where([x in idx_train for x in window_idx_all[:, 0]])[0]
@@ -412,14 +415,23 @@ for i_fold in range(n_folds):
     print('## len(idx_test) = ' + str(len(idx_test)))
 
     # split data into training and testing
-    window_im_train = window_im_all[idx_train, :, :, :]
     window_im_test = window_im_all[idx_test, :, :, :]
+    window_im_train = window_im_all[idx_train, :, :, :]
 
-    window_out_train = window_out_all[idx_train, :, :]
     window_out_test = window_out_all[idx_test, :, :]
+    window_out_train = window_out_all[idx_train, :, :]
 
-    window_mask_loss_train = window_mask_loss_all[idx_train, :]
     window_mask_loss_test = window_mask_loss_all[idx_test, :]
+    window_mask_loss_train = window_mask_loss_all[idx_train, :]
+
+    # window_im_test = result['window_im_all'][idx_test, :, :, :]
+    # window_im_train = result['window_im_all'][idx_train, :, :, :]
+    #
+    # window_out_test = result['window_out_all'][idx_test, :, :]
+    # window_out_train = result['window_out_all'][idx_train, :, :]
+    #
+    # window_mask_loss_test = result['window_mask_loss_all'][idx_test, :]
+    # window_mask_loss_train = result['window_mask_loss_all'][idx_train, :]
 
     # instantiate model
     with tf.device('/cpu:0'):
@@ -459,8 +471,8 @@ for i_fold in range(n_folds):
                               validation_data=(window_im_test,
                                                {'regression_output': window_out_test},
                                                {'regression_output': window_mask_loss_test}),
-                              batch_size=10, epochs=epochs, initial_epoch=0,
-                              callbacks=[checkpointer])
+                              batch_size=12, epochs=epochs, initial_epoch=0,
+                              callbacks=[checkpointer, clr, tensorboard])
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
 
