@@ -43,7 +43,7 @@ import matplotlib.pyplot as plt
 import time
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -72,14 +72,11 @@ K.set_image_data_format('channels_last')
 
 DEBUG = False
 
-# number of epochs for training
-epochs = 100
-
 # area (pixel**2) of the smallest object we accept as a cell (pi * (16 pixel)**2 = 804.2 pixel**2)
 smallest_cell_area = 804
 
 # training window length
-training_window_len = 401
+training_window_len = 201
 
 # remove from training cells that don't have a good enough overlap with a reference label
 smallest_dice = 0.5
@@ -88,7 +85,10 @@ smallest_dice = 0.5
 dice_threshold = 0.9
 
 # batch size for training
-batch_size = 10
+batch_size = 12
+
+# number of epochs for training
+epochs = 100
 
 
 '''Directories and filenames
@@ -344,7 +344,7 @@ for i, file_svg in enumerate(file_svg_list):
                 plt.contour(window_mask_loss, linewidths=1, levels=[0.5], colors='red')
 
             # add dummy dimensions for keras
-            window_im = np.expand_dims(window_im, axis=0).astype(np.float16)
+            window_im = np.expand_dims(window_im, axis=0)
 
             window_out = np.expand_dims(window_out, axis=0)
             window_out = np.expand_dims(window_out, axis=3)
@@ -352,7 +352,7 @@ for i, file_svg in enumerate(file_svg_list):
             window_mask_loss = np.expand_dims(window_mask_loss, axis=0)
 
             # check sizes and types
-            assert(window_im.ndim == 4 and window_im.dtype == np.float16)
+            assert(window_im.ndim == 4 and window_im.dtype == np.float32)
             assert(window_out.ndim == 4 and window_out.dtype == np.float32)
             assert(window_mask_loss.ndim == 3 and window_mask_loss.dtype == np.float32)
 
@@ -471,7 +471,7 @@ for i_fold in range(n_folds):
                               validation_data=(window_im_test,
                                                {'regression_output': window_out_test},
                                                {'regression_output': window_mask_loss_test}),
-                              batch_size=12, epochs=epochs, initial_epoch=0,
+                              batch_size=batch_size, epochs=epochs, initial_epoch=0,
                               callbacks=[checkpointer, clr, tensorboard])
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
