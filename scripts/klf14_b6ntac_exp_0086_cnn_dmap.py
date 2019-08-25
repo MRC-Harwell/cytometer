@@ -162,7 +162,6 @@ for i, file in enumerate(svg_file_list):
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-history = []
 for i_fold, idx_test in enumerate(idx_test_all):
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
@@ -267,7 +266,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
                               callbacks=[checkpointer, tensorboard])
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
-    history.append(hist.history)
 
     # cast history values to a type that is JSON serializable
     history = hist.history
