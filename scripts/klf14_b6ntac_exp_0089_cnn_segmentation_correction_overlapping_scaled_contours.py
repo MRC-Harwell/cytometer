@@ -42,8 +42,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,2,3'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -61,16 +61,20 @@ import cytometer.utils
 import cytometer.data
 import tensorflow as tf
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.95
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.95
+# set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
 
 DEBUG = False
+
+# whether to process images/segmentations/contours/etc. to create the inputs and outputs to train the neural network.
+# If False, then we assume those data have been processed previously, and will be loaded from a file
+PREPARE_TRAINING_DATA = False
 
 # area (pixel**2) of the smallest object we accept as a cell (pi * (16 pixel)**2 = 804.2 pixel**2)
 smallest_cell_area = 804
@@ -191,191 +195,193 @@ n_im = len(file_svg_list)
 # number of folds
 n_folds = len(idx_test_all)
 
-'''Process the data
+'''Prepare the training and test data
 '''
 
-# start timer
-t0 = time.time()
+if PREPARE_TRAINING_DATA:
+    # start timer
+    t0 = time.time()
 
-# init output
-window_im_all = []
-window_out_all = []
-window_mask_loss_all = []
-window_idx_all = []
-for i, file_svg in enumerate(file_svg_list):
+    # init output
+    window_im_all = []
+    window_out_all = []
+    window_mask_loss_all = []
+    window_idx_all = []
+    for i, file_svg in enumerate(file_svg_list):
 
-    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
+        print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
 
-    # change file extension from .svg to .tif
-    file_tif = file_svg.replace('.svg', '.tif')
+        # change file extension from .svg to .tif
+        file_tif = file_svg.replace('.svg', '.tif')
 
-    # open histology training image
-    im = Image.open(file_tif)
+        # open histology training image
+        im = Image.open(file_tif)
 
-    # make array copy
-    im_array = np.array(im)
-
-    if DEBUG:
-        plt.clf()
-        plt.imshow(im)
-
-    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
-    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
-    contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False)
-
-    # loop ground truth cell contours
-    for j, contour in enumerate(contours):
+        # make array copy
+        im_array = np.array(im)
 
         if DEBUG:
-            # centre of current cell
-            xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
-
             plt.clf()
-            plt.subplot(221)
             plt.imshow(im)
-            plt.plot([p[0] for p in contour], [p[1] for p in contour])
-            plt.scatter(xy_c[0], xy_c[1])
 
-        # rasterise current ground truth segmentation
-        cell_seg_gtruth = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
-        draw = ImageDraw.Draw(cell_seg_gtruth)
-        draw.polygon(contour, outline="white", fill="white")
-        cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.uint8)
+        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+        contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False)
 
-        if DEBUG:
-            plt.subplot(222)
-            plt.imshow(cell_seg_gtruth)
-
-        # loop different perturbations in the mask to have a collection of better and worse
-        # segmentations
-        for inc in [-0.20, -0.15, -0.10, -.07, -0.03, 0.0, 0.03, 0.07, 0.10, 0.15, 0.20]:
-
-            # erode or dilate the ground truth mask to create the segmentation mask
-            cell_seg = cytometer.utils.quality_model_mask(cell_seg_gtruth, quality_model_type='0_1_prop_band',
-                                                          quality_model_type_param=inc)[0, :, :, 0].astype(np.uint8)
-
-            # compute bounding box that contains the mask, and leaves some margin
-            bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
-            bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
-                cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
+        # loop ground truth cell contours
+        for j, contour in enumerate(contours):
 
             if DEBUG:
-                plt.subplot(223)
-                plt.cla()
-                plt.imshow(cell_seg)
-                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
-                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
+                # centre of current cell
+                xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
 
-            # create the loss mask
-
-            #   all space covered by either the ground truth or segmentation
-            cell_mask_loss = np.logical_or(cell_seg_gtruth, cell_seg).astype(np.uint8)
-
-            #   dilate loss mask so that it also covers part of the background
-            cell_mask_loss = cytometer.utils.quality_model_mask(cell_mask_loss, quality_model_type='0_1_prop_band',
-                                                                quality_model_type_param=0.30)[0, :, :, 0]
-
-            if DEBUG:
-                plt.subplot(224)
-                plt.cla()
-                plt.imshow(cell_mask_loss)
-                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
-                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
-
-            # crop image and masks according to bounding box
-            window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-            window_mask_loss = cytometer.utils.extract_bbox(cell_mask_loss, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
-
-            if DEBUG:
                 plt.clf()
                 plt.subplot(221)
-                plt.cla()
-                plt.imshow(im_array)
-                plt.contour(cell_seg_gtruth, linewidths=1, levels=[0.5], colors='green')
-                plt.contour(cell_seg, linewidths=1, levels=[0.5], colors='blue')
-                plt.contour(cell_mask_loss, linewidths=1, levels=[0.5], colors='red')
-                plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
-                         (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0), 'black')
+                plt.imshow(im)
+                plt.plot([p[0] for p in contour], [p[1] for p in contour])
+                plt.scatter(xy_c[0], xy_c[1])
 
+            # rasterise current ground truth segmentation
+            cell_seg_gtruth = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+            draw = ImageDraw.Draw(cell_seg_gtruth)
+            draw.polygon(contour, outline="white", fill="white")
+            cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.uint8)
+
+            if DEBUG:
                 plt.subplot(222)
-                plt.cla()
-                plt.imshow(window_im)
-                plt.contour(window_seg_gtruth, linewidths=1, levels=[0.5], colors='green')
-                plt.contour(window_seg, linewidths=1, levels=[0.5], colors='blue')
-                plt.contour(window_mask_loss, linewidths=1, levels=[0.5], colors='red')
+                plt.imshow(cell_seg_gtruth)
 
-            # input to the CNN: multiply histology by +1/-1 segmentation mask
-            window_im = \
-                cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
-                                                   quality_model_type='-1_1')[0, :, :, :]
+            # loop different perturbations in the mask to have a collection of better and worse
+            # segmentations
+            for inc in [-0.20, -0.15, -0.10, -.07, -0.03, 0.0, 0.03, 0.07, 0.10, 0.15, 0.20]:
 
-            # output of the CNN: segmentation - ground truth
-            window_out = window_seg.astype(np.float32) - window_seg_gtruth.astype(np.float32)
+                # erode or dilate the ground truth mask to create the segmentation mask
+                cell_seg = cytometer.utils.quality_model_mask(cell_seg_gtruth, quality_model_type='0_1_prop_band',
+                                                              quality_model_type_param=inc)[0, :, :, 0].astype(np.uint8)
 
-            # output mask for the CNN: loss mask
-            # window_mask_loss
+                # compute bounding box that contains the mask, and leaves some margin
+                bbox_x0, bbox_y0, bbox_xend, bbox_yend = \
+                    cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='xy', inc=1.00)
+                bbox_r0, bbox_c0, bbox_rend, bbox_cend = \
+                    cytometer.utils.bounding_box_with_margin(cell_seg, coordinates='rc', inc=1.00)
 
-            if DEBUG:
-                plt.subplot(223)
-                plt.cla()
-                aux = 0.2989 * window_im[:, :, 0] + 0.5870 * window_im[:, :, 1] + 0.1140 * window_im[:, :, 2]
-                plt.imshow(aux)
-                plt.title('CNN input: histology * +1/-1 segmentation mask')
+                if DEBUG:
+                    plt.subplot(223)
+                    plt.cla()
+                    plt.imshow(cell_seg)
+                    plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                             (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
-                plt.subplot(224)
-                plt.cla()
-                plt.imshow(window_out)
+                # create the loss mask
 
-            # resize the training image to training window size
-            training_size = (training_window_len, training_window_len)
-            window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
-            window_out = cytometer.utils.resize(window_out, size=training_size, resample=Image.NEAREST)
-            window_mask_loss = cytometer.utils.resize(window_mask_loss, size=training_size, resample=Image.NEAREST)
+                #   all space covered by either the ground truth or segmentation
+                cell_mask_loss = np.logical_or(cell_seg_gtruth, cell_seg).astype(np.uint8)
 
-            if DEBUG:
-                plt.subplot(224)
-                plt.cla()
-                aux = 0.2989 * window_im[:, :, 0] + 0.5870 * window_im[:, :, 1] + 0.1140 * window_im[:, :, 2]
-                plt.imshow(aux)
-                plt.contour(window_out, linewidths=1, levels=(-0.5, 0.5), colors='white')
-                plt.contour(window_mask_loss, linewidths=1, levels=[0.5], colors='red')
+                #   dilate loss mask so that it also covers part of the background
+                cell_mask_loss = cytometer.utils.quality_model_mask(cell_mask_loss, quality_model_type='0_1_prop_band',
+                                                                    quality_model_type_param=0.30)[0, :, :, 0]
 
-            # add dummy dimensions for keras
-            window_im = np.expand_dims(window_im, axis=0)
+                if DEBUG:
+                    plt.subplot(224)
+                    plt.cla()
+                    plt.imshow(cell_mask_loss)
+                    plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                             (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0))
 
-            window_out = np.expand_dims(window_out, axis=0)
-            window_out = np.expand_dims(window_out, axis=3)
+                # crop image and masks according to bounding box
+                window_im = cytometer.utils.extract_bbox(im_array, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+                window_seg_gtruth = cytometer.utils.extract_bbox(cell_seg_gtruth, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+                window_seg = cytometer.utils.extract_bbox(cell_seg, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
+                window_mask_loss = cytometer.utils.extract_bbox(cell_mask_loss, (bbox_r0, bbox_c0, bbox_rend, bbox_cend))
 
-            window_mask_loss = np.expand_dims(window_mask_loss, axis=0)
+                if DEBUG:
+                    plt.clf()
+                    plt.subplot(221)
+                    plt.cla()
+                    plt.imshow(im_array)
+                    plt.contour(cell_seg_gtruth, linewidths=1, levels=[0.5], colors='green')
+                    plt.contour(cell_seg, linewidths=1, levels=[0.5], colors='blue')
+                    plt.contour(cell_mask_loss, linewidths=1, levels=[0.5], colors='red')
+                    plt.plot((bbox_x0, bbox_xend, bbox_xend, bbox_x0, bbox_x0),
+                             (bbox_y0, bbox_y0, bbox_yend, bbox_yend, bbox_y0), 'black')
 
-            # check sizes and types
-            assert(window_im.ndim == 4 and window_im.dtype == np.float32)
-            assert(window_out.ndim == 4 and window_out.dtype == np.float32)
-            assert(window_mask_loss.ndim == 3 and window_mask_loss.dtype == np.float32)
+                    plt.subplot(222)
+                    plt.cla()
+                    plt.imshow(window_im)
+                    plt.contour(window_seg_gtruth, linewidths=1, levels=[0.5], colors='green')
+                    plt.contour(window_seg, linewidths=1, levels=[0.5], colors='blue')
+                    plt.contour(window_mask_loss, linewidths=1, levels=[0.5], colors='red')
 
-            # append images to use for training
-            window_im_all.append(window_im)
-            window_out_all.append(window_out)
-            window_mask_loss_all.append(window_mask_loss)
-            window_idx_all.append(np.array([i, j]))
+                # input to the CNN: multiply histology by +1/-1 segmentation mask
+                window_im = \
+                    cytometer.utils.quality_model_mask(window_seg.astype(np.float32), im=window_im.astype(np.float32),
+                                                       quality_model_type='-1_1')[0, :, :, :]
 
-    print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
+                # output of the CNN: segmentation - ground truth
+                window_out = window_seg.astype(np.float32) - window_seg_gtruth.astype(np.float32)
 
-# collapse lists into arrays
-window_out_all = np.concatenate(window_out_all)
-window_mask_loss_all = np.concatenate(window_mask_loss_all)
-window_idx_all = np.vstack(window_idx_all)
-window_im_all = np.concatenate(window_im_all)
+                # output mask for the CNN: loss mask
+                # window_mask_loss
 
-# save data to file
-np.savez(os.path.join(saved_models_dir, experiment_id + '_data.npz'),
-         window_im_all=window_im_all, window_out_all=window_out_all,
-         window_mask_loss_all=window_mask_loss_all, window_idx_all=window_idx_all)
+                if DEBUG:
+                    plt.subplot(223)
+                    plt.cla()
+                    aux = 0.2989 * window_im[:, :, 0] + 0.5870 * window_im[:, :, 1] + 0.1140 * window_im[:, :, 2]
+                    plt.imshow(aux)
+                    plt.title('CNN input: histology * +1/-1 segmentation mask')
 
-if DEBUG:
+                    plt.subplot(224)
+                    plt.cla()
+                    plt.imshow(window_out)
+
+                # resize the training image to training window size
+                training_size = (training_window_len, training_window_len)
+                window_im = cytometer.utils.resize(window_im, size=training_size, resample=Image.LINEAR)
+                window_out = cytometer.utils.resize(window_out, size=training_size, resample=Image.NEAREST)
+                window_mask_loss = cytometer.utils.resize(window_mask_loss, size=training_size, resample=Image.NEAREST)
+
+                if DEBUG:
+                    plt.subplot(224)
+                    plt.cla()
+                    aux = 0.2989 * window_im[:, :, 0] + 0.5870 * window_im[:, :, 1] + 0.1140 * window_im[:, :, 2]
+                    plt.imshow(aux)
+                    plt.contour(window_out, linewidths=1, levels=(-0.5, 0.5), colors='white')
+                    plt.contour(window_mask_loss, linewidths=1, levels=[0.5], colors='red')
+
+                # add dummy dimensions for keras
+                window_im = np.expand_dims(window_im, axis=0)
+
+                window_out = np.expand_dims(window_out, axis=0)
+                window_out = np.expand_dims(window_out, axis=3)
+
+                window_mask_loss = np.expand_dims(window_mask_loss, axis=0)
+
+                # check sizes and types
+                assert(window_im.ndim == 4 and window_im.dtype == np.float32)
+                assert(window_out.ndim == 4 and window_out.dtype == np.float32)
+                assert(window_mask_loss.ndim == 3 and window_mask_loss.dtype == np.float32)
+
+                # append images to use for training
+                window_im_all.append(window_im)
+                window_out_all.append(window_out)
+                window_mask_loss_all.append(window_mask_loss)
+                window_idx_all.append(np.array([i, j]))
+
+        print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
+
+    # collapse lists into arrays
+    window_out_all = np.concatenate(window_out_all)
+    window_mask_loss_all = np.concatenate(window_mask_loss_all)
+    window_idx_all = np.vstack(window_idx_all)
+    window_im_all = np.concatenate(window_im_all)
+
+    # save data to file
+    np.savez(os.path.join(saved_models_dir, experiment_id + '_data.npz'),
+             window_im_all=window_im_all, window_out_all=window_out_all,
+             window_mask_loss_all=window_mask_loss_all, window_idx_all=window_idx_all)
+
+else:  # PREPARE_TRAINING_DATA
+
     result = np.load(os.path.join(saved_models_dir, experiment_id + '_data.npz'))
     window_im_all = result['window_im_all']
     window_out_all = result['window_out_all']
@@ -398,6 +404,11 @@ gpu_number = np.count_nonzero([':GPU:' in str(x) for x in device_list])
 for i_fold in range(n_folds):
 
     print('# Fold ' + str(i_fold) + '/' + str(n_folds - 1))
+
+    # HACK:
+    if i_fold <= 1:
+        print('Skipping')
+        continue
 
     # test and training image indices
     idx_test = idx_test_all[i_fold]
