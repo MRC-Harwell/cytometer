@@ -43,30 +43,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
 import keras.backend as K
-import keras_contrib
 
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, AvgPool2D, Activation, BatchNormalization
-
-# for data parallelism in keras models
-from keras.utils import multi_gpu_model
-
-import cytometer.model_checkpoint_parallel
 import cytometer.utils
 import cytometer.data
 import tensorflow as tf
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.95
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.95
+# set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -128,7 +120,7 @@ n_folds = len(idx_test_all)
 '''Inspect the data
 '''
 
-result = np.load(os.path.join(saved_models_dir, experiment_id + '_data.npz'))
+result = np.load(os.path.join(saved_models_dir, original_experiment_id + '_data.npz'))
 window_im_all = result['window_im_all']
 window_out_all = result['window_out_all']
 window_mask_loss_all = result['window_mask_loss_all']
@@ -143,7 +135,7 @@ for i_fold in range(n_folds):
     idx_test = idx_test_all[i_fold]
 
     # memory-map the precomputed data
-    result = np.load(os.path.join(saved_models_dir, experiment_id + '_data.npz'), mmap_mode='r')
+    result = np.load(os.path.join(saved_models_dir, original_experiment_id + '_data.npz'), mmap_mode='r')
     window_idx_all = result['window_idx_all']
 
     # get cell indices for test and training, based on the image indices
@@ -151,11 +143,9 @@ for i_fold in range(n_folds):
 
     print('## len(idx_test) = ' + str(len(idx_test)))
 
-    # split data into training and testing
+    # get testing data
     window_im_test = window_im_all[idx_test, :, :, :]
-
     window_out_test = window_out_all[idx_test, :, :]
-
     window_mask_loss_test = window_mask_loss_all[idx_test, :]
 
     # model and logs filenames
