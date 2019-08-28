@@ -375,6 +375,9 @@ if PREPARE_TRAINING_DATA:
     window_idx_all = np.vstack(window_idx_all)
     window_im_all = np.concatenate(window_im_all)
 
+    # scale intensities to [0.0, 1.0]
+    window_im_all /= 255
+
     # save data to file
     np.savez(os.path.join(saved_models_dir, experiment_id + '_data.npz'),
              window_im_all=window_im_all, window_out_all=window_out_all,
