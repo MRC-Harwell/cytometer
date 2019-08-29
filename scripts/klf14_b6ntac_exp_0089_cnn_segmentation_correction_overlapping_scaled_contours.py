@@ -458,6 +458,7 @@ for i_fold in range(n_folds):
     # checkpoint to save model after each epoch
     checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
                                                                        verbose=1, save_best_only=False)
+    
     # callback to write a log for TensorBoard
     # Note: run this on the server where the training is happening:
     #       tensorboard --logdir=saved_logs_dir
