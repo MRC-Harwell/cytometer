@@ -162,7 +162,9 @@ for i, file in enumerate(svg_file_list):
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate(idx_test_all[::-1]):
+
+    i_fold = 9 - i_fold
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
 
@@ -240,7 +242,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # checkpoint to save model after each epoch
     checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                       verbose=1, save_best_only=True)
+                                                                       verbose=1, save_best_only=False)
 
     # callback to write a log for TensorBoard
     # Note: run this on the server where the training is happening:
