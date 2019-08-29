@@ -155,204 +155,219 @@ Prepare the testing data:
 '''Load the test data
 '''
 
-# start timer
-t0 = time.time()
+# file name for pre-computed data
+data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 
-# init output
-im_array_all = []
-rough_mask_all = []
-out_class_all = []
-out_mask_all = []
-contour_type_all = []
-i_all = []
+if os.path.isfile(data_filename):
 
-# loop files with hand traced contours
-for i, file_svg in enumerate(file_svg_list):
+    # load pre-computed data
+    aux = np.load(data_filename)
+    im_array_all = aux['im_array_all']
+    rough_mask_all = aux['rough_mask_all']
+    out_class_all = aux['out_class_all']
+    out_mask_all = aux['out_mask_all']
+    i_all = aux['i_all']
+    del aux
 
-    '''Read histology training window
-    '''
+else:  # pre-compute the validation data and save to file
 
-    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
+    # start timer
+    t0 = time.time()
 
-    # change file extension from .svg to .tif
-    file_tif = file_svg.replace('.svg', '.tif')
+    # init output
+    im_array_all = []
+    rough_mask_all = []
+    out_class_all = []
+    out_mask_all = []
+    contour_type_all = []
+    i_all = []
 
-    # open histology training image
-    im = Image.open(file_tif)
+    # loop files with hand traced contours
+    for i, file_svg in enumerate(file_svg_list):
 
-    # make array copy
-    im_array = np.array(im)
+        '''Read histology training window
+        '''
 
-    if DEBUG:
-        enhancer = ImageEnhance.Contrast(im)
-        enhanced_im = enhancer.enhance(4.0)
+        print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
 
-        plt.clf()
-        plt.imshow(im)
+        # change file extension from .svg to .tif
+        file_tif = file_svg.replace('.svg', '.tif')
 
-        plt.clf()
-        plt.imshow(enhanced_im)
+        # open histology training image
+        im = Image.open(file_tif)
 
-    '''Rough segmentation'''
+        # make array copy
+        im_array = np.array(im)
 
-    histology_filename = os.path.basename(file_svg)
-    aux = re.split('_row', histology_filename)
-    histology_filename = aux[0] + '.ndpi'
-    histology_filename = os.path.join(ndpi_dir, histology_filename)
+        if DEBUG:
+            enhancer = ImageEnhance.Contrast(im)
+            enhanced_im = enhancer.enhance(4.0)
 
-    aux = aux[1].replace('.svg', '')
-    aux = re.split('_', aux)
-    row = np.int32(aux[1])
-    col = np.int32(aux[3])
+            plt.clf()
+            plt.imshow(im)
 
-    # rough segmentation of the tissue in the full histology image (not just the training window)
-    rough_mask, im_downsampled = \
-        cytometer.utils.rough_foreground_mask(histology_filename, downsample_factor=downsample_factor,
-                                              dilation_size=dilation_size,
-                                              component_size_threshold=component_size_threshold,
-                                              hole_size_treshold=hole_size_treshold,
-                                              return_im=True)
+            plt.clf()
+            plt.imshow(enhanced_im)
 
-    # crop full histology to only the training image
-    row_0 = np.int32(np.round((row - 500) / downsample_factor))
-    row_end = row_0 + np.int32(np.round(im.size[0] / downsample_factor))
-    col_0 = np.int32(np.round((col - 500) / downsample_factor))
-    col_end = col_0 + np.int32(np.round(im.size[1] / downsample_factor))
+        '''Rough segmentation'''
 
-    # crop rough mask and downsampled image
-    im_crop = im_downsampled[row_0:row_end, col_0:col_end]
-    rough_mask_crop = rough_mask[row_0:row_end, col_0:col_end]
+        histology_filename = os.path.basename(file_svg)
+        aux = re.split('_row', histology_filename)
+        histology_filename = aux[0] + '.ndpi'
+        histology_filename = os.path.join(ndpi_dir, histology_filename)
 
-    # upsample image and mask
-    im_crop = Image.fromarray(im_crop)
-    im_crop = im_crop.resize(size=(1001, 1001), resample=Image.LINEAR)
-    im_crop = np.array(im_crop)
-    rough_mask_crop = Image.fromarray(rough_mask_crop)
-    rough_mask_crop = rough_mask_crop.resize(size=(1001, 1001), resample=Image.NEAREST)
-    rough_mask_crop = np.array(rough_mask_crop)
+        aux = aux[1].replace('.svg', '')
+        aux = re.split('_', aux)
+        row = np.int32(aux[1])
+        col = np.int32(aux[3])
 
-    if DEBUG:
-        plt.contour(rough_mask_crop, colors='k')
+        # rough segmentation of the tissue in the full histology image (not just the training window)
+        rough_mask, im_downsampled = \
+            cytometer.utils.rough_foreground_mask(histology_filename, downsample_factor=downsample_factor,
+                                                  dilation_size=dilation_size,
+                                                  component_size_threshold=component_size_threshold,
+                                                  hole_size_treshold=hole_size_treshold,
+                                                  return_im=True)
 
-    '''Read contours
-    '''
+        # crop full histology to only the training image
+        row_0 = np.int32(np.round((row - 500) / downsample_factor))
+        row_end = row_0 + np.int32(np.round(im.size[0] / downsample_factor))
+        col_0 = np.int32(np.round((col - 500) / downsample_factor))
+        col_end = col_0 + np.int32(np.round(im.size[1] / downsample_factor))
 
-    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
-    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
-    cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
-                                                            minimum_npoints=3)
-    other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
-                                                             minimum_npoints=3)
-    brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
-                                                             minimum_npoints=3)
-    contours = cell_contours + other_contours + brown_contours
+        # crop rough mask and downsampled image
+        im_crop = im_downsampled[row_0:row_end, col_0:col_end]
+        rough_mask_crop = rough_mask[row_0:row_end, col_0:col_end]
 
-    # make a list with the type of cell each contour is classified as
-    contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
-                    np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
-                    np.ones(shape=(len(brown_contours),), dtype=np.uint8)]  # 1: brown cells (treated as "other" tissue)
-    contour_type = np.concatenate(contour_type)
-    contour_type_all.append(contour_type)
+        # upsample image and mask
+        im_crop = Image.fromarray(im_crop)
+        im_crop = im_crop.resize(size=(1001, 1001), resample=Image.LINEAR)
+        im_crop = np.array(im_crop)
+        rough_mask_crop = Image.fromarray(rough_mask_crop)
+        rough_mask_crop = rough_mask_crop.resize(size=(1001, 1001), resample=Image.NEAREST)
+        rough_mask_crop = np.array(rough_mask_crop)
 
-    print('Cells: ' + str(len(cell_contours)))
-    print('Other: ' + str(len(other_contours)))
-    print('Brown: ' + str(len(brown_contours)))
+        if DEBUG:
+            plt.contour(rough_mask_crop, colors='k')
 
-    if (len(contours) == 0):
-        print('No contours... skipping')
-        continue
+        '''Read contours
+        '''
 
-    # initialise arrays for training
-    out_class = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
-    out_mask = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                                minimum_npoints=3)
+        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        contours = cell_contours + other_contours + brown_contours
 
-    if DEBUG:
-        plt.clf()
-        plt.imshow(im_array)
-        plt.scatter((im_array.shape[1] - 1) / 2.0, (im_array.shape[0] - 1) / 2.0)
+        # make a list with the type of cell each contour is classified as
+        contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
+                        np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
+                        np.ones(shape=(len(brown_contours),), dtype=np.uint8)]  # 1: brown cells (treated as "other" tissue)
+        contour_type = np.concatenate(contour_type)
+        contour_type_all.append(contour_type)
 
-    # loop ground truth cell contours
-    for j, contour in enumerate(contours):
+        print('Cells: ' + str(len(cell_contours)))
+        print('Other: ' + str(len(other_contours)))
+        print('Brown: ' + str(len(brown_contours)))
+
+        if (len(contours) == 0):
+            print('No contours... skipping')
+            continue
+
+        # initialise arrays for training
+        out_class = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+        out_mask = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
 
         if DEBUG:
             plt.clf()
             plt.imshow(im_array)
-            plt.plot([p[0] for p in contour], [p[1] for p in contour])
-            xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
-            plt.scatter(xy_c[0], xy_c[1])
+            plt.scatter((im_array.shape[1] - 1) / 2.0, (im_array.shape[0] - 1) / 2.0)
 
-        # rasterise current ground truth segmentation
-        cell_seg_gtruth = Image.new("1", im_array.shape[0:2][::-1], "black")  # I = 32-bit signed integer pixels
-        draw = ImageDraw.Draw(cell_seg_gtruth)
-        draw.polygon(contour, outline="white", fill="white")
-        cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.bool)
+        # loop ground truth cell contours
+        for j, contour in enumerate(contours):
+
+            if DEBUG:
+                plt.clf()
+                plt.imshow(im_array)
+                plt.plot([p[0] for p in contour], [p[1] for p in contour])
+                xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                plt.scatter(xy_c[0], xy_c[1])
+
+            # rasterise current ground truth segmentation
+            cell_seg_gtruth = Image.new("1", im_array.shape[0:2][::-1], "black")  # I = 32-bit signed integer pixels
+            draw = ImageDraw.Draw(cell_seg_gtruth)
+            draw.polygon(contour, outline="white", fill="white")
+            cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.bool)
+
+            if DEBUG:
+                plt.clf()
+                plt.subplot(121)
+                plt.imshow(im_array)
+                plt.plot([p[0] for p in contour], [p[1] for p in contour])
+                xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                plt.scatter(xy_c[0], xy_c[1])
+                plt.subplot(122)
+                plt.imshow(im_array)
+                plt.contour(cell_seg_gtruth.astype(np.uint8))
+
+            # add current object to training output and mask
+            out_mask[cell_seg_gtruth] = 1
+            out_class[cell_seg_gtruth] = contour_type[j]
+
+        # end for j, contour in enumerate(contours):
 
         if DEBUG:
             plt.clf()
             plt.subplot(121)
             plt.imshow(im_array)
-            plt.plot([p[0] for p in contour], [p[1] for p in contour])
-            xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
-            plt.scatter(xy_c[0], xy_c[1])
+            plt.contour(out_mask.astype(np.uint8), colors='r')
+            plt.title('Mask', fontsize=14)
+            plt.axis('off')
             plt.subplot(122)
             plt.imshow(im_array)
-            plt.contour(cell_seg_gtruth.astype(np.uint8))
+            plt.contour(out_class.astype(np.uint8), colors='k')
+            plt.title('Class', fontsize=14)
+            plt.axis('off')
+            plt.tight_layout()
 
-        # add current object to training output and mask
-        out_mask[cell_seg_gtruth] = 1
-        out_class[cell_seg_gtruth] = contour_type[j]
+        # add dummy dimensions for keras
+        im_array = np.expand_dims(im_array, axis=0)
+        rough_mask_crop = np.expand_dims(rough_mask_crop, axis=0)
+        out_class = np.expand_dims(out_class, axis=0)
+        out_class = np.expand_dims(out_class, axis=3)
+        out_mask = np.expand_dims(out_mask, axis=0)
 
-    # end for j, contour in enumerate(contours):
+        # convert to expected types
+        im_array = im_array.astype(np.float32)
+        rough_mask_crop = rough_mask_crop.astype(np.bool)
+        out_class = out_class.astype(np.float32)
+        out_mask = out_mask.astype(np.float32)
 
-    if DEBUG:
-        plt.clf()
-        plt.subplot(121)
-        plt.imshow(im_array)
-        plt.contour(out_mask.astype(np.uint8), colors='r')
-        plt.title('Mask', fontsize=14)
-        plt.axis('off')
-        plt.subplot(122)
-        plt.imshow(im_array)
-        plt.contour(out_class.astype(np.uint8), colors='k')
-        plt.title('Class', fontsize=14)
-        plt.axis('off')
-        plt.tight_layout()
+        # scale image intensities from [0, 255] to [0.0, 1.0]
+        im_array /= 255
 
-    # add dummy dimensions for keras
-    im_array = np.expand_dims(im_array, axis=0)
-    rough_mask_crop = np.expand_dims(rough_mask_crop, axis=0)
-    out_class = np.expand_dims(out_class, axis=0)
-    out_class = np.expand_dims(out_class, axis=3)
-    out_mask = np.expand_dims(out_mask, axis=0)
+        # append input/output/mask for later use in training
+        im_array_all.append(im_array)
+        rough_mask_all.append(rough_mask_crop)
+        out_class_all.append(out_class)
+        out_mask_all.append(out_mask)
+        i_all.append(i)
 
-    # convert to expected types
-    im_array = im_array.astype(np.float32)
-    rough_mask_crop = rough_mask_crop.astype(np.bool)
-    out_class = out_class.astype(np.float32)
-    out_mask = out_mask.astype(np.float32)
+        print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
-    # scale image intensities from [0, 255] to [0.0, 1.0]
-    im_array /= 255
+    # collapse lists into arrays
+    im_array_all = np.concatenate(im_array_all)
+    rough_mask_all = np.concatenate(rough_mask_all)
+    out_class_all = np.concatenate(out_class_all)
+    out_mask_all = np.concatenate(out_mask_all)
 
-    # append input/output/mask for later use in training
-    im_array_all.append(im_array)
-    rough_mask_all.append(rough_mask_crop)
-    out_class_all.append(out_class)
-    out_mask_all.append(out_mask)
-    i_all.append(i)
-
-    print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
-
-# collapse lists into arrays
-im_array_all = np.concatenate(im_array_all)
-rough_mask_all = np.concatenate(rough_mask_all)
-out_class_all = np.concatenate(out_class_all)
-out_mask_all = np.concatenate(out_mask_all)
-
-# save results to avoid having to recompute them every time
-data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
-np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all, out_class_all=out_class_all,
-         out_mask_all=out_mask_all, i_all=i_all)
+    # save results to avoid having to recompute them every time
+    np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all, out_class_all=out_class_all,
+             out_mask_all=out_mask_all, i_all=i_all)
 
 
 '''
@@ -374,23 +389,20 @@ for i_fold in range(len(idx_test_all)):
 
     # test and training image indices. These indices refer to file_list
     idx_test = idx_test_all[i_fold]
-    # idx_train = idx_train_all[i_fold]
 
     # list of test files (used later for the dataframe)
-    file_list_test = np.array(file_list)[idx_test]
+    file_list_test = np.array(file_svg_list)[idx_test]
 
     # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
     # skipped)
-    idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
+    idx_lut = np.full(shape=(len(file_svg_list), ), fill_value=-1, dtype=idx_test.dtype)
     idx_lut[i_all] = range(len(i_all))
-    # idx_train = idx_lut[idx_train]
     idx_test = idx_lut[idx_test]
 
     # print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
 
     # split data into training and testing
-    # im_array_train = im_array_all[idx_train, :, :, :]
     im_array_test = im_array_all[idx_test, :, :, :]
 
     # out_class_train = out_class_all[idx_train, :, :, :]
@@ -550,7 +562,7 @@ for i_fold in range(len(idx_test_all)):
 
     # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
     # skipped)
-    idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
+    idx_lut = np.full(shape=(len(file_svg_list), ), fill_value=-1, dtype=idx_test.dtype)
     idx_lut[i_all] = range(len(i_all))
     idx_train = idx_lut[idx_train]
     idx_test = idx_lut[idx_test]
@@ -600,7 +612,7 @@ for i_fold in range(len(idx_test_all)):
             plt.axis('off')
             plt.subplot(212)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(predict_class_test[i, :, :, 1], alpha=0.5)
+            plt.imshow(predict_class_test[i, :, :, 0], alpha=0.5)
             plt.title('Predicted class', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
