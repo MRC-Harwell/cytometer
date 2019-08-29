@@ -289,79 +289,49 @@ for i_fold, idx_test in enumerate(idx_test_all):
     # delete dmap model
     del dmap_model
 
-    # name of file to save contour model to
+    # output filenames
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
+    saved_logs_dir = os.path.join(saved_models_dir, experiment_id + '_logs_fold_' + str(i_fold))
 
-    if gpu_number > 1:  # compile and train model: Multiple GPUs
+    # checkpoint to save model after each epoch
+    checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
+                                                                       verbose=1, save_best_only=True)
 
-        # checkpoint to save model after each epoch
-        checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                           verbose=1, save_best_only=True)
+    # callback to write a log for TensorBoard
+    # Note: run this on the server where the training is happening:
+    #       tensorboard --logdir=saved_logs_dir
+    tensorboard = keras.callbacks.TensorBoard(log_dir=saved_logs_dir)
 
-        # compile model
-        parallel_model = multi_gpu_model(contour_model, gpus=gpu_number)
-        parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
-                               optimizer='Adadelta',
-                               metrics={'classification_output': 'accuracy'},
-                               sample_weight_mode='element')
+    # compile model
+    parallel_model = multi_gpu_model(contour_model, gpus=gpu_number)
+    parallel_model.compile(loss={'classification_output': 'binary_crossentropy'},
+                           optimizer='Adadelta',
+                           metrics={'classification_output': 'accuracy'},
+                           sample_weight_mode='element')
 
-        # train model
-        tic = datetime.datetime.now()
-        hist = parallel_model.fit(train_dataset['im'],
-                                  {'classification_output': train_dataset['contour']},
-                                  sample_weight={'classification_output': train_dataset['mask'][..., 0]},
-                                  validation_data=(test_dataset['im'],
-                                                   {'classification_output': test_dataset['contour']},
-                                                   {'classification_output': test_dataset['mask'][..., 0]}),
-                                  batch_size=batch_size, epochs=epochs, initial_epoch=0,
-                                  callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
+    # train model
+    tic = datetime.datetime.now()
+    hist = parallel_model.fit(train_dataset['im'],
+                              {'classification_output': train_dataset['contour']},
+                              sample_weight={'classification_output': train_dataset['mask'][..., 0]},
+                              validation_data=(test_dataset['im'],
+                                               {'classification_output': test_dataset['contour']},
+                                               {'classification_output': test_dataset['mask'][..., 0]}),
+                              batch_size=batch_size, epochs=epochs, initial_epoch=0,
+                              callbacks=[checkpointer, tensorboard])
+    toc = datetime.datetime.now()
+    print('Training duration: ' + str(toc - tic))
 
-        # cast history values to a type that is JSON serializable
-        history = hist.history
-        for key in history.keys():
-            history[key] = list(map(float, history[key]))
+    # cast history values to a type that is JSON serializable
+    history = hist.history
+    for key in history.keys():
+        history[key] = list(map(float, history[key]))
 
-        # save training history
-        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.json')
-        with open(history_filename, 'w') as f:
-            json.dump(history, f)
+    # save training history
+    history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.json')
+    with open(history_filename, 'w') as f:
+        json.dump(history, f)
 
-    else:  # compile and train model: One GPU
-
-        # checkpoint to save model after each epoch
-        checkpointer = keras.callbacks.ModelCheckpoint(filepath=saved_model_filename,
-                                                       verbose=1, save_best_only=True)
-
-        # compile model
-        contour_model.compile(loss={'classification_output': 'binary_crossentropy'},
-                              optimizer='Adadelta',
-                              metrics={'classification_output': 'accuracy'},
-                              sample_weight_mode='element')
-
-        # train model
-        tic = datetime.datetime.now()
-        hist = contour_model.fit(train_dataset['im'],
-                                 {'classification_output': train_dataset['contour']},
-                                 sample_weight={'classification_output': train_dataset['mask'][..., 0]},
-                                 validation_data=(test_dataset['im'],
-                                                  {'classification_output': test_dataset['contour']},
-                                                  {'classification_output': test_dataset['mask'][..., 0]}),
-                                 batch_size=batch_size, epochs=epochs, initial_epoch=0,
-                                 callbacks=[checkpointer])
-        toc = datetime.datetime.now()
-        print('Training duration: ' + str(toc - tic))
-
-        # cast history values to a type that is JSON serializable
-        history = hist.history
-        for key in history.keys():
-            history[key] = list(map(float, history[key]))
-
-        # save training history
-        history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.json')
-        with open(history_filename, 'w') as f:
-            json.dump(history, f)
 
 if DEBUG:
     for i_fold in range(len(idx_test_all)):
