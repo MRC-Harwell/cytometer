@@ -1,15 +1,20 @@
 """
-Validate pipeline v4:
+Validate pipeline v5:
+ * data generation
+   * training images (*0076*)
+   * non-overlap training images (*0077*)
+   * augmented training images (*0078*)
+   * k-folds (*0079*)
  * segmentation
-   * dmap (0056)
-   * contour (0070)
- * classifier (0074)
- * segmentation correction (0053) networks
-
+   * dmap (*0081*)
+   * contour from dmap (*0083*)
+ * classifier (0088)
+ * segmentation correction (0089) networks
+ * validation (0090)
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0075_pipeline_v4_validation'
+experiment_id = 'klf14_b6ntac_exp_0090_pipeline_v5_validation'
 
 # cross-platform home directory
 from pathlib import Path
@@ -27,18 +32,18 @@ import time
 import re
 
 # other imports
-from enum import IntEnum
+# from enum import IntEnum
 from PIL import Image, ImageDraw, ImageEnhance
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
-from scipy.stats import linregress, mode
-from skimage.morphology import remove_small_holes, binary_closing, binary_dilation
-from scipy.ndimage.morphology import binary_fill_holes
-import cv2
+# from scipy.stats import linregress, mode
+# from skimage.morphology import remove_small_holes, binary_closing, binary_dilation
+# from scipy.ndimage.morphology import binary_fill_holes
+# import cv2
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -48,11 +53,11 @@ import cytometer.utils
 import cytometer.data
 import tensorflow as tf
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.95
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.95
+# set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -96,29 +101,41 @@ hole_size_treshold = 8000
 
 # data paths
 root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-histology_dir = os.path.join(root_data_dir, 'Maz Yon')
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+
 training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
+# k-folds file
+saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+
 # model names
-dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap_model'
-contour_model_basename = 'klf14_b6ntac_exp_0070_cnn_contour_after_dmap_model'
-classifier_model_basename = 'klf14_b6ntac_exp_0074_cnn_tissue_classifier_fcn'
-correction_model_basename = 'klf14_b6ntac_exp_0053_cnn_quality_network_fcn_overlapping_scaled_contours'
+dmap_model_basename = 'klf14_b6ntac_exp_0081_cnn_dmap'
+contour_model_basename = 'klf14_b6ntac_exp_0083_cnn_contour_after_dmap'
+classifier_model_basename = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
+correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
+
+'''Load folds'''
 
 # load list of images, and indices for training vs. testing indices
-kfold_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0055_cnn_contour_kfold_info.pickle')
-with open(kfold_filename, 'rb') as f:
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(contour_model_kfold_filename, 'rb') as f:
     aux = pickle.load(f)
-file_list = aux['file_list']
+file_svg_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
+# correct home directory
+file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
+
 # number of images
-n_im = len(file_list)
+n_im = len(file_svg_list)
+
+# number of folds
+n_folds = len(idx_test_all)
 
 # CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
@@ -129,7 +146,7 @@ metainfo = pd.read_csv(metainfo_csv_file)
 Prepare the testing data:
 
   You can skip this if this section has already been run and saved to 
-  'klf14_b6ntac_exp_0075_pipeline_v4_validation_data.npz'.
+  'klf14_b6ntac_exp_0090_pipeline_v5_validation_data.npz'.
 
   Apply classifier trained with each 10 folds to the other fold. 
 ************************************************************************************************************************
@@ -149,16 +166,13 @@ out_mask_all = []
 contour_type_all = []
 i_all = []
 
-# correct home directory in file paths
-file_list = cytometer.data.change_home_directory(list(file_list), '/users/rittscher/rcasero', home, check_isfile=True)
-
 # loop files with hand traced contours
-for i, file_svg in enumerate(file_list):
+for i, file_svg in enumerate(file_svg_list):
 
     '''Read histology training window
     '''
 
-    print('file ' + str(i) + '/' + str(len(file_list) - 1))
+    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
 
     # change file extension from .svg to .tif
     file_tif = file_svg.replace('.svg', '.tif')
@@ -184,7 +198,7 @@ for i, file_svg in enumerate(file_list):
     histology_filename = os.path.basename(file_svg)
     aux = re.split('_row', histology_filename)
     histology_filename = aux[0] + '.ndpi'
-    histology_filename = os.path.join(histology_dir, histology_filename)
+    histology_filename = os.path.join(ndpi_dir, histology_filename)
 
     aux = aux[1].replace('.svg', '')
     aux = re.split('_', aux)
@@ -1233,8 +1247,8 @@ for i_fold in range(len(idx_test_all)):
         ''' Segmentation into non-overlapping objects '''
 
         # contour and dmap models
-        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_fold_' + str(i_fold) + '.h5')
-        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_fold_' + str(i_fold) + '.h5')
+        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
         # segment histology
         pred_seg_test, _ = cytometer.utils.segment_dmap_contour_v3(np.expand_dims(im_array_test[i, ...], axis=0),
