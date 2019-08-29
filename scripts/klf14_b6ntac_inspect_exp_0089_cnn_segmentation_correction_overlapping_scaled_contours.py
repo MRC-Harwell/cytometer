@@ -37,11 +37,8 @@ import pickle
 import json
 
 # other imports
-import datetime
-from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
@@ -53,6 +50,9 @@ import keras.backend as K
 import cytometer.utils
 import cytometer.data
 import tensorflow as tf
+
+from tensorboard.backend.event_processing import event_accumulator
+import pandas as pd
 
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
@@ -117,6 +117,54 @@ n_im = len(file_svg_list)
 # number of folds
 n_folds = len(idx_test_all)
 
+'''TensorBoard logs'''
+
+# list of metrics in the logs (we assume all folds have the same)
+size_guidance = {  # limit number of elements that can be loaded so that memory is not overfilled
+    event_accumulator.COMPRESSED_HISTOGRAMS: 500,
+    event_accumulator.IMAGES: 4,
+    event_accumulator.AUDIO: 4,
+    event_accumulator.SCALARS: 0,
+    event_accumulator.HISTOGRAMS: 1,
+}
+i_fold = 0
+saved_logs_dir = os.path.join(saved_models_dir, original_experiment_id + '_logs_fold_' + str(i_fold))
+ea = event_accumulator.EventAccumulator(saved_logs_dir, size_guidance=size_guidance)
+ea.Reload()  # loads events from file
+#tags = ea.Tags()['scalars']
+tags = ['loss', 'mean_squared_error', 'val_loss', 'val_mean_squared_error']
+
+if DEBUG:
+
+    plt.clf()
+
+    for i_fold in range(10):
+
+        saved_logs_dir = os.path.join(saved_models_dir, original_experiment_id + '_logs_fold_' + str(i_fold))
+        if not os.path.isdir(saved_logs_dir):
+            continue
+
+        # load log data for current fold
+        ea = event_accumulator.EventAccumulator(saved_logs_dir, size_guidance=size_guidance)
+        ea.Reload()
+
+        # plot curves for each metric
+        for i, tag in enumerate(tags):
+            df = pd.DataFrame(ea.Scalars(tag))
+
+            # plot
+            plt.subplot(2, 2, i + 1)
+            plt.plot(df['step'], df['value'], label='fold ' + str(i_fold))
+
+    for i, tag in enumerate(tags):
+        plt.subplot(2, 2, i + 1)
+        plt.tick_params(axis="both", labelsize=14)
+        plt.ylabel(tag, fontsize=14)
+        plt.xlabel('Epoch', fontsize=14)
+        plt.legend(fontsize=12)
+        plt.tight_layout()
+
+
 '''Inspect the data
 '''
 
@@ -158,17 +206,21 @@ for i_fold in range(n_folds):
     # apply correction model to histology masked with -1/+1 mask
     window_correction_test = correction_model.predict(window_im_test)
 
+    # threshold correction to -1/+1
+    window_correction_thres_test = (window_correction_test >= 0.5).astype(np.int8)
+    window_correction_thres_test[window_correction_test <= -0.5] = -1
+
     if DEBUG:
         j = 10
         plt.clf()
         plt.subplot(221)
         plt.imshow(np.abs(window_im_test[j, :, :, :]))
         plt.subplot(222)
-        plt.imshow(window_out_test[j, :, :, 0])
+        plt.imshow(window_out_test[j, :, :, 0], cmap='Accent', clim=(-1, 1))
         plt.subplot(223)
         plt.imshow(window_correction_test[j, :, :, 0])
         plt.subplot(224)
-        plt.imshow(window_correction_test[j, :, :, 0] >= 0)
+        plt.imshow(window_correction_thres_test[j, :, :, 0], cmap='Accent', clim=(-1, 1))
 
 
 
