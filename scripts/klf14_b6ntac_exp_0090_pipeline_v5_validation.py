@@ -118,6 +118,9 @@ contour_model_basename = 'klf14_b6ntac_exp_0083_cnn_contour_after_dmap'
 classifier_model_basename = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
+# HACK: use older models while the new ones are computing, so that we can develop the code in the mean time
+# classifier_model_basename = 'klf14_b6ntac_exp_0074_cnn_tissue_classifier_fcn'
+
 '''Load folds'''
 
 # load list of images, and indices for training vs. testing indices
@@ -145,8 +148,9 @@ metainfo = pd.read_csv(metainfo_csv_file)
 ************************************************************************************************************************
 Prepare the testing data:
 
-  You can skip this if this section has already been run and saved to 
+  This is computed once, and then saved to 
   'klf14_b6ntac_exp_0090_pipeline_v5_validation_data.npz'.
+  In subsequent runs, the data is loaded from that file.
 
   Apply classifier trained with each 10 folds to the other fold. 
 ************************************************************************************************************************
@@ -372,8 +376,8 @@ else:  # pre-compute the validation data and save to file
 
 '''
 ************************************************************************************************************************
-Areas of manual contours (this should be redundant with section "Object-wise classification validation", but it's
-a lot faster to compute if you just need the hand contour areas)
+Areas of manual contours. This computes a subset of section "Object-wise classification validation", just the manual 
+contour results (if you just need this subset, it's a lot faster than computing all the results in the other section). 
 ************************************************************************************************************************
 '''
 
