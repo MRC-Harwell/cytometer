@@ -59,11 +59,14 @@ import cytometer.data
 import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
+LIMIT_GPU_MEMORY = False
+
 # limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.9
-set_session(tf.Session(config=config))
+if LIMIT_GPU_MEMORY:
+    from keras.backend.tensorflow_backend import set_session
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.9
+    set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
