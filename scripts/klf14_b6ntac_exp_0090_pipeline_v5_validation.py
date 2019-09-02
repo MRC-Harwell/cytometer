@@ -43,7 +43,7 @@ from sklearn.metrics import roc_curve, auc
 # import cv2
 
 # # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -534,6 +534,19 @@ df_all.reset_index(drop=True, inplace=True)
 # save results
 data_filename = os.path.join(saved_models_dir, experiment_id + '_manual_contour_areas.pkl')
 df_all.to_pickle(data_filename)
+
+# load results
+data_filename = os.path.join(saved_models_dir, experiment_id + '_manual_contour_areas.pkl')
+df_all = pd.read_pickle(data_filename)
+
+# WAT objects, female and male
+idx_wat_female = np.array(df_all['type'] == 'wat') * np.array(df_all['sex'] == 'f')
+idx_wat_male = np.array(df_all['type'] == 'wat') * np.array(df_all['sex'] == 'm')
+
+if DEBUG:
+    plt.clf()
+    plt.hist(df_all['area'][idx_wat_female], bins=50, histtype='step')
+    plt.hist(df_all['area'][idx_wat_male], bins=50, histtype='step')
 
 
 '''
