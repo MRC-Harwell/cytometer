@@ -188,6 +188,15 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
 
+    # output filenames
+    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
+    saved_logs_dir = os.path.join(saved_models_dir, experiment_id + '_logs_fold_' + str(i_fold))
+
+    # if the model is already computed or being computed, we skip this fold
+    if os.path.isfile(saved_model_filename):
+        print('Model already computed or being computed. Skipping...')
+        continue
+
     '''Load data
     '''
 
@@ -296,10 +305,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # delete dmap model
     del dmap_model
-
-    # output filenames
-    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-    saved_logs_dir = os.path.join(saved_models_dir, experiment_id + '_logs_fold_' + str(i_fold))
 
     # checkpoint to save model after each epoch
     checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
