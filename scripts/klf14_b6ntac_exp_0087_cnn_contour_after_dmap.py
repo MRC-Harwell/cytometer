@@ -16,6 +16,11 @@ Training for the CNN:
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
 '''
 
+# HACK
+import sys; print('Python %s on %s' % (sys.version, sys.platform))
+sys.path.extend(['/home/rcasero/Software/cytometer', '/home/rcasero/Software/keras_sample_weight', '/home/rcasero/Software/cytometer'])
+
+
 experiment_id = 'klf14_b6ntac_exp_0087_cnn_contour_after_dmap'
 
 # cross-platform home directory
@@ -295,7 +300,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # checkpoint to save model after each epoch
     checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                       verbose=1, save_best_only=True)
+                                                                       verbose=1, save_best_only=False)
 
     # callback to write a log for TensorBoard
     # Note: run this on the server where the training is happening:
