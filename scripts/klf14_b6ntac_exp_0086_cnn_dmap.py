@@ -162,14 +162,9 @@ for i, file in enumerate(svg_file_list):
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
 # for i_fold, idx_test in enumerate(idx_test_all):
-for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate(idx_test_all[::-1]):
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
-
-    # HACK: skip already computed folds
-    if i_fold >= 9:
-        print('Skipping')
-        continue
 
     '''Load data'''
 
