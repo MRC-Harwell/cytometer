@@ -752,7 +752,7 @@ def append_paths_to_aida_json_file(file, xs):
     return
 
 
-def read_keras_training_output(filename):
+def read_keras_training_output(filename, every_step=True):
     """
     Read a text file with the keras output of one or multiple trainings. The output from
     each training is expected to look like this:
@@ -787,8 +787,58 @@ def read_keras_training_output(filename):
     [18450 rows x 5 columns]
 
     :param filename: string with the path and filename of a text file with the training output from keras
+    :param every_step: (bool def True) The log file contains one line per training step, as opposed to reading only one
+    summary line per epoch
     :return: list of pandas.DataFrame
     """
+
+    def process_metrics(line, epoch):
+
+        # remove whitespaces: '1/1846[..............................]-ETA:1:33:38-loss:1611.5088-mean_squared_error:933.6124-mean_absolute_error:17.6664'
+        line = line.strip()
+
+        # split line into elements: ['1/1846[..............................]', 'ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
+        line = line.split(' - ')
+
+        # remove first element: ['ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
+        line = line[1:]
+
+        # add "" around the first :, and at the beginning and end of the element
+        # ['"ETA":"1:33:38"', '"loss":"1611.5088"', '"mean_squared_error":"933.6124"', '"mean_absolute_error":"17.6664"']
+        line = [x.replace(':', '":"', 1) for x in line]
+        line = ['"' + x + '"' for x in line]
+
+        # add epoch to collated elements and surround by {}
+        # '{"ETA":"1:33:38", "loss":"1611.5088", "mean_squared_error":"933.6124", "mean_absolute_error":"17.6664"}'
+        line = '{"epoch":' + str(epoch) + ', ' + ', '.join(line) + '}'
+
+        # convert string to dict
+        # {'ETA': '1:33:38', 'loss': '1611.5088', 'mean_squared_error': '933.6124', 'mean_absolute_error': '17.6664'}
+        line = ast.literal_eval(line)
+
+        # convert string values to numeric values
+        for key in line.keys():
+            if key == 'ETA':
+                eta_str = line['ETA'].split(':')
+                if len(eta_str) == 1:  # ETA: 45s
+                    eta = int(eta_str[-1].replace('s', ''))
+                else:
+                    eta = int(eta_str[-1])
+                if len(eta_str) > 1:  # ETA: 1:08
+                    eta += 60 * int(eta_str[-2])
+                if len(eta_str) > 2:  # ETA: 1:1:08
+                    eta += 3600 * int(eta_str[-3])
+                if len(eta_str) > 3:
+                    raise ValueError('ETA format not implemented')
+                line['ETA'] = eta
+            elif key == 'epoch':
+                pass
+            else:
+                line[key] = float(line[key])
+
+        return line
+    # end of def process_metrics():
+
 
     # ignore all lines until we get to the first "Epoch"
     df_all = []
@@ -799,84 +849,107 @@ def read_keras_training_output(filename):
             epoch = 1
             break
 
-    # loop until the end of the file
-    while True:
+    # if the user wants to read only the summary line of the training output instead of each step
+    if every_step:
 
-        if ('Epoch 1/' in line) or not line:  # start of new training or end of file
+        # loop until the end of the file
+        while True:
 
-            if len(data) > 0:
-                # convert list of dictionaries to dataframe
-                df = pd.DataFrame(data)
+            if ('Epoch 1/' in line) or not line:  # start of new training or end of file
 
-                # reorder columns so that epochs go first
-                df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
+                if len(data) > 0:
+                    # convert list of dictionaries to dataframe
+                    df = pd.DataFrame(data)
 
-                # add dataframe to output list of dataframes
-                df_all.append(df)
+                    # reorder columns so that epochs go first
+                    df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
 
-                if not line:
-                    # if we are at the end of the file, we stop reading
-                    break
-                else:
-                    # reset the variables for the next training
-                    data = []
-                    epoch = 1
+                    # add dataframe to output list of dataframes
+                    df_all.append(df)
 
-        elif 'Epoch' in line:  # new epoch of current training
-
-            epoch += 1
-
-        elif 'ETA:' in line:
-
-            # remove whitespaces: '1/1846[..............................]-ETA:1:33:38-loss:1611.5088-mean_squared_error:933.6124-mean_absolute_error:17.6664'
-            line = line.strip()
-
-            # split line into elements: ['1/1846[..............................]', 'ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
-            line = line.split(' - ')
-
-            # remove first element: ['ETA:1:33:38', 'loss:1611.5088', 'mean_squared_error:933.6124', 'mean_absolute_error:17.6664']
-            line = line[1:]
-
-            # add "" around the first :, and at the beginning and end of the element
-            # ['"ETA":"1:33:38"', '"loss":"1611.5088"', '"mean_squared_error":"933.6124"', '"mean_absolute_error":"17.6664"']
-            line = [x.replace(':', '":"', 1) for x in line]
-            line = ['"' + x + '"' for x in line]
-
-            # add epoch to collated elements and surround by {}
-            # '{"ETA":"1:33:38", "loss":"1611.5088", "mean_squared_error":"933.6124", "mean_absolute_error":"17.6664"}'
-            line = '{"epoch":' + str(epoch) + ', ' + ', '.join(line) + '}'
-
-            # convert string to dict
-            # {'ETA': '1:33:38', 'loss': '1611.5088', 'mean_squared_error': '933.6124', 'mean_absolute_error': '17.6664'}
-            line = ast.literal_eval(line)
-
-            # convert string values to numeric values
-            for key in line.keys():
-                if key == 'ETA':
-                    eta_str = line['ETA'].split(':')
-                    if len(eta_str) == 1:  # ETA: 45s
-                        eta = int(eta_str[-1].replace('s', ''))
+                    if not line:
+                        # if we are at the end of the file, we stop reading
+                        break
                     else:
-                        eta = int(eta_str[-1])
-                    if len(eta_str) > 1:  # ETA: 1:08
-                        eta += 60 * int(eta_str[-2])
-                    if len(eta_str) > 2:  # ETA: 1:1:08
-                        eta += 3600 * int(eta_str[-3])
-                    if len(eta_str) > 3:
-                        raise ValueError('ETA format not implemented')
-                    line['ETA'] = eta
-                elif key == 'epoch':
-                    pass
-                else:
-                    line[key] = float(line[key])
+                        # reset the variables for the next training
+                        data = []
+                        epoch = 1
 
-            # add the dictionary to the output list
-            data.append(line)
+            elif 'Epoch' in line:  # new epoch of current training
 
-        # read the next line
-        line = file.readline()
+                epoch += 1
 
-    # we have finished reading the log file
+            elif 'ETA:' in line:
+
+                # convert line into dictionary with different metric values
+                line = process_metrics(line, epoch)
+
+                # add the dictionary to the output list
+                data.append(line)
+
+            # read the next line
+            line = file.readline()
+
+        # we have finished reading the log file
+
+    else:  # read only one summary line by epoch
+
+        # loop until the end of the file
+        while True:
+
+            if ('Epoch 1/' in line) or not line:  # start of new training or end of file
+
+                if len(data) > 0:
+                    # convert list of dictionaries to dataframe
+                    df = pd.DataFrame(data)
+
+                    # reorder columns so that epochs go first
+                    df = df[(df.columns[df.columns == 'epoch']).append(df.columns[df.columns != 'epoch'])]
+
+                    # add dataframe to output list of dataframes
+                    df_all.append(df)
+
+                    if not line:
+                        # if we are at the end of the file, we stop reading
+                        break
+                    else:
+                        # reset the variables for the next training
+                        data = []
+                        epoch = 1
+
+            elif 'Epoch' in line and not ':' in line:  # new epoch of current training
+
+                epoch += 1
+
+            # we want this line
+            #     1748/1748 [==============================] - 188s 108ms/step - loss: 0.3056 - acc: 0.9531 - val_loss: 0.3092 - val_acc: 0.9405
+            # we don't want this line
+            #     '1740/1748 [============================>.] - ETA: 0s - loss: 0.3058 - acc: 0.95312019-06-14 13:08:41.183265: W tensorflow/stream_executor/cuda/cuda_dnn.cc:3472] \n'
+            # we don't want these lines
+            #     2019-06-14 13:08:41.183372: W tensorflow/stream_executor/cuda/cuda_dnn.cc:3217]
+            elif 'loss' in line and '[=====' in line and '=====]' in line:
+
+                # remove start of line to keep only
+                #    loss: 0.3056 - acc: 0.9531 - val_loss: 0.3092 - val_acc: 0.9405
+                pattern = re.compile('loss:.*')
+                line = pattern.search(line)
+                line = line[0]
+
+                # add dummy start at beginning of the line that will be removed by process_metrics()
+                line = 'foo: foo - ' + line
+
+                # convert line into dictionary with different metric values
+                line = process_metrics(line, epoch)
+
+                # add the dictionary to the output list
+                data.append(line)
+
+            # read the next line
+            line = file.readline()
+
+        # we have finished reading the log file
+
+    # end "if from_summary_line"
 
     # close the file
     file.close()
