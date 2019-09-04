@@ -45,6 +45,9 @@ import cytometer.data
 import cytometer.models
 import tensorflow as tf
 
+from tensorboard.backend.event_processing import event_accumulator
+import pandas as pd
+
 LIMIT_GPU_MEMORY = False
 
 # limit GPU memory used: needed when the compG00X servers are used interactively
@@ -105,9 +108,16 @@ folds_basename_0087 = 'klf14_b6ntac_exp_0079_generate_kfolds'
 experiment_id_0070 = 'klf14_b6ntac_inspect_exp_0070_cnn_contour_after_dmap'
 original_experiment_id_0070 = 'klf14_b6ntac_exp_0070_cnn_contour_after_dmap'
 
+experiment_id_0087 = 'klf14_b6ntac_inspect_exp_0087_cnn_contour_after_dmap'
+original_experiment_id_0087 = 'klf14_b6ntac_exp_0087_cnn_contour_after_dmap'
+
 # scripts that trained the contour models
 dmap_model_basename = 'klf14_b6ntac_exp_0056_cnn_dmap'
-contour_model_basename = 'klf14_b6ntac_exp_0070_cnn_contour_after_dmap'
+contour_model_basename_0070 = 'klf14_b6ntac_exp_0070_cnn_contour_after_dmap'
+contour_model_basename_0087 = 'klf14_b6ntac_exp_0087_cnn_contour_after_dmap'
+
+'''Older model 0070: Training metrics
+'''
 
 # load k-folds training and testing data
 kfold_info_filename = os.path.join(saved_models_dir, folds_basename_0070 + '_kfold_info.pickle')
@@ -120,9 +130,6 @@ del kfold_info
 
 # number of images
 n_im = len(file_list)
-
-'''Older model 0070: Training metrics
-'''
 
 log_filename = os.path.join(saved_models_dir, original_experiment_id_0070 + '.log')
 
@@ -260,3 +267,141 @@ if SAVE_FIGS:
 # w = contour_model.get_layer(index=lay).get_weights()
 # plt.plot(w[0][0, 0, :, 0])
 # plt.plot(w[1][0, 0, :, 0])
+
+
+'''Current model 0087: Training metrics
+'''
+
+'''TensorBoard logs'''
+
+# list of metrics in the logs (we assume all folds have the same)
+size_guidance = {  # limit number of elements that can be loaded so that memory is not overfilled
+    event_accumulator.COMPRESSED_HISTOGRAMS: 500,
+    event_accumulator.IMAGES: 4,
+    event_accumulator.AUDIO: 4,
+    event_accumulator.SCALARS: 0,
+    event_accumulator.HISTOGRAMS: 1,
+}
+i_fold = 0
+saved_logs_dir = os.path.join(saved_models_dir, original_experiment_id_0087 + '_logs_fold_' + str(i_fold))
+ea = event_accumulator.EventAccumulator(saved_logs_dir, size_guidance=size_guidance)
+ea.Reload()  # loads events from file
+print(ea.Tags()['scalars'])
+tags = ['loss', 'acc', 'val_loss', 'val_acc']
+
+
+for i_fold in range(10):
+
+    saved_logs_dir = os.path.join(saved_models_dir, original_experiment_id_0087 + '_logs_fold_' + str(i_fold))
+    if not os.path.isdir(saved_logs_dir):
+        continue
+
+    # load log data for current fold
+    ea = event_accumulator.EventAccumulator(saved_logs_dir, size_guidance=size_guidance)
+    ea.Reload()
+
+    # plot curves for each metric
+    plt.clf()
+    for i, tag in enumerate(tags):
+        df = pd.DataFrame(ea.Scalars(tag))
+
+        # plot
+        plt.subplot(2, 2, i + 1)
+        plt.plot(df['step'], df['value'], label='fold ' + str(i_fold))
+
+for i, tag in enumerate(tags):
+    plt.subplot(2, 2, i + 1)
+    plt.tick_params(axis="both", labelsize=14)
+    plt.title(tag, fontsize=14)
+    plt.xlabel('Epoch', fontsize=14)
+    plt.legend(fontsize=12)
+plt.tight_layout()
+
+'''Current model 0087: Check how the contour CNN responds to histology images
+'''
+
+# load k-folds training and testing data
+kfold_info_filename = os.path.join(saved_models_dir, folds_basename_0087 + '.pickle')
+with open(kfold_info_filename, 'rb') as f:
+    kfold_info = pickle.load(f)
+file_list = kfold_info['file_list']
+idx_test_all = kfold_info['idx_test']
+idx_train_all = kfold_info['idx_train']
+del kfold_info
+
+# number of images
+n_im = len(file_list)
+
+for i_fold in range(n_folds):
+
+    # list of test files in this fold
+    file_list_test = np.array(file_list)[idx_test_all[i_fold]]
+
+    for i, file_svg in enumerate(file_list_test):
+
+        print('file ' + str(i) + '/' + str(len(idx_test_all[i_fold]) - 1))
+
+        # change file extension from .svg to .tif
+        file_tif = file_svg.replace('.svg', '.tif')
+
+        # open histology training image
+        im = Image.open(file_tif)
+
+        # read pixel size information
+        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+        # make array copy, and cast to expected type and values range
+        im_array = np.array(im)
+        im_array = im_array.astype(np.float32)
+        im_array /= 255.0
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im)
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+
+        # load dmap and contour models
+        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        dmap_model = keras.models.load_model(dmap_model_filename)
+
+        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename_0087 + '_model_fold_' + str(i_fold) + '.h5')
+        contour_model = keras.models.load_model(contour_model_filename)
+
+        # set input layer to size of images
+        dmap_model = cytometer.models.change_input_size(dmap_model, batch_shape=(None,) + im_array.shape)
+        contour_model = cytometer.models.change_input_size(contour_model, batch_shape=dmap_model.output_shape)
+
+        # process histology
+        dmap = dmap_model.predict(np.expand_dims(im_array, axis=0))
+        contour = contour_model.predict(dmap)
+
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im)
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+
+            plt.subplot(222)
+            plt.cla()
+            plt.imshow(dmap[0, :, :, 0])
+            plt.axis('off')
+            plt.title('Distance transformation', fontsize=14)
+
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(contour[0, :, :, 0])
+            plt.axis('off')
+            plt.title('Contour detection', fontsize=14)
+
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow((contour[0, :, :, 0] > 0).astype(np.uint8))
+            plt.axis('off')
+            plt.title('Thresholded contours', fontsize=14)
+
+            plt.tight_layout()
+
