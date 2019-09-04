@@ -13,7 +13,7 @@ module load Anaconda3/5.1.0
 
 source activate cytometer_tensorflow
 
-python klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours.py
+python klf14_b6ntac_exp_0091_cnn_contour_after_dmap.py
 
 echo "Finished at :"`date`
 exit 0
