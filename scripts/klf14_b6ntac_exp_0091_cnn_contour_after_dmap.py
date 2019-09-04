@@ -18,9 +18,9 @@ Training for the CNN:
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
 '''
 
-# HACK
-import sys; print('Python %s on %s' % (sys.version, sys.platform))
-sys.path.extend(['/home/rcasero/Software/cytometer', '/home/rcasero/Software/keras_sample_weight', '/home/rcasero/Software/cytometer'])
+# # HACK
+# import sys; print('Python %s on %s' % (sys.version, sys.platform))
+# sys.path.extend(['/home/rcasero/Software/cytometer', '/home/rcasero/Software/keras_sample_weight', '/home/rcasero/Software/cytometer'])
 
 
 experiment_id = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
@@ -190,7 +190,10 @@ for i, file in enumerate(svg_file_list):
 
 # loop each fold: we split the data into train vs test, train a model, and compute errors with the
 # test data. In each fold, the test data is different
-for i_fold, idx_test in enumerate(idx_test_all):
+for i_fold, idx_test in enumerate(idx_test_all[::-1]):
+
+    # HACK: start from the last fold
+    i_fold = 9 - i_fold
 
     print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
 
