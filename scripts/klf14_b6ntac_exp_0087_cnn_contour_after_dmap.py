@@ -16,11 +16,6 @@ Training for the CNN:
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
 '''
 
-# HACK
-import sys; print('Python %s on %s' % (sys.version, sys.platform))
-sys.path.extend(['/home/rcasero/Software/cytometer', '/home/rcasero/Software/keras_sample_weight', '/home/rcasero/Software/cytometer'])
-
-
 experiment_id = 'klf14_b6ntac_exp_0087_cnn_contour_after_dmap'
 
 # cross-platform home directory
