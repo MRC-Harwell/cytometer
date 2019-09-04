@@ -1,20 +1,20 @@
 """
-Validate pipeline v5:
+Validate pipeline v6:
  * data generation
    * training images (*0076*)
    * non-overlap training images (*0077*)
    * augmented training images (*0078*)
    * k-folds (*0079*)
  * segmentation
-   * dmap (*0081*)
-   * contour from dmap (*0083*)
- * classifier (0088)
- * segmentation correction (0089) networks
- * validation (0090)
+   * dmap (*0086*)
+   * contour from dmap (0091)
+ * classifier (*0088*)
+ * segmentation correction (0089) networks"
+ * validation (0092)
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0090_pipeline_v5_validation'
+experiment_id = 'klf14_b6ntac_exp_0092_pipeline_v6_validation'
 
 # cross-platform home directory
 from pathlib import Path
@@ -37,13 +37,9 @@ from PIL import Image, ImageDraw, ImageEnhance
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
-# from scipy.stats import linregress, mode
-# from skimage.morphology import remove_small_holes, binary_closing, binary_dilation
-# from scipy.ndimage.morphology import binary_fill_holes
-# import cv2
 
 # # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -113,8 +109,8 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
 
 # model names
-dmap_model_basename = 'klf14_b6ntac_exp_0081_cnn_dmap'
-contour_model_basename = 'klf14_b6ntac_exp_0083_cnn_contour_after_dmap'
+dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
+contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
 classifier_model_basename = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
