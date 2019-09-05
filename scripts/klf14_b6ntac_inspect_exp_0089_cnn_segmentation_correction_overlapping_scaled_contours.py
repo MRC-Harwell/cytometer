@@ -41,7 +41,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -54,11 +54,14 @@ import tensorflow as tf
 from tensorboard.backend.event_processing import event_accumulator
 import pandas as pd
 
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.95
-# set_session(tf.Session(config=config))
+LIMIT_GPU_MEMORY = False
+
+if LIMIT_GPU_MEMORY:
+    # limit GPU memory used
+    from keras.backend.tensorflow_backend import set_session
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.95
+    set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
 K.set_image_data_format('channels_last')
@@ -161,7 +164,7 @@ if DEBUG:
         plt.tick_params(axis="both", labelsize=14)
         plt.ylabel(tag, fontsize=14)
         plt.xlabel('Epoch', fontsize=14)
-        plt.legend(fontsize=12)
+        # plt.legend(fontsize=12)
         plt.tight_layout()
 
 
@@ -214,7 +217,7 @@ for i_fold in range(n_folds):
         j = 10
         plt.clf()
         plt.subplot(221)
-        plt.imshow(np.abs(window_im_test[j, :, :, :]))
+        plt.imshow(np.abs(window_im_test[j, :, :, :]) / 255.0)
         plt.subplot(222)
         plt.imshow(window_out_test[j, :, :, 0], cmap='Accent', clim=(-1, 1))
         plt.subplot(223)
