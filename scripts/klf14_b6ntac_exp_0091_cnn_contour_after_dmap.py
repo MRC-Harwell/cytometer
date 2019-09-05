@@ -67,7 +67,7 @@ LIMIT_GPU_MEMORY = False
 if LIMIT_GPU_MEMORY:
     from keras.backend.tensorflow_backend import set_session
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.9
+    config.gpu_options.per_process_gpu_memory_fraction = 0.95
     set_session(tf.Session(config=config))
 
 # specify data format as (n, row, col, channel)
