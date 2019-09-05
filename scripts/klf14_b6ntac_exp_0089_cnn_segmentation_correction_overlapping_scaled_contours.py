@@ -392,6 +392,10 @@ else:  # PREPARE_TRAINING_DATA
     window_idx_all = result['window_idx_all']
     del result
 
+    # HACK: the data currently saved was incorrectly generated in [-255, 255]. To train the models with inputs in
+    # [-1, 1], we have to divide by 255
+    window_im_all /= 255.0
+
 '''Convolutional neural network training
 
     Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -429,6 +433,16 @@ for i_fold in range(n_folds):
     idx_test = np.where([x in idx_test for x in window_idx_all[:, 0]])[0]
     idx_train = np.where([x in idx_train for x in window_idx_all[:, 0]])[0]
 
+    # shuffle indices
+    np.random.seed(i_fold)
+    np.random.shuffle(idx_test)
+    np.random.shuffle(idx_train)
+
+    # remove indices as necessary so that the number of training images is a multiple of the batch size.
+    # This prevents BatchNormalization produce NaNs when a batch has 1 sample
+    len_train = (len(idx_train) // batch_size) * batch_size
+    idx_train = idx_train[0:len_train]
+
     print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
 
@@ -441,15 +455,6 @@ for i_fold in range(n_folds):
 
     window_mask_loss_test = window_mask_loss_all[idx_test, :]
     window_mask_loss_train = window_mask_loss_all[idx_train, :]
-
-    # window_im_test = result['window_im_all'][idx_test, :, :, :]
-    # window_im_train = result['window_im_all'][idx_train, :, :, :]
-    #
-    # window_out_test = result['window_out_all'][idx_test, :, :]
-    # window_out_train = result['window_out_all'][idx_train, :, :]
-    #
-    # window_mask_loss_test = result['window_mask_loss_all'][idx_test, :]
-    # window_mask_loss_train = result['window_mask_loss_all'][idx_train, :]
 
     # instantiate model
     with tf.device('/cpu:0'):
