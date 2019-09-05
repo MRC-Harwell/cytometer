@@ -39,7 +39,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
 # # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -83,7 +83,7 @@ min_cell_area = 75
 median_size = 0
 closing_size = 11
 contour_seed_threshold = 0.005
-batch_size = 16
+batch_size = 2
 local_threshold_block_size = 41
 
 # rough_foreground_mask() parameters
@@ -160,13 +160,14 @@ data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 
 if os.path.isfile(data_filename):
 
+    # Note: If an image has no contours, it's corresponding im_array_all, ..., out_mask_all will be all zeros
+
     # load pre-computed data
     aux = np.load(data_filename)
     im_array_all = aux['im_array_all']
     rough_mask_all = aux['rough_mask_all']
     out_class_all = aux['out_class_all']
     out_mask_all = aux['out_mask_all']
-    i_all = aux['i_all']
     del aux
 
 else:  # pre-compute the validation data and save to file
@@ -180,7 +181,6 @@ else:  # pre-compute the validation data and save to file
     out_class_all = []
     out_mask_all = []
     contour_type_all = []
-    i_all = []
 
     # loop files with hand traced contours
     for i, file_svg in enumerate(file_svg_list):
@@ -274,51 +274,56 @@ else:  # pre-compute the validation data and save to file
         print('Other: ' + str(len(other_contours)))
         print('Brown: ' + str(len(brown_contours)))
 
-        if (len(contours) == 0):
-            print('No contours... skipping')
-            continue
+        if (len(contours) == 0):  # there are no contours
 
-        # initialise arrays for training
-        out_class = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
-        out_mask = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+            # blank outputs for this image
+            im_array = np.zeros(shape=im_crop.shape, dtype=np.uint8)
+            out_class = np.zeros(shape=im_crop.shape[0:2], dtype=np.uint8)
+            out_mask = np.zeros(shape=im_crop.shape[0:2], dtype=np.uint8)
 
-        if DEBUG:
-            plt.clf()
-            plt.imshow(im_array)
-            plt.scatter((im_array.shape[1] - 1) / 2.0, (im_array.shape[0] - 1) / 2.0)
+        else:  # there are contours
 
-        # loop ground truth cell contours
-        for j, contour in enumerate(contours):
+            # initialise arrays for training
+            out_class = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+            out_mask = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
 
             if DEBUG:
                 plt.clf()
                 plt.imshow(im_array)
-                plt.plot([p[0] for p in contour], [p[1] for p in contour])
-                xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
-                plt.scatter(xy_c[0], xy_c[1])
+                plt.scatter((im_array.shape[1] - 1) / 2.0, (im_array.shape[0] - 1) / 2.0)
 
-            # rasterise current ground truth segmentation
-            cell_seg_gtruth = Image.new("1", im_array.shape[0:2][::-1], "black")  # I = 32-bit signed integer pixels
-            draw = ImageDraw.Draw(cell_seg_gtruth)
-            draw.polygon(contour, outline="white", fill="white")
-            cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.bool)
+            # loop ground truth cell contours
+            for j, contour in enumerate(contours):
 
-            if DEBUG:
-                plt.clf()
-                plt.subplot(121)
-                plt.imshow(im_array)
-                plt.plot([p[0] for p in contour], [p[1] for p in contour])
-                xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
-                plt.scatter(xy_c[0], xy_c[1])
-                plt.subplot(122)
-                plt.imshow(im_array)
-                plt.contour(cell_seg_gtruth.astype(np.uint8))
+                if DEBUG:
+                    plt.clf()
+                    plt.imshow(im_array)
+                    plt.plot([p[0] for p in contour], [p[1] for p in contour])
+                    xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                    plt.scatter(xy_c[0], xy_c[1])
 
-            # add current object to training output and mask
-            out_mask[cell_seg_gtruth] = 1
-            out_class[cell_seg_gtruth] = contour_type[j]
+                # rasterise current ground truth segmentation
+                cell_seg_gtruth = Image.new("1", im_array.shape[0:2][::-1], "black")  # I = 32-bit signed integer pixels
+                draw = ImageDraw.Draw(cell_seg_gtruth)
+                draw.polygon(contour, outline="white", fill="white")
+                cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.bool)
 
-        # end for j, contour in enumerate(contours):
+                if DEBUG:
+                    plt.clf()
+                    plt.subplot(121)
+                    plt.imshow(im_array)
+                    plt.plot([p[0] for p in contour], [p[1] for p in contour])
+                    xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+                    plt.scatter(xy_c[0], xy_c[1])
+                    plt.subplot(122)
+                    plt.imshow(im_array)
+                    plt.contour(cell_seg_gtruth.astype(np.uint8))
+
+                # add current object to training output and mask
+                out_mask[cell_seg_gtruth] = 1
+                out_class[cell_seg_gtruth] = contour_type[j]
+
+            # end for j, contour in enumerate(contours):
 
         if DEBUG:
             plt.clf()
@@ -355,7 +360,6 @@ else:  # pre-compute the validation data and save to file
         rough_mask_all.append(rough_mask_crop)
         out_class_all.append(out_class)
         out_mask_all.append(out_mask)
-        i_all.append(i)
 
         print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
@@ -367,7 +371,7 @@ else:  # pre-compute the validation data and save to file
 
     # save results to avoid having to recompute them every time
     np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all, out_class_all=out_class_all,
-             out_mask_all=out_mask_all, i_all=i_all)
+             out_mask_all=out_mask_all)
 
 
 '''
@@ -393,13 +397,6 @@ for i_fold in range(len(idx_test_all)):
     # list of test files (used later for the dataframe)
     file_list_test = np.array(file_svg_list)[idx_test]
 
-    # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
-    # skipped)
-    idx_lut = np.full(shape=(len(file_svg_list), ), fill_value=-1, dtype=idx_test.dtype)
-    idx_lut[i_all] = range(len(i_all))
-    idx_test = idx_lut[idx_test]
-
-    # print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
 
     # split data into training and testing
@@ -557,7 +554,7 @@ with np.load(data_filename) as data:
     im_array_all = data['im_array_all']
     out_class_all = data['out_class_all']
     out_mask_all = data['out_mask_all']
-    i_all = data['i_all']
+    i_file_all = data['i_all']
 
 # init
 im_array_test_all = []
@@ -576,7 +573,7 @@ for i_fold in range(len(idx_test_all)):
     # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
     # skipped)
     idx_lut = np.full(shape=(len(file_svg_list), ), fill_value=-1, dtype=idx_test.dtype)
-    idx_lut[i_all] = range(len(i_all))
+    idx_lut[i_file_all] = range(len(i_file_all))
     idx_train = idx_lut[idx_train]
     idx_test = idx_lut[idx_test]
 
@@ -705,7 +702,7 @@ Object-wise classification validation
 '''
 
 # correct home directory in file paths
-file_list = cytometer.data.change_home_directory(list(file_list), '/users/rittscher/rcasero', home, check_isfile=True)
+file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
 
 # load data computed in the previous section
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
@@ -713,7 +710,7 @@ with np.load(data_filename) as data:
     im_array_all = data['im_array_all']
     out_class_all = data['out_class_all']
     out_mask_all = data['out_mask_all']
-    i_all = data['i_all']
+    i_file_all = data['i_all']
 
 # start timer
 t0 = time.time()
@@ -725,16 +722,15 @@ for i_fold in range(len(idx_test_all)):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
-    # test and training image indices. These indices refer to file_list
-    idx_test = idx_test_all[i_fold]
-    # idx_train = idx_train_all[i_fold]
+    # test image indices. These indices refer to file_list
+    idx_file_test = idx_test_all[i_fold]
 
     # list of test files (used later for the dataframe)
-    file_list_test = np.array(file_list)[idx_test]
+    file_svg_list_test = np.array(file_svg_list)[idx_file_test]
 
     # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
     # skipped)
-    idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
+    idx_lut = np.full(shape=(len(file_svg_list), ), fill_value=-1, dtype=idx_test.dtype)
     idx_lut[i_all] = range(len(i_all))
     # idx_train = idx_lut[idx_train]
     idx_test = idx_lut[idx_test]
@@ -753,7 +749,7 @@ for i_fold in range(len(idx_test_all)):
     out_mask_test = out_mask_all[idx_test, :, :]
 
     # loop test images
-    for i, file_svg in enumerate(file_list_test):
+    for i, file_svg in enumerate(file_svg_list_test):
 
         print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
               + str(i) + '/' + str(len(idx_test) - 1))
@@ -1164,7 +1160,7 @@ with np.load(data_filename) as data:
     rough_mask_all = data['rough_mask_all']
     out_class_all = data['out_class_all']
     out_mask_all = data['out_mask_all']
-    i_all = data['i_all']
+    i_file_all = data['i_all']
 
 # start timer
 t0 = time.time()
@@ -1186,7 +1182,7 @@ for i_fold in range(len(idx_test_all)):
     # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
     # skipped)
     idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
-    idx_lut[i_all] = range(len(i_all))
+    idx_lut[i_file_all] = range(len(i_file_all))
     # idx_train = idx_lut[idx_train]
     idx_test = idx_lut[idx_test]
 
