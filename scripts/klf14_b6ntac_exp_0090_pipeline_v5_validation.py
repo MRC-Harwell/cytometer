@@ -1,4 +1,7 @@
 """
+THIS FILE IS NOT DOUBLE-CHECKED AND SHOULD NOT BE USED. IN PARTICULAR, WE KNOW THAT THE INDICES IN THE OBJECT-WISE
+CLASSIFIER SECTION IS WRONG. See instead 0092 script, as pipeline v5 was abandoned.
+
 Validate pipeline v5:
  * data generation
    * training images (*0076*)
