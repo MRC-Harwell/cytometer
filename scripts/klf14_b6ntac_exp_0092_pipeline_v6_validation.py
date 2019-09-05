@@ -554,13 +554,9 @@ with np.load(data_filename) as data:
     im_array_all = data['im_array_all']
     out_class_all = data['out_class_all']
     out_mask_all = data['out_mask_all']
-    i_file_all = data['i_all']
 
-# init
-im_array_test_all = []
-out_class_test_all = []
-out_mask_test_all = []
-predict_class_test_all = []
+# init output
+predict_class_test_all = np.zeros(shape=out_class_all.shape, dtype=np.float32)
 
 for i_fold in range(len(idx_test_all)):
 
@@ -569,13 +565,6 @@ for i_fold in range(len(idx_test_all)):
     # test and training image indices. These indices refer to file_list
     idx_test = idx_test_all[i_fold]
     idx_train = idx_train_all[i_fold]
-
-    # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
-    # skipped)
-    idx_lut = np.full(shape=(len(file_svg_list), ), fill_value=-1, dtype=idx_test.dtype)
-    idx_lut[i_file_all] = range(len(i_file_all))
-    idx_train = idx_lut[idx_train]
-    idx_test = idx_lut[idx_test]
 
     print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
@@ -601,10 +590,7 @@ for i_fold in range(len(idx_test_all)):
     predict_class_test = classifier_model.predict(im_array_test, batch_size=batch_size)
 
     # append data for total output
-    im_array_test_all.append(im_array_test)
-    out_class_test_all.append(out_class_test)
-    out_mask_test_all.append(out_mask_test)
-    predict_class_test_all.append(predict_class_test)
+    predict_class_test_all[idx_test, ...] = predict_class_test
 
     if DEBUG:
         for i in range(len(idx_test)):
@@ -629,16 +615,9 @@ for i_fold in range(len(idx_test_all)):
             plt.pause(5)
 
 
-# collapse lists into arrays
-im_array_test_all = np.concatenate(im_array_test_all)
-out_class_test_all = np.concatenate(out_class_test_all)
-out_mask_test_all = np.concatenate(out_mask_test_all)
-predict_class_test_all = np.concatenate(predict_class_test_all)
-
 # save results
 data_filename = os.path.join(saved_models_dir, experiment_id + '_pixel_classifier.npz')
-np.savez(data_filename, im_array_test_all=im_array_test_all, out_class_test_all=out_class_test_all,
-         out_mask_test_all=out_mask_test_all, predict_class_test_all=predict_class_test_all)
+np.savez(data_filename, predict_class_test_all=predict_class_test_all)
 
 ''' Analyse results '''
 
@@ -652,7 +631,7 @@ with np.load(data_filename) as data:
 
 # vectors of pixels where we know whether they are WAT or Other
 out_mask_test_all = out_mask_test_all.astype(np.bool)
-out_class_test_all = 1 - out_class_test_all[:, :, :, 0]  # wat == 1
+out_class_test_all = out_class_test_all[:, :, :, 0]  # wat == 1
 y_wat_true = out_class_test_all[out_mask_test_all]
 predict_class_test_all = predict_class_test_all[:, :, :, 0]  # wat = larger score
 y_wat_predict = predict_class_test_all[out_mask_test_all]
