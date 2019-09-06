@@ -229,6 +229,13 @@ for i_fold, idx_test in enumerate(idx_test_all[::-1]):
     train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='contour', threshold=1900)
     test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='contour', threshold=1900)
 
+    # remove indices as necessary so that the number of training images is a multiple of the batch size.
+    # This prevents BatchNormalization produce NaNs when a batch has 1 sample
+    len_train = (train_dataset['im'].shape[0] // batch_size) * batch_size
+    train_dataset['im'] = train_dataset['im'][0:len_train, ...]
+    train_dataset['mask'] = train_dataset['mask'][0:len_train, ...]
+    train_dataset['contour'] = train_dataset['contour'][0:len_train, ...]
+
     # add seg pixels to the mask, because the mask doesn't fully cover the contour
     train_dataset['mask'] = np.logical_or(train_dataset['mask'], train_dataset['contour'])
     test_dataset['mask'] = np.logical_or(test_dataset['mask'], test_dataset['contour'])

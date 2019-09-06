@@ -18,9 +18,9 @@ Training for the CNN:
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
 '''
 
-# HACK
-import sys; print('Python %s on %s' % (sys.version, sys.platform))
-sys.path.extend(['/home/rcasero/Software/cytometer', '/home/rcasero/Software/keras_sample_weight', '/home/rcasero/Software/cytometer'])
+# # HACK
+# import sys; print('Python %s on %s' % (sys.version, sys.platform))
+# sys.path.extend(['/home/rcasero/Software/cytometer', '/home/rcasero/Software/keras_sample_weight', '/home/rcasero/Software/cytometer'])
 
 
 experiment_id = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
@@ -44,8 +44,8 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -61,7 +61,7 @@ import cytometer.data
 import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
-LIMIT_GPU_MEMORY = True
+LIMIT_GPU_MEMORY = False
 
 # limit GPU memory used
 if LIMIT_GPU_MEMORY:
@@ -192,12 +192,12 @@ for i, file in enumerate(svg_file_list):
 # test data. In each fold, the test data is different
 for i_fold, idx_test in enumerate(idx_test_all):
 
+    print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
+
     # HACK: skip 5 first
     if i_fold < 5:
         print('Skipping...')
         continue
-
-    print('Fold ' + str(i_fold) + '/' + str(len(idx_test_all)-1))
 
     # output filenames
     saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
@@ -230,6 +230,13 @@ for i_fold, idx_test in enumerate(idx_test_all):
     # cells)
     train_dataset = cytometer.data.remove_poor_data(train_dataset, prefix='contour', threshold=1900)
     test_dataset = cytometer.data.remove_poor_data(test_dataset, prefix='contour', threshold=1900)
+
+    # remove indices as necessary so that the number of training images is a multiple of the batch size.
+    # This prevents BatchNormalization produce NaNs when a batch has 1 sample
+    len_train = (train_dataset['im'].shape[0] // batch_size) * batch_size
+    train_dataset['im'] = train_dataset['im'][0:len_train, ...]
+    train_dataset['mask'] = train_dataset['mask'][0:len_train, ...]
+    train_dataset['contour'] = train_dataset['contour'][0:len_train, ...]
 
     # add seg pixels to the mask, because the mask doesn't fully cover the contour
     train_dataset['mask'] = np.logical_or(train_dataset['mask'], train_dataset['contour'])
