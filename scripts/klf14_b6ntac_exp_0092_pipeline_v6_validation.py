@@ -145,7 +145,7 @@ metainfo = pd.read_csv(metainfo_csv_file)
 Prepare the testing data:
 
   This is computed once, and then saved to 
-  'klf14_b6ntac_exp_0090_pipeline_v5_validation_data.npz'.
+  'klf14_b6ntac_exp_0092_pipeline_v6_validation_data.npz'.
   In subsequent runs, the data is loaded from that file.
 
   Apply classifier trained with each 10 folds to the other fold. 
@@ -621,20 +621,23 @@ np.savez(data_filename, predict_class_test_all=predict_class_test_all)
 
 ''' Analyse results '''
 
-# load data computed in the previous section
+# load data computed in previous sections
+data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
+with np.load(data_filename) as data:
+    im_array_all = data['im_array_all']
+    out_class_all = data['out_class_all']
+    out_mask_all = data['out_mask_all']
+
 data_filename = os.path.join(saved_models_dir, experiment_id + '_pixel_classifier.npz')
 with np.load(data_filename) as data:
-    im_array_test_all = data['im_array_test_all']
-    out_class_test_all = data['out_class_test_all']
-    out_mask_test_all = data['out_mask_test_all']
     predict_class_test_all = data['predict_class_test_all']
 
-# vectors of pixels where we know whether they are WAT or Other
-out_mask_test_all = out_mask_test_all.astype(np.bool)
-out_class_test_all = out_class_test_all[:, :, :, 0]  # wat == 1
-y_wat_true = out_class_test_all[out_mask_test_all]
+# vectors of labelled pixels (WAT / Other)
+out_mask_all = out_mask_all.astype(np.bool)
+out_class_all = out_class_all[:, :, :, 0]
 predict_class_test_all = predict_class_test_all[:, :, :, 0]  # wat = larger score
-y_wat_predict = predict_class_test_all[out_mask_test_all]
+y_wat_true = out_class_all[out_mask_all]
+y_wat_predict = predict_class_test_all[out_mask_all]
 
 # classifier ROC (we make WAT=1, other=0 for clarity of the results)
 fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=y_wat_predict)
