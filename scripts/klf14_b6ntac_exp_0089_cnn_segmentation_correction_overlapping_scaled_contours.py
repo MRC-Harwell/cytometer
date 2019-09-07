@@ -392,10 +392,6 @@ else:  # PREPARE_TRAINING_DATA
     window_idx_all = result['window_idx_all']
     del result
 
-    # HACK: the data currently saved was incorrectly generated in [-255, 255]. To train the models with inputs in
-    # [-1, 1], we have to divide by 255
-    window_im_all /= 255.0
-
 '''Convolutional neural network training
 
     Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
