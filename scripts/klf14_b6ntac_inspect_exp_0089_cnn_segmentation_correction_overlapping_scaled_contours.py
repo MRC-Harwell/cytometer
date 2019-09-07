@@ -217,19 +217,10 @@ for i_fold in range(n_folds):
         j = 10
         plt.clf()
         plt.subplot(221)
-        plt.imshow(np.abs(window_im_test[j, :, :, :]) / 255.0)
+        plt.imshow(np.abs(window_im_test[j, :, :, :]))
         plt.subplot(222)
         plt.imshow(window_out_test[j, :, :, 0], cmap='Accent', clim=(-1, 1))
         plt.subplot(223)
         plt.imshow(window_correction_test[j, :, :, 0])
         plt.subplot(224)
         plt.imshow(window_correction_thres_test[j, :, :, 0], cmap='Accent', clim=(-1, 1))
-
-
-
-
-
-
-
-
-
