@@ -932,9 +932,6 @@ for i_fold in range(len(idx_test_all)):
         # concatenate current dataframe to general dataframe
         df_all = df_all.append(df_im, ignore_index=True)
 
-# reindex the dataframe
-df_all.reset_index(drop=True, inplace=True)
-
 # save results
 data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.pkl')
 df_all.to_pickle(data_filename)
