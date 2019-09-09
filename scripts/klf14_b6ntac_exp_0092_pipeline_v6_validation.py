@@ -176,11 +176,10 @@ else:  # pre-compute the validation data and save to file
     t0 = time.time()
 
     # init output
-    im_array_all = []
-    rough_mask_all = []
-    out_class_all = []
-    out_mask_all = []
-    contour_type_all = []
+    im_array_all = np.zeros(shape=(len(file_svg_list), 1001, 1001, 3), dtype=np.float32)
+    rough_mask_all = np.zeros(shape=(len(file_svg_list), 1001, 1001), dtype=np.bool)
+    out_class_all = np.zeros(shape=(len(file_svg_list), 1001, 1001, 1), dtype=np.float32)
+    out_mask_all = np.zeros(shape=(len(file_svg_list), 1001, 1001), dtype=np.float32)
 
     # loop files with hand traced contours
     for i, file_svg in enumerate(file_svg_list):
@@ -268,7 +267,6 @@ else:  # pre-compute the validation data and save to file
                         np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
                         np.ones(shape=(len(brown_contours),), dtype=np.uint8)]  # 1: brown cells (treated as "other" tissue)
         contour_type = np.concatenate(contour_type)
-        contour_type_all.append(contour_type)
 
         print('Cells: ' + str(len(cell_contours)))
         print('Other: ' + str(len(other_contours)))
@@ -339,13 +337,6 @@ else:  # pre-compute the validation data and save to file
             plt.axis('off')
             plt.tight_layout()
 
-        # add dummy dimensions for keras
-        im_array = np.expand_dims(im_array, axis=0)
-        rough_mask_crop = np.expand_dims(rough_mask_crop, axis=0)
-        out_class = np.expand_dims(out_class, axis=0)
-        out_class = np.expand_dims(out_class, axis=3)
-        out_mask = np.expand_dims(out_mask, axis=0)
-
         # convert to expected types
         im_array = im_array.astype(np.float32)
         rough_mask_crop = rough_mask_crop.astype(np.bool)
@@ -356,18 +347,12 @@ else:  # pre-compute the validation data and save to file
         im_array /= 255
 
         # append input/output/mask for later use in training
-        im_array_all.append(im_array)
-        rough_mask_all.append(rough_mask_crop)
-        out_class_all.append(out_class)
-        out_mask_all.append(out_mask)
+        im_array_all[i, ...] = im_array
+        rough_mask_all[i, ...] = rough_mask_crop
+        out_class_all[i, :, :, 0] = out_class
+        out_mask_all[i, ...] = out_mask
 
         print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
-
-    # collapse lists into arrays
-    im_array_all = np.concatenate(im_array_all)
-    rough_mask_all = np.concatenate(rough_mask_all)
-    out_class_all = np.concatenate(out_class_all)
-    out_mask_all = np.concatenate(out_mask_all)
 
     # save results to avoid having to recompute them every time
     np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all, out_class_all=out_class_all,
@@ -552,7 +537,7 @@ Pixel-wise classification validation
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 with np.load(data_filename) as data:
     im_array_all = data['im_array_all']
-    out_class_all = data['out_class_all']
+    out_class_all = 1 - data['out_class_all']  # encode as 0: other, 1: WAT
     out_mask_all = data['out_mask_all']
 
 # init output
@@ -625,7 +610,7 @@ np.savez(data_filename, predict_class_test_all=predict_class_test_all)
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 with np.load(data_filename) as data:
     im_array_all = data['im_array_all']
-    out_class_all = data['out_class_all']
+    out_class_all = 1 - data['out_class_all']  # encode as 0: other, 1: WAT
     out_mask_all = data['out_mask_all']
 
 data_filename = os.path.join(saved_models_dir, experiment_id + '_pixel_classifier.npz')
@@ -690,9 +675,8 @@ file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/user
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 with np.load(data_filename) as data:
     im_array_all = data['im_array_all']
-    out_class_all = data['out_class_all']
+    out_class_all = 1 - data['out_class_all']  # encode as 0: other, 1: WAT
     out_mask_all = data['out_mask_all']
-    i_file_all = data['i_all']
 
 # start timer
 t0 = time.time()
@@ -705,29 +689,16 @@ for i_fold in range(len(idx_test_all)):
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
     # test image indices. These indices refer to file_list
-    idx_file_test = idx_test_all[i_fold]
+    idx_test = idx_test_all[i_fold]
 
     # list of test files (used later for the dataframe)
-    file_svg_list_test = np.array(file_svg_list)[idx_file_test]
+    file_svg_list_test = np.array(file_svg_list)[idx_test]
 
-    # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
-    # skipped)
-    idx_lut = np.full(shape=(len(file_svg_list), ), fill_value=-1, dtype=idx_test.dtype)
-    idx_lut[i_all] = range(len(i_all))
-    # idx_train = idx_lut[idx_train]
-    idx_test = idx_lut[idx_test]
-
-    # print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
 
-    # split data into training and testing
-    # im_array_train = im_array_all[idx_train, :, :, :]
+    # extract testing data
     im_array_test = im_array_all[idx_test, :, :, :]
-
-    # out_class_train = out_class_all[idx_train, :, :, :]
     out_class_test = out_class_all[idx_test, :, :, :]
-
-    # out_mask_train = out_mask_all[idx_train, :, :]
     out_mask_test = out_mask_all[idx_test, :, :]
 
     # loop test images
@@ -873,17 +844,17 @@ for i_fold in range(len(idx_test_all)):
             wat_scores = aux[cell_seg_contour == 1]
 
             # compute proportions for different thresholds of Otherness
-            df_im.loc[j, 'wat_prop_80'] = np.count_nonzero(wat_scores > 0.80) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_79'] = np.count_nonzero(wat_scores > 0.79) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_78'] = np.count_nonzero(wat_scores > 0.78) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_77'] = np.count_nonzero(wat_scores > 0.77) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_76'] = np.count_nonzero(wat_scores > 0.76) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_75'] = np.count_nonzero(wat_scores > 0.75) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_74'] = np.count_nonzero(wat_scores > 0.74) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_73'] = np.count_nonzero(wat_scores > 0.73) / len(wat_scores)
-            df_im.loc[j, 'wat_prop_70'] = np.count_nonzero(wat_scores > 0.70) / len(wat_scores)
             df_im.loc[j, 'wat_prop_65'] = np.count_nonzero(wat_scores > 0.65) / len(wat_scores)
             df_im.loc[j, 'wat_prop_60'] = np.count_nonzero(wat_scores > 0.60) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_56'] = np.count_nonzero(wat_scores > 0.56) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_54'] = np.count_nonzero(wat_scores > 0.54) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_52'] = np.count_nonzero(wat_scores > 0.52) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_50'] = np.count_nonzero(wat_scores > 0.50) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_48'] = np.count_nonzero(wat_scores > 0.48) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_46'] = np.count_nonzero(wat_scores > 0.46) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_44'] = np.count_nonzero(wat_scores > 0.44) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_40'] = np.count_nonzero(wat_scores > 0.40) / len(wat_scores)
+            df_im.loc[j, 'wat_prop_35'] = np.count_nonzero(wat_scores > 0.35) / len(wat_scores)
 
             if DEBUG:
                 # close the contour for the plot
@@ -903,14 +874,14 @@ for i_fold in range(len(idx_test_all)):
                 plt.title('Pixel WAT scores', fontsize=14)
                 plt.axis('off')
                 plt.subplot(223)
-                plt.imshow(pred_class_test[0, :, :, 0] > 0.75)
-                plt.title('Pixel threshold, score > 0.75', fontsize=14)
+                plt.imshow(pred_class_test[0, :, :, 0] > 0.50)
+                plt.title('Pixel threshold, score > 0.50', fontsize=14)
                 plt.axis('off')
                 plt.subplot(224)
-                plt.imshow(pred_class_test[0, :, :, 0] > 0.75)
+                plt.imshow(pred_class_test[0, :, :, 0] > 0.50)
                 plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='g', linewidth=2)
-                plt.title('Prop$_{\mathrm{WAT}}$ = %0.1f%%\nWAT if Prop$_{\mathrm{WAT}}$ > 71.5%%'
-                          % (100 * df_im.loc[j, 'wat_prop_75']), fontsize=14)
+                plt.title('Prop$_{\mathrm{WAT}}$ = %0.1f%%\nWAT if Prop$_{\mathrm{WAT}}$ > 50%%'
+                          % (100 * df_im.loc[j, 'wat_prop_50']), fontsize=14)
                 plt.axis('off')
                 plt.tight_layout()
 
@@ -937,29 +908,29 @@ for i_fold in range(len(idx_test_all)):
                 plt.axis('off')
                 plt.subplot(234)
                 plt.cla()
-                plt.imshow(pred_class_test[0, :, :, 0] > 0.70, cmap='plasma')
+                plt.imshow(pred_class_test[0, :, :, 0] > 0.50, cmap='plasma')
                 plt.contour(cell_seg_contour, colors='r')
-                aux = df_im.loc[j, 'wat_prop_70']*100
-                plt.title('WAT score > 0.70\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
+                aux = df_im.loc[j, 'wat_prop_50']*100
+                plt.title('WAT score > 0.50\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
                 plt.axis('off')
                 plt.subplot(235)
                 plt.cla()
-                plt.imshow(pred_class_test[0, :, :, 0] > 0.75, cmap='plasma')
+                plt.imshow(pred_class_test[0, :, :, 0] > 0.44, cmap='plasma')
                 plt.contour(cell_seg_contour, colors='r')
-                aux = df_im.loc[j, 'wat_prop_75']*100
-                plt.title('WAT score > 0.75\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
+                aux = df_im.loc[j, 'wat_prop_44']*100
+                plt.title('WAT score > 0.44\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
                 plt.axis('off')
                 plt.subplot(236)
                 plt.cla()
-                plt.imshow(pred_class_test[0, :, :, 0] > 0.80, cmap='plasma')
+                plt.imshow(pred_class_test[0, :, :, 0] > 0.56, cmap='plasma')
                 plt.contour(cell_seg_contour, colors='r')
-                aux = df_im.loc[j, 'wat_prop_80']*100
-                plt.title('WAT score > 0.80\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
+                aux = df_im.loc[j, 'wat_prop_56']*100
+                plt.title('WAT score > 0.56\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
                 plt.axis('off')
                 plt.tight_layout()
 
         # concatenate current dataframe to general dataframe
-        df_all = df_all.append(df_im)
+        df_all = df_all.append(df_im, ignore_index=True)
 
 # reindex the dataframe
 df_all.reset_index(drop=True, inplace=True)
