@@ -976,9 +976,9 @@ y_wat_predict = predict_class_test_all[out_mask_all]
 fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=y_wat_predict)
 roc_auc = auc(fpr, tpr)
 
-# interpolate values for thr = 0.75 (this is the optimal pixel threshold we find later with the object-wise
+# interpolate values for pixel score thr = 0.62 (this is the optimal pixel threshold we find later with the object-wise
 # classification)
-thr_target = 0.75
+thr_target = 0.62
 tpr_target = np.interp(thr_target, thr[::-1], tpr[::-1])
 fpr_target = np.interp(thr_target, thr[::-1], fpr[::-1])
 
@@ -1012,7 +1012,7 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
-Apply the pipeline v4 to training histology images (segmentation, classification)
+Apply the pipeline v6 to training histology images (segmentation, classification)
 ************************************************************************************************************************
 '''
 
