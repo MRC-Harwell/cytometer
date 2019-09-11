@@ -711,7 +711,7 @@ for i_fold in range(len(idx_test_all)):
             # compute proportions for different thresholds of Otherness
             prop = np.linspace(0, 100, 101)
             for p in prop:
-                # df_im.loc[j, 'wat_prop_55'] = np.count_nonzero(wat_scores > 0.55) / len(wat_scores)
+                # e.g. df_im.loc[j, 'wat_prop_55'] = np.count_nonzero(wat_scores > 0.55) / len(wat_scores)
                 df_im.loc[j, 'wat_prop_' + str(int(p))] = np.count_nonzero(wat_scores > (p/100)) / len(wat_scores)
 
             if DEBUG:
@@ -857,6 +857,22 @@ if DEBUG:
     plt.tight_layout()
 
 if DEBUG:
+    # show problem of the ROC not having data points for low FPR values
+    plt.clf()
+    p = 50
+    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_all['wat_prop_' + str(p)])
+    plt.plot(fpr, tpr, label='Pixel thr. = 0.50')
+    p = 62
+    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_all['wat_prop_' + str(p)])
+    plt.plot(fpr, tpr, label='Pixel thr. = 0.62')
+    plt.plot([.1, .1], [0, 1], '--', color='black')
+    plt.tick_params(labelsize=14)
+    plt.xlabel('FPR', fontsize=14)
+    plt.ylabel('TPR', fontsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+if DEBUG:
     plt.clf()
     plt.plot(pix_thr / 100, roc_auc)
 
@@ -978,7 +994,8 @@ roc_auc = auc(fpr, tpr)
 
 # interpolate values for pixel score thr = 0.62 (this is the optimal pixel threshold we find later with the object-wise
 # classification)
-thr_target = 0.62
+# thr_target = 0.62
+thr_target = 0.50
 tpr_target = np.interp(thr_target, thr[::-1], tpr[::-1])
 fpr_target = np.interp(thr_target, thr[::-1], fpr[::-1])
 
@@ -1017,16 +1034,15 @@ Apply the pipeline v6 to training histology images (segmentation, classification
 '''
 
 # correct home directory in file paths
-file_list = cytometer.data.change_home_directory(list(file_list), '/users/rittscher/rcasero', home, check_isfile=True)
+file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
 
 # load data computed in the previous section
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
 with np.load(data_filename) as data:
     im_array_all = data['im_array_all']
     rough_mask_all = data['rough_mask_all']
-    out_class_all = data['out_class_all']
+    out_class_all = 1 - data['out_class_all']  # encode as 0: other, 1: WAT
     out_mask_all = data['out_mask_all']
-    i_file_all = data['i_all']
 
 # start timer
 t0 = time.time()
@@ -1040,33 +1056,16 @@ for i_fold in range(len(idx_test_all)):
 
     # test and training image indices. These indices refer to file_list
     idx_test = idx_test_all[i_fold]
-    # idx_train = idx_train_all[i_fold]
 
     # list of test files (used later for the dataframe)
-    file_list_test = np.array(file_list)[idx_test]
+    file_list_test = np.array(file_svg_list)[idx_test]
 
-    # map the indices from file_list to im_array_all (there's an image that had no WAT or Other contours and was
-    # skipped)
-    idx_lut = np.full(shape=(len(file_list), ), fill_value=-1, dtype=idx_test.dtype)
-    idx_lut[i_file_all] = range(len(i_file_all))
-    # idx_train = idx_lut[idx_train]
-    idx_test = idx_lut[idx_test]
-
-    # print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
 
     # split data into training and testing
-    # im_array_train = im_array_all[idx_train, :, :, :]
     im_array_test = im_array_all[idx_test, :, :, :]
-
-    # rough_mask_train = rough_mask_all[idx_train, :, :]
     rough_mask_test = rough_mask_all[idx_test, :, :]
-
-    # change to WAT = 1, Other = 0
-    # out_class_train = out_class_all[idx_train, :, :, :]
-    out_class_test = 1 - out_class_all[idx_test, :, :, :]
-
-    # out_mask_train = out_mask_all[idx_train, :, :]
+    out_class_test = out_class_all[idx_test, :, :, :]
     out_mask_test = out_mask_all[idx_test, :, :]
 
     # loop test images
@@ -1075,7 +1074,7 @@ for i_fold in range(len(idx_test_all)):
         print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
               + str(i) + '/' + str(len(idx_test) - 1))
 
-        # open full resolution histology slide
+        # open histology testing image
         file_tif = file_list_test[i].replace('.svg', '.tif')
         im = Image.open(file_tif)
 
@@ -1098,36 +1097,26 @@ for i_fold in range(len(idx_test_all)):
 
         if DEBUG:
             plt.clf()
-            plt.subplot(231)
+            plt.subplot(221)
             aux = np.stack((rough_mask_test[i, :, :], ) * 3, axis=2)
             plt.imshow(im_array_test[i, :, :, :] * aux)
             plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
             plt.title('Training mask', fontsize=14)
             plt.axis('off')
-            plt.subplot(232)
+            plt.subplot(222)
             plt.imshow(im_array_test[i, :, :, :])
             plt.imshow(out_class_test[i, :, :, 0].astype(np.uint8), alpha=0.5)
             plt.title('Ground truth class', fontsize=14)
             plt.axis('off')
-            plt.subplot(233)
+            plt.subplot(223)
             plt.imshow(im_array_test[i, :, :, :])
             plt.imshow(pred_class_test[0, :, :, 0], alpha=0.5)
             plt.title('Softmax score', fontsize=14)
             plt.axis('off')
-            plt.subplot(234)
+            plt.subplot(224)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[0, :, :, 0] > 0.73, alpha=0.5)
-            plt.title('Score > 0.73', fontsize=14)
-            plt.axis('off')
-            plt.subplot(235)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[0, :, :, 0] > 0.75, alpha=0.5)
-            plt.title('Score > 0.75', fontsize=14)
-            plt.axis('off')
-            plt.subplot(236)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[0, :, :, 0] > 0.78, alpha=0.5)
-            plt.title('Score > 0.78', fontsize=14)
+            plt.imshow(pred_class_test[0, :, :, 0] > 0.62, alpha=0.5)
+            plt.title('Score > 0.62', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
 
