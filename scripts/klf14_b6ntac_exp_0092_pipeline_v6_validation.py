@@ -878,8 +878,9 @@ if DEBUG:
 
 if DEBUG:
     # classifier confusion matrix
+    idx = np.where(pix_thr == 50)[0][0]
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
-                                          y_pred=df_all['wat_prop_' + str(pix_thr[idx_max_tpr])] > obj_thr_target[idx_max_tpr],
+                                          y_pred=df_all['wat_prop_50'] >= obj_thr_target[idx],
                                           normalize=True,
                                           title='Object classifier',
                                           xlabel='Predicted',
@@ -1113,8 +1114,8 @@ for i_fold in range(len(idx_test_all)):
             plt.axis('off')
             plt.subplot(224)
             plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[0, :, :, 0] > 0.62, alpha=0.5)
-            plt.title('Score > 0.62', fontsize=14)
+            plt.imshow(pred_class_test[0, :, :, 0] > 0.50, alpha=0.5)
+            plt.title('Score > 0.50', fontsize=14)
             plt.axis('off')
             plt.tight_layout()
 
