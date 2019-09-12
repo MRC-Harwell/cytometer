@@ -707,7 +707,8 @@ def segment_dmap_contour(dmap, contour=None,
     return labels, labels_borders
 
 
-def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block_size=41, border_dilation=0):
+def segment_dmap_contour_v3(im, contour_model, dmap_model, classifier_model=None,
+                            local_threshold_block_size=41, border_dilation=0):
     """
     Segment cells in histology using the architecture pipeline v3:
       * distance transformation is estimated from histology using CNN.
@@ -748,43 +749,64 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
         contour_model = keras.models.load_model(contour_model)
     if isinstance(dmap_model, six.string_types):
         dmap_model = keras.models.load_model(dmap_model)
+    if isinstance(classifier_model, six.string_types):
+        classifier_model = keras.models.load_model(classifier_model)
 
     # set models' input layers to the appropriate sizes if necessary
     if dmap_model.input_shape[1:3] != im.shape[1:3]:
         dmap_model = change_input_size(dmap_model, batch_shape=im.shape)
     if contour_model.input_shape[1:3] != dmap_model.output_shape[1:3]:
         contour_model = change_input_size(contour_model, batch_shape=dmap_model.output_shape)
+    if classifier_model is not None and classifier_model.input_shape[1:3] != im.shape[1:3]:
+        classifier_model = change_input_size(classifier_model, batch_shape=im.shape)
 
-    # run histology image through models
+    # run histology image through distance transformation model
     dmap_pred = dmap_model.predict(im)
+
+    if DEBUG:
+        i = 0
+        plt.clf()
+        plt.subplot(231)
+        plt.imshow(im[i, :, :, :])
+        plt.axis('off')
+        plt.subplot(232)
+        plt.title('Classification')
+        plt.axis('off')
+        plt.subplot(233)
+        plt.imshow(dmap_pred[i, :, :, 0])
+        plt.title('Distance transformation')
+        plt.axis('off')
+        plt.tight_layout()
+
+    # compute tissue classification of histology
+    if classifier_model is not None:
+        class_pred = classifier_model.predict(im)
+
+        if DEBUG:
+            plt.subplot(231)
+            plt.cla()
+            plt.imshow(im[i, :, :, :])
+            plt.contour(class_pred[i, :, :, 0] > 0.5, colors='r')
+            plt.axis('off')
+            plt.subplot(232)
+            plt.cla()
+            plt.imshow(class_pred[i, :, :, 0])
+            plt.title('Classification')
+            plt.axis('off')
+
+    # estimate contours from the dmap
     contour_pred = contour_model.predict(dmap_pred)
 
     if DEBUG:
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im[0, ...])
-        plt.axis('off')
-        plt.title('Histology', fontsize=14)
-
-        plt.subplot(222)
-        plt.imshow(dmap_pred[0, :, :, 0])
-        plt.axis('off')
-        plt.title('Distance transf.', fontsize=14)
-
-        plt.subplot(223)
-        plt.imshow(contour_pred[0, :, :, 0])
-        plt.axis('off')
-        plt.title('Contours', fontsize=14)
-
-    if DEBUG:
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im[0, ...])
-        plt.axis('off')
-
-        plt.subplot(222)
+        plt.subplot(234)
         plt.cla()
-        plt.imshow(contour_pred[0, :, :, 0])
+        plt.imshow(contour_pred[i, :, :, 0])
+        plt.title('Contours')
+        plt.axis('off')
+        plt.subplot(235)
+        plt.cla()
+        plt.imshow(dmap_pred[i, :, :, 0])
+        plt.title('Dmap with class > 0.5')
         plt.axis('off')
 
     labels_all = []
@@ -797,9 +819,10 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
         seg = (contour_pred[i, :, :, 0] > local_threshold).astype(np.uint8)
 
         if DEBUG:
-            plt.subplot(223)
+            plt.subplot(235)
             plt.cla()
             plt.imshow(seg)
+            plt.title('Thresholded contours')
             plt.axis('off')
 
         # invert the segmentation
@@ -815,9 +838,10 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
         seg = binary_erosion(1 - seg, selem=np.ones(shape=(29, 29), dtype=np.uint8))
 
         if DEBUG:
-            plt.subplot(224)
+            plt.subplot(236)
             plt.cla()
             plt.imshow(seg)
+            plt.title('Object seeds')
             plt.axis('off')
 
         # assign different label to each connected components
@@ -825,21 +849,39 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
         nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg.astype(np.uint8))
 
         if DEBUG:
-            plt.subplot(223)
+            plt.subplot(236)
             plt.cla()
             plt.imshow(labels)
+            plt.title('Object labels')
+            plt.axis('off')
+
+        # remove seeds where the classifier==0
+        if classifier_model is not None:
+            # we assign a new label for all pixels overlapped by classifier==0
+            aux = (class_pred[i, :, :, 0] == 0) * (labels != 0)
+            labels[aux] = nlabels
+
+        if DEBUG:
+            plt.subplot(235)
+            plt.cla()
+            plt.imshow(labels)
+            plt.title('Object labels')
             plt.axis('off')
 
         # use watershed to expand the seeds
         labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
 
+        if classifier_model is not None:
+            # remove labels from classifier == 0 area
+            labels[labels == nlabels] = 0
+
         if DEBUG:
-            plt.subplot(224)
+            plt.subplot(236)
             plt.cla()
             plt.imshow(labels)
             plt.axis('off')
 
-            plt.subplot(223)
+            plt.subplot(231)
             plt.cla()
             plt.imshow(im[i, ...])
             plt.contour(labels, levels=np.unique(labels), colors='black')
@@ -854,10 +896,11 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, local_threshold_block
             labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
 
         if DEBUG:
-            plt.subplot(224)
+            plt.subplot(231)
             plt.cla()
             plt.imshow(im[i, ...])
             plt.contour(labels_borders, levels=np.unique(labels_borders), colors='black')
+            plt.axis('off')
 
         # append results to output list
         labels_all.append(np.expand_dims(labels, axis=0))
