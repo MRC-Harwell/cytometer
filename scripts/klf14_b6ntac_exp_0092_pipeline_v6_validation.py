@@ -120,8 +120,8 @@ correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_o
 '''Load folds'''
 
 # load list of images, and indices for training vs. testing indices
-contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
-with open(contour_model_kfold_filename, 'rb') as f:
+saved_kfolds_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(saved_kfolds_filename, 'rb') as f:
     aux = pickle.load(f)
 file_svg_list = aux['file_list']
 idx_test_all = aux['idx_test']
@@ -1081,54 +1081,21 @@ for i_fold in range(len(idx_test_all)):
         xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
         yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
-        ''' Tissue classification (applied pixel by pixel to the whole image) '''
-
-        # load classification model
-        classifier_model_filename = os.path.join(saved_models_dir,
-                                                 classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-        classifier_model = keras.models.load_model(classifier_model_filename)
-
-        # reshape model input
-        classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=im_array_test.shape)
-
-        # apply classification to test data
-        pred_class_test = classifier_model.predict(np.expand_dims(im_array_test[i, ...], axis=0), batch_size=batch_size)
-
-        if DEBUG:
-            plt.clf()
-            plt.subplot(221)
-            aux = np.stack((rough_mask_test[i, :, :], ) * 3, axis=2)
-            plt.imshow(im_array_test[i, :, :, :] * aux)
-            plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
-            plt.title('Training mask', fontsize=14)
-            plt.axis('off')
-            plt.subplot(222)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(out_class_test[i, :, :, 0].astype(np.uint8), alpha=0.5)
-            plt.title('Ground truth class', fontsize=14)
-            plt.axis('off')
-            plt.subplot(223)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[0, :, :, 0], alpha=0.5)
-            plt.title('Softmax score', fontsize=14)
-            plt.axis('off')
-            plt.subplot(224)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.imshow(pred_class_test[0, :, :, 0] > 0.50, alpha=0.5)
-            plt.title('Score > 0.50', fontsize=14)
-            plt.axis('off')
-            plt.tight_layout()
-
         ''' Segmentation into non-overlapping objects '''
 
-        # contour and dmap models
-        contour_model_filename = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-        dmap_model_filename = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        # contour, dmap and tissue classifier models
+        contour_model_filename = \
+            os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        dmap_model_filename = \
+            os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        classifier_model_filename = \
+            os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
         # segment histology
         pred_seg_test, _ = cytometer.utils.segment_dmap_contour_v3(np.expand_dims(im_array_test[i, ...], axis=0),
                                                                    contour_model=contour_model_filename,
                                                                    dmap_model=dmap_model_filename,
+                                                                   classifier_model=classifier_model_filename,
                                                                    local_threshold_block_size=local_threshold_block_size,
                                                                    border_dilation=0)
 
@@ -1162,7 +1129,7 @@ for i_fold in range(len(idx_test_all)):
         correction_model = keras.models.load_model(correction_model_filename)
 
         # correct segmentations
-        window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test * 255, seg=window_seg_test,
+        window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test, seg=window_seg_test,
                                                                          correction_model=correction_model,
                                                                          model_type='-1_1', batch_size=batch_size,
                                                                          smoothing=11)
@@ -1180,17 +1147,17 @@ for i_fold in range(len(idx_test_all)):
                 plt.title('Histology and segmentation', fontsize=14)
                 plt.axis('off')
                 plt.subplot(122)
-                plt.imshow(window_class_test[j, ...] > 0.75)
+                plt.imshow(window_class_test[j, ...] > 0.50, vmin=0, vmax=1)
                 plt.contour(window_seg_test[j, ...], colors='k')
                 plt.contour(window_seg_corrected_test[j, ...], colors='r')
-                aux_wat_pixels = window_class_test[j, ...] > 0.75
+                aux_wat_pixels = window_class_test[j, ...] > 0.50
                 aux_prop = np.count_nonzero(aux_wat_pixels[window_seg_corrected_test[j, ...] == 1]) \
                            / np.count_nonzero(window_seg_corrected_test[j, ...])
-                plt.title('Pixel classifier score > 0.75\nProp$_{\mathrm{WAT, corrected}}$ = %0.1f%%'
+                plt.title('Pixel classifier score > 0.50\nProp$_{\mathrm{WAT, corrected}}$ = %0.1f%%'
                           % (100 * aux_prop), fontsize=14)
                 plt.axis('off')
                 plt.tight_layout()
-                plt.pause(5)
+                plt.pause(10)
 
         ''' Quantitative measures '''
 
@@ -1204,7 +1171,7 @@ for i_fold in range(len(idx_test_all)):
         corrected_count_ref = np.count_nonzero(window_seg_corrected_test, axis=(1, 2))
 
         # count number of WAT pixels for each corrected label
-        window_wat_pixels = window_class_test > 0.75
+        window_wat_pixels = window_class_test > 0.50
         wat_corrected_count_ref = np.count_nonzero(window_seg_corrected_test * window_wat_pixels, axis=(1, 2))
 
         # count number of rough mask pixels for each corrected label (to see whether the object falls within the rough mask)
