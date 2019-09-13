@@ -1078,12 +1078,37 @@ for i_fold in range(len(idx_test_all)):
         os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # segment histology
-    pred_seg_test, _ = cytometer.utils.segment_dmap_contour_v4(np.expand_dims(im_array_test, axis=0),
-                                                               contour_model=contour_model_filename,
-                                                               dmap_model=dmap_model_filename,
-                                                               classifier_model=classifier_model_filename,
-                                                               local_threshold_block_size=local_threshold_block_size,
-                                                               border_dilation=0)
+    pred_seg_test, pred_class_test, _ \
+        = cytometer.utils.segment_dmap_contour_v4(im_array_test,
+                                                  contour_model=contour_model_filename,
+                                                  dmap_model=dmap_model_filename,
+                                                  classifier_model=classifier_model_filename,
+                                                  border_dilation=0)
+
+    if DEBUG:
+        i = 0
+        plt.clf()
+        plt.subplot(221)
+        plt.cla()
+        plt.imshow(im[i, :, :, :])
+        plt.axis('off')
+        plt.subplot(222)
+        plt.cla()
+        plt.imshow(im[i, :, :, :])
+        plt.contourf(pred_class_test[i, :, :, 0].astype(np.float32), alpha=0.5)
+        plt.axis('off')
+        plt.subplot(223)
+        plt.cla()
+        plt.imshow(im[i, :, :, :])
+        plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+        plt.axis('off')
+        plt.subplot(224)
+        plt.cla()
+        plt.imshow(im[i, :, :, :])
+        plt.contourf(pred_class_test[i, :, :, 0].astype(np.float32), alpha=0.5)
+        plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+        plt.axis('off')
+        plt.tight_layout()
 
     # loop test images
     for i in range(len(idx_test)):
@@ -1103,13 +1128,14 @@ for i_fold in range(len(idx_test_all)):
         # the rough foreground mask
         pred_seg_test \
             = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                                 mask=rough_mask_test, phagocytosis=True)
+                                                 mask=rough_mask_test, phagocytosis=False)
 
         if DEBUG:
             plt.clf()
             aux = np.stack((rough_mask_test[i, :, :], ) * 3, axis=2)
             plt.imshow(im_array_test[i, :, :, :] * aux)
             plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='k')
+            plt.axis('off')
 
         ''' Split image into individual labels and correct segmentation to take overlaps into account '''
 
