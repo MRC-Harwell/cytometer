@@ -1067,6 +1067,24 @@ for i_fold in range(len(idx_test_all)):
     out_class_test = out_class_all[idx_test, :, :, :]
     out_mask_test = out_mask_all[idx_test, :, :]
 
+    ''' Segmentation into non-overlapping objects '''
+
+    # contour, dmap and tissue classifier models
+    contour_model_filename = \
+        os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    dmap_model_filename = \
+        os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    classifier_model_filename = \
+        os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+
+    # segment histology
+    pred_seg_test, _ = cytometer.utils.segment_dmap_contour_v4(np.expand_dims(im_array_test, axis=0),
+                                                               contour_model=contour_model_filename,
+                                                               dmap_model=dmap_model_filename,
+                                                               classifier_model=classifier_model_filename,
+                                                               local_threshold_block_size=local_threshold_block_size,
+                                                               border_dilation=0)
+
     # loop test images
     for i in range(len(idx_test)):
 
@@ -1080,24 +1098,6 @@ for i_fold in range(len(idx_test_all)):
         # read pixel size information
         xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
         yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
-
-        ''' Segmentation into non-overlapping objects '''
-
-        # contour, dmap and tissue classifier models
-        contour_model_filename = \
-            os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-        dmap_model_filename = \
-            os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-        classifier_model_filename = \
-            os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-
-        # segment histology
-        pred_seg_test, _ = cytometer.utils.segment_dmap_contour_v3(np.expand_dims(im_array_test[i, ...], axis=0),
-                                                                   contour_model=contour_model_filename,
-                                                                   dmap_model=dmap_model_filename,
-                                                                   classifier_model=classifier_model_filename,
-                                                                   local_threshold_block_size=local_threshold_block_size,
-                                                                   border_dilation=0)
 
         # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
         # the rough foreground mask
