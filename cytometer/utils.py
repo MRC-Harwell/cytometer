@@ -720,6 +720,7 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, classifier_model=None
       * np.array: (n, rows, cols, 3), dtype=np.float32, values in [0.0, 1.0].
     :param contour_model: Keras CNN model. Input is (n, rows, cols, 3).
     :param dmap_model: Keras CNN model. Input is (n, rows, cols, 1).
+    :param classifier_model: Keras CNN model. Input is (n, rows, cols, 3).
     :param local_threshold_block_size: (def 41) Size of local neighbourhood used by the local threshold algorithm.
     :param border_dilation: (def 0) Number of iterations of the border dilation algorithm.
     :return:
@@ -874,6 +875,195 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, classifier_model=None
         if classifier_model is not None:
             # remove labels from classifier == 0 area
             labels[labels == nlabels] = 0
+
+        if DEBUG:
+            plt.subplot(236)
+            plt.cla()
+            plt.imshow(labels)
+            plt.axis('off')
+
+            plt.subplot(231)
+            plt.cla()
+            plt.imshow(im[i, ...])
+            plt.contour(labels, levels=np.unique(labels), colors='black')
+            plt.axis('off')
+
+        # extract borders of watershed regions for plots
+        labels_borders = borders(labels)
+
+        # dilate borders for easier visualization
+        if border_dilation > 0:
+            kernel = np.ones((3, 3), np.uint8)
+            labels_borders = cv2.dilate(labels_borders.astype(np.uint8), kernel=kernel, iterations=border_dilation) > 0
+
+        if DEBUG:
+            plt.subplot(231)
+            plt.cla()
+            plt.imshow(im[i, ...])
+            plt.contour(labels_borders, levels=np.unique(labels_borders), colors='black')
+            plt.axis('off')
+
+        # append results to output list
+        labels_all.append(np.expand_dims(labels, axis=0))
+        labels_borders_all.append(np.expand_dims(labels_borders, axis=0))
+
+    # convert list into array
+    labels_all = np.concatenate(labels_all)
+    labels_borders_all = np.concatenate(labels_borders_all)
+
+    return labels_all, labels_borders_all
+
+
+def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None,
+                            local_threshold_block_size=41, border_dilation=0):
+    """
+    Segment cells in histology using the architecture pipeline v6:
+      * distance transformation is estimated from histology using CNN.
+      * contours are estimated from distance transformation using another CNN.
+
+    :param im: Input histology. Accepted types are
+      * PIL.TiffImagePlugin.TiffImageFile with RGB channels.
+      * np.array: (n, rows, cols, 3), dtype=np.uint8, values in [0, 255].
+      * np.array: (n, rows, cols, 3), dtype=np.float32, values in [0.0, 1.0].
+    :param contour_model: Keras CNN model. Input is (n, rows, cols, 3).
+    :param dmap_model: Keras CNN model. Input is (n, rows, cols, 1).
+    :param classifier_model: Keras CNN model. Input is (n, rows, cols, 3).
+    :param local_threshold_block_size: (def 41) Size of local neighbourhood used by the local threshold algorithm.
+    :param border_dilation: (def 0) Number of iterations of the border dilation algorithm.
+    :return:
+      * labels: np.array (rows, cols) Labels, one label per cell.
+      * labels_borders: np.array (rows, cols) Label edges.
+    """
+
+    # convert usual im types to float32 [0.0, 1.0]
+    if type(im) == TiffImagePlugin.TiffImageFile or im.dtype == np.uint8:
+        im = np.array(im, dtype=np.float32)
+        im /= 255
+
+    # make sure image shape is (n, row, col, 3)
+    if im.shape[-1] != 3:
+        raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
+    if im.ndim < 3:
+        raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
+    elif im.ndim == 3:
+        im = np.expand_dims(im, axis=0)
+    elif im.ndim == 4:
+        pass
+    else:
+        raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
+
+    # load models if they are provided as filenames
+    if isinstance(contour_model, six.string_types):
+        contour_model = keras.models.load_model(contour_model)
+    if isinstance(dmap_model, six.string_types):
+        dmap_model = keras.models.load_model(dmap_model)
+    if isinstance(classifier_model, six.string_types):
+        classifier_model = keras.models.load_model(classifier_model)
+
+    # set models' input layers to the appropriate sizes if necessary
+    if dmap_model.input_shape[1:3] != im.shape[1:3]:
+        dmap_model = change_input_size(dmap_model, batch_shape=im.shape)
+    if contour_model.input_shape[1:3] != dmap_model.output_shape[1:3]:
+        contour_model = change_input_size(contour_model, batch_shape=dmap_model.output_shape)
+    if classifier_model is not None and classifier_model.input_shape[1:3] != im.shape[1:3]:
+        classifier_model = change_input_size(classifier_model, batch_shape=im.shape)
+
+    # run histology image through distance transformation model
+    dmap_pred = dmap_model.predict(im)
+
+    if DEBUG:
+        i = 0
+        plt.clf()
+        plt.subplot(231)
+        plt.imshow(im[i, :, :, :])
+        plt.axis('off')
+        plt.subplot(232)
+        plt.title('Classification')
+        plt.axis('off')
+        plt.subplot(233)
+        plt.imshow(dmap_pred[i, :, :, 0])
+        plt.title('Distance transformation')
+        plt.axis('off')
+        plt.tight_layout()
+
+    # compute tissue classification of histology
+    if classifier_model is not None:
+        class_pred = classifier_model.predict(im)
+
+        if DEBUG:
+            plt.subplot(231)
+            plt.cla()
+            plt.imshow(im[i, :, :, :])
+            plt.contour(class_pred[i, :, :, 0] > 0.5, colors='r')
+            plt.axis('off')
+            plt.subplot(232)
+            plt.cla()
+            plt.imshow(class_pred[i, :, :, 0])
+            plt.title('Classification')
+            plt.axis('off')
+
+    # estimate contours from the dmap
+    contour_pred = contour_model.predict(dmap_pred)
+
+    if DEBUG:
+        plt.subplot(234)
+        plt.cla()
+        plt.imshow(contour_pred[i, :, :, 0])
+        plt.title('Contours')
+        plt.axis('off')
+        plt.subplot(235)
+        plt.cla()
+        plt.imshow(dmap_pred[i, :, :, 0])
+        plt.title('Dmap with class > 0.5')
+        plt.axis('off')
+
+    labels_all = []
+    labels_borders_all = []
+    for i in range(im.shape[0]):
+
+        # threshold to get the insides of cells
+        seg = (contour_pred[i, :, :, 0] == 0).astype(np.uint8)
+
+        # remove small holes from the segmentation of insides of cells
+        seg = remove_small_holes(seg.astype(np.bool), area_threshold=10e3).astype(np.uint8)
+
+        if DEBUG:
+            plt.subplot(235)
+            plt.cla()
+            plt.imshow(seg)
+            plt.title('Cell seeds')
+            plt.axis('off')
+
+        # assign different label to each connected components
+        # Note: cv2.connectedComponentsWithStats is 10x faster than skimage.measure.label
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg.astype(np.uint8))
+
+        if DEBUG:
+            plt.subplot(236)
+            plt.cla()
+            plt.imshow(labels)
+            plt.title('Object labels')
+            plt.axis('off')
+
+        # remove seeds that are very small
+        lblareas = stats[:, cv2.CC_STAT_AREA]
+        lab_remove = np.where(lblareas < 400)[0]
+        lab_remove = np.isin(labels, lab_remove)
+        labels[lab_remove] = 0
+
+        # add the classifier==0 region as a new seed
+        if classifier_model is not None:
+            labels[class_pred[i, :, :, 0] == 0] = nlabels
+
+        if DEBUG:
+            plt.subplot(235)
+            plt.cla()
+            plt.imshow(labels)
+            plt.title('Object labels')
+            plt.axis('off')
+
+        # use watershed to expand the seeds
+        labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
 
         if DEBUG:
             plt.subplot(236)
