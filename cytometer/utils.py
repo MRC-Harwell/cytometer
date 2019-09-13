@@ -914,12 +914,12 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, classifier_model=None
     return labels_all, labels_borders_all
 
 
-def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None,
-                            local_threshold_block_size=41, border_dilation=0):
+def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None, border_dilation=0):
     """
     Segment cells in histology using the architecture pipeline v6:
       * distance transformation is estimated from histology using CNN.
       * contours are estimated from distance transformation using another CNN.
+      * tissue type is determined using a classifier CNN as Other or WAT.
 
     :param im: Input histology. Accepted types are
       * PIL.TiffImagePlugin.TiffImageFile with RGB channels.
@@ -928,7 +928,6 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
     :param contour_model: Keras CNN model. Input is (n, rows, cols, 3).
     :param dmap_model: Keras CNN model. Input is (n, rows, cols, 1).
     :param classifier_model: Keras CNN model. Input is (n, rows, cols, 3).
-    :param local_threshold_block_size: (def 41) Size of local neighbourhood used by the local threshold algorithm.
     :param border_dilation: (def 0) Number of iterations of the border dilation algorithm.
     :return:
       * labels: np.array (rows, cols) Labels, one label per cell.
@@ -1017,8 +1016,11 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         plt.title('Dmap with class > 0.5')
         plt.axis('off')
 
-    labels_all = []
-    labels_borders_all = []
+    # allocate memory for outputs
+    labels_all = np.zeros(shape=im.shape[0:3], dtype=np.int32)
+    labels_borders_all = np.zeros(shape=im.shape[0:3], dtype=np.bool)
+
+    # loop images
     for i in range(im.shape[0]):
 
         # threshold to get the insides of cells
@@ -1092,13 +1094,9 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
             plt.contour(labels_borders, levels=np.unique(labels_borders), colors='black')
             plt.axis('off')
 
-        # append results to output list
-        labels_all.append(np.expand_dims(labels, axis=0))
-        labels_borders_all.append(np.expand_dims(labels_borders, axis=0))
-
-    # convert list into array
-    labels_all = np.concatenate(labels_all)
-    labels_borders_all = np.concatenate(labels_borders_all)
+        # copy results to output list
+        labels_all[i, :, :] = labels
+        labels_borders_all[i, :, :] = labels_borders
 
     return labels_all, labels_borders_all
 
