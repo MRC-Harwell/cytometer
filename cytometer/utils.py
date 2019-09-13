@@ -930,8 +930,14 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
     :param classifier_model: Keras CNN model. Input is (n, rows, cols, 3).
     :param border_dilation: (def 0) Number of iterations of the border dilation algorithm.
     :return:
+      If classifier_model=None:
       * labels: np.array (rows, cols) Labels, one label per cell.
       * labels_borders: np.array (rows, cols) Label edges.
+
+      If classifier_model provided:
+      * labels: np.array (n, rows, cols) Labels, one label per cell.
+      * labels_borders: np.array (n, rows, cols) Label edges.
+      * class: np.array (n, rows, cols) Pixel-wise tissue classification (0: Other, 1: white adipocyte tissue).
     """
 
     # convert usual im types to float32 [0.0, 1.0]
@@ -985,8 +991,8 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         plt.axis('off')
         plt.tight_layout()
 
-    # compute tissue classification of histology
     if classifier_model is not None:
+        # compute tissue classification of histology
         class_pred = classifier_model.predict(im)
 
         if DEBUG:
@@ -1000,6 +1006,9 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
             plt.imshow(class_pred[i, :, :, 0])
             plt.title('Classification')
             plt.axis('off')
+
+        # threshold classification
+        class_pred = class_pred > 0.5
 
     # estimate contours from the dmap
     contour_pred = contour_model.predict(dmap_pred)
@@ -1098,7 +1107,10 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         labels_all[i, :, :] = labels
         labels_borders_all[i, :, :] = labels_borders
 
-    return labels_all, labels_borders_all
+    if classifier_model is not None:
+        return labels_all, class_pred, labels_borders_all
+    else:
+        return labels_all, labels_borders_all
 
 
 def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
