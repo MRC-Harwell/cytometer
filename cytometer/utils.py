@@ -1007,6 +1007,11 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         # threshold classification
         class_pred = class_pred > 0.5
 
+        # remove small components
+        for i in range(im.shape[0]):
+            class_pred[i, :, :, 0] = remove_small_objects(class_pred[i, :, :, 0] == 0, min_size=400, in_place=True)
+        class_pred = np.logical_not(class_pred)
+
     # estimate contours from the dmap
     contour_pred = contour_model.predict(dmap_pred)
 
