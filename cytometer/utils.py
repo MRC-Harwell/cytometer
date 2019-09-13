@@ -982,9 +982,6 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         plt.subplot(231)
         plt.imshow(im[i, :, :, :])
         plt.axis('off')
-        plt.subplot(232)
-        plt.title('Classification')
-        plt.axis('off')
         plt.subplot(233)
         plt.imshow(dmap_pred[i, :, :, 0])
         plt.title('Distance transformation')
@@ -1019,11 +1016,7 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         plt.imshow(contour_pred[i, :, :, 0])
         plt.title('Contours')
         plt.axis('off')
-        plt.subplot(235)
-        plt.cla()
-        plt.imshow(dmap_pred[i, :, :, 0])
-        plt.title('Dmap with class > 0.5')
-        plt.axis('off')
+        plt.tight_layout()
 
     # allocate memory for outputs
     labels_all = np.zeros(shape=im.shape[0:3], dtype=np.int32)
@@ -1050,7 +1043,7 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg.astype(np.uint8))
 
         if DEBUG:
-            plt.subplot(236)
+            plt.subplot(235)
             plt.cla()
             plt.imshow(labels)
             plt.title('Object labels')
@@ -1080,6 +1073,7 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
             plt.subplot(236)
             plt.cla()
             plt.imshow(labels)
+            plt.title('Watershed expansion')
             plt.axis('off')
 
             plt.subplot(231)
