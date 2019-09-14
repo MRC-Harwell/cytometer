@@ -1060,9 +1060,11 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         lab_remove = np.isin(labels, lab_remove)
         labels[lab_remove] = 0
 
-        # add the classifier==0 region as a new seed
+        # add the classifier==0 regions as new seeds
         if classifier_model is not None:
-            labels[class_pred[i, :, :, 0] == 0] = nlabels
+            other_class_pred = class_pred[i, :, :, 0] == 0
+            _, other_labels, _, _ = cv2.connectedComponentsWithStats(other_class_pred.astype(np.uint8))
+            labels[other_class_pred] = nlabels + other_labels[other_class_pred]
 
         if DEBUG:
             plt.subplot(235)
