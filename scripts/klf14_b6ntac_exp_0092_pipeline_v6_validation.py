@@ -1090,25 +1090,59 @@ for i_fold in range(len(idx_test_all)):
         plt.clf()
         plt.subplot(221)
         plt.cla()
-        plt.imshow(im[i, :, :, :])
+        plt.imshow(im_array_test[i, :, :, :])
         plt.axis('off')
         plt.subplot(222)
         plt.cla()
-        plt.imshow(im[i, :, :, :])
+        plt.imshow(im_array_test[i, :, :, :])
         plt.contourf(pred_class_test[i, :, :, 0].astype(np.float32), alpha=0.5)
         plt.axis('off')
         plt.subplot(223)
         plt.cla()
-        plt.imshow(im[i, :, :, :])
+        plt.imshow(im_array_test[i, :, :, :])
         plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
         plt.axis('off')
         plt.subplot(224)
         plt.cla()
-        plt.imshow(im[i, :, :, :])
+        plt.imshow(im_array_test[i, :, :, :])
         plt.contourf(pred_class_test[i, :, :, 0].astype(np.float32), alpha=0.5)
         plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
         plt.axis('off')
         plt.tight_layout()
+
+    # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
+    # the rough foreground mask
+    pred_seg_test \
+        = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
+                                             mask=rough_mask_test, phagocytosis=False)
+
+    if DEBUG:
+        plt.clf()
+        aux = np.stack((rough_mask_test[i, :, :],) * 3, axis=2)
+        plt.imshow(im_array_test[i, :, :, :] * aux)
+        plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='k')
+        plt.axis('off')
+
+    ''' Split image into individual labels and correct segmentation to take overlaps into account '''
+
+    (window_seg_test, window_im_test, window_class_test, window_rough_mask_test), index_list, scaling_factor_list \
+        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test,
+                                                  pred_class_test[:, :, :, 0], rough_mask_test),
+                                                 resize_to=(training_window_len, training_window_len),
+                                                 resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
+                                                 only_central_label=True)
+
+    # correct segmentations
+    correction_model_filename = os.path.join(saved_models_dir,
+                                             correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test, seg=window_seg_test,
+                                                                     correction_model=correction_model_filename,
+                                                                     model_type='-1_1', batch_size=batch_size,
+                                                                     smoothing=11)
+
+    ####################################################################################################################
+    ## CODE BELOW STILL NEEDS TO BE FIXED
+    ####################################################################################################################
 
     # loop test images
     for i in range(len(idx_test)):
@@ -1124,42 +1158,6 @@ for i_fold in range(len(idx_test_all)):
         xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
         yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
-        # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
-        # the rough foreground mask
-        pred_seg_test \
-            = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                                 mask=rough_mask_test, phagocytosis=False)
-
-        if DEBUG:
-            plt.clf()
-            aux = np.stack((rough_mask_test[i, :, :], ) * 3, axis=2)
-            plt.imshow(im_array_test[i, :, :, :] * aux)
-            plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='k')
-            plt.axis('off')
-
-        ''' Split image into individual labels and correct segmentation to take overlaps into account '''
-
-        # split segmentation into separate labels, and scale to same size
-        (window_seg_test, window_im_test, window_class_test, window_rough_mask_test), index_list, scaling_factor_list \
-            = cytometer.utils.one_image_per_label_v2((pred_seg_test,
-                                                      np.expand_dims(im_array_test[i, ...], axis=0),
-                                                      pred_class_test[:, :, :, 0],
-                                                      np.expand_dims(rough_mask_test[i, ...].astype(np.uint8), axis=0)),
-                                                     resize_to=(training_window_len, training_window_len),
-                                                     resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
-                                                     only_central_label=True)
-
-        # load correction model
-        correction_model_filename = os.path.join(saved_models_dir,
-                                                 correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-        correction_model = keras.models.load_model(correction_model_filename)
-
-        # correct segmentations
-        window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test, seg=window_seg_test,
-                                                                         correction_model=correction_model,
-                                                                         model_type='-1_1', batch_size=batch_size,
-                                                                         smoothing=11)
-
         if DEBUG:
             for j in range(window_seg_test.shape[0]):
                 plt.clf()
@@ -1173,7 +1171,7 @@ for i_fold in range(len(idx_test_all)):
                 plt.title('Histology and segmentation', fontsize=14)
                 plt.axis('off')
                 plt.subplot(122)
-                plt.imshow(window_class_test[j, ...] > 0.50, vmin=0, vmax=1)
+                plt.imshow(window_class_test[j, ...], vmin=0, vmax=1)
                 plt.contour(window_seg_test[j, ...], colors='k')
                 plt.contour(window_seg_corrected_test[j, ...], colors='r')
                 aux_wat_pixels = window_class_test[j, ...] > 0.50
