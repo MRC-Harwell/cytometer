@@ -37,6 +37,7 @@ from PIL import Image, ImageDraw, ImageEnhance
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
+from scipy.stats import mode
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
@@ -1140,9 +1141,7 @@ for i_fold in range(len(idx_test_all)):
                                                                      model_type='-1_1', batch_size=batch_size,
                                                                      smoothing=11)
 
-    ####################################################################################################################
-    ## CODE BELOW STILL NEEDS TO BE FIXED
-    ####################################################################################################################
+    ''' Compare automatic segmentations to manual segmentations '''
 
     # loop test images
     for i in range(len(idx_test)):
@@ -1150,16 +1149,31 @@ for i_fold in range(len(idx_test_all)):
         print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
               + str(i) + '/' + str(len(idx_test) - 1))
 
+        # file with the contours
+        file_svg = file_list_test[i]
+
         # open histology testing image
-        file_tif = file_list_test[i].replace('.svg', '.tif')
+        file_tif = file_svg.replace('.svg', '.tif')
         im = Image.open(file_tif)
 
         # read pixel size information
         xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
         yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
-        if DEBUG:
-            for j in range(window_seg_test.shape[0]):
+        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+        contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                           minimum_npoints=3)
+
+        print('Cells: ' + str(len(contours)))
+        print('')
+
+        # auxiliary variable to make accessing the labels in this image more easily, without the "other" tissue
+        pred_wat_seg_test_i = pred_seg_test[i, :, :] * pred_class_test[i, :, :, 0]
+
+        for j, contour in enumerate(contours):
+
+            if DEBUG:
                 plt.clf()
                 plt.subplot(121)
                 plt.imshow(window_im_test[j, ...])
@@ -1182,6 +1196,40 @@ for i_fold in range(len(idx_test_all)):
                 plt.axis('off')
                 plt.tight_layout()
                 plt.pause(10)
+
+            # rasterise object described by contour
+            cell_seg_contour = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+            draw = ImageDraw.Draw(cell_seg_contour)
+            draw.polygon(contour, outline="white", fill="white")
+            cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
+
+            # find automatic segmentation that best overlaps contour
+            lab = mode(pred_wat_seg_test_i[cell_seg_contour])[0][0]
+
+            if lab == 0:
+                warnings.warn('Skipping. Contour j = ' + str(j) + ' overlaps with background segmentation lab = 0')
+                continue
+
+        # isolate that best automatic segmentation
+        cell_seg = labels == lab
+
+        # compute Dice coefficient
+        contour_and_lab = np.logical_and(cell_seg, cell_seg_contour)
+        dice = 2 * np.count_nonzero(contour_and_lab) \
+               / (np.count_nonzero(cell_seg) + np.count_nonzero(cell_seg_contour))
+
+        # add to dataframe
+        df['label_seg'] = lab
+        df['dice'] = dice
+        df['area_contour'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
+        df['area_seg'] = np.count_nonzero(cell_seg) * xres * yres  # um^2
+
+
+    ####################################################################################################################
+    ## CODE BELOW STILL NEEDS TO BE FIXED
+    ####################################################################################################################
+
+
 
         ''' Quantitative measures '''
 
