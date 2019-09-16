@@ -1135,7 +1135,8 @@ for i_fold in range(len(idx_test_all)):
 
     (window_seg_test, window_im_test, window_class_test, window_rough_mask_test), index_list, scaling_factor_list \
         = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test,
-                                                  pred_class_test[:, :, :, 0], rough_mask_test),
+                                                  pred_class_test[:, :, :, 0].astype(np.uint8),
+                                                  rough_mask_test.astype(np.uint8)),
                                                  resize_to=(training_window_len, training_window_len),
                                                  resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
                                                  only_central_label=True)
@@ -1198,30 +1199,6 @@ for i_fold in range(len(idx_test_all)):
             df['im'] = i
             df['contour'] = j
 
-            if DEBUG:
-                plt.clf()
-                plt.subplot(121)
-                plt.imshow(window_im_test[j, ...])
-                cntr1 = plt.contour(window_seg_test[j, ...], colors='k')
-                cntr2 = plt.contour(window_seg_corrected_test[j, ...], colors='r')
-                h1, _ = cntr1.legend_elements()
-                h2, _ = cntr2.legend_elements()
-                plt.legend([h1[0], h2[0]], ['Watershed seg.', 'Corrected seg.'])
-                plt.title('Histology and segmentation', fontsize=14)
-                plt.axis('off')
-                plt.subplot(122)
-                plt.imshow(window_class_test[j, ...], vmin=0, vmax=1)
-                plt.contour(window_seg_test[j, ...], colors='k')
-                plt.contour(window_seg_corrected_test[j, ...], colors='r')
-                aux_wat_pixels = window_class_test[j, ...] > 0.50
-                aux_prop = np.count_nonzero(aux_wat_pixels[window_seg_corrected_test[j, ...] == 1]) \
-                           / np.count_nonzero(window_seg_corrected_test[j, ...])
-                plt.title('Pixel classifier score > 0.50\nProp$_{\mathrm{WAT, corrected}}$ = %0.1f%%'
-                          % (100 * aux_prop), fontsize=14)
-                plt.axis('off')
-                plt.tight_layout()
-                plt.pause(10)
-
             # manual segmentation: rasterise object described by contour
             cell_seg_contour = Image.new("1", im_array_test.shape[1:3], "black")  # I = 32-bit signed integer pixels
             draw = ImageDraw.Draw(cell_seg_contour)
@@ -1229,9 +1206,9 @@ for i_fold in range(len(idx_test_all)):
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
 
             # find automatic segmentation that best overlaps contour
-            lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour])
+            lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour]).mode[0]
 
-            if lab_best_overlap == 0:
+            if lab_best_overlap == 0:  # the manual contour overlaps the background more than any automatic segmentation
                 warnings.warn('Skipping. Contour j = ' + str(j) + ' overlaps with background segmentation lab = 0')
 
                 # add to dataframe
@@ -1240,18 +1217,19 @@ for i_fold in range(len(idx_test_all)):
                 df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
                 df['area_auto'] = np.NaN
                 df['wat_prop_auto'] = np.NaN
+                df['wat_prop_corrected'] = np.NaN
 
             else:
+
+                # get the array position of the automatic segmentation
+                idx = np.where([x == (i, lab_best_overlap) for x in index_list])[0][0]
 
                 # compute Dice coefficient between manual and automatic segmentation with best overlap
                 cell_best_overlap = pred_wat_seg_test_i == lab_best_overlap  # auto segmentation (best match)
                 # cell_seg_contour  # manual segmentation
                 intersect_auto_manual = cell_best_overlap * cell_seg_contour
-                dice = 2 * np.count_nonzero(intersect_auto_manual) \
-                       / (np.count_nonzero(cell_best_overlap) + np.count_nonzero(cell_seg_contour))
-
-                # get the array position of the automatic segmentation
-                idx = np.where([x == (i, lab_best_overlap) for x in index_list])[0][0]
+                dice_auto = 2 * np.count_nonzero(intersect_auto_manual) \
+                            / (np.count_nonzero(cell_best_overlap) + np.count_nonzero(cell_seg_contour))
 
                 # crop the manual contour, using the same cropping window that was used for the automatic contour
                 (window_auto, window_manual), _, scaling_factor \
@@ -1265,127 +1243,64 @@ for i_fold in range(len(idx_test_all)):
                 # j loop
                 assert(np.all(window_auto[0, :, :] == window_seg_test[idx, :, :]))
 
+                # proportion of WAT pixels in the corrected segmentations
+                wat_prop_corrected \
+                    = np.count_nonzero(window_seg_corrected_test[idx, :, :] * window_class_test[idx, :, :]) \
+                / np.count_nonzero(window_seg_corrected_test[idx, :, :])
+
+                # compute Dice coefficient between manual and corrected segmentation with best overlap
+                a = np.count_nonzero(window_manual[0, :, :])
+                b = np.count_nonzero(window_seg_corrected_test[idx, :, :])
+                a_n_b = np.count_nonzero(window_manual[0, :, :] * window_seg_corrected_test[idx, :, :])
+                dice_corrected = 2 * a_n_b / (a + b)
+
                 # add to dataframe
                 df['label_seg'] = lab_best_overlap
-                df['dice_auto'] = dice
+                df['dice_auto'] = dice_auto
+                df['dice_corrected'] = dice_corrected
                 df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
                 df['area_auto'] = np.count_nonzero(cell_best_overlap) * xres * yres  # um^2
                 df['wat_prop_auto'] = pred_prop_test[pred_lab_test == lab_best_overlap]
+                df['wat_prop_corrected'] = wat_prop_corrected
+
+                if DEBUG:
+                    plt.clf()
+                    plt.subplot(121)
+                    plt.imshow(window_im_test[idx, ...])
+                    cntr1 = plt.contour(window_manual[0, :, :], colors='g')
+                    cntr2 = plt.contour(window_seg_test[idx, ...], colors='k')
+                    cntr3 = plt.contour(window_seg_corrected_test[idx, ...], colors='r')
+                    h1, _ = cntr1.legend_elements()
+                    h2, _ = cntr2.legend_elements()
+                    h3, _ = cntr3.legend_elements()
+                    plt.legend([h1[0], h2[0], h3[0]], ['Manual', 'Auto', 'Corrected'])
+                    plt.title('Histology and segmentation', fontsize=14)
+                    plt.axis('off')
+                    plt.subplot(122)
+                    plt.imshow(window_class_test[idx, ...].astype(np.uint8), vmin=0, vmax=1)
+                    plt.contour(window_manual[0, :, :], colors='g')
+                    plt.contour(window_seg_test[idx, ...], colors='k')
+                    plt.contour(window_seg_corrected_test[idx, ...], colors='r')
+                    plt.title('Prop$_{\mathrm{WAT, corrected}}$ = %0.1f%%'
+                              % (100 * df['wat_prop_auto']), fontsize=14)
+                    plt.axis('off')
+                    plt.tight_layout()
 
             # concatenate current dataframe to general dataframe
             df_all = df_all.append(df, ignore_index=True)
 
-
-    ####################################################################################################################
-    ## CODE BELOW STILL NEEDS TO BE FIXED
-    ####################################################################################################################
-
-
-
-        ''' Quantitative measures '''
-
-        # list of labels (for convenience)
-        labels_unique_ref = [x[1] for x in index_list]
-
-        # count number of pixels for each non-overlap label
-        labels_count_ref = np.count_nonzero(window_seg_test, axis=(1, 2))
-
-        # count number of pixels for each corrected label
-        corrected_count_ref = np.count_nonzero(window_seg_corrected_test, axis=(1, 2))
-
-        # count number of WAT pixels for each corrected label
-        window_wat_pixels = window_class_test > 0.50
-        wat_corrected_count_ref = np.count_nonzero(window_seg_corrected_test * window_wat_pixels, axis=(1, 2))
-
-        # count number of rough mask pixels for each corrected label (to see whether the object falls within the rough mask)
-        window_rough_mask_corrected_count_ref = np.count_nonzero(window_seg_corrected_test * window_rough_mask_test, axis=(1, 2))
-
-        # scaling factors for pixel size in the resized images (note: they are provided as (sr, sc) in index_list
-        sx = np.array([x[1] for x in scaling_factor_list])
-        sy = np.array([x[0] for x in scaling_factor_list])
-
-        # create dataframe for this image
-        im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)  # absolute index of current test image
-        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                              values=im_idx, values_tag='im',
-                                                              tags_to_keep=['id', 'ko', 'sex'])
-        df_common['lab'] = labels_unique_ref
-        df_common['area'] = labels_count_ref * xres * yres / sx / sy
-        df_common['area_corrected'] = corrected_count_ref * xres * yres / sx / sy
-        df_common['prop_wat'] = wat_corrected_count_ref / corrected_count_ref
-        df_common['prop_rough_mask'] = window_rough_mask_corrected_count_ref / corrected_count_ref
-
-        if DEBUG:
-            plt.clf()
-            plt.scatter(df_common['area'], df_common['area_corrected'])
-            aux = np.max(df_common['area_corrected'])
-            plt.plot([0, aux], [0, aux], 'C1')
-
-        if DEBUG:
-            plt.clf()
-            plt.subplot(121)
-            aux = np.stack((rough_mask_test[i, :, :], ) * 3, axis=2)
-            plt.imshow(im_array_test[i, :, :, :] * aux)
-            plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='k')
-            plt.axis('off')
-            plt.subplot(122)
-            aux = cytometer.utils.paint_labels(labels=pred_seg_test[0, ...], paint_labs=df_common['lab'],
-                                               paint_values=(df_common['prop_wat'] > 0.715).astype(np.uint8))
-            plt.imshow(aux)
-            plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='w')
-            plt.axis('off')
-
-        # concatenate current dataframe to general dataframe
-        df_all = df_all.append(df_common)
-
-        if DEBUG:
-            plt.clf()
-            plt.subplot(231)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
-            plt.title('Training mask', fontsize=14)
-            plt.axis('off')
-            plt.subplot(232)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
-            plt.contour(out_mask_test[i, :, :].astype(np.uint8), colors='r')
-            plt.title('Cleaned automatic segs', fontsize=14)
-            plt.axis('off')
-            plt.subplot(233)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
-            plt.imshow(out_class_test[i, :, :, 0], alpha=0.5)
-            plt.title('Class ground truth', fontsize=14)
-            plt.axis('off')
-            plt.subplot(234)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
-            plt.imshow(pred_class_test[0, :, :, 1] > 0.20, alpha=0.5)
-            plt.title('Classifier thr > 0.20', fontsize=14)
-            plt.axis('off')
-            plt.subplot(235)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
-            plt.imshow(pred_class_test[0, :, :, 1] > 0.30, alpha=0.5)
-            plt.title('Classifier thr > 0.30', fontsize=14)
-            plt.axis('off')
-            plt.subplot(236)
-            plt.imshow(im_array_test[i, :, :, :])
-            plt.contour(pred_seg_test[0, :, :], levels=np.unique(pred_seg_test[0, :, :]), colors='k')
-            plt.imshow(pred_class_test[0, :, :, 1] > 0.40, alpha=0.5)
-            plt.title('Classifier thr > 0.40', fontsize=14)
-            plt.axis('off')
-            plt.tight_layout()
-
     # end of image loop
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
-
-# reindex the dataframe
-df_all.reset_index(drop=True, inplace=True)
 
 # save results to avoid having to recompute them every time (58 min on 2 Titan RTX GPUs)
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.pkl')
 df_all.to_pickle(dataframe_filename)
+
+
+
+####################################################################################################################
+## CODE BELOW STILL NEEDS TO BE FIXED
+####################################################################################################################
 
 ## Analyse results
 
