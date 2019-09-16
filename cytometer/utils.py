@@ -1263,6 +1263,44 @@ def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
     return out
 
 
+def prop_of_pixels_in_label(lab, mask):
+    """
+    Proportion of pixels in each label that belong to a mask.
+
+    For example, if label "7" contains a total of 20 pixels, and 5 of those pixels have mask != 0, then the proportion
+    is 5/20 = 0.25.
+
+    :param lab: (row, col) np.ndarray with a label segmentation (all pixels with the same integer value belong to the
+    same label).
+    :param mask: (row, col) np.ndarray. Mask of pixels that will be counted.
+    :return:
+
+    * seg_labs: Vector with the list of unique labels in lab.
+    * seg_prop: Vector with the proportion of masked pixels in each label.
+    """
+
+    # look-up tables so that lut[label] = npixels
+    lut = np.zeros(shape=(np.max(lab)+1,), dtype=np.float32)
+    lut_masked = np.zeros(shape=(np.max(lab)+1,), dtype=np.float32)
+
+    # number of pixels in each label, after masking the labels
+    seg_labs, seg_labs_counts = np.unique(lab * (mask != 0), return_counts=True)
+    lut_masked[seg_labs] = seg_labs_counts
+
+    # number of pixels in each label
+    seg_labs, seg_labs_counts = np.unique(lab, return_counts=True)
+    lut[seg_labs] = seg_labs_counts
+
+    # proportion is the number of masked pixels / number of pixels per label
+    idx = lut != 0
+    lut_masked[idx] = lut_masked[idx] / lut[idx]
+
+    # remove "0" label, which corresponds to the background
+    seg_labs = seg_labs[seg_labs != 0]
+
+    return seg_labs, lut_masked[seg_labs]
+
+
 def one_image_per_label(dataset_im, dataset_lab_test, dataset_lab_ref=None,
                         training_window_len=401, smallest_cell_area=804, clear_border_lab=False,
                         smallest_dice=0.0, allow_repeat_ref=False):
@@ -1649,6 +1687,7 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
     Image.NEAREST for all volumes, which is appropriate for labels. For RBG or grayscale images, you can also use
     Image.LINEAR.
     :param bbox_inc: (def 1.0) Increment in size applied to the bounding box.
+    :param only_central_label: (def False) If True, delete the labels that are around the central label.
 
     First, the bounding box is computed as the tightest square that contains the label. Then, this size is increased by
     bbox_inc*100%. For example, bbox_inc=0.2 will increase the size by 20%. By default, bbox_inc=1.0 increases the size
