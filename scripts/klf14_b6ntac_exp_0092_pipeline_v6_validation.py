@@ -38,6 +38,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from scipy.stats import mode
+from enum import IntEnum
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
@@ -92,6 +93,12 @@ downsample_factor = 8.0
 dilation_size = 25
 component_size_threshold = 0
 hole_size_treshold = 8000
+
+# types of pixels
+class PixelType(IntEnum):
+    UNDETERMINED = 0
+    WAT = 1
+    OTHER = 2
 
 '''Directories and filenames
 '''
@@ -440,11 +447,11 @@ for i_fold in range(len(idx_test_all)):
 
         # create dataframe for this image
         im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
-        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                          values=im_idx, values_tag='im',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
-        df_im['contour'] = range(len(contours))
-        df_im['type'] = contour_type_all
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                              values=im_idx, values_tag='im',
+                                                              tags_to_keep=['id', 'ko', 'sex'])
+        df_common['contour'] = range(len(contours))
+        df_common['type'] = contour_type_all
 
         '''Label pixels of image as either WAT/non-WAT'''
 
@@ -502,10 +509,10 @@ for i_fold in range(len(idx_test_all)):
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.uint8)
 
             # compute area of object
-            df_im.loc[j, 'area'] = np.count_nonzero(cell_seg_contour) * xres * yres
+            df_common.loc[j, 'area'] = np.count_nonzero(cell_seg_contour) * xres * yres
 
         # concatenate current dataframe to general dataframe
-        df_all = df_all.append(df_im)
+        df_all = df_all.append(df_common)
 
 # reindex the dataframe
 df_all.reset_index(drop=True, inplace=True)
@@ -633,11 +640,11 @@ for i_fold in range(len(idx_test_all)):
 
         # create dataframe for this image
         im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
-        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                          values=im_idx, values_tag='im',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
-        df_im['contour'] = range(len(contours))
-        df_im['type'] = contour_type_all
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                              values=im_idx, values_tag='im',
+                                                              tags_to_keep=['id', 'ko', 'sex'])
+        df_common['contour'] = range(len(contours))
+        df_common['type'] = contour_type_all
 
         '''Label pixels of image as either WAT/non-WAT'''
 
@@ -703,7 +710,7 @@ for i_fold in range(len(idx_test_all)):
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.uint8)
 
             # compute area of object
-            df_im.loc[j, 'area'] = np.count_nonzero(cell_seg_contour) * xres * yres
+            df_common.loc[j, 'area'] = np.count_nonzero(cell_seg_contour) * xres * yres
 
             # get scores from within the object
             aux = pred_class_test[0, :, :, 0]  # other = 0, wat = 1
@@ -713,7 +720,7 @@ for i_fold in range(len(idx_test_all)):
             prop = np.linspace(0, 100, 101)
             for p in prop:
                 # e.g. df_im.loc[j, 'wat_prop_55'] = np.count_nonzero(wat_scores > 0.55) / len(wat_scores)
-                df_im.loc[j, 'wat_prop_' + str(int(p))] = np.count_nonzero(wat_scores > (p/100)) / len(wat_scores)
+                df_common.loc[j, 'wat_prop_' + str(int(p))] = np.count_nonzero(wat_scores > (p / 100)) / len(wat_scores)
 
             if DEBUG:
                 # close the contour for the plot
@@ -740,7 +747,7 @@ for i_fold in range(len(idx_test_all)):
                 plt.imshow(pred_class_test[0, :, :, 0] > 0.50)
                 plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='g', linewidth=2)
                 plt.title('Prop$_{\mathrm{WAT}}$ = %0.1f%%\nWAT if Prop$_{\mathrm{WAT}}$ > 50%%'
-                          % (100 * df_im.loc[j, 'wat_prop_50']), fontsize=14)
+                          % (100 * df_common.loc[j, 'wat_prop_50']), fontsize=14)
                 plt.axis('off')
                 plt.tight_layout()
 
@@ -769,27 +776,27 @@ for i_fold in range(len(idx_test_all)):
                 plt.cla()
                 plt.imshow(pred_class_test[0, :, :, 0] > 0.50, cmap='plasma')
                 plt.contour(cell_seg_contour, colors='r')
-                aux = df_im.loc[j, 'wat_prop_50']*100
+                aux = df_common.loc[j, 'wat_prop_50'] * 100
                 plt.title('WAT score > 0.50\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
                 plt.axis('off')
                 plt.subplot(235)
                 plt.cla()
                 plt.imshow(pred_class_test[0, :, :, 0] > 0.44, cmap='plasma')
                 plt.contour(cell_seg_contour, colors='r')
-                aux = df_im.loc[j, 'wat_prop_44']*100
+                aux = df_common.loc[j, 'wat_prop_44'] * 100
                 plt.title('WAT score > 0.44\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
                 plt.axis('off')
                 plt.subplot(236)
                 plt.cla()
                 plt.imshow(pred_class_test[0, :, :, 0] > 0.56, cmap='plasma')
                 plt.contour(cell_seg_contour, colors='r')
-                aux = df_im.loc[j, 'wat_prop_56']*100
+                aux = df_common.loc[j, 'wat_prop_56'] * 100
                 plt.title('WAT score > 0.56\nProp$_{\mathrm{WAT}}$ = %0.1f%%' % aux, fontsize=14)
                 plt.axis('off')
                 plt.tight_layout()
 
         # concatenate current dataframe to general dataframe
-        df_all = df_all.append(df_im, ignore_index=True)
+        df_all = df_all.append(df_common, ignore_index=True)
 
 # save results
 data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.pkl')
@@ -1149,6 +1156,8 @@ for i_fold in range(len(idx_test_all)):
         print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
               + str(i) + '/' + str(len(idx_test) - 1))
 
+        ''' Contours '''
+
         # file with the contours
         file_svg = file_list_test[i]
 
@@ -1168,10 +1177,26 @@ for i_fold in range(len(idx_test_all)):
         print('Cells: ' + str(len(contours)))
         print('')
 
-        # auxiliary variable to make accessing the labels in this image more easily, without the "other" tissue
-        pred_wat_seg_test_i = pred_seg_test[i, :, :] * pred_class_test[i, :, :, 0]
+        ''' Labels '''
+
+        # proportion of WAT pixels in each label
+        pred_lab_test, pred_prop_test = cytometer.utils.prop_of_pixels_in_label(lab=pred_seg_test[i, :, :],
+                                                                                mask=pred_class_test[i, :, :, 0])
+
+        # auxiliary variable to make accessing the labels in this image more easily
+        pred_wat_seg_test_i = pred_seg_test[i, :, :]
+
+        # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                              values=[i_fold], values_tag='fold',
+                                                              tags_to_keep=['id', 'ko', 'sex'])
 
         for j, contour in enumerate(contours):
+
+            # start dataframe row for this contour
+            df = df_common.copy()
+            df['im'] = i
+            df['contour'] = j
 
             if DEBUG:
                 plt.clf()
@@ -1197,32 +1222,58 @@ for i_fold in range(len(idx_test_all)):
                 plt.tight_layout()
                 plt.pause(10)
 
-            # rasterise object described by contour
-            cell_seg_contour = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+            # manual segmentation: rasterise object described by contour
+            cell_seg_contour = Image.new("1", im_array_test.shape[1:3], "black")  # I = 32-bit signed integer pixels
             draw = ImageDraw.Draw(cell_seg_contour)
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
 
             # find automatic segmentation that best overlaps contour
-            lab = mode(pred_wat_seg_test_i[cell_seg_contour])[0][0]
+            lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour])
 
-            if lab == 0:
+            if lab_best_overlap == 0:
                 warnings.warn('Skipping. Contour j = ' + str(j) + ' overlaps with background segmentation lab = 0')
-                continue
 
-        # isolate that best automatic segmentation
-        cell_seg = labels == lab
+                # add to dataframe
+                df['lab_auto'] = 0
+                df['dice_auto'] = np.NaN
+                df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
+                df['area_auto'] = np.NaN
+                df['wat_prop_auto'] = np.NaN
 
-        # compute Dice coefficient
-        contour_and_lab = np.logical_and(cell_seg, cell_seg_contour)
-        dice = 2 * np.count_nonzero(contour_and_lab) \
-               / (np.count_nonzero(cell_seg) + np.count_nonzero(cell_seg_contour))
+            else:
 
-        # add to dataframe
-        df['label_seg'] = lab
-        df['dice'] = dice
-        df['area_contour'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
-        df['area_seg'] = np.count_nonzero(cell_seg) * xres * yres  # um^2
+                # compute Dice coefficient between manual and automatic segmentation with best overlap
+                cell_best_overlap = pred_wat_seg_test_i == lab_best_overlap  # auto segmentation (best match)
+                # cell_seg_contour  # manual segmentation
+                intersect_auto_manual = cell_best_overlap * cell_seg_contour
+                dice = 2 * np.count_nonzero(intersect_auto_manual) \
+                       / (np.count_nonzero(cell_best_overlap) + np.count_nonzero(cell_seg_contour))
+
+                # get the array position of the automatic segmentation
+                idx = np.where([x == (i, lab_best_overlap) for x in index_list])[0][0]
+
+                # crop the manual contour, using the same cropping window that was used for the automatic contour
+                (window_auto, window_manual), _, scaling_factor \
+                    = cytometer.utils.one_image_per_label_v2((np.expand_dims(cell_best_overlap, axis=0).astype(np.uint8),
+                                                              np.expand_dims(cell_seg_contour, axis=0).astype(np.uint8)),
+                                                             resize_to=(training_window_len, training_window_len),
+                                                             resample=(Image.NEAREST, Image.NEAREST),
+                                                             only_central_label=True)
+
+                # double-check that the cropping of the automatic segmentation we get here is the same we got before the
+                # j loop
+                assert(np.all(window_auto[0, :, :] == window_seg_test[idx, :, :]))
+
+                # add to dataframe
+                df['label_seg'] = lab_best_overlap
+                df['dice_auto'] = dice
+                df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
+                df['area_auto'] = np.count_nonzero(cell_best_overlap) * xres * yres  # um^2
+                df['wat_prop_auto'] = pred_prop_test[pred_lab_test == lab_best_overlap]
+
+            # concatenate current dataframe to general dataframe
+            df_all = df_all.append(df, ignore_index=True)
 
 
     ####################################################################################################################
@@ -1255,19 +1306,19 @@ for i_fold in range(len(idx_test_all)):
 
         # create dataframe for this image
         im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)  # absolute index of current test image
-        df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                          values=im_idx, values_tag='im',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
-        df_im['lab'] = labels_unique_ref
-        df_im['area'] = labels_count_ref * xres * yres / sx / sy
-        df_im['area_corrected'] = corrected_count_ref * xres * yres / sx / sy
-        df_im['prop_wat'] = wat_corrected_count_ref / corrected_count_ref
-        df_im['prop_rough_mask'] = window_rough_mask_corrected_count_ref / corrected_count_ref
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                              values=im_idx, values_tag='im',
+                                                              tags_to_keep=['id', 'ko', 'sex'])
+        df_common['lab'] = labels_unique_ref
+        df_common['area'] = labels_count_ref * xres * yres / sx / sy
+        df_common['area_corrected'] = corrected_count_ref * xres * yres / sx / sy
+        df_common['prop_wat'] = wat_corrected_count_ref / corrected_count_ref
+        df_common['prop_rough_mask'] = window_rough_mask_corrected_count_ref / corrected_count_ref
 
         if DEBUG:
             plt.clf()
-            plt.scatter(df_im['area'], df_im['area_corrected'])
-            aux = np.max(df_im['area_corrected'])
+            plt.scatter(df_common['area'], df_common['area_corrected'])
+            aux = np.max(df_common['area_corrected'])
             plt.plot([0, aux], [0, aux], 'C1')
 
         if DEBUG:
@@ -1278,14 +1329,14 @@ for i_fold in range(len(idx_test_all)):
             plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='k')
             plt.axis('off')
             plt.subplot(122)
-            aux = cytometer.utils.paint_labels(labels=pred_seg_test[0, ...], paint_labs=df_im['lab'],
-                                               paint_values=(df_im['prop_wat'] > 0.715).astype(np.uint8))
+            aux = cytometer.utils.paint_labels(labels=pred_seg_test[0, ...], paint_labs=df_common['lab'],
+                                               paint_values=(df_common['prop_wat'] > 0.715).astype(np.uint8))
             plt.imshow(aux)
             plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='w')
             plt.axis('off')
 
         # concatenate current dataframe to general dataframe
-        df_all = df_all.append(df_im)
+        df_all = df_all.append(df_common)
 
         if DEBUG:
             plt.clf()
