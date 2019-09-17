@@ -1059,6 +1059,8 @@ df_all = pd.DataFrame()
 
 for i_fold in range(len(idx_test_all)):
 
+    ''' Get the images/masks/classification that were not used for training of this particular fold '''
+
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
     # test and training image indices. These indices refer to file_list
@@ -1121,7 +1123,7 @@ for i_fold in range(len(idx_test_all)):
     # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
     # the rough foreground mask
     pred_seg_test \
-        = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=True, min_cell_area=min_cell_area,
+        = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=False, min_cell_area=min_cell_area,
                                              mask=rough_mask_test, phagocytosis=False)
 
     if DEBUG:
@@ -1192,6 +1194,12 @@ for i_fold in range(len(idx_test_all)):
                                                               values=[i_fold], values_tag='fold',
                                                               tags_to_keep=['id', 'ko', 'sex'])
 
+        plt.clf()  ###########################################
+        plt.imshow(im_array_test[i, :, :, :])  #############################################
+        plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k', linestyles='dotted') ###############################
+        plt.title('i_fold=' + str(i_fold) + ', i=' + str(i), fontsize=14)
+        plt.axis('off')
+
         for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
@@ -1204,6 +1212,13 @@ for i_fold in range(len(idx_test_all)):
             draw = ImageDraw.Draw(cell_seg_contour)
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
+
+            plt.contour(cell_seg_contour, colors='r') ##################################################
+            # plt.pause(3) ########################
+        file_jpg = file_svg.replace('.svg', '.jpg') ###############################
+        file_jpg = file_jpg.replace('klf14_b6ntac_training', 'foo') ###############################
+        plt.savefig(file_jpg) #################################
+        continue ######################################
 
             # find automatic segmentation that best overlaps contour
             lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour]).mode[0]
