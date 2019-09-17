@@ -410,11 +410,6 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
-    # HACK
-    if i_fold <= 1:
-        print('Skipping ...')
-        continue
-
     # test and training image indices
     idx_test = idx_test_all[i_fold]
     idx_train = idx_train_all[i_fold]
