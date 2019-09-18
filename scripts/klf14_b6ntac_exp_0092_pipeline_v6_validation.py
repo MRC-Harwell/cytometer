@@ -1338,22 +1338,22 @@ r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
                df_all['area_corrected'][idx])
 
 plt.clf()
-plt.plot([0, 20e3], [0, 20e3], 'g',
+plt.plot([0, 20], [0, 20], 'g',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Identity ($\alpha=$ 1.00, $\beta=$0.00)')
-plt.scatter(df_all['area_manual'][idx],
-            df_all['area_auto'][idx], s=4, color='C0')
-plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_auto + intercept_manual_auto, color='C0',
+plt.scatter(df_all['area_manual'][idx] / 1e3,
+            df_all['area_auto'][idx] / 1e3, s=4, color='C0')
+plt.plot([0, 20], (np.array([0, 20e3]) * slope_manual_auto + intercept_manual_auto) / 1e3, color='C0',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Auto ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_auto, intercept_manual_auto))
-plt.scatter(df_all['area_manual'][idx],
-            df_all['area_corrected'][idx], s=4, color='C1')
-plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected, color='C1',
+plt.scatter(df_all['area_manual'][idx] / 1e3,
+            df_all['area_corrected'][idx] / 1e3, s=4, color='C1')
+plt.plot([0, 20], (np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected) / 1e3, color='C1',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Corrected ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_corrected, intercept_manual_corrected))
 plt.legend(fontsize=14)
-plt.xlabel('Manual Area ($\mu$m$^2$)', fontsize=14)
-plt.ylabel('Auto/Corrected area ($\mu$m$^2$)', fontsize=14)
+plt.xlabel('Manual Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+plt.ylabel('Auto/Corrected area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
 
 # compare automatic and corrected areas to manual areas (keeping only segmentations with Dice >= 0.5)
