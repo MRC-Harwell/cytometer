@@ -1194,12 +1194,6 @@ for i_fold in range(len(idx_test_all)):
                                                               values=[i_fold], values_tag='fold',
                                                               tags_to_keep=['id', 'ko', 'sex'])
 
-        plt.clf()  ###########################################
-        plt.imshow(im_array_test[i, :, :, :])  #############################################
-        plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k', linestyles='dotted') ###############################
-        plt.title('i_fold=' + str(i_fold) + ', i=' + str(i), fontsize=14)
-        plt.axis('off')
-
         for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
@@ -1213,13 +1207,6 @@ for i_fold in range(len(idx_test_all)):
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
 
-            plt.contour(cell_seg_contour, colors='r') ##################################################
-            # plt.pause(3) ########################
-        file_jpg = file_svg.replace('.svg', '.jpg') ###############################
-        file_jpg = file_jpg.replace('klf14_b6ntac_training', 'foo') ###############################
-        plt.savefig(file_jpg) #################################
-        continue ######################################
-
             # find automatic segmentation that best overlaps contour
             lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour]).mode[0]
 
@@ -1231,6 +1218,7 @@ for i_fold in range(len(idx_test_all)):
                 df['dice_auto'] = np.NaN
                 df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
                 df['area_auto'] = np.NaN
+                df['area_corrected'] = np.NaN
                 df['wat_prop_auto'] = np.NaN
                 df['wat_prop_corrected'] = np.NaN
 
@@ -1269,12 +1257,17 @@ for i_fold in range(len(idx_test_all)):
                 a_n_b = np.count_nonzero(window_manual[0, :, :] * window_seg_corrected_test[idx, :, :])
                 dice_corrected = 2 * a_n_b / (a + b)
 
+                # area of the corrected segmentation
+                (sy, sx) = scaling_factor_list[idx]
+                area_corrected = np.count_nonzero(window_seg_corrected_test[idx, :, :]) * xres * yres / (sx * sy)
+
                 # add to dataframe
                 df['label_seg'] = lab_best_overlap
                 df['dice_auto'] = dice_auto
                 df['dice_corrected'] = dice_corrected
                 df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
                 df['area_auto'] = np.count_nonzero(cell_best_overlap) * xres * yres  # um^2
+                df['area_corrected'] = area_corrected  # um^2
                 df['wat_prop_auto'] = pred_prop_test[pred_lab_test == lab_best_overlap]
                 df['wat_prop_corrected'] = wat_prop_corrected
 
