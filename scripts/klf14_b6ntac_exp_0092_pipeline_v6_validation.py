@@ -36,8 +36,9 @@ import re
 from PIL import Image, ImageDraw, ImageEnhance
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
 from sklearn.metrics import roc_curve, auc
-from scipy.stats import mode
+from scipy.stats import linregress, mode
 from enum import IntEnum
 
 # # limit number of GPUs
@@ -1304,21 +1305,94 @@ for i_fold in range(len(idx_test_all)):
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.pkl')
 df_all.to_pickle(dataframe_filename)
 
-
-
-####################################################################################################################
-## CODE BELOW STILL NEEDS TO BE FIXED
-####################################################################################################################
-
 ## Analyse results
-
-# load dataframe with areas of manual contours
-manual_data_filename = os.path.join(saved_models_dir, experiment_id + '_manual_contour_areas.pkl')
-df_all_manual = pd.read_pickle(manual_data_filename)
 
 # load dataframe with automatic segmentations, classifications, areas, etc
 data_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.pkl')
 df_all = pd.read_pickle(data_filename)
+
+idx_wat = df_all['wat_prop_auto'] >= 0.95
+idx_not_large = df_all['area_auto'] < 20e3
+idx_good_segmentation = df_all['dice_auto'] >= 0.5
+
+# area vs. WAT proportion
+plt.clf()
+plt.scatter(df_all['wat_prop_auto'], df_all['area_auto'], s=4)
+plt.xlabel('Prop. WAT pixels', fontsize=14)
+plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
+plt.tick_params(axis="both", labelsize=14)
+
+# compare automatic and corrected areas to manual areas
+
+# objects selected for the plot
+idx = idx_wat * idx_not_large
+
+# linear regressions
+slope_manual_auto, intercept_manual_auto, \
+r_value_manual_auto, p_value_manual_auto, std_err_manual_auto = \
+    linregress(df_all['area_manual'][idx],
+               df_all['area_auto'][idx])
+slope_manual_corrected, intercept_manual_corrected, \
+r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
+    linregress(df_all['area_manual'][idx],
+               df_all['area_corrected'][idx])
+
+plt.clf()
+plt.plot([0, 20e3], [0, 20e3], 'g',
+         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
+         label=r'Identity ($\alpha=$ 1.00, $\beta=$0.00)')
+plt.scatter(df_all['area_manual'][idx],
+            df_all['area_auto'][idx], s=4, color='C0')
+plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_auto + intercept_manual_auto, color='C0',
+         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
+         label=r'Auto ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_auto, intercept_manual_auto))
+plt.scatter(df_all['area_manual'][idx],
+            df_all['area_corrected'][idx], s=4, color='C1')
+plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected, color='C1',
+         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
+         label=r'Corrected ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_corrected, intercept_manual_corrected))
+plt.legend(fontsize=14)
+plt.xlabel('Manual Area ($\mu$m$^2$)', fontsize=14)
+plt.ylabel('Auto/Corrected area ($\mu$m$^2$)', fontsize=14)
+plt.tick_params(axis="both", labelsize=14)
+
+# compare automatic and corrected areas to manual areas (keeping only segmentations with Dice >= 0.5)
+
+# objects selected for the plot
+idx = idx_wat * idx_not_large * idx_good_segmentation
+
+# linear regressions
+slope_manual_auto, intercept_manual_auto, \
+r_value_manual_auto, p_value_manual_auto, std_err_manual_auto = \
+    linregress(df_all['area_manual'][idx],
+               df_all['area_auto'][idx])
+slope_manual_corrected, intercept_manual_corrected, \
+r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
+    linregress(df_all['area_manual'][idx],
+               df_all['area_corrected'][idx])
+
+plt.clf()
+plt.plot([0, 20e3], [0, 20e3], 'g',
+         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
+         label=r'Identity ($\alpha=$ 1.00, $\beta=$0.00)')
+plt.scatter(df_all['area_manual'][idx],
+            df_all['area_auto'][idx], s=4, color='C0')
+plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_auto + intercept_manual_auto, color='C0',
+         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
+         label=r'Auto ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_auto, intercept_manual_auto))
+plt.scatter(df_all['area_manual'][idx],
+            df_all['area_corrected'][idx], s=4, color='C1')
+plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected, color='C1',
+         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
+         label=r'Corrected ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_corrected, intercept_manual_corrected))
+plt.legend(fontsize=14)
+plt.xlabel('Manual Area ($\mu$m$^2$)', fontsize=14)
+plt.ylabel('Auto/Corrected area ($\mu$m$^2$)', fontsize=14)
+plt.tick_params(axis="both", labelsize=14)
+
+####################################################################################################################
+## CODE BELOW STILL NEEDS TO BE FIXED
+####################################################################################################################
 
 # WAT contour areas
 idx_wat_manual = df_all_manual['type'] == 'wat'
