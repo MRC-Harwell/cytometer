@@ -1208,6 +1208,9 @@ for i_fold in range(len(idx_test_all)):
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
 
+            plt.contour(cell_seg_contour, colors='r')  ###########################
+            plt.pause(3)  #############################
+
             # find automatic segmentation that best overlaps contour
             lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour]).mode[0]
 
