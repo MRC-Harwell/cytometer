@@ -1215,6 +1215,9 @@ for i_fold in range(len(idx_test_all)):
                                                               values=[i_fold], values_tag='fold',
                                                               tags_to_keep=['id', 'ko', 'sex'])
 
+        # cells on the edge
+        labels_edge = cytometer.utils.edge_labels(pred_seg_test[i, :, :])
+
         for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
@@ -1246,6 +1249,7 @@ for i_fold in range(len(idx_test_all)):
                 df['area_corrected'] = np.NaN
                 df['wat_prop_auto'] = np.NaN
                 df['wat_prop_corrected'] = np.NaN
+                df['auto_is_edge_cell'] = np.NaN
 
             else:
 
@@ -1328,6 +1332,7 @@ for i_fold in range(len(idx_test_all)):
                 df['area_corrected'] = area_corrected  # um^2
                 df['wat_prop_auto'] = pred_prop_test[pred_lab_test == lab_best_overlap]
                 df['wat_prop_corrected'] = wat_prop_corrected
+                df['auto_is_edge_cell'] = lab_best_overlap in labels_edge
 
                 if DEBUG:
                     plt.clf()
@@ -1358,7 +1363,7 @@ for i_fold in range(len(idx_test_all)):
     # end of image loop
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
-# save results to avoid having to recompute them every time (58 min on 2 Titan RTX GPUs)
+# save results to avoid having to recompute them every time (15 min on 2 Titan RTX GPUs)
 dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.pkl')
 df_all.to_pickle(dataframe_filename)
 
@@ -1368,9 +1373,18 @@ df_all.to_pickle(dataframe_filename)
 data_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.pkl')
 df_all = pd.read_pickle(data_filename)
 
-idx_wat = df_all['wat_prop_auto'] >= 0.95
-idx_not_large = df_all['area_auto'] < 20e3
-idx_good_segmentation = df_all['dice_auto'] >= 0.5
+idx_wat = np.array(df_all['wat_prop_auto'] >= 0.95)
+idx_not_large = np.array(df_all['area_auto'] < 20e3)
+idx_good_segmentation = np.array(df_all['dice_auto'] >= 0.5)
+idx_not_edge = np.logical_not(df_all['auto_is_edge_cell'])
+
+# remove fold/image pairs that contain only "other" tissue or broken cells
+other_broken_fold_im = [(2, 6), (6, 0), (8, 3), (8, 4), (7, 3), (7, 4)]
+idx_slice_with_wat = np.logical_not([x in other_broken_fold_im for x in zip(df_all['fold'], df_all['im'])])
+
+# remove fold/image pairs that contain substantial areas with broken cells or poor segmentations in general
+poor_seg_fold_im = [(4, 5), (5, 0), (3, 1), (6, 3), (4, 2), (3, 5)]
+idx_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im for x in zip(df_all['fold'], df_all['im'])])
 
 # area vs. WAT proportion
 plt.clf()
@@ -1411,11 +1425,6 @@ plt.tight_layout()
 
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_areas_ratio_hist.svg'))
 
-plt.clf()
-plt.hist(df_all['area_auto'][idx] / df_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
-         density=True, label='Auto / Manual area')
-
-
 # compare automatic and corrected areas to manual areas
 
 # objects selected for the plot
@@ -1453,7 +1462,7 @@ plt.tick_params(axis="both", labelsize=14)
 # compare automatic and corrected areas to manual areas (keeping only segmentations with Dice >= 0.5)
 
 # objects selected for the plot
-idx = idx_wat * idx_not_large * idx_good_segmentation
+idx = idx_wat * idx_not_large * idx_good_segmentation * idx_slice_with_wat
 
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
@@ -1487,7 +1496,7 @@ plt.tick_params(axis="both", labelsize=14)
 # plot for poster
 
 # objects selected for the plot
-idx = idx_wat * idx_not_large * idx_good_segmentation
+idx = idx_wat * idx_not_large * idx_slice_with_wat * idx_slice_with_acceptable_seg * idx_not_edge
 
 # boxplots of cell populations
 plt.clf()
