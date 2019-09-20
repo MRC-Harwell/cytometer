@@ -113,6 +113,7 @@ training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+saved_figures_dir = os.path.join(root_data_dir, 'figures')
 
 # k-folds file
 saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
@@ -1169,6 +1170,25 @@ for i_fold in range(len(idx_test_all)):
         file_tif = file_svg.replace('.svg', '.tif')
         im = Image.open(file_tif)
 
+        if DEBUG:
+            # plots for poster
+
+            # histology slice
+            plt.clf()
+            plt.imshow(im)
+            plt.axis('off')
+            plt.tight_layout()
+            plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pipeline_im_fold_%d_i_%d.svg' % (i_fold, i)),
+                        bbox_inches='tight', pad_inches=0)
+
+            # WAT classifier
+            plt.clf()
+            plt.imshow(pred_class_test[i, :, :, 0])
+            plt.axis('off')
+            plt.tight_layout()
+            plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pipeline_pred_class_test_fold_%d_i_%d.svg' % (i_fold, i)),
+                        bbox_inches='tight', pad_inches=0)
+
         # read pixel size information
         xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
         yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
@@ -1208,10 +1228,11 @@ for i_fold in range(len(idx_test_all)):
             draw.polygon(contour, outline="white", fill="white")
             cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
 
-            plt.contour(cell_seg_contour, colors='r')  ###########################
-            plt.pause(3)  #############################
+            # plt.contour(cell_seg_contour, colors='r')  ###########################
+            # plt.pause(3)  #############################
 
             # find automatic segmentation that best overlaps contour
+            import scipy.stats
             lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour]).mode[0]
 
             if lab_best_overlap == 0:  # the manual contour overlaps the background more than any automatic segmentation
@@ -1245,6 +1266,39 @@ for i_fold in range(len(idx_test_all)):
                                                              resize_to=(training_window_len, training_window_len),
                                                              resample=(Image.NEAREST, Image.NEAREST),
                                                              only_central_label=True)
+
+                if DEBUG:
+                    # plot for poster
+
+                    # segmentation labels
+                    plt.clf()
+                    plt.imshow(pred_seg_test[i, :, :])
+                    plt.contour(pred_seg_test[i, :, :] == lab_best_overlap, colors='r', linewidths=4)
+                    plt.axis('off')
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(saved_figures_dir,
+                                             'exp_0092_pipeline_labels_fold_%d_i_%d_j_%d.svg' % (i_fold, i, j)),
+                                bbox_inches='tight', pad_inches=0)
+
+                    # one cell segmentations: manual, auto, corrected
+                    plt.clf()
+                    plt.imshow(window_im_test[idx, ...])
+                    cntr1 = plt.contour(window_manual[0, :, :], linewidths=5, colors='g', linestyles='solid')
+                    cntr2 = plt.contour(window_auto[0, :, :], linewidths=3, colors='r', linestyles='dotted')
+                    cntr3 = plt.contour(window_seg_corrected_test[idx, :, :], linewidths=3, colors='k', linestyles='dotted')
+                    h1, _ = cntr1.legend_elements()
+                    h2, _ = cntr2.legend_elements()
+                    h3, _ = cntr3.legend_elements()
+                    plt.legend([h1[0], h2[0], h3[0]],
+                               ['Manual (%0.0f $\mu$m$^2$)' % (np.count_nonzero(window_manual[0, :, :]) * xres * yres),
+                                'Auto (%0.0f $\mu$m$^2$)' % (np.count_nonzero(window_auto[0, :, :]) * xres * yres),
+                                'Corrected (%0.0f $\mu$m$^2$)' % (np.count_nonzero(window_seg_corrected_test[idx, :, :]) * xres * yres)],
+                               fontsize=12)
+                    plt.axis('off')
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(saved_figures_dir,
+                                             'exp_0092_pipeline_window_seg_fold_%d_i_%d_j_%d.svg' % (i_fold, i, j)),
+                                bbox_inches='tight', pad_inches=0)
 
                 # double-check that the cropping of the automatic segmentation we get here is the same we got before the
                 # j loop
@@ -1324,6 +1378,43 @@ plt.scatter(df_all['wat_prop_auto'], df_all['area_auto'], s=4)
 plt.xlabel('Prop. WAT pixels', fontsize=14)
 plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
+plt.tight_layout()
+
+# histogram of area correction factor
+
+# objects selected for the plot
+idx = idx_wat * idx_not_large * idx_good_segmentation
+
+# median and std of ratios
+med_auto = np.median(df_all['area_auto'][idx] / df_all['area_manual'][idx])
+med_corrected = np.median(df_all['area_corrected'][idx] / df_all['area_manual'][idx])
+q1_auto = np.quantile(df_all['area_auto'][idx] / df_all['area_manual'][idx], 0.25)
+q1_corrected = np.quantile(df_all['area_corrected'][idx] / df_all['area_manual'][idx], 0.25)
+q3_auto = np.quantile(df_all['area_auto'][idx] / df_all['area_manual'][idx], 0.75)
+q3_corrected = np.quantile(df_all['area_corrected'][idx] / df_all['area_manual'][idx], 0.75)
+
+plt.clf()
+plt.hist(df_all['area_auto'][idx] / df_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
+         density=True,
+         label='Auto / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
+               % (q1_auto, med_auto, q3_auto))
+plt.hist(df_all['area_corrected'][idx] / df_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
+         density=True,
+         label='Corrected / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
+               % (q1_corrected, med_corrected, q3_corrected))
+plt.plot([1, 1], [0, 3.3], 'k', linewidth=2)
+plt.legend(fontsize=14)
+plt.xlabel('Pipeline / Manual Area', fontsize=14)
+plt.ylabel('Histogram density', fontsize=14)
+plt.tick_params(axis="both", labelsize=14)
+plt.tight_layout()
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_areas_ratio_hist.svg'))
+
+plt.clf()
+plt.hist(df_all['area_auto'][idx] / df_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
+         density=True, label='Auto / Manual area')
+
 
 # compare automatic and corrected areas to manual areas
 
@@ -1392,6 +1483,30 @@ plt.legend(fontsize=14)
 plt.xlabel('Manual Area ($\mu$m$^2$)', fontsize=14)
 plt.ylabel('Auto/Corrected area ($\mu$m$^2$)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
+
+# plot for poster
+
+# objects selected for the plot
+idx = idx_wat * idx_not_large * idx_good_segmentation
+
+# boxplots of cell populations
+plt.clf()
+bp = plt.boxplot([df_all['area_manual'][idx], df_all['area_auto'][idx], df_all['area_corrected'][idx]],
+                 positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
+
+# points of interest in the manual contours boxplot
+bp_perc_w0_manual = bp['whiskers'][0].get_data()[1][1]
+bp_perc_25_manual = bp['boxes'][0].get_data()[1][1]
+bp_perc_50_manual = bp['medians'][0].get_data()[1][0]
+bp_perc_75_manual = bp['boxes'][0].get_data()[1][5]
+bp_perc_wend_manual = bp['whiskers'][1].get_data()[1][1]
+
+plt.plot([0.75, 3.25], [bp_perc_50_manual, ] * 2, 'C1', linestyle='dotted')
+plt.plot([0.75, 3.25], [bp_perc_25_manual, ] * 2, 'k', linestyle='dotted')
+plt.plot([0.75, 3.25], [bp_perc_75_manual, ] * 2, 'k', linestyle='dotted')
+plt.tick_params(axis="both", labelsize=14)
+plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
+plt.ylim(-800, 8500)
 
 ####################################################################################################################
 ## CODE BELOW STILL NEEDS TO BE FIXED
