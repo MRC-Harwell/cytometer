@@ -380,7 +380,7 @@ contour results (if you just need this subset, it's a lot faster than computing 
 t0 = time.time()
 
 # init
-df_all = pd.DataFrame()
+df_manual_all = pd.DataFrame()
 
 for i_fold in range(len(idx_test_all)):
 
@@ -514,27 +514,27 @@ for i_fold in range(len(idx_test_all)):
             df_common.loc[j, 'area'] = np.count_nonzero(cell_seg_contour) * xres * yres
 
         # concatenate current dataframe to general dataframe
-        df_all = df_all.append(df_common)
+        df_manual_all = df_manual_all.append(df_common)
 
 # reindex the dataframe
-df_all.reset_index(drop=True, inplace=True)
+df_manual_all.reset_index(drop=True, inplace=True)
 
 # save results
 data_filename = os.path.join(saved_models_dir, experiment_id + '_manual_contour_areas.pkl')
-df_all.to_pickle(data_filename)
+df_manual_all.to_pickle(data_filename)
 
 # load results
 data_filename = os.path.join(saved_models_dir, experiment_id + '_manual_contour_areas.pkl')
-df_all = pd.read_pickle(data_filename)
+df_manual_all = pd.read_pickle(data_filename)
 
 # WAT objects, female and male
-idx_wat_female = np.array(df_all['type'] == 'wat') * np.array(df_all['sex'] == 'f')
-idx_wat_male = np.array(df_all['type'] == 'wat') * np.array(df_all['sex'] == 'm')
+idx_wat_female = np.array(df_manual_all['type'] == 'wat') * np.array(df_manual_all['sex'] == 'f')
+idx_wat_male = np.array(df_manual_all['type'] == 'wat') * np.array(df_manual_all['sex'] == 'm')
 
 if DEBUG:
     plt.clf()
-    plt.hist(df_all['area'][idx_wat_female], bins=50, histtype='step')
-    plt.hist(df_all['area'][idx_wat_male], bins=50, histtype='step')
+    plt.hist(df_manual_all['area'][idx_wat_female], bins=50, histtype='step')
+    plt.hist(df_manual_all['area'][idx_wat_male], bins=50, histtype='step')
 
 
 '''
@@ -557,7 +557,7 @@ with np.load(data_filename) as data:
 t0 = time.time()
 
 # init
-df_all = pd.DataFrame()
+df_manual_all = pd.DataFrame()
 
 for i_fold in range(len(idx_test_all)):
 
@@ -798,21 +798,21 @@ for i_fold in range(len(idx_test_all)):
                 plt.tight_layout()
 
         # concatenate current dataframe to general dataframe
-        df_all = df_all.append(df_common, ignore_index=True)
+        df_manual_all = df_manual_all.append(df_common, ignore_index=True)
 
 # save results
 data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.pkl')
-df_all.to_pickle(data_filename)
+df_manual_all.to_pickle(data_filename)
 
 ''' Analyse results '''
 
 # load data computed in the previous section
 data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.pkl')
-df_all = pd.read_pickle(data_filename)
+df_manual_all = pd.read_pickle(data_filename)
 
 # df_all['wat_prop_10']: proportions of pixels within the image with score > 0.10
 
-y_wat_true = df_all['type'] == 'wat'
+y_wat_true = df_manual_all['type'] == 'wat'
 
 if DEBUG:
 
@@ -825,7 +825,7 @@ if DEBUG:
     pix_thr = np.array(range(50, 101))
     for p in pix_thr:
         # ROC curve
-        fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_all['wat_prop_' + str(p)])
+        fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_' + str(p)])
         roc_auc.append(auc(fpr, tpr))
 
         # we fix the FPR (False Positive Rate) and interpolate the TPR (True Positive Rate) on the ROC curve
@@ -870,10 +870,10 @@ if DEBUG:
     # show problem of the ROC not having data points for low FPR values
     plt.clf()
     p = 50
-    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_all['wat_prop_' + str(p)])
+    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_' + str(p)])
     plt.plot(fpr, tpr, label='Pixel thr. = 0.50')
     p = 62
-    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_all['wat_prop_' + str(p)])
+    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_' + str(p)])
     plt.plot(fpr, tpr, label='Pixel thr. = 0.62')
     plt.plot([.1, .1], [0, 1], '--', color='black')
     plt.tick_params(labelsize=14)
@@ -890,7 +890,7 @@ if DEBUG:
     # classifier confusion matrix
     idx = np.where(pix_thr == 50)[0][0]
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
-                                          y_pred=df_all['wat_prop_50'] >= obj_thr_target[idx],
+                                          y_pred=df_manual_all['wat_prop_50'] >= obj_thr_target[idx],
                                           normalize=True,
                                           title='Object classifier',
                                           xlabel='Predicted',
@@ -1038,7 +1038,9 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
-Apply the pipeline v6 to training histology images (segmentation, classification)
+Apply the pipeline v6 to test histology images (segmentation, classification).
+
+Loop manual contours and overlap with automatically segmented contours.
 ************************************************************************************************************************
 '''
 
@@ -1056,8 +1058,9 @@ with np.load(data_filename) as data:
 # start timer
 t0 = time.time()
 
-# init
-df_all = pd.DataFrame()
+# init dataframes
+df_manual_all = pd.DataFrame()
+df_auto_all = pd.DataFrame()
 
 for i_fold in range(len(idx_test_all)):
 
@@ -1122,7 +1125,7 @@ for i_fold in range(len(idx_test_all)):
         plt.axis('off')
         plt.tight_layout()
 
-    # clean segmentation: remove labels that touch the edges, that are too small or that don't overlap enough with
+    # clean segmentation: remove labels that are too small or that don't overlap enough with
     # the rough foreground mask
     pred_seg_test \
         = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=False, min_cell_area=min_cell_area,
@@ -1132,7 +1135,7 @@ for i_fold in range(len(idx_test_all)):
         plt.clf()
         aux = np.stack((rough_mask_test[i, :, :],) * 3, axis=2)
         plt.imshow(im_array_test[i, :, :, :] * aux)
-        plt.contour(pred_seg_test[0, ...], levels=np.unique(pred_seg_test[0, ...]), colors='k')
+        plt.contour(pred_seg_test[i, ...], levels=np.unique(pred_seg_test[i, ...]), colors='k')
         plt.axis('off')
 
     ''' Split image into individual labels and correct segmentation to take overlaps into account '''
@@ -1218,12 +1221,46 @@ for i_fold in range(len(idx_test_all)):
         # cells on the edge
         labels_edge = cytometer.utils.edge_labels(pred_seg_test[i, :, :])
 
+        ''' All automatic labels loop '''
+        lab_no_edge_unique = np.unique(pred_seg_test[i, :, :])
+        lab_no_edge_unique = set(lab_no_edge_unique) - set([0])  # remove background label
+        lab_no_edge_unique = list(np.sort(list(lab_no_edge_unique - set(labels_edge))))
+        for lab in lab_no_edge_unique:
+
+            # get the array position of the automatic segmentation
+            idx = np.where([x == (i, lab) for x in index_list])[0][0]
+
+            # area of the corrected segmentation
+            (sy, sx) = scaling_factor_list[idx]
+            area_corrected = np.count_nonzero(window_seg_corrected_test[idx, :, :]) * xres * yres / (sx * sy)
+
+            # proportion of WAT pixels in the corrected segmentations
+            wat_prop_corrected \
+                = np.count_nonzero(window_seg_corrected_test[idx, :, :] * window_class_test[idx, :, :]) \
+                  / np.count_nonzero(window_seg_corrected_test[idx, :, :])
+
+            # start dataframe row for this contour
+            df_auto = df_common.copy()
+            df_auto['im'] = i
+            df_auto['lab_auto'] = lab
+            df_auto['area_auto'] = np.count_nonzero(pred_seg_test[i, :, :] == lab) * xres * yres  # um^2
+            df_auto['area_corrected'] = area_corrected  # um^2
+            df_auto['wat_prop_auto'] = pred_prop_test[pred_lab_test == lab]
+            df_auto['wat_prop_corrected'] = wat_prop_corrected
+            df_auto['auto_is_edge_cell'] = lab in labels_edge
+
+            # concatenate current row to general dataframe
+            df_auto_all = df_auto_all.append(df_auto, ignore_index=True)
+
+        continue  ############################################
+
+        ''' Only manual contours and their corresponding auto labels loop '''
         for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
-            df = df_common.copy()
-            df['im'] = i
-            df['contour'] = j
+            df_manual = df_common.copy()
+            df_manual['im'] = i
+            df_manual['contour'] = j
 
             # manual segmentation: rasterise object described by contour
             cell_seg_contour = Image.new("1", im_array_test.shape[1:3], "black")  # I = 32-bit signed integer pixels
@@ -1242,14 +1279,14 @@ for i_fold in range(len(idx_test_all)):
                 warnings.warn('Skipping. Contour j = ' + str(j) + ' overlaps with background segmentation lab = 0')
 
                 # add to dataframe
-                df['lab_auto'] = 0
-                df['dice_auto'] = np.NaN
-                df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
-                df['area_auto'] = np.NaN
-                df['area_corrected'] = np.NaN
-                df['wat_prop_auto'] = np.NaN
-                df['wat_prop_corrected'] = np.NaN
-                df['auto_is_edge_cell'] = np.NaN
+                df_manual['lab_auto'] = 0
+                df_manual['dice_auto'] = np.NaN
+                df_manual['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
+                df_manual['area_auto'] = np.NaN
+                df_manual['area_corrected'] = np.NaN
+                df_manual['wat_prop_auto'] = np.NaN
+                df_manual['wat_prop_corrected'] = np.NaN
+                df_manual['auto_is_edge_cell'] = np.NaN
 
             else:
 
@@ -1324,15 +1361,15 @@ for i_fold in range(len(idx_test_all)):
                 area_corrected = np.count_nonzero(window_seg_corrected_test[idx, :, :]) * xres * yres / (sx * sy)
 
                 # add to dataframe
-                df['label_seg'] = lab_best_overlap
-                df['dice_auto'] = dice_auto
-                df['dice_corrected'] = dice_corrected
-                df['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
-                df['area_auto'] = np.count_nonzero(cell_best_overlap) * xres * yres  # um^2
-                df['area_corrected'] = area_corrected  # um^2
-                df['wat_prop_auto'] = pred_prop_test[pred_lab_test == lab_best_overlap]
-                df['wat_prop_corrected'] = wat_prop_corrected
-                df['auto_is_edge_cell'] = lab_best_overlap in labels_edge
+                df_manual['label_seg'] = lab_best_overlap
+                df_manual['dice_auto'] = dice_auto
+                df_manual['dice_corrected'] = dice_corrected
+                df_manual['area_manual'] = np.count_nonzero(cell_seg_contour) * xres * yres  # um^2
+                df_manual['area_auto'] = np.count_nonzero(cell_best_overlap) * xres * yres  # um^2
+                df_manual['area_corrected'] = area_corrected  # um^2
+                df_manual['wat_prop_auto'] = pred_prop_test[pred_lab_test == lab_best_overlap]
+                df_manual['wat_prop_corrected'] = wat_prop_corrected
+                df_manual['auto_is_edge_cell'] = lab_best_overlap in labels_edge
 
                 if DEBUG:
                     plt.clf()
@@ -1353,42 +1390,45 @@ for i_fold in range(len(idx_test_all)):
                     plt.contour(window_seg_test[idx, ...], colors='k')
                     plt.contour(window_seg_corrected_test[idx, ...], colors='r')
                     plt.title('Prop$_{\mathrm{WAT, corrected}}$ = %0.1f%%'
-                              % (100 * df['wat_prop_auto']), fontsize=14)
+                              % (100 * df_manual['wat_prop_auto']), fontsize=14)
                     plt.axis('off')
                     plt.tight_layout()
 
-            # concatenate current dataframe to general dataframe
-            df_all = df_all.append(df, ignore_index=True)
+            # concatenate current row to general dataframe
+            df_manual_all = df_manual_all.append(df_manual, ignore_index=True)
 
     # end of image loop
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
 # save results to avoid having to recompute them every time (15 min on 2 Titan RTX GPUs)
-dataframe_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.pkl')
-df_all.to_pickle(dataframe_filename)
+dataframe_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
+df_manual_all.to_pickle(dataframe_manual_filename)
 
-## Analyse results
+dataframe_auto_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_auto.pkl')
+df_auto_all.to_pickle(dataframe_auto_filename)
+
+## Analyse results: Manual data
 
 # load dataframe with automatic segmentations, classifications, areas, etc
-data_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline.pkl')
-df_all = pd.read_pickle(data_filename)
+data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
+df_manual_all = pd.read_pickle(data_manual_filename)
 
-idx_wat = np.array(df_all['wat_prop_auto'] >= 0.95)
-idx_not_large = np.array(df_all['area_auto'] < 20e3)
-idx_good_segmentation = np.array(df_all['dice_auto'] >= 0.5)
-idx_not_edge = np.logical_not(df_all['auto_is_edge_cell'])
+idx_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.95)
+idx_not_large = np.array(df_manual_all['area_auto'] < 20e3)
+idx_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
+idx_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
 
 # remove fold/image pairs that contain only "other" tissue or broken cells
 other_broken_fold_im = [(2, 6), (6, 0), (8, 3), (8, 4), (7, 3), (7, 4)]
-idx_slice_with_wat = np.logical_not([x in other_broken_fold_im for x in zip(df_all['fold'], df_all['im'])])
+idx_slice_with_wat = np.logical_not([x in other_broken_fold_im for x in zip(df_manual_all['fold'], df_manual_all['im'])])
 
 # remove fold/image pairs that contain substantial areas with broken cells or poor segmentations in general
 poor_seg_fold_im = [(4, 5), (5, 0), (3, 1), (6, 3), (4, 2), (3, 5)]
-idx_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im for x in zip(df_all['fold'], df_all['im'])])
+idx_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im for x in zip(df_manual_all['fold'], df_manual_all['im'])])
 
 # area vs. WAT proportion
 plt.clf()
-plt.scatter(df_all['wat_prop_auto'], df_all['area_auto'], s=4)
+plt.scatter(df_manual_all['wat_prop_auto'], df_manual_all['area_auto'], s=4)
 plt.xlabel('Prop. WAT pixels', fontsize=14)
 plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
@@ -1400,19 +1440,19 @@ plt.tight_layout()
 idx = idx_wat * idx_not_large * idx_good_segmentation
 
 # median and std of ratios
-med_auto = np.median(df_all['area_auto'][idx] / df_all['area_manual'][idx])
-med_corrected = np.median(df_all['area_corrected'][idx] / df_all['area_manual'][idx])
-q1_auto = np.quantile(df_all['area_auto'][idx] / df_all['area_manual'][idx], 0.25)
-q1_corrected = np.quantile(df_all['area_corrected'][idx] / df_all['area_manual'][idx], 0.25)
-q3_auto = np.quantile(df_all['area_auto'][idx] / df_all['area_manual'][idx], 0.75)
-q3_corrected = np.quantile(df_all['area_corrected'][idx] / df_all['area_manual'][idx], 0.75)
+med_auto = np.median(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx])
+med_corrected = np.median(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx])
+q1_auto = np.quantile(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx], 0.25)
+q1_corrected = np.quantile(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx], 0.25)
+q3_auto = np.quantile(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx], 0.75)
+q3_corrected = np.quantile(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx], 0.75)
 
 plt.clf()
-plt.hist(df_all['area_auto'][idx] / df_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
+plt.hist(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
          density=True,
          label='Auto / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
                % (q1_auto, med_auto, q3_auto))
-plt.hist(df_all['area_corrected'][idx] / df_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
+plt.hist(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
          density=True,
          label='Corrected / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
                % (q1_corrected, med_corrected, q3_corrected))
@@ -1433,24 +1473,24 @@ idx = idx_wat * idx_not_large
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
 r_value_manual_auto, p_value_manual_auto, std_err_manual_auto = \
-    linregress(df_all['area_manual'][idx],
-               df_all['area_auto'][idx])
+    linregress(df_manual_all['area_manual'][idx],
+               df_manual_all['area_auto'][idx])
 slope_manual_corrected, intercept_manual_corrected, \
 r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
-    linregress(df_all['area_manual'][idx],
-               df_all['area_corrected'][idx])
+    linregress(df_manual_all['area_manual'][idx],
+               df_manual_all['area_corrected'][idx])
 
 plt.clf()
 plt.plot([0, 20], [0, 20], 'g',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Identity ($\alpha=$ 1.00, $\beta=$0.00)')
-plt.scatter(df_all['area_manual'][idx] / 1e3,
-            df_all['area_auto'][idx] / 1e3, s=4, color='C0')
+plt.scatter(df_manual_all['area_manual'][idx] / 1e3,
+            df_manual_all['area_auto'][idx] / 1e3, s=4, color='C0')
 plt.plot([0, 20], (np.array([0, 20e3]) * slope_manual_auto + intercept_manual_auto) / 1e3, color='C0',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Auto ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_auto, intercept_manual_auto))
-plt.scatter(df_all['area_manual'][idx] / 1e3,
-            df_all['area_corrected'][idx] / 1e3, s=4, color='C1')
+plt.scatter(df_manual_all['area_manual'][idx] / 1e3,
+            df_manual_all['area_corrected'][idx] / 1e3, s=4, color='C1')
 plt.plot([0, 20], (np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected) / 1e3, color='C1',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Corrected ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_corrected, intercept_manual_corrected))
@@ -1467,24 +1507,24 @@ idx = idx_wat * idx_not_large * idx_good_segmentation * idx_slice_with_wat
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
 r_value_manual_auto, p_value_manual_auto, std_err_manual_auto = \
-    linregress(df_all['area_manual'][idx],
-               df_all['area_auto'][idx])
+    linregress(df_manual_all['area_manual'][idx],
+               df_manual_all['area_auto'][idx])
 slope_manual_corrected, intercept_manual_corrected, \
 r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
-    linregress(df_all['area_manual'][idx],
-               df_all['area_corrected'][idx])
+    linregress(df_manual_all['area_manual'][idx],
+               df_manual_all['area_corrected'][idx])
 
 plt.clf()
 plt.plot([0, 20e3], [0, 20e3], 'g',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Identity ($\alpha=$ 1.00, $\beta=$0.00)')
-plt.scatter(df_all['area_manual'][idx],
-            df_all['area_auto'][idx], s=4, color='C0')
+plt.scatter(df_manual_all['area_manual'][idx],
+            df_manual_all['area_auto'][idx], s=4, color='C0')
 plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_auto + intercept_manual_auto, color='C0',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Auto ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_auto, intercept_manual_auto))
-plt.scatter(df_all['area_manual'][idx],
-            df_all['area_corrected'][idx], s=4, color='C1')
+plt.scatter(df_manual_all['area_manual'][idx],
+            df_manual_all['area_corrected'][idx], s=4, color='C1')
 plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected, color='C1',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Corrected ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_corrected, intercept_manual_corrected))
@@ -1496,11 +1536,11 @@ plt.tick_params(axis="both", labelsize=14)
 # plot for poster
 
 # objects selected for the plot
-idx = idx_wat * idx_not_large * idx_slice_with_wat * idx_slice_with_acceptable_seg * idx_not_edge
+idx = idx_wat * idx_not_large * idx_slice_with_wat * idx_slice_with_acceptable_seg * idx_not_edge * idx_good_segmentation
 
 # boxplots of cell populations
 plt.clf()
-bp = plt.boxplot([df_all['area_manual'][idx], df_all['area_auto'][idx], df_all['area_corrected'][idx]],
+bp = plt.boxplot([df_manual_all['area_manual'][idx], df_manual_all['area_auto'][idx], df_manual_all['area_corrected'][idx]],
                  positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
 
 # points of interest in the manual contours boxplot
@@ -1517,6 +1557,14 @@ plt.tick_params(axis="both", labelsize=14)
 plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
 plt.ylim(-800, 8500)
 
+
+## Analyse results: Automatic data
+
+# load dataframe with areas
+data_auto_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_auto.pkl')
+df_auto_all = pd.read_pickle(data_auto_filename)
+
+
 ####################################################################################################################
 ## CODE BELOW STILL NEEDS TO BE FIXED
 ####################################################################################################################
@@ -1525,14 +1573,14 @@ plt.ylim(-800, 8500)
 idx_wat_manual = df_all_manual['type'] == 'wat'
 
 # Automatic segmentation objects that we classify as WAT
-idx_wat_auto = np.array(df_all['prop_wat'] > 0.715) * np.array(df_all['prop_rough_mask'] > 0.9)
+idx_wat_auto = np.array(df_manual_all['prop_wat'] > 0.715) * np.array(df_manual_all['prop_rough_mask'] > 0.9)
 
 if DEBUG:
     plt.clf()
-    plt.scatter(np.array(df_all['prop_wat']), np.array(df_all['area_corrected']), s=10)
+    plt.scatter(np.array(df_manual_all['prop_wat']), np.array(df_manual_all['area_corrected']), s=10)
 
     plt.clf()
-    plt.hist2d(np.array(df_all['prop_wat']), np.array(df_all['area_corrected']), bins=[10, 100])
+    plt.hist2d(np.array(df_manual_all['prop_wat']), np.array(df_manual_all['area_corrected']), bins=[10, 100])
     plt.xlabel('Prop_WAT', fontsize=14)
     plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
     plt.tick_params(axis="both", labelsize=14)
@@ -1540,8 +1588,8 @@ if DEBUG:
 if DEBUG:
     plt.clf()
     boxp = plt.boxplot((df_all_manual['area'][idx_wat_manual],
-                        df_all['area'][idx_wat_auto],
-                        df_all['area_corrected'][idx_wat_auto]),
+                        df_manual_all['area'][idx_wat_auto],
+                        df_manual_all['area_corrected'][idx_wat_auto]),
                        labels=('Manual', 'Automatic\nsegmentation', 'Corrected\nsegmentation'),
                        notch=True)
     plt.tick_params(axis="both", labelsize=14)
