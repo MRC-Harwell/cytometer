@@ -124,9 +124,6 @@ contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
 classifier_model_basename = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
-# HACK: use older models while the new ones are computing, so that we can develop the code in the mean time
-# classifier_model_basename = 'klf14_b6ntac_exp_0074_cnn_tissue_classifier_fcn'
-
 '''Load folds'''
 
 # load list of images, and indices for training vs. testing indices
@@ -1252,8 +1249,6 @@ for i_fold in range(len(idx_test_all)):
             # concatenate current row to general dataframe
             df_auto_all = df_auto_all.append(df_auto, ignore_index=True)
 
-        continue  ############################################
-
         ''' Only manual contours and their corresponding auto labels loop '''
         for j, contour in enumerate(contours):
 
@@ -1409,22 +1404,25 @@ df_auto_all.to_pickle(dataframe_auto_filename)
 
 ## Analyse results: Manual data
 
-# load dataframe with automatic segmentations, classifications, areas, etc
+# load dataframe with manual segmentations matched to automatic segmentations
 data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
 df_manual_all = pd.read_pickle(data_manual_filename)
 
-idx_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.95)
-idx_not_large = np.array(df_manual_all['area_auto'] < 20e3)
-idx_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
-idx_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
+# boolean vectors to select subsets of rows from the dataframe
+idx_manual_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.95)
+idx_manual_not_large = np.array(df_manual_all['area_auto'] < 20e3)
+idx_manual_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
+idx_manual_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
 
 # remove fold/image pairs that contain only "other" tissue or broken cells
 other_broken_fold_im = [(2, 6), (6, 0), (8, 3), (8, 4), (7, 3), (7, 4)]
-idx_slice_with_wat = np.logical_not([x in other_broken_fold_im for x in zip(df_manual_all['fold'], df_manual_all['im'])])
+idx_manual_slice_with_wat = np.logical_not([x in other_broken_fold_im
+                                            for x in zip(df_manual_all['fold'], df_manual_all['im'])])
 
 # remove fold/image pairs that contain substantial areas with broken cells or poor segmentations in general
 poor_seg_fold_im = [(4, 5), (5, 0), (3, 1), (6, 3), (4, 2), (3, 5)]
-idx_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im for x in zip(df_manual_all['fold'], df_manual_all['im'])])
+idx_manual_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im
+                                                       for x in zip(df_manual_all['fold'], df_manual_all['im'])])
 
 # area vs. WAT proportion
 plt.clf()
@@ -1437,7 +1435,7 @@ plt.tight_layout()
 # histogram of area correction factor
 
 # objects selected for the plot
-idx = idx_wat * idx_not_large * idx_good_segmentation
+idx = idx_manual_wat * idx_manual_not_large * idx_manual_good_segmentation
 
 # median and std of ratios
 med_auto = np.median(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx])
@@ -1468,7 +1466,7 @@ plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_areas_ratio_hist.svg'))
 # compare automatic and corrected areas to manual areas
 
 # objects selected for the plot
-idx = idx_wat * idx_not_large
+idx = idx_manual_wat * idx_manual_not_large
 
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
@@ -1502,7 +1500,7 @@ plt.tick_params(axis="both", labelsize=14)
 # compare automatic and corrected areas to manual areas (keeping only segmentations with Dice >= 0.5)
 
 # objects selected for the plot
-idx = idx_wat * idx_not_large * idx_good_segmentation * idx_slice_with_wat
+idx = idx_manual_wat * idx_manual_not_large * idx_manual_good_segmentation * idx_manual_slice_with_wat
 
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
@@ -1536,7 +1534,7 @@ plt.tick_params(axis="both", labelsize=14)
 # plot for poster
 
 # objects selected for the plot
-idx = idx_wat * idx_not_large * idx_slice_with_wat * idx_slice_with_acceptable_seg * idx_not_edge * idx_good_segmentation
+idx = idx_manual_wat * idx_manual_not_large * idx_manual_slice_with_wat * idx_manual_slice_with_acceptable_seg * idx_manual_not_edge * idx_manual_good_segmentation
 
 # boxplots of cell populations
 plt.clf()
@@ -1560,86 +1558,66 @@ plt.ylim(-800, 8500)
 
 ## Analyse results: Automatic data
 
-# load dataframe with areas
+# load dataframe with all auto segmentations
 data_auto_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_auto.pkl')
 df_auto_all = pd.read_pickle(data_auto_filename)
 
+# load dataframe with manual segmentations matched to automatic segmentations
+data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
+df_manual_all = pd.read_pickle(data_manual_filename)
 
-####################################################################################################################
-## CODE BELOW STILL NEEDS TO BE FIXED
-####################################################################################################################
+# boolean vectors to select subsets of rows from the dataframe
+idx_manual_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.95)
+idx_manual_not_large = np.array(df_manual_all['area_auto'] < 20e3)
+idx_manual_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
+idx_manual_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
 
-# WAT contour areas
-idx_wat_manual = df_all_manual['type'] == 'wat'
+idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.95)
+idx_auto_not_large = np.array(df_auto_all['area_auto'] < 20e3)
+idx_auto_not_edge = np.logical_not(df_auto_all['auto_is_edge_cell'])
 
-# Automatic segmentation objects that we classify as WAT
-idx_wat_auto = np.array(df_manual_all['prop_wat'] > 0.715) * np.array(df_manual_all['prop_rough_mask'] > 0.9)
+# objects selected for the plot
+idx_auto = idx_auto_wat * idx_auto_not_large * idx_auto_not_edge
 
-if DEBUG:
-    plt.clf()
-    plt.scatter(np.array(df_manual_all['prop_wat']), np.array(df_manual_all['area_corrected']), s=10)
+# boxplots of cell populations
+plt.clf()
+bp = plt.boxplot([df_manual_all['area_manual'] * 1e-3, df_auto_all['area_auto'][idx_auto] * 1e-3,
+                 df_auto_all['area_corrected'][idx_auto] * 1e-3],
+                 positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
 
-    plt.clf()
-    plt.hist2d(np.array(df_manual_all['prop_wat']), np.array(df_manual_all['area_corrected']), bins=[10, 100])
-    plt.xlabel('Prop_WAT', fontsize=14)
-    plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
-    plt.tick_params(axis="both", labelsize=14)
+# points of interest in the manual contours boxplot
+# bp_perc_w0_manual = bp['whiskers'][0].get_data()[1][1]
+bp_perc_25_manual = bp['boxes'][0].get_data()[1][1]
+bp_perc_50_manual = bp['medians'][0].get_data()[1][0]
+bp_perc_75_manual = bp['boxes'][0].get_data()[1][5]
+# bp_perc_wend_manual = bp['whiskers'][1].get_data()[1][1]
 
-if DEBUG:
-    plt.clf()
-    boxp = plt.boxplot((df_all_manual['area'][idx_wat_manual],
-                        df_manual_all['area'][idx_wat_auto],
-                        df_manual_all['area_corrected'][idx_wat_auto]),
-                       labels=('Manual', 'Automatic\nsegmentation', 'Corrected\nsegmentation'),
-                       notch=True)
-    plt.tick_params(axis="both", labelsize=14)
-    plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
-    plt.tight_layout()
+plt.plot([0.75, 3.25], [bp_perc_50_manual, ] * 2, 'C1', linestyle='dotted')
+plt.plot([0.75, 3.25], [bp_perc_25_manual, ] * 2, 'k', linestyle='dotted')
+plt.plot([0.75, 3.25], [bp_perc_75_manual, ] * 2, 'k', linestyle='dotted')
+plt.tick_params(axis="both", labelsize=14)
+plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+plt.ylim(-800 * 1e-3, 8500 * 1e-3)
+plt.tight_layout()
 
-    plt.ylim(-500, 7800)
+plt.text(1.20, bp_perc_25_manual + .1, 'Q1=%0.1f' % (bp_perc_25_manual), fontsize=12, color='k')
+plt.text(1.20, bp_perc_50_manual + .1, 'Q2=%0.1f' % (bp_perc_50_manual), fontsize=12, color='k')
+plt.text(1.20, bp_perc_75_manual + .1, 'Q3=%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
 
-    # points of interest in the manual contours boxplot
-    contour_perc_w0_manual = boxp['whiskers'][0].get_data()[1][1]
-    contour_perc_25_manual = boxp['boxes'][0].get_data()[1][1]
-    contour_perc_50_manual = boxp['medians'][0].get_data()[1][0]
-    contour_perc_75_manual = boxp['boxes'][0].get_data()[1][5]
-    contour_perc_wend_manual = boxp['whiskers'][1].get_data()[1][1]
+bp_perc_25_manual = bp['boxes'][1].get_data()[1][1]
+bp_perc_50_manual = bp['medians'][1].get_data()[1][0]
+bp_perc_75_manual = bp['boxes'][1].get_data()[1][5]
 
-    # points of interest in the auto, no correction boxplot
-    contour_perc_w0_auto = boxp['whiskers'][2].get_data()[1][1]
-    contour_perc_25_auto = boxp['boxes'][1].get_data()[1][1]
-    contour_perc_50_auto = boxp['medians'][1].get_data()[1][0]
-    contour_perc_75_auto = boxp['boxes'][1].get_data()[1][5]
-    contour_perc_wend_auto = boxp['whiskers'][3].get_data()[1][1]
+plt.text(2.20, bp_perc_25_manual + .1 - 0.25, '%0.1f' % (bp_perc_25_manual), fontsize=12, color='k')
+plt.text(2.20, bp_perc_50_manual + .1 - 0.1, '%0.1f' % (bp_perc_50_manual), fontsize=12, color='k')
+plt.text(2.20, bp_perc_75_manual + .1 - 0.05, '%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
 
-    # points of interest in the auto, correction boxplot
-    contour_perc_w0_corrected = boxp['whiskers'][4].get_data()[1][1]
-    contour_perc_25_corrected = boxp['boxes'][2].get_data()[1][1]
-    contour_perc_50_corrected = boxp['medians'][2].get_data()[1][0]
-    contour_perc_75_corrected = boxp['boxes'][2].get_data()[1][5]
-    contour_perc_wend_corrected = boxp['whiskers'][5].get_data()[1][1]
+bp_perc_25_manual = bp['boxes'][2].get_data()[1][1]
+bp_perc_50_manual = bp['medians'][2].get_data()[1][0]
+bp_perc_75_manual = bp['boxes'][2].get_data()[1][5]
 
-    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_w0_manual, 'k--')
-    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_25_manual, 'k--')
-    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_50_manual, 'C1--')
-    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_75_manual, 'k--')
-    plt.plot([0.75, 3.25], np.array([1, 1]) * contour_perc_wend_manual, 'k--')
+plt.text(3.20, bp_perc_25_manual + .1, '%0.1f' % (bp_perc_25_manual), fontsize=12, color='k')
+plt.text(3.20, bp_perc_50_manual + .2, '%0.1f' % (bp_perc_50_manual), fontsize=12, color='k')
+plt.text(3.20, bp_perc_75_manual + .2, '%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
 
-    plt.text(1.89, 1250, '%0.1f%%' % (100 * (contour_perc_50_auto - contour_perc_50_manual) / contour_perc_50_manual),
-             fontsize=12, color='C1')
-    plt.text(2.84, 2220, '+%0.1f%%' % (100 * (contour_perc_50_corrected - contour_perc_50_manual) / contour_perc_50_manual),
-             fontsize=12, color='C1')
-
-print('From manual to auto, no correction')
-print('Bottom whisker: ' + str(100 * (contour_perc_w0_auto - contour_perc_w0_manual) / contour_perc_w0_manual) + '%')
-print('25%: ' + str(100 * (contour_perc_25_auto - contour_perc_25_manual) / contour_perc_25_manual) + '%')
-print('Median: ' + str(100 * (contour_perc_50_auto - contour_perc_50_manual) / contour_perc_50_manual) + '%')
-print('75%: ' + str(100 * (contour_perc_75_auto - contour_perc_75_manual) / contour_perc_75_manual) + '%')
-print('Top whisker: ' + str(100 * (contour_perc_wend_auto - contour_perc_wend_manual) / contour_perc_wend_manual) + '%')
-
-print('From manual to auto, correction')
-print('Bottom whisker: ' + str(100 * (contour_perc_w0_corrected - contour_perc_w0_manual) / contour_perc_w0_manual) + '%')
-print('25%: ' + str(100 * (contour_perc_25_corrected - contour_perc_25_manual) / contour_perc_25_manual) + '%')
-print('Median: ' + str(100 * (contour_perc_50_corrected - contour_perc_50_manual) / contour_perc_50_manual) + '%')
-print('75%: ' + str(100 * (contour_perc_75_corrected - contour_perc_75_manual) / contour_perc_75_manual) + '%')
-print('Top whisker: ' + str(100 * (contour_perc_wend_corrected - contour_perc_wend_manual) / contour_perc_wend_manual) + '%')
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_boxplots.svg'))
