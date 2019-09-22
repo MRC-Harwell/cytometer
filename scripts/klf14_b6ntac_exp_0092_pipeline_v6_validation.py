@@ -884,6 +884,23 @@ if DEBUG:
     plt.plot(pix_thr / 100, roc_auc)
 
 if DEBUG:
+    # ROC for pixel threshold = 50%
+    plt.clf()
+    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_50'])
+    plt.plot(fpr[1:], tpr[1:], label='Pixel thr. = 0.50', linewidth=2, color='C0')
+    plt.scatter(fpr[1], tpr[1], color='C0', s=50)
+    plt.text(0.21, 0.82, r'Prop. WAT pixels$\geq$%0.2f'
+                         '\n'
+                         r'FPR=%0.2f, TPR=%0.2f' % (fpr[1], tpr[1], thr[1]), fontsize=14)
+    # plt.xlim(0.0, 1.0)
+    # plt.ylim(0.0, 1.0)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('False Positive Rate (1 - Specificity)', fontsize=14)
+    plt.ylabel('True Positive Rate (Sensitivity)', fontsize=14)
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_roc_object_classification.svg'))
+
     # classifier confusion matrix
     idx = np.where(pix_thr == 50)[0][0]
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
