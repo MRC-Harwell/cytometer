@@ -38,8 +38,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from sklearn.metrics import roc_curve, auc
-from scipy.stats import linregress, mode
+import scipy.stats as stats
 from enum import IntEnum
+import statsmodels.formula.api as smf
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
@@ -364,174 +365,6 @@ else:  # pre-compute the validation data and save to file
     # save results to avoid having to recompute them every time
     np.savez(data_filename, im_array_all=im_array_all, rough_mask_all=rough_mask_all, out_class_all=out_class_all,
              out_mask_all=out_mask_all)
-
-
-'''
-************************************************************************************************************************
-Areas of manual contours. This computes a subset of section "Object-wise classification validation", just the manual 
-contour results (if you just need this subset, it's a lot faster than computing all the results in the other section). 
-************************************************************************************************************************
-'''
-
-# start timer
-t0 = time.time()
-
-# init
-df_manual_all = pd.DataFrame()
-
-for i_fold in range(len(idx_test_all)):
-
-    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
-
-    # test and training image indices. These indices refer to file_list
-    idx_test = idx_test_all[i_fold]
-
-    # list of test files (used later for the dataframe)
-    file_list_test = np.array(file_svg_list)[idx_test]
-
-    print('## len(idx_test) = ' + str(len(idx_test)))
-
-    # split data into training and testing
-    im_array_test = im_array_all[idx_test, :, :, :]
-
-    # out_class_train = out_class_all[idx_train, :, :, :]
-    out_class_test = out_class_all[idx_test, :, :, :]
-
-    # out_mask_train = out_mask_all[idx_train, :, :]
-    out_mask_test = out_mask_all[idx_test, :, :]
-
-    # loop test images
-    for i, file_svg in enumerate(file_list_test):
-
-        print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
-              + str(i) + '/' + str(len(idx_test) - 1))
-
-        ''' Ground truth contours '''
-
-        # change file extension from .svg to .tif
-        file_tif = file_svg.replace('.svg', '.tif')
-
-        # open histology testing image
-        im = Image.open(file_tif)
-
-        # read pixel size information
-        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
-        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
-
-        if DEBUG:
-            plt.clf()
-            plt.imshow(im)
-            plt.axis('off')
-            plt.title('Histology', fontsize=14)
-
-        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
-        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
-        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
-                                                                minimum_npoints=3)
-        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
-                                                                 minimum_npoints=3)
-        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
-                                                                 minimum_npoints=3)
-        contours = cell_contours + other_contours + brown_contours
-
-        # make a list with the type of cell each contour is classified as
-        contour_type_all = ['wat', ] * len(cell_contours) \
-                           + ['other', ] * len(other_contours) \
-                           + ['bat', ] * len(brown_contours)
-
-        print('Cells: ' + str(len(cell_contours)))
-        print('Other: ' + str(len(other_contours)))
-        print('Brown: ' + str(len(brown_contours)))
-        print('')
-
-        # create dataframe for this image
-        im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
-        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                              values=im_idx, values_tag='im',
-                                                              tags_to_keep=['id', 'ko', 'sex'])
-        df_common['contour'] = range(len(contours))
-        df_common['type'] = contour_type_all
-
-        '''Label pixels of image as either WAT/non-WAT'''
-
-        if DEBUG:
-
-            plt.clf()
-            plt.subplot(121)
-            plt.imshow(im)
-            # plt.contour(out_mask_test[i, :, :], colors='r')
-            plt.axis('off')
-            plt.title('Histology', fontsize=14)
-            plt.subplot(122)
-            plt.imshow(im)
-            first_wat = True
-            first_other = True
-            for j, contour in enumerate(contours):
-                # close the contour for the plot
-                contour_aux = contour.copy()
-                contour_aux.append(contour[0])
-                if first_wat and contour_type_all[j] == 'wat':
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2,
-                             label='WAT contour')
-                    first_wat = False
-                elif contour_type_all[j] == 'wat':
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2)
-                elif first_other and contour_type_all[j] != 'wat':
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2,
-                             label='Other contour')
-                    first_other = False
-                else:
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2)
-            plt.legend()
-            plt.axis('off')
-            plt.title('Manual contours', fontsize=14)
-
-        # loop contours
-        for j, contour in enumerate(contours):
-
-            if DEBUG:
-                # close the contour for the plot
-                contour_aux = contour.copy()
-                contour_aux.append(contour[0])
-
-                plt.cla()
-                plt.imshow(im)
-                plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0')
-                plt.axis('off')
-                plt.title('Histology', fontsize=14)
-                plt.axis('off')
-
-            # rasterise object described by contour
-            cell_seg_contour = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
-            draw = ImageDraw.Draw(cell_seg_contour)
-            draw.polygon(contour, outline="white", fill="white")
-            cell_seg_contour = np.array(cell_seg_contour, dtype=np.uint8)
-
-            # compute area of object
-            df_common.loc[j, 'area'] = np.count_nonzero(cell_seg_contour) * xres * yres
-
-        # concatenate current dataframe to general dataframe
-        df_manual_all = df_manual_all.append(df_common)
-
-# reindex the dataframe
-df_manual_all.reset_index(drop=True, inplace=True)
-
-# save results
-data_filename = os.path.join(saved_models_dir, experiment_id + '_manual_contour_areas.pkl')
-df_manual_all.to_pickle(data_filename)
-
-# load results
-data_filename = os.path.join(saved_models_dir, experiment_id + '_manual_contour_areas.pkl')
-df_manual_all = pd.read_pickle(data_filename)
-
-# WAT objects, female and male
-idx_wat_female = np.array(df_manual_all['type'] == 'wat') * np.array(df_manual_all['sex'] == 'f')
-idx_wat_male = np.array(df_manual_all['type'] == 'wat') * np.array(df_manual_all['sex'] == 'm')
-
-if DEBUG:
-    plt.clf()
-    plt.hist(df_manual_all['area'][idx_wat_female], bins=50, histtype='step')
-    plt.hist(df_manual_all['area'][idx_wat_male], bins=50, histtype='step')
 
 
 '''
@@ -1052,9 +885,10 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
-Apply the pipeline v6 to test histology images (segmentation, classification).
+Segmentation validation with pipeline v6.
 
-Loop manual contours and overlap with automatically segmented contours.
+Loop manual contours and find overlaps with automatically segmented contours. Compute cell areas and prop. of WAT
+pixels.
 ************************************************************************************************************************
 '''
 
@@ -1285,7 +1119,7 @@ for i_fold in range(len(idx_test_all)):
 
             # find automatic segmentation that best overlaps contour
             import scipy.stats
-            lab_best_overlap = mode(pred_wat_seg_test_i[cell_seg_contour]).mode[0]
+            lab_best_overlap = stats.mode(pred_wat_seg_test_i[cell_seg_contour]).mode[0]
 
             if lab_best_overlap == 0:  # the manual contour overlaps the background more than any automatic segmentation
                 warnings.warn('Skipping. Contour j = ' + str(j) + ' overlaps with background segmentation lab = 0')
@@ -1488,12 +1322,12 @@ idx = idx_manual_wat * idx_manual_not_large
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
 r_value_manual_auto, p_value_manual_auto, std_err_manual_auto = \
-    linregress(df_manual_all['area_manual'][idx],
-               df_manual_all['area_auto'][idx])
+    stats.linregress(df_manual_all['area_manual'][idx],
+                     df_manual_all['area_auto'][idx])
 slope_manual_corrected, intercept_manual_corrected, \
 r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
-    linregress(df_manual_all['area_manual'][idx],
-               df_manual_all['area_corrected'][idx])
+    stats.linregress(df_manual_all['area_manual'][idx],
+                     df_manual_all['area_corrected'][idx])
 
 plt.clf()
 plt.plot([0, 20], [0, 20], 'g',
@@ -1522,12 +1356,12 @@ idx = idx_manual_wat * idx_manual_not_large * idx_manual_good_segmentation * idx
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
 r_value_manual_auto, p_value_manual_auto, std_err_manual_auto = \
-    linregress(df_manual_all['area_manual'][idx],
-               df_manual_all['area_auto'][idx])
+    stats.linregress(df_manual_all['area_manual'][idx],
+                     df_manual_all['area_auto'][idx])
 slope_manual_corrected, intercept_manual_corrected, \
 r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
-    linregress(df_manual_all['area_manual'][idx],
-               df_manual_all['area_corrected'][idx])
+    stats.linregress(df_manual_all['area_manual'][idx],
+                     df_manual_all['area_corrected'][idx])
 
 plt.clf()
 plt.plot([0, 20e3], [0, 20e3], 'g',
@@ -1638,3 +1472,231 @@ plt.text(3.20, bp_perc_50_manual + .2, '%0.1f' % (bp_perc_50_manual), fontsize=1
 plt.text(3.20, bp_perc_75_manual + .2, '%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
 
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_boxplots.svg'))
+
+''' 
+************************************************************************************************************************
+Linear Mixed Effects Model analysis (boxcox_area ~ sex + ko + other variables + random(mouse|window))
+************************************************************************************************************************
+'''
+
+# load dataframe with manual segmentations matched to automatic segmentations
+data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
+df_manual_all = pd.read_pickle(data_manual_filename)
+
+if DEBUG:
+    # show that data is now normal
+    plt.clf()
+    ax = plt.subplot(311)
+    prob = stats.probplot(df_manual_all.area_manual, dist=stats.norm, plot=ax)
+    plt.title(r'Areas ($\mu m^2$)')
+    ax = plt.subplot(312)
+    prob = stats.probplot(np.sqrt(df_manual_all.area_manual), dist=stats.norm, plot=ax)
+    plt.title(r'Square root transformation of areas $\left(\sqrt{\mu m^2}\right)$')
+    ax = plt.subplot(313)
+    plt.hist(np.sqrt(df_manual_all.area_manual), bins=50)
+    plt.tight_layout()
+
+# for the mixed-effects linear model, we want the KO variable to be ordered, so that it's PAT=0, MAT=1 in terms of
+# genetic risk, and the sex variable to be ordered in the sense that males have larger cells than females
+df_manual_all['ko'] = df_manual_all['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_manual_all['sex'] = df_manual_all['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+
+# create column for sqrt(data)
+df_manual_all['sqrt_area_manual'] = np.sqrt(df_manual_all['area_manual'])
+
+# Mixed-effects linear model
+vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+md = smf.mixedlm('sqrt_area_manual ~ sex + ko', vc_formula=vc, re_formula='1', groups='id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+# Mixed-effects linear model for only males
+vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+md = smf.mixedlm('sqrt_area_manual ~ ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+# Mixed-effects linear model with extra meta information
+vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+
+md = smf.mixedlm('bw ~ sex + ko + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('bw ~ sex + ko + boxcox_sc + boxcox_gwat + boxcox_liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('sqrt_area_manual ~ sex + ko + bw + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('sqrt_area_manual ~ sex + ko + bw + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('sqrt_area_manual ~ sc + gwat', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+md = smf.mixedlm('sqrt_area_manual ~ ko + gwat', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
+mdf = md.fit()
+print(mdf.summary())
+
+
+''' Logistic regression Mixed Effects Model analysis (thresholded_area ~ sex + ko + (1|mouse_id/image_id))
+========================================================================================================================
+'''
+
+# suggested by George Nicholson's
+
+
+from rpy2.robjects import r
+
+
+def r_lme4_glmer(formula, df, family=r('binomial(link="logit")')):
+
+    from rpy2.robjects import pandas2ri
+    from rpy2.robjects.packages import importr
+    base = importr('base')
+    lme4 = importr('lme4')
+
+    pandas2ri.activate()
+    r_df = pandas2ri.py2ri(df)
+
+    #control = r('glmerControl(optimizer="Nelder_Mead")')
+    control = r('glmerControl(optimizer="bobyqa")')
+    model = lme4.glmer(formula, data=r_df, family=family, control=control)
+    return base.summary(model)
+
+
+# threshold values
+threshold = np.linspace(np.min(df.area), np.max(df.area), 101)
+
+# loop thresholds
+lme4_ko_coeff = np.empty(shape=(len(threshold)))
+lme4_sex_coeff = np.empty(shape=(len(threshold)))
+lme4_ko_pval = np.empty(shape=(len(threshold)))
+lme4_sex_pval = np.empty(shape=(len(threshold)))
+lme4_ko_coeff[:] = np.nan
+lme4_sex_coeff[:] = np.nan
+lme4_ko_pval[:] = np.nan
+lme4_sex_pval[:] = np.nan
+for i, thr in enumerate(threshold):
+
+    # binarise output variable depending on whether cell size is smaller or larger than the threshold
+    df = df.assign(thresholded_area=df.area >= thr)
+
+    # compute GLMM
+    try:
+        lme4_output = r_lme4_glmer('thresholded_area ~ sex + ko + (1|mouse_id/image_id)', df)
+    except:
+        continue
+
+    if DEBUG:
+        print(lme4_output)
+
+    lme4_sex_coeff[i] = lme4_output.rx2('coefficients')[1]
+    lme4_ko_coeff[i] = lme4_output.rx2('coefficients')[2]
+    lme4_sex_pval[i] = lme4_output.rx2('coefficients')[10]
+    lme4_ko_pval[i] = lme4_output.rx2('coefficients')[11]
+
+# plot coefficients and p-values
+plt.clf()
+plt.subplot(221)
+plt.plot(threshold * 1e12, lme4_sex_coeff)
+plt.ylabel(r'$\beta_{sex}$', fontsize=18)
+plt.title('sex', fontsize=20)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.subplot(222)
+plt.plot(threshold * 1e12, lme4_ko_coeff)
+plt.ylabel(r'$\beta_{ko}$', fontsize=18)
+plt.title('ko', fontsize=20)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.subplot(223)
+plt.semilogy(threshold * 1e12, lme4_sex_pval)
+plt.xlabel(r'$\tau\ (\mu m^2)$', fontsize=18)
+plt.ylabel(r'p-value$_{sex}$', fontsize=18)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.subplot(224)
+plt.semilogy(threshold * 1e12, lme4_ko_pval)
+plt.xlabel(r'$\tau\ (\mu m^2)$', fontsize=18)
+plt.ylabel(r'p-value$_{ko}$', fontsize=18)
+plt.tick_params(axis='both', which='major', labelsize=16)
+plt.tight_layout()
+
+'''
+************************************************************************************************************************
+Statistical analysis of manual data
+************************************************************************************************************************
+'''
+
+## Analyse results: Manual data
+
+# load dataframe with manual segmentations matched to automatic segmentations
+data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
+df_manual_all = pd.read_pickle(data_manual_filename)
+
+## boxplots of PAT vs MAT in male
+
+idx_f_mat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'MAT')
+idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'PAT')
+idx_m_mat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'MAT')
+idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'PAT')
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot([df_manual_all['area_manual'][idx_m_pat],
+                 df_manual_all['area_manual'][idx_m_mat]],
+                labels=['PAT', 'MAT'],
+                notch=True)
+    plt.ylim(-875, 10e3)
+    plt.title('Male', fontsize=14)
+    plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
+
+# difference in medians
+area_median_m_pat = np.median(df_manual_all['area_manual'][idx_m_pat])
+area_median_m_mat = np.median(df_manual_all['area_manual'][idx_m_mat])
+
+print((area_median_m_pat - area_median_m_mat) / area_median_m_pat)
+
+# compute all percentiles
+area_perc_m_pat = np.percentile(df_manual_all['area_manual'][idx_m_pat], range(0, 101))
+area_perc_m_mat = np.percentile(df_manual_all['area_manual'][idx_m_mat], range(0, 101))
+
+area_change_m_pat2mat = (area_perc_m_mat - area_perc_m_pat) / area_perc_m_pat
+
+if DEBUG:
+    plt.clf()
+    plt.plot(range(0, 101), area_change_m_pat2mat * 100)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
+    plt.ylim(-25, 0)
+    plt.tight_layout()
+
+# permutation testing
+quantiles, pval, reject = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
+                                                        num_perms=10000, multitest_method=None)
+quantiles_corr, pval_corr, reject_corr = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
+                                                                       num_perms=10000, multitest_method='fdr_by')
+
+if DEBUG:
+    plt.clf()
+    plt.subplot(211)
+    plt.plot(range(0, 101), area_change_m_pat2mat * 100)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
+    plt.ylim(-25, 0)
+
+    plt.subplot(212)
+    plt.plot(range(0, 101), pval, label='Uncorrected')
+    plt.plot(range(0, 101), pval_corr, label='Benjamini-Yekutieli')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Population percentile', fontsize=14)
+    plt.ylabel('p-value', fontsize=14)
+    plt.legend(loc='upper right')
+    plt.tight_layout()
