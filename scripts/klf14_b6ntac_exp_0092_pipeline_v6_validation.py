@@ -1004,8 +1004,6 @@ for i_fold in range(len(idx_test_all)):
                                                                      model_type='-1_1', batch_size=batch_size,
                                                                      smoothing=11)
 
-    ''' Compare automatic segmentations to manual segmentations '''
-
     # loop test images
     for i in range(len(idx_test)):
 
@@ -1475,7 +1473,7 @@ plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_boxplots.svg'))
 
 ''' 
 ************************************************************************************************************************
-Linear Mixed Effects Model analysis (boxcox_area ~ sex + ko + other variables + random(mouse|window))
+Linear Mixed Effects Model analysis (sqrt_area ~ sex + ko + other variables + random(mouse|window))
 ************************************************************************************************************************
 '''
 
@@ -1504,126 +1502,22 @@ df_manual_all['sex'] = df_manual_all['sex'].astype(pd.api.types.CategoricalDtype
 # create column for sqrt(data)
 df_manual_all['sqrt_area_manual'] = np.sqrt(df_manual_all['area_manual'])
 
+# create column to have IDs for each image
+df_manual_all['image_id'] = df_manual_all['id'] + df_manual_all['im'].astype(str)
+
 # Mixed-effects linear model
 vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
 md = smf.mixedlm('sqrt_area_manual ~ sex + ko', vc_formula=vc, re_formula='1', groups='id', data=df_manual_all)
 mdf = md.fit()
 print(mdf.summary())
 
-# Mixed-effects linear model for only males
-vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
-md = smf.mixedlm('sqrt_area_manual ~ ko', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
-mdf = md.fit()
-print(mdf.summary())
+# pretty print of the model
 
-# Mixed-effects linear model with extra meta information
-vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
+# \sqrt{\mathrm{area}}$ &\sim \mathrm{sex} \cdot \alpha_\mathrm{sex} + \mathrm{ko} \cdot \beta_\mathrm{ko} + \mathrm{random}(\mathrm{mouse}|\mathrm{image})
 
-md = smf.mixedlm('bw ~ sex + ko + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
-mdf = md.fit()
-print(mdf.summary())
+# \alpha_\mathrm{sex} = \begin{cases}0,&\mathrm{female}\\1,&\mathrm{male}\end{cases}
 
-md = smf.mixedlm('bw ~ sex + ko + boxcox_sc + boxcox_gwat + boxcox_liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
-mdf = md.fit()
-print(mdf.summary())
-
-md = smf.mixedlm('sqrt_area_manual ~ sex + ko + bw + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
-mdf = md.fit()
-print(mdf.summary())
-
-md = smf.mixedlm('sqrt_area_manual ~ sex + ko + bw + sc + gwat + liver', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
-mdf = md.fit()
-print(mdf.summary())
-
-md = smf.mixedlm('sqrt_area_manual ~ sc + gwat', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
-mdf = md.fit()
-print(mdf.summary())
-
-md = smf.mixedlm('sqrt_area_manual ~ ko + gwat', vc_formula=vc, re_formula='1', groups='mouse_id', data=df_manual_all)
-mdf = md.fit()
-print(mdf.summary())
-
-
-''' Logistic regression Mixed Effects Model analysis (thresholded_area ~ sex + ko + (1|mouse_id/image_id))
-========================================================================================================================
-'''
-
-# suggested by George Nicholson's
-
-
-from rpy2.robjects import r
-
-
-def r_lme4_glmer(formula, df, family=r('binomial(link="logit")')):
-
-    from rpy2.robjects import pandas2ri
-    from rpy2.robjects.packages import importr
-    base = importr('base')
-    lme4 = importr('lme4')
-
-    pandas2ri.activate()
-    r_df = pandas2ri.py2ri(df)
-
-    #control = r('glmerControl(optimizer="Nelder_Mead")')
-    control = r('glmerControl(optimizer="bobyqa")')
-    model = lme4.glmer(formula, data=r_df, family=family, control=control)
-    return base.summary(model)
-
-
-# threshold values
-threshold = np.linspace(np.min(df.area), np.max(df.area), 101)
-
-# loop thresholds
-lme4_ko_coeff = np.empty(shape=(len(threshold)))
-lme4_sex_coeff = np.empty(shape=(len(threshold)))
-lme4_ko_pval = np.empty(shape=(len(threshold)))
-lme4_sex_pval = np.empty(shape=(len(threshold)))
-lme4_ko_coeff[:] = np.nan
-lme4_sex_coeff[:] = np.nan
-lme4_ko_pval[:] = np.nan
-lme4_sex_pval[:] = np.nan
-for i, thr in enumerate(threshold):
-
-    # binarise output variable depending on whether cell size is smaller or larger than the threshold
-    df = df.assign(thresholded_area=df.area >= thr)
-
-    # compute GLMM
-    try:
-        lme4_output = r_lme4_glmer('thresholded_area ~ sex + ko + (1|mouse_id/image_id)', df)
-    except:
-        continue
-
-    if DEBUG:
-        print(lme4_output)
-
-    lme4_sex_coeff[i] = lme4_output.rx2('coefficients')[1]
-    lme4_ko_coeff[i] = lme4_output.rx2('coefficients')[2]
-    lme4_sex_pval[i] = lme4_output.rx2('coefficients')[10]
-    lme4_ko_pval[i] = lme4_output.rx2('coefficients')[11]
-
-# plot coefficients and p-values
-plt.clf()
-plt.subplot(221)
-plt.plot(threshold * 1e12, lme4_sex_coeff)
-plt.ylabel(r'$\beta_{sex}$', fontsize=18)
-plt.title('sex', fontsize=20)
-plt.tick_params(axis='both', which='major', labelsize=16)
-plt.subplot(222)
-plt.plot(threshold * 1e12, lme4_ko_coeff)
-plt.ylabel(r'$\beta_{ko}$', fontsize=18)
-plt.title('ko', fontsize=20)
-plt.tick_params(axis='both', which='major', labelsize=16)
-plt.subplot(223)
-plt.semilogy(threshold * 1e12, lme4_sex_pval)
-plt.xlabel(r'$\tau\ (\mu m^2)$', fontsize=18)
-plt.ylabel(r'p-value$_{sex}$', fontsize=18)
-plt.tick_params(axis='both', which='major', labelsize=16)
-plt.subplot(224)
-plt.semilogy(threshold * 1e12, lme4_ko_pval)
-plt.xlabel(r'$\tau\ (\mu m^2)$', fontsize=18)
-plt.ylabel(r'p-value$_{ko}$', fontsize=18)
-plt.tick_params(axis='both', which='major', labelsize=16)
-plt.tight_layout()
+# \beta_\mathrm{ko} = \begin{cases}0,&\mathrm{PAT}\\1,&\mathrm{MAT}\end{cases}
 
 '''
 ************************************************************************************************************************
@@ -1646,15 +1540,20 @@ idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == '
 
 if DEBUG:
     plt.clf()
-    plt.boxplot([df_manual_all['area_manual'][idx_m_pat],
-                 df_manual_all['area_manual'][idx_m_mat]],
-                labels=['PAT', 'MAT'],
+    plt.boxplot([df_manual_all['area_manual'][idx_f_pat] * 1e-3,
+                 df_manual_all['area_manual'][idx_f_mat] * 1e-3,
+                 df_manual_all['area_manual'][idx_m_pat] * 1e-3,
+                 df_manual_all['area_manual'][idx_m_mat] * 1e-3
+                 ],
+                labels=['f/PAT', 'f/MAT', 'm/PAT', 'm/MAT'],
+                positions=[1, 2, 3.5, 4.5],
                 notch=True)
-    plt.ylim(-875, 10e3)
-    plt.title('Male', fontsize=14)
-    plt.ylabel('Segmentation area ($\mu$m$^2$)', fontsize=14)
+    plt.ylim(-875/1e3, 11)
+    plt.ylabel('Area ($\cdot 10^{-3} \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_boxplots_by_sex_ko.svg'))
 
 # difference in medians
 area_median_m_pat = np.median(df_manual_all['area_manual'][idx_m_pat])
@@ -1663,19 +1562,120 @@ area_median_m_mat = np.median(df_manual_all['area_manual'][idx_m_mat])
 print((area_median_m_pat - area_median_m_mat) / area_median_m_pat)
 
 # compute all percentiles
-area_perc_m_pat = np.percentile(df_manual_all['area_manual'][idx_m_pat], range(0, 101))
-area_perc_m_mat = np.percentile(df_manual_all['area_manual'][idx_m_mat], range(0, 101))
+area_perc_f_pat = np.percentile(df_manual_all['area_manual'][idx_f_pat], range(1, 100))
+area_perc_f_mat = np.percentile(df_manual_all['area_manual'][idx_f_mat], range(1, 100))
+area_perc_m_pat = np.percentile(df_manual_all['area_manual'][idx_m_pat], range(1, 100))
+area_perc_m_mat = np.percentile(df_manual_all['area_manual'][idx_m_mat], range(1, 100))
 
+# area change from PAT to MAT
+area_change_f_pat2mat = (area_perc_f_mat - area_perc_f_pat) / area_perc_f_pat
 area_change_m_pat2mat = (area_perc_m_mat - area_perc_m_pat) / area_perc_m_pat
 
+# permutation testing
+quantiles_f_pat2mat, pval_f_pat2mat, reject_f_pat2mat \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_f_mat],
+                                    alpha=0.05, num_perms=10000, multitest_method=None)
+quantiles_corr_f_pat2mat, pval_corr_f_pat2mat, reject_corr_f_pat2mat \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_f_mat],
+                                    alpha=0.05, num_perms=10000, multitest_method='fdr_by')
+
+quantiles_m_pat2mat, pval_m_pat2mat, reject_m_pat2mat \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
+                                    alpha=0.05, num_perms=10000, multitest_method=None)
+quantiles_corr_m_pat2mat, pval_corr_m_pat2mat, reject_corr_m_pat2mat \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
+                                    alpha=0.05, num_perms=10000, multitest_method='fdr_by')
+
+# remove points for 0% and 100%
+quantiles_f_pat2mat = quantiles_f_pat2mat[1:100]
+pval_f_pat2mat = pval_f_pat2mat[1:100]
+reject_f_pat2mat = reject_f_pat2mat[1:100]
+
+quantiles_corr_f_pat2mat = quantiles_corr_f_pat2mat[1:100]
+pval_corr_f_pat2mat = pval_corr_f_pat2mat[1:100]
+reject_corr_f_pat2mat = reject_corr_f_pat2mat[1:100]
+
+quantiles_m_pat2mat = quantiles_m_pat2mat[1:100]
+pval_m_pat2mat = pval_m_pat2mat[1:100]
+reject_m_pat2mat = reject_m_pat2mat[1:100]
+
+quantiles_corr_m_pat2mat = quantiles_corr_m_pat2mat[1:100]
+pval_corr_m_pat2mat = pval_corr_m_pat2mat[1:100]
+reject_corr_m_pat2mat = reject_corr_m_pat2mat[1:100]
+
 if DEBUG:
+    x = np.array(range(1, 100))
+
     plt.clf()
-    plt.plot(range(0, 101), area_change_m_pat2mat * 100)
+    plt.plot(range(1, 100), area_change_f_pat2mat * 100, color='C0', linewidth=3, label='Female')
+    plt.scatter(x[~reject_f_pat2mat], area_change_f_pat2mat[~reject_f_pat2mat] * 100,
+                marker='o', color='C0', s=10, linewidths=10, label='p-val > 0.05')
+    plt.plot(range(1, 100), area_change_m_pat2mat * 100, color='C1', linewidth=3, label='Male')
+    plt.scatter(x[~reject_m_pat2mat], area_change_m_pat2mat[~reject_m_pat2mat] * 100,
+                marker='o', color='C1', s=10, linewidths=10, label='p-val > 0.05')
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile', fontsize=14)
+    plt.xlabel('Population percentile (%)', fontsize=14)
     plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    plt.ylim(-25, 0)
+    plt.ylim(-30, -5)
+    plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat.svg'))
+
+# area change from female to male
+area_change_pat_f2m = (area_perc_m_pat - area_perc_f_pat) / area_perc_m_pat
+area_change_mat_f2m = (area_perc_m_mat - area_perc_f_mat) / area_perc_m_mat
+
+# permutation testing
+quantiles_pat_f2m, pval_pat_f2m, reject_pat_f2m \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_m_pat],
+                                    alpha=0.05, num_perms=10000, multitest_method=None)
+quantiles_corr_pat_f2m, pval_corr_pat_f2m, reject_corr_pat_f2m \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_m_pat],
+                                    alpha=0.05, num_perms=10000, multitest_method='fdr_by')
+
+quantiles_mat_f2m, pval_mat_f2m, reject_mat_f2m \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
+                                    alpha=0.05, num_perms=10000, multitest_method=None)
+quantiles_corr_mat_f2m, pval_corr_mat_f2m, reject_corr_mat_f2m \
+    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
+                                    alpha=0.05, num_perms=10000, multitest_method='fdr_by')
+
+# remove points for 0% and 100%
+quantiles_pat_f2m = quantiles_pat_f2m[1:100]
+pval_pat_f2m = pval_pat_f2m[1:100]
+reject_pat_f2m = reject_pat_f2m[1:100]
+
+quantiles_corr_pat_f2m = quantiles_corr_pat_f2m[1:100]
+pval_corr_pat_f2m = pval_corr_pat_f2m[1:100]
+reject_corr_pat_f2m = reject_corr_pat_f2m[1:100]
+
+quantiles_mat_f2m = quantiles_mat_f2m[1:100]
+pval_mat_f2m = pval_mat_f2m[1:100]
+reject_mat_f2m = reject_mat_f2m[1:100]
+
+quantiles_corr_mat_f2m = quantiles_corr_mat_f2m[1:100]
+pval_corr_mat_f2m = pval_corr_mat_f2m[1:100]
+reject_corr_mat_f2m = reject_corr_mat_f2m[1:100]
+
+if DEBUG:
+    x = np.array(range(1, 100))
+
+    plt.clf()
+    plt.plot(range(1, 100), area_change_pat_f2m * 100, color='C0', linewidth=3, label='PAT')
+    plt.scatter(x[~reject_pat_f2m], area_change_pat_f2m[~reject_pat_f2m] * 100,
+                marker='o', color='C0', s=10, linewidths=10, label='p-val > 0.05')
+    plt.plot(range(1, 100), area_change_mat_f2m * 100, color='C1', linewidth=3, label='MAT')
+    plt.scatter(x[~reject_mat_f2m], area_change_mat_f2m[~reject_mat_f2m] * 100,
+                marker='o', color='C1', s=10, linewidths=10, label='p-val > 0.05')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Population percentile (%)', fontsize=14)
+    plt.ylabel('Area change (%) from female to male', fontsize=14)
+    plt.ylim(50, 77)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_f_to_m.svg'))
 
 # permutation testing
 quantiles, pval, reject = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
