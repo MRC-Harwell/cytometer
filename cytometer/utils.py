@@ -3382,8 +3382,8 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
     :return:
     quantiles: numpy.ndarray vector with quantile values in [0.0, 1.0].
     pval: corresponding p-values for each quantile, whether adjusted or not.
-    reject: boolean vector, pval <= alpha_c (where alpha_c is the corrected alpha value due to multiple test
-    adjustment).
+    reject_h0: boolean vector, whether the null-hypothesis is rejected for each percentile, i.e. there's a significant
+    effect, pval < alpha_c (where alpha_c is the corrected alpha value due to multiple test adjustment).
     """
 
     def compute_test_statistics(x, y, quantiles):
@@ -3453,15 +3453,15 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
     pval = np.mean(ts, axis=0)
 
     # p-values under error rate
-    reject = pval <= alpha
+    reject_h0 = pval < alpha
 
     # apply multiple test correction
     if multitest_method is not None:
         idx = np.logical_not(np.isnan(pval))
-        reject[idx], pval[idx], _, _ = multipletests(pval[idx], alpha=alpha, method=multitest_method,
+        reject_h0[idx], pval[idx], _, _ = multipletests(pval[idx], alpha=alpha, method=multitest_method,
                                                      is_sorted=False, returnsorted=False)
 
-    return quantiles, pval, reject
+    return quantiles, pval, reject_h0
 
 
 def bspline_resample(xy, factor=1.0, k=1, is_closed=True):
