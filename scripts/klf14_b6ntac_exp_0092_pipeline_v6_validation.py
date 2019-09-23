@@ -511,6 +511,9 @@ for i_fold in range(len(idx_test_all)):
             plt.legend()
             plt.axis('off')
             plt.title('Manual contours', fontsize=14)
+            plt.tight_layout()
+
+            plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_manual_contours.svg'))
 
         # loop contours
         for j, contour in enumerate(contours):
@@ -724,7 +727,7 @@ if DEBUG:
     plt.scatter(fpr[1], tpr[1], color='C0', s=50)
     plt.text(0.21, 0.82, r'Prop. WAT pixels$\geq$%0.2f'
                          '\n'
-                         r'FPR=%0.2f, TPR=%0.2f' % (fpr[1], tpr[1], thr[1]), fontsize=14)
+                         r'FPR=%0.2f, TPR=%0.2f' % (thr[1], fpr[1], tpr[1]), fontsize=14)
     # plt.xlim(0.0, 1.0)
     # plt.ylim(0.0, 1.0)
     plt.tick_params(labelsize=14)
