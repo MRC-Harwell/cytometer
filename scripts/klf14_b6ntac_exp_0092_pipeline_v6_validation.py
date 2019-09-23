@@ -1610,12 +1610,12 @@ if DEBUG:
     x = np.array(range(1, 100))
 
     plt.clf()
-    plt.plot(range(1, 100), area_change_f_pat2mat * 100, color='C0', linewidth=3, label='Female')
+    plt.plot(range(1, 100), area_change_f_pat2mat * 100, color='C0', linewidth=3, label='Female, p-val $< 0.05$')
     plt.scatter(x[~reject_f_pat2mat], area_change_f_pat2mat[~reject_f_pat2mat] * 100,
-                marker='o', color='C0', s=10, linewidths=10, label='p-val > 0.05')
-    plt.plot(range(1, 100), area_change_m_pat2mat * 100, color='C1', linewidth=3, label='Male')
+                marker='o', color='C0', s=10, linewidths=10, label='Female, p-val $\geq 0.05$')
+    plt.plot(range(1, 100), area_change_m_pat2mat * 100, color='C1', linewidth=3, label='Male, p-val $< 0.05$')
     plt.scatter(x[~reject_m_pat2mat], area_change_m_pat2mat[~reject_m_pat2mat] * 100,
-                marker='o', color='C1', s=10, linewidths=10, label='p-val > 0.05')
+                marker='o', color='C1', s=10, linewidths=10, label='Male, p-val $\geq 0.05$')
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Population percentile (%)', fontsize=14)
     plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
@@ -1665,12 +1665,12 @@ if DEBUG:
     x = np.array(range(1, 100))
 
     plt.clf()
-    plt.plot(range(1, 100), area_change_pat_f2m * 100, color='C0', linewidth=3, label='PAT')
+    plt.plot(range(1, 100), area_change_pat_f2m * 100, color='C0', linewidth=3, label='PAT, p-val $< 0.05$')
     plt.scatter(x[~reject_pat_f2m], area_change_pat_f2m[~reject_pat_f2m] * 100,
-                marker='o', color='C0', s=10, linewidths=10, label='p-val > 0.05')
-    plt.plot(range(1, 100), area_change_mat_f2m * 100, color='C1', linewidth=3, label='MAT')
+                marker='o', color='C0', s=10, linewidths=10, label='PAT, p-val $\geq 0.05$')
+    plt.plot(range(1, 100), area_change_mat_f2m * 100, color='C1', linewidth=3, label='MAT, p-val $< 0.05$')
     plt.scatter(x[~reject_mat_f2m], area_change_mat_f2m[~reject_mat_f2m] * 100,
-                marker='o', color='C1', s=10, linewidths=10, label='p-val > 0.05')
+                marker='o', color='C1', s=10, linewidths=10, label='MAT, p-val $\geq 0.05$')
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Population percentile (%)', fontsize=14)
     plt.ylabel('Area change (%) from female to male', fontsize=14)
