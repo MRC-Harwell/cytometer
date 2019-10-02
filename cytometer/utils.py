@@ -3345,7 +3345,8 @@ def ecdf_confidence(data, num_quantiles=101, equispace='quantiles', confidence=0
     return data_out, quantile_out, quantile_ci_lo, quantile_ci_hi
 
 
-def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest_method=None):
+def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000,
+                  resampling_method='bootstrap', multitest_method=None):
     """
     Compute p-values for the difference between each percentile point of the empirical cumulative distribution
     functions (ECDFs) of two samples x, y.
@@ -3366,6 +3367,9 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
     :param num_quantiles: (def 101) Number of points the quantile range is split into. For 101, the
     quantiles are the percentiles 0%, 1%, 2%, ..., 100%.
     :param num_perms: (def 1000) Number of bootstrap permutations the p-values are estimated from.
+    :param resampling_method: (def 'bootstrap') String with the name used for resampling. Note that it's 'bootstrap'
+    for historical reasons, but the orthodox approach is 'permutation'. Because we haven't validated the bootstrap
+    approach, using it produces a warning message.
     :param multitest_method: (def None) Adjustment of p-values due to multitesting. These are the same
     values as for statsmodels.stats.multitest.multipletests. Currently
     (https://www.statsmodels.org/dev/_modules/statsmodels/stats/multitest.html),
@@ -3419,6 +3423,9 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
 
         return ts
 
+    if resampling_method == 'bootstrap':
+        warnings.warn('resampling_method=\'bootstrap\' is an experimental approach. Select \'permutation\' instead')
+
     # number of samples
     nx = len(x)
     ny = len(y)
@@ -3432,22 +3439,33 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, multitest
     # compute test statistic for each quantile
     t = compute_test_statistics(x, y, quantiles)
 
-    # allocate memory to keep the bootstrap samples of the test statistic
+    # allocate memory to keep the permutation/bootstrap samples of the test statistic
     ts = np.full(shape=(num_perms, num_quantiles), dtype=np.float32, fill_value=np.nan)
 
-    # repeat bootstrap sampling
-    for b in range(num_perms):
+    if resampling_method == 'bootstrap':
 
-        # sample with replacement from the merged data vectors
-        xs = np.random.choice(xy, size=(nx,), replace=True)
-        ys = np.random.choice(xy, size=(ny,), replace=True)
+        # repeat bootstrap sampling
+        for b in range(num_perms):
 
-        # compute test statistic for each quantile
-        ts[b, :] = compute_test_statistics(xs, ys, quantiles)
+            # sample with replacement from the merged data vectors
+            xs = np.random.choice(xy, size=(nx,), replace=True)
+            ys = np.random.choice(xy, size=(ny,), replace=True)
 
-        # compare the test statistic of the input to the null-distribution created by the bootstrap sampling
-        idx = np.logical_not(np.isnan(ts[b, :]))
-        ts[b, idx] = ts[b, idx] >= t[0, idx]
+            # compute test statistic for each quantile
+            ts[b, :] = compute_test_statistics(xs, ys, quantiles)
+
+            # compare the test statistic of the input to the null-distribution created by the bootstrap sampling
+            idx = np.logical_not(np.isnan(ts[b, :]))
+            ts[b, idx] = ts[b, idx] >= t[0, idx]
+
+    elif resampling_method == 'permutation':
+
+        # TODO
+        pass
+
+    else:
+
+        raise ValueError('Invalid resampling_method value')
 
     # p-value = N_(ts >= t) / N_ts
     pval = np.mean(ts, axis=0)
