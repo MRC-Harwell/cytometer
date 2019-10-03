@@ -3345,7 +3345,7 @@ def ecdf_confidence(data, num_quantiles=101, equispace='quantiles', confidence=0
     return data_out, quantile_out, quantile_ci_lo, quantile_ci_hi
 
 
-def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000,
+def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, rng_seed=0,
                   resampling_method='bootstrap', multitest_method=None):
     """
     Compute p-values for the difference between each percentile point of the empirical cumulative distribution
@@ -3361,6 +3361,9 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000,
     that the observed difference is due to mere chance. The median is the 50 percentile. This function
     computes p-values for the differences between the 0, 1, 2, ..., 100 percentiles.
 
+    It also has an experimental implementation, where instead of permutations, it uses bootstrap samples with
+    replacement.
+
     :param x: numpy.ndarray vector, data set 1.
     :param y: numpy.ndarray vector, data set 2.
     :param alpha: (def 0.05) float. Error rate. Confidence is 1-alpha.
@@ -3370,6 +3373,8 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000,
     :param resampling_method: (def 'bootstrap') String with the name used for resampling. Note that it's 'bootstrap'
     for historical reasons, but the orthodox approach is 'permutation'. Because we haven't validated the bootstrap
     approach, using it produces a warning message.
+    :param rng_seed: (def 0) Seed for the random generator of permutations or bootstrap samples. This allows to get
+    the same results in different runs.
     :param multitest_method: (def None) Adjustment of p-values due to multitesting. These are the same
     values as for statsmodels.stats.multitest.multipletests. Currently
     (https://www.statsmodels.org/dev/_modules/statsmodels/stats/multitest.html),
@@ -3439,36 +3444,45 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000,
     # compute test statistic for each quantile
     t = compute_test_statistics(x, y, quantiles)
 
-    # allocate memory to keep the permutation/bootstrap samples of the test statistic
-    ts = np.full(shape=(num_perms, num_quantiles), dtype=np.float32, fill_value=np.nan)
+    # allocate vector for the output
+    pval = np.zeros(shape=t.shape, dtype=np.float32)
+
+    # init random generator
+    rng = np.random.RandomState(rng_seed)
 
     if resampling_method == 'bootstrap':
 
-        # repeat bootstrap sampling
-        for b in range(num_perms):
+        # bootstrap loop
+        for i in range(num_perms):
 
             # sample with replacement from the merged data vectors
             xs = np.random.choice(xy, size=(nx,), replace=True)
             ys = np.random.choice(xy, size=(ny,), replace=True)
 
-            # compute test statistic for each quantile
-            ts[b, :] = compute_test_statistics(xs, ys, quantiles)
-
-            # compare the test statistic of the input to the null-distribution created by the bootstrap sampling
-            idx = np.logical_not(np.isnan(ts[b, :]))
-            ts[b, idx] = ts[b, idx] >= t[0, idx]
+            # compute ECDF statistic and check whether the null-distribution statistics are greater than the sample's
+            ts = compute_test_statistics(xs, ys, quantiles)
+            pval += (ts > t).astype(np.float32)
 
     elif resampling_method == 'permutation':
 
-        # TODO
-        pass
+        # permutation loop
+        for i in range(num_perms):
+
+            # split combined dataset into two groups according to the permutation
+            rng.shuffle(xy)
+            xs = xy[:nx]
+            ys = xy[nx:]
+
+            # compute ECDF statistic and check whether the null-distribution statistics are greater than the sample's
+            ts = compute_test_statistics(xs, ys, quantiles)
+            pval += (ts > t).astype(np.float32)
 
     else:
 
         raise ValueError('Invalid resampling_method value')
 
     # p-value = N_(ts >= t) / N_ts
-    pval = np.mean(ts, axis=0)
+    pval /= num_perms
 
     # p-values under error rate
     reject_h0 = pval < alpha
@@ -3479,7 +3493,7 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000,
         reject_h0[idx], pval[idx], _, _ = multipletests(pval[idx], alpha=alpha, method=multitest_method,
                                                      is_sorted=False, returnsorted=False)
 
-    return quantiles, pval, reject_h0
+    return quantiles, pval.flatten(), reject_h0.flatten()
 
 
 def bspline_resample(xy, factor=1.0, k=1, is_closed=True):
