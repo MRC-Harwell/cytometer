@@ -1575,7 +1575,7 @@ area_change_f_pat2mat = (area_perc_f_mat - area_perc_f_pat) / area_perc_f_pat
 area_change_m_pat2mat = (area_perc_m_mat - area_perc_m_pat) / area_perc_m_pat
 
 # permutation testing
-num_perms=10000
+num_perms=int(1e4)
 
 quantiles, pval_f_pat2mat, reject_f_pat2mat \
     = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_f_mat],
@@ -1715,11 +1715,11 @@ Statistical analysis of manual data (using permutation in comparison of ECDF)
 ************************************************************************************************************************
 '''
 
-## in order to run the following, you need to have run the top of the section above up to "permutation testing"
-
-num_perms = int(5e5)
+# in order to run the following, you need to have run the top of the section above up to "permutation testing"
 
 # permutation testing
+num_perms = int(5e5)
+
 quantiles, pval_f_pat2mat, reject_f_pat2mat \
     = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_f_mat],
                                     alpha=0.05, num_perms=num_perms, multitest_method=None,
@@ -1732,10 +1732,13 @@ _, pval_m_pat2mat, reject_m_pat2mat \
     = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
                                     alpha=0.05, num_perms=num_perms, multitest_method=None,
                                     rng_seed=0, resampling_method='permutation')
+t0 = time.time()
+# 3.4 min for 5e5 perms
 _, pval_m_pat2mat_fdr_by, reject_m_pat2mat_fdr_by \
     = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
                                     alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
                                     rng_seed=0, resampling_method='permutation')
+print('Time = ' + str(time.time() - t0) + ' s')
 
 # remove points for 0% and 100%
 quantiles = quantiles[1:100]
@@ -1804,6 +1807,33 @@ if DEBUG:
 area_change_pat_f2m = (area_perc_m_pat - area_perc_f_pat) / area_perc_m_pat
 area_change_mat_f2m = (area_perc_m_mat - area_perc_f_mat) / area_perc_m_mat
 
+if DEBUG:
+    plt.clf()
+    plt.subplot(211)
+    plt.hist(df_manual_all['area_manual'][idx_f_pat] / 1e3, histtype='step', bins=50, density=True,
+             linewidth=3, color='C0', label='Female PAT')
+    plt.hist(df_manual_all['area_manual'][idx_m_pat] / 1e3, histtype='step', bins=50, density=True,
+             linewidth=3, color='C2', label='Male PAT')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlim(-0.25, 20)
+    plt.ylabel('Density', fontsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.subplot(212)
+    plt.hist(df_manual_all['area_manual'][idx_f_mat] / 1e3, histtype='step', bins=50, density=True,
+             linewidth=3, color='C1', label='Female MAT')
+    plt.hist(df_manual_all['area_manual'][idx_m_mat] / 1e3, histtype='step', bins=50, density=True,
+             linewidth=3, color='C3', label='Male MAT')
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlim(-0.25, 20)
+    plt.xlabel('Area ($\cdot 10^{-3} \mu$m$^2$)', fontsize=14)
+    plt.ylabel('Density', fontsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_hist_by_pat_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_hist_by_pat_mat.png'))
+
+
 # permutation testing
 quantiles_pat_f2m, pval_pat_f2m, reject_pat_f2m \
     = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_m_pat],
@@ -1817,6 +1847,14 @@ quantiles_mat_f2m, pval_mat_f2m, reject_mat_f2m \
     = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
                                     alpha=0.05, num_perms=num_perms, multitest_method=None,
                                     rng_seed=0, resampling_method='permutation')
+
+quantiles_mat_f2m, pval_mat_f2m, reject_mat_f2m \
+    = cytometer.utils.compare_ecdfs(x=df_manual_all['area_manual'][idx_f_mat],
+                                    y=df_manual_all['area_manual'][idx_m_mat],
+                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
+                                    rng_seed=0, resampling_method='permutation')
+
+
 quantiles_corr_mat_f2m, pval_corr_mat_f2m, reject_corr_mat_f2m \
     = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
                                     alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
