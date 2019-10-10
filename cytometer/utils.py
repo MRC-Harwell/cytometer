@@ -3410,13 +3410,13 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, rng_seed=
         y_ecdf_func = ECDF(y)
 
         # inverse of the ECDF functions
-        x = np.unique(x)
-        y = np.unique(y)
-        x_ecdf_func_inv = monotone_fn_inverter(x_ecdf_func, x, vectorized=True)
-        y_ecdf_func_inv = monotone_fn_inverter(y_ecdf_func, y, vectorized=True)
+        xu = np.unique(x)
+        yu = np.unique(y)
+        x_ecdf_func_inv = monotone_fn_inverter(x_ecdf_func, xu, vectorized=True)
+        y_ecdf_func_inv = monotone_fn_inverter(y_ecdf_func, yu, vectorized=True)
 
         # small quantile values are outside the interpolation range, so they cannot be used for computations
-        idx = quantiles >= np.max([x_ecdf_func(x[0]), y_ecdf_func(y[0])])
+        idx = quantiles >= np.max([x_ecdf_func(xu[0]), y_ecdf_func(yu[0])])
 
         # data values that correspond to the quantiles
         x_data = x_ecdf_func_inv(quantiles[idx])
