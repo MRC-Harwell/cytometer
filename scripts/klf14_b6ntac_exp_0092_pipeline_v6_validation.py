@@ -1524,7 +1524,7 @@ print(mdf.summary())
 
 '''
 ************************************************************************************************************************
-Statistical analysis of manual data (using bootstrap in comparison of ECDF)
+Statistical analysis of manual data (using bootstrap in comparison of ECDFs)
 ************************************************************************************************************************
 '''
 
@@ -1711,7 +1711,7 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
-Statistical analysis of manual data (using permutation in comparison of ECDF)
+Statistical analysis of manual data (using permutation in comparison of ECDFs)
 ************************************************************************************************************************
 '''
 
@@ -1757,33 +1757,41 @@ reject_m_pat2mat_fdr_by = reject_m_pat2mat_fdr_by[1:100]
 
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles * 100, area_change_f_pat2mat * 100, color='C0', linewidth=3, label='Female, p-val $< 0.05$')
-    plt.scatter(quantiles[~reject_f_pat2mat_fdr_by] * 100, area_change_f_pat2mat[~reject_f_pat2mat_fdr_by] * 100,
-                marker='o', color='C0', s=10, linewidths=10, label='Female, p-val $\geq 0.05$')
-    plt.plot(quantiles * 100, area_change_m_pat2mat * 100, color='C1', linewidth=3, label='Male, p-val $< 0.05$')
-    plt.scatter(quantiles[~reject_m_pat2mat_fdr_by] * 100, area_change_m_pat2mat[~reject_m_pat2mat_fdr_by] * 100,
-                marker='o', color='C1', s=10, linewidths=10, label='Male, p-val $\geq 0.05$')
+    plt.plot([0, 100], [0, 0], linewidth=3, color='C0')
+    plt.plot([0, 100], [-65, -65], linewidth=3, color='C1')
+    plt.stem(quantiles[reject_f_pat2mat_fdr_by] * 100, area_change_f_pat2mat[reject_f_pat2mat_fdr_by] * 100,
+             markerfmt='.', linefmt='C0-', basefmt='C0',
+             label='Female')
+    plt.stem(quantiles[reject_m_pat2mat_fdr_by] * 100, area_change_m_pat2mat[reject_m_pat2mat_fdr_by] * 100,
+             markerfmt='.', linefmt='C1-', basefmt='C1', bottom=-65,
+             label='Male')
+    plt.plot(quantiles * 100, area_change_f_pat2mat * 100, color='C0', linewidth=3)
+    plt.plot(quantiles * 100, area_change_m_pat2mat * 100, color='C1', linewidth=3)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Population percentile (%)', fontsize=14)
     plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    plt.ylim(-30, -4)
+    # plt.ylim(-30, -4)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation_fdr_by.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation_fdr_by.png'))
 
     plt.clf()
-    plt.plot(quantiles * 100, area_change_f_pat2mat * 100, color='C0', linewidth=3, label='Female, p-val $< 0.05$')
-    plt.scatter(quantiles[~reject_f_pat2mat] * 100, area_change_f_pat2mat[~reject_f_pat2mat] * 100,
-                marker='o', color='C0', s=10, linewidths=10, label='Female, p-val $\geq 0.05$')
-    plt.plot(quantiles * 100, area_change_m_pat2mat * 100, color='C1', linewidth=3, label='Male, p-val $< 0.05$')
-    plt.scatter(quantiles[~reject_m_pat2mat] * 100, area_change_m_pat2mat[~reject_m_pat2mat] * 100,
-                marker='o', color='C1', s=10, linewidths=10, label='Male, p-val $\geq 0.05$')
+    plt.plot([0, 100], [0, 0], linewidth=3, color='C0')
+    plt.plot([0, 100], [-65, -65], linewidth=3, color='C1')
+    plt.stem(quantiles[reject_f_pat2mat] * 100, area_change_f_pat2mat[reject_f_pat2mat] * 100,
+             markerfmt='.', linefmt='C0-', basefmt='C0',
+             label='Female')
+    plt.stem(quantiles[reject_m_pat2mat] * 100, area_change_m_pat2mat[reject_m_pat2mat] * 100,
+             markerfmt='.', linefmt='C1-', basefmt='C1', bottom=-65,
+             label='Male')
+    plt.plot(quantiles * 100, area_change_f_pat2mat * 100, color='C0', linewidth=3)
+    plt.plot(quantiles * 100, area_change_m_pat2mat * 100, color='C1', linewidth=3)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Population percentile (%)', fontsize=14)
     plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    plt.ylim(-30, -4)
+    # plt.ylim(-30, -4)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
@@ -1935,3 +1943,59 @@ if DEBUG:
     plt.ylabel('p-value', fontsize=14)
     plt.legend(loc='upper right')
     plt.tight_layout()
+
+'''
+************************************************************************************************************************
+Statistical analysis of manual data (using Harrell-Davis quantile estimates)
+************************************************************************************************************************
+'''
+
+## Analyse results: Manual data
+
+# load dataframe with manual segmentations matched to automatic segmentations
+data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
+df_manual_all = pd.read_pickle(data_manual_filename)
+
+## boxplots of PAT vs MAT in male
+
+idx_f_mat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'MAT')
+idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'PAT')
+idx_m_mat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'MAT')
+idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'PAT')
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot([df_manual_all['area_manual'][idx_f_pat] * 1e-3,
+                 df_manual_all['area_manual'][idx_f_mat] * 1e-3,
+                 df_manual_all['area_manual'][idx_m_pat] * 1e-3,
+                 df_manual_all['area_manual'][idx_m_mat] * 1e-3
+                 ],
+                labels=['f/PAT', 'f/MAT', 'm/PAT', 'm/MAT'],
+                positions=[1, 2, 3.5, 4.5],
+                notch=True)
+    plt.ylim(-875/1e3, 11)
+    plt.ylabel('Area ($\cdot 10^{-3} \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.tight_layout()
+
+# compute all percentiles
+quantiles = np.linspace(0.01, 0.99, 99)
+area_perc_f_pat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_f_pat], prob=quantiles)
+area_perc_f_mat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_f_mat], prob=quantiles)
+area_perc_m_pat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_m_pat], prob=quantiles)
+area_perc_m_mat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_m_mat], prob=quantiles)
+
+if DEBUG:
+    plt.clf()
+    plt.plot(quantiles, area_perc_f_pat, label='Female PAT')
+    plt.plot(quantiles, area_perc_m_pat, label='Male PAT')
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# list of animals in each group
+foo = (df_manual_all['sex'] == 'f') & (df_manual_all['ko'] == 'MAT')
+
+
+idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'PAT')
