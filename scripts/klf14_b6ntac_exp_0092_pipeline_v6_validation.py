@@ -1995,7 +1995,41 @@ if DEBUG:
     plt.tight_layout()
 
 # list of animals in each group
-foo = (df_manual_all['sex'] == 'f') & (df_manual_all['ko'] == 'MAT')
+unique_ids_f_pat = np.unique(df_manual_all[idx_f_pat]['id'])
+unique_ids_m_pat = np.unique(df_manual_all[idx_m_pat]['id'])
+unique_ids_f_mat = np.unique(df_manual_all[idx_f_mat]['id'])
+unique_ids_m_mat = np.unique(df_manual_all[idx_m_mat]['id'])
 
+# loop animals
+plt.clf()
+for id in unique_ids_f_pat:
+    # indices of cells that correspond to the current animal
+    idx = np.logical_and(idx_f_pat, df_manual_all['id'] == id)
 
-idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'PAT')
+    # compute percentiles
+    area_perc = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+
+    # plot areas vs percentiles
+    if id == '36.1a':
+        plt.plot(quantiles, area_perc * 1e-3, color='C0', label='Female PAT')
+    else:
+        plt.plot(quantiles, area_perc * 1e-3, color='C0')
+
+for id in unique_ids_m_pat:
+    # indices of cells that correspond to the current animal
+    idx = np.logical_and(idx_m_pat, df_manual_all['id'] == id)
+
+    # compute percentiles
+    area_perc = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+
+    # plot areas vs percentiles
+    if id == '36.1i':
+        plt.plot(quantiles, area_perc * 1e-3, color='C1', label='Male PAT')
+    else:
+        plt.plot(quantiles, area_perc * 1e-3, color='C1')
+
+plt.xlabel('Population quantile', fontsize=14)
+plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.legend(loc='best', prop={'size': 12})
+plt.tight_layout()
