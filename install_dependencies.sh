@@ -50,7 +50,7 @@ conda install -y matplotlib pillow
 conda install -y scikit-image scikit-learn h5py 
 conda install -y nose pytest
 pip install opencv-python pysto openslide-python
-pip install tifffile mahotas networkx svgpathtools receptivefield rpy2
+pip install tifffile mahotas networkx svgpathtools receptivefield rpy2 mlxtend
 conda install -y pandas six statsmodels
 
 ########################################################################
