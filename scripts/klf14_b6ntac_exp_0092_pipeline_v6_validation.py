@@ -39,6 +39,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from sklearn.metrics import roc_curve, auc
 import scipy.stats as stats
+from mlxtend.evaluate import permutation_test
 from enum import IntEnum
 import statsmodels.formula.api as smf
 
@@ -2000,36 +2001,254 @@ unique_ids_m_pat = np.unique(df_manual_all[idx_m_pat]['id'])
 unique_ids_f_mat = np.unique(df_manual_all[idx_f_mat]['id'])
 unique_ids_m_mat = np.unique(df_manual_all[idx_m_mat]['id'])
 
-# loop animals
-plt.clf()
-for id in unique_ids_f_pat:
+area_perc_f_pat = np.zeros(shape=(len(unique_ids_f_pat), len(quantiles)))
+area_perc_m_pat = np.zeros(shape=(len(unique_ids_m_pat), len(quantiles)))
+area_perc_f_mat = np.zeros(shape=(len(unique_ids_f_mat), len(quantiles)))
+area_perc_m_mat = np.zeros(shape=(len(unique_ids_m_mat), len(quantiles)))
+
+# loop animals to compute quantiles for each animal. Each row corresponds to an animal. Each column, to a quantile.
+
+# F/PAT
+for i, id in enumerate(unique_ids_f_pat):
     # indices of cells that correspond to the current animal
     idx = np.logical_and(idx_f_pat, df_manual_all['id'] == id)
 
     # compute percentiles
-    area_perc = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+    area_perc_f_pat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
 
-    # plot areas vs percentiles
-    if id == '36.1a':
-        plt.plot(quantiles, area_perc * 1e-3, color='C0', label='Female PAT')
-    else:
-        plt.plot(quantiles, area_perc * 1e-3, color='C0')
-
-for id in unique_ids_m_pat:
+# M/PAT
+for i, id in enumerate(unique_ids_m_pat):
     # indices of cells that correspond to the current animal
     idx = np.logical_and(idx_m_pat, df_manual_all['id'] == id)
 
     # compute percentiles
-    area_perc = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+    area_perc_m_pat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
 
-    # plot areas vs percentiles
-    if id == '36.1i':
-        plt.plot(quantiles, area_perc * 1e-3, color='C1', label='Male PAT')
-    else:
-        plt.plot(quantiles, area_perc * 1e-3, color='C1')
+# F/MAT
+for i, id in enumerate(unique_ids_f_mat):
+    # indices of cells that correspond to the current animal
+    idx = np.logical_and(idx_f_mat, df_manual_all['id'] == id)
 
-plt.xlabel('Population quantile', fontsize=14)
-plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.legend(loc='best', prop={'size': 12})
-plt.tight_layout()
+    # compute percentiles
+    area_perc_f_mat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+
+# M/MAT
+for i, id in enumerate(unique_ids_m_mat):
+    # indices of cells that correspond to the current animal
+    idx = np.logical_and(idx_m_mat, df_manual_all['id'] == id)
+
+    # compute percentiles
+    area_perc_m_mat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+
+# PAT
+if DEBUG:
+    plt.clf()
+    [idx_f_pat, _, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_f_pat) * 1e-3, color='C0', linewidth=3)
+    [idx_m_pat, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_m_pat) * 1e-3, color='C1', linewidth=3)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend([idx_f_pat, idx_m_pat], ['Female PAT', 'Male PAT'], loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# MAT
+if DEBUG:
+    plt.clf()
+    [idx_f_mat, _, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_f_mat) * 1e-3, color='C0', linewidth=3)
+    [idx_m_mat, _, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_m_mat) * 1e-3, color='C1', linewidth=3)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend([idx_f_pat, idx_m_pat], ['Female MAT', 'Male MAT'], loc='best', prop={'size': 12})
+    plt.ylim(-0.5, 18)
+    plt.tight_layout()
+
+# Female
+if DEBUG:
+    plt.clf()
+    [idx_f_pat, _, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_f_pat) * 1e-3, color='C0', linewidth=3)
+    [idx_f_mat, _, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_f_mat) * 1e-3, color='C1', linewidth=3)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend([idx_f_pat, idx_f_mat], ['Female PAT', 'Female MAT'], loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# Male
+if DEBUG:
+    plt.clf()
+    [idx_m_pat, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_m_pat) * 1e-3, color='C0', linewidth=3)
+    [idx_m_mat, _, _, _, _] = plt.plot(quantiles, np.transpose(area_perc_m_mat) * 1e-3, color='C1', linewidth=3)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend([idx_m_pat, idx_m_mat], ['Male PAT', 'Male MAT'], loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# compute variability of area values for each quantile
+area_interval_f_pat = stats.mstats.hdquantiles(area_perc_f_pat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_m_pat = stats.mstats.hdquantiles(area_perc_m_pat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_f_mat = stats.mstats.hdquantiles(area_perc_f_mat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_m_mat = stats.mstats.hdquantiles(area_perc_m_mat, prob=[0.025, 0.5, 0.975], axis=0)
+
+# PAT (females and males)
+if DEBUG:
+    plt.clf()
+    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e-3, 'C0', linewidth=3, label='Female PAT median')
+    plt.fill_between(quantiles, area_interval_f_pat[0, :] * 1e-3, area_interval_f_pat[2, :] * 1e-3,
+                     facecolor='C0', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e-3, 'C0', linewidth=1, label='Female PAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_f_pat[2, :] * 1e-3, 'C0', linewidth=1)
+
+    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e-3, 'C1', linewidth=3, label='Male PAT median')
+    plt.fill_between(quantiles, area_interval_m_pat[0, :] * 1e-3, area_interval_m_pat[2, :] * 1e-3,
+                     facecolor='C1', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e-3, 'C1', linewidth=1, label='Male PAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_m_pat[2, :] * 1e-3, 'C1', linewidth=1)
+
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# MAT (females and males)
+if DEBUG:
+    plt.clf()
+    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e-3, 'C0', linewidth=3, label='Female MAT median')
+    plt.fill_between(quantiles, area_interval_f_mat[0, :] * 1e-3, area_interval_f_mat[2, :] * 1e-3,
+                     facecolor='C0', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e-3, 'C0', linewidth=1, label='Female MAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_f_mat[2, :] * 1e-3, 'C0', linewidth=1)
+
+    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e-3, 'C1', linewidth=3, label='Male MAT median')
+    plt.fill_between(quantiles, area_interval_m_mat[0, :] * 1e-3, area_interval_m_mat[2, :] * 1e-3,
+                     facecolor='C1', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C1', linewidth=1, label='Male MAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_m_mat[2, :] * 1e-3, 'C1', linewidth=1)
+
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# Female (PAT and MAT)
+if DEBUG:
+    plt.clf()
+    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e-3, 'C0', linewidth=3, label='Female PAT median')
+    plt.fill_between(quantiles, area_interval_f_pat[0, :] * 1e-3, area_interval_f_pat[2, :] * 1e-3,
+                     facecolor='C0', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e-3, 'C0', linewidth=1, label='Female PAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_f_pat[2, :] * 1e-3, 'C0', linewidth=1)
+
+    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e-3, 'C1', linewidth=3, label='Female MAT median')
+    plt.fill_between(quantiles, area_interval_f_mat[0, :] * 1e-3, area_interval_f_mat[2, :] * 1e-3,
+                     facecolor='C1', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e-3, 'C1', linewidth=1, label='Female MAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_f_mat[2, :] * 1e-3, 'C1', linewidth=1)
+
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# Male (PAT and MAT)
+if DEBUG:
+    plt.clf()
+    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e-3, 'C0', linewidth=3, label='Male PAT median')
+    plt.fill_between(quantiles, area_interval_m_pat[0, :] * 1e-3, area_interval_m_pat[2, :] * 1e-3,
+                     facecolor='C0', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e-3, 'C0', linewidth=1, label='Male PAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_m_pat[2, :] * 1e-3, 'C0', linewidth=1)
+
+    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e-3, 'C1', linewidth=3, label='Male MAT median')
+    plt.fill_between(quantiles, area_interval_m_mat[0, :] * 1e-3, area_interval_m_mat[2, :] * 1e-3,
+                     facecolor='C1', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C1', linewidth=1, label='Male MAT 2.5%-97.5% quantiles')
+    plt.plot(quantiles, area_interval_m_mat[2, :] * 1e-3, 'C1', linewidth=1)
+
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+# test whether the median values are different enough between female vs. male
+pval_perc_f2m_pat = np.zeros(shape=(len(quantiles),))
+for i, q in enumerate(quantiles):
+    pval_perc_f2m_pat[i] = permutation_test(x=area_perc_f_pat[:, i], y=area_perc_m_pat[:, i],
+                                            func=lambda x, y: np.abs(np.median(x) - np.median(y)),
+                                            method='exact', num_rounds=1000, seed=None)
+
+pval_perc_f2m_mat = np.zeros(shape=(len(quantiles),))
+for i, q in enumerate(quantiles):
+    pval_perc_f2m_mat[i] = permutation_test(x=area_perc_f_mat[:, i], y=area_perc_m_mat[:, i],
+                                            func=lambda x, y: np.abs(np.median(x) - np.median(y)),
+                                            method='exact', num_rounds=1000, seed=None)
+
+# plot the median difference and the population quantiles at which the difference is significant
+if DEBUG:
+    plt.clf()
+    idx = pval_perc_f2m_pat < 0.05
+    delta_a_f2m_pat = (area_interval_m_pat[1, :] - area_interval_f_pat[1, :]) / area_interval_f_pat[1, :]
+    plt.stem(quantiles[idx], 100 * delta_a_f2m_pat[idx],
+             markerfmt='.', linefmt='C0-', basefmt='C0',
+             label='p-val$_{\mathrm{PAT}}$ < 0.05')
+
+    idx = pval_perc_f2m_mat < 0.05
+    delta_a_f2m_mat = (area_interval_m_mat[1, :] - area_interval_f_mat[1, :]) / area_interval_f_mat[1, :]
+    plt.stem(quantiles[idx], 100 * delta_a_f2m_mat[idx],
+             markerfmt='.', linefmt='C1-', basefmt='C1', bottom=250,
+             label='p-val$_{\mathrm{MAT}}$ < 0.05')
+
+    plt.plot(quantiles, 100 * delta_a_f2m_pat, 'C0', linewidth=3, label='PAT')
+    plt.plot(quantiles, 100 * delta_a_f2m_mat, 'C1', linewidth=3, label='MAT')
+
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area increase factor from\n female to male (%)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='lower right', prop={'size': 12})
+    plt.tight_layout()
+
+# test whether the median values are different enough between PAT vs. MAT
+pval_perc_f_pat2mat = np.zeros(shape=(len(quantiles),))
+for i, q in enumerate(quantiles):
+    pval_perc_f_pat2mat[i] = permutation_test(x=area_perc_f_pat[:, i], y=area_perc_f_mat[:, i],
+                                              func=lambda x, y: np.abs(np.median(x) - np.median(y)),
+                                              method='exact', num_rounds=1000, seed=None)
+
+pval_perc_m_pat2mat = np.zeros(shape=(len(quantiles),))
+for i, q in enumerate(quantiles):
+    pval_perc_m_pat2mat[i] = permutation_test(x=area_perc_m_pat[:, i], y=area_perc_m_mat[:, i],
+                                              func=lambda x, y: np.abs(np.median(x) - np.median(y)),
+                                              method='exact', num_rounds=1000, seed=None)
+
+# plot the median difference and the population quantiles at which the difference is significant
+if DEBUG:
+    plt.clf()
+    idx = pval_perc_f_pat2mat < 0.05
+    delta_a_f_pat2mat = (area_interval_f_mat[1, :] - area_interval_f_pat[1, :]) / area_interval_f_pat[1, :]
+    if np.any(idx):
+        plt.stem(quantiles[idx], 100 * delta_a_f_pat2mat[idx],
+                 markerfmt='.', linefmt='C0-', basefmt='C0',
+                 label='p-val$_{\mathrm{PAT}}$ < 0.05')
+
+    idx = pval_perc_m_pat2mat < 0.05
+    delta_a_m_pat2mat = (area_interval_m_mat[1, :] - area_interval_m_pat[1, :]) / area_interval_m_pat[1, :]
+    if np.any(idx):
+        plt.stem(quantiles[idx], 100 * delta_a_m_pat2mat[idx],
+                 markerfmt='.', linefmt='C1-', basefmt='C1', bottom=250,
+                 label='p-val$_{\mathrm{MAT}}$ < 0.05')
+
+    plt.plot(quantiles, 100 * delta_a_f_pat2mat, 'C0', linewidth=3, label='Female')
+    plt.plot(quantiles, 100 * delta_a_m_pat2mat, 'C1', linewidth=3, label='Male')
+
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area increase factor from\n PAT to MAT (%)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='lower right', prop={'size': 12})
+    plt.tight_layout()
+
+
