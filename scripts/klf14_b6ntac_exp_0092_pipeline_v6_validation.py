@@ -40,8 +40,9 @@ import matplotlib.patheffects as pe
 from sklearn.metrics import roc_curve, auc
 import scipy.stats as stats
 from mlxtend.evaluate import permutation_test
-from enum import IntEnum
+from statsmodels.stats.multitest import multipletests
 import statsmodels.formula.api as smf
+from enum import IntEnum
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'
@@ -196,7 +197,7 @@ else:  # pre-compute the validation data and save to file
         '''Read histology training window
         '''
 
-        print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
+        print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
 
         # change file extension from .svg to .tif
         file_tif = file_svg.replace('.svg', '.tif')
@@ -2188,6 +2189,10 @@ for i, q in enumerate(quantiles):
                                             func=lambda x, y: np.abs(np.median(x) - np.median(y)),
                                             method='exact', num_rounds=1000, seed=None)
 
+# multitest correction using Hochberg a.k.a. Simes-Hochberg method
+_, pval_perc_f2m_pat, _, _ = multipletests(pval_perc_f2m_pat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_f2m_mat, _, _ = multipletests(pval_perc_f2m_mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+
 # plot the median difference and the population quantiles at which the difference is significant
 if DEBUG:
     plt.clf()
@@ -2224,6 +2229,10 @@ for i, q in enumerate(quantiles):
     pval_perc_m_pat2mat[i] = permutation_test(x=area_perc_m_pat[:, i], y=area_perc_m_mat[:, i],
                                               func=lambda x, y: np.abs(np.median(x) - np.median(y)),
                                               method='exact', num_rounds=1000, seed=None)
+
+# multitest correction using Hochberg a.k.a. Simes-Hochberg method
+_, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
 
 # plot the median difference and the population quantiles at which the difference is significant
 if DEBUG:
