@@ -279,6 +279,13 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                           + '_col_' + str(box_corner_col).zfill(6)
         outfilename = os.path.join(training_dir, outfilename + '.tif')
 
+        # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
+        tifffile.imsave(outfilename, tile,
+                        compress=9,
+                        resolution=(int(im.properties["tiff.XResolution"]),
+                                    int(im.properties["tiff.YResolution"]),
+                                    im.properties["tiff.ResolutionUnit"].upper()))
+
         # plot tile
         if DEBUG:
             plt.clf()
@@ -289,9 +296,3 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.imshow(foo)
             plt.pause(.1)
 
-        # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
-        tifffile.imsave(outfilename, tile,
-                        compress=9,
-                        resolution=(int(im.properties["tiff.XResolution"]),
-                                    int(im.properties["tiff.YResolution"]),
-                                    im.properties["tiff.ResolutionUnit"].upper()))
