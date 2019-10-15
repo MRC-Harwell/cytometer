@@ -1104,7 +1104,7 @@ for i_fold in range(len(idx_test_all)):
             df_auto_all = df_auto_all.append(df_auto, ignore_index=True)
 
         ''' Only manual contours and their corresponding auto labels loop '''
-        for j, contour in enumerate(contours):
+@@@@@@@        for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
             df_manual = df_common.copy()
@@ -1952,11 +1952,43 @@ Statistical analysis of manual data (using Harrell-Davis quantile estimates)
 ************************************************************************************************************************
 '''
 
-## Analyse results: Manual data
+## Analyse results: Manual data (regardless of whether they match an automatic segmentation)
 
-# load dataframe with manual segmentations matched to automatic segmentations
-data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
-df_manual_all = pd.read_pickle(data_manual_filename)
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_classifier_by_object.pkl')
+df_manual_all = pd.read_pickle(data_filename)
+
+# keep only WAT cells
+df_manual_all = df_manual_all.loc[df_manual_all['type'] == 'wat', :]
+
+## extra files that were not used in the CNN training and segmentation, but that they were added so that we could have
+## respresentative ECDFs for animals that were undersampled
+
+file_svg_list_extra = [
+    os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg'),
+    os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg')
+]
+
+for i, file_svg in enumerate(file_svg_list_extra):
+
+    # open histology testing image
+    file_tif = file_svg.replace('.svg', '.tif')
+    im = Image.open(file_tif)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                       minimum_npoints=3)
+
+    print('Cells: ' + str(len(contours)))
+    print('')
+
+
+    @@@@@@@@@@@@@@@@
 
 ## boxplots of PAT vs MAT in male
 
@@ -1967,10 +1999,10 @@ idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == '
 
 if DEBUG:
     plt.clf()
-    plt.boxplot([df_manual_all['area_manual'][idx_f_pat] * 1e-3,
-                 df_manual_all['area_manual'][idx_f_mat] * 1e-3,
-                 df_manual_all['area_manual'][idx_m_pat] * 1e-3,
-                 df_manual_all['area_manual'][idx_m_mat] * 1e-3
+    plt.boxplot([df_manual_all['area'][idx_f_pat] * 1e-3,
+                 df_manual_all['area'][idx_f_mat] * 1e-3,
+                 df_manual_all['area'][idx_m_pat] * 1e-3,
+                 df_manual_all['area'][idx_m_mat] * 1e-3
                  ],
                 labels=['f/PAT', 'f/MAT', 'm/PAT', 'm/MAT'],
                 positions=[1, 2, 3.5, 4.5],
@@ -1982,10 +2014,10 @@ if DEBUG:
 
 # compute all percentiles
 quantiles = np.linspace(0.01, 0.99, 99)
-area_perc_f_pat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_f_pat], prob=quantiles)
-area_perc_f_mat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_f_mat], prob=quantiles)
-area_perc_m_pat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_m_pat], prob=quantiles)
-area_perc_m_mat = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx_m_mat], prob=quantiles)
+area_perc_f_pat = stats.mstats.hdquantiles(df_manual_all['area'][idx_f_pat], prob=quantiles)
+area_perc_f_mat = stats.mstats.hdquantiles(df_manual_all['area'][idx_f_mat], prob=quantiles)
+area_perc_m_pat = stats.mstats.hdquantiles(df_manual_all['area'][idx_m_pat], prob=quantiles)
+area_perc_m_mat = stats.mstats.hdquantiles(df_manual_all['area'][idx_m_mat], prob=quantiles)
 
 if DEBUG:
     plt.clf()
@@ -2015,7 +2047,7 @@ for i, id in enumerate(unique_ids_f_pat):
     idx = np.logical_and(idx_f_pat, df_manual_all['id'] == id)
 
     # compute percentiles
-    area_perc_f_pat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+    area_perc_f_pat[i, :] = stats.mstats.hdquantiles(df_manual_all['area'][idx], prob=quantiles)
 
 # M/PAT
 for i, id in enumerate(unique_ids_m_pat):
@@ -2023,7 +2055,7 @@ for i, id in enumerate(unique_ids_m_pat):
     idx = np.logical_and(idx_m_pat, df_manual_all['id'] == id)
 
     # compute percentiles
-    area_perc_m_pat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+    area_perc_m_pat[i, :] = stats.mstats.hdquantiles(df_manual_all['area'][idx], prob=quantiles)
 
 # F/MAT
 for i, id in enumerate(unique_ids_f_mat):
@@ -2031,7 +2063,7 @@ for i, id in enumerate(unique_ids_f_mat):
     idx = np.logical_and(idx_f_mat, df_manual_all['id'] == id)
 
     # compute percentiles
-    area_perc_f_mat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+    area_perc_f_mat[i, :] = stats.mstats.hdquantiles(df_manual_all['area'][idx], prob=quantiles)
 
 # M/MAT
 for i, id in enumerate(unique_ids_m_mat):
@@ -2039,7 +2071,7 @@ for i, id in enumerate(unique_ids_m_mat):
     idx = np.logical_and(idx_m_mat, df_manual_all['id'] == id)
 
     # compute percentiles
-    area_perc_m_mat[i, :] = stats.mstats.hdquantiles(df_manual_all['area_manual'][idx], prob=quantiles)
+    area_perc_m_mat[i, :] = stats.mstats.hdquantiles(df_manual_all['area'][idx], prob=quantiles)
 
 # PAT
 if DEBUG:
