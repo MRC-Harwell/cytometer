@@ -79,15 +79,15 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
 
     print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)) + ': ' + ndpi_file)
 
+    # load file
+    im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
+
+    # level for a x8 downsample factor
+    level_8 = im.get_best_level_for_downsample(downsample_factor)
+
+    assert (im.level_downsamples[level_8] == downsample_factor)
+
     if OLD_CODE:  # this is the code that was used for the KLF14 experiments
-
-        # load file
-        im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
-
-        # level for a x8 downsample factor
-        level_8 = im.get_best_level_for_downsample(downsample_factor)
-
-        assert(im.level_downsamples[level_8] == downsample_factor)
 
         # Note: Now we have function cytometer.utils.rough_foreground_mask() to do the following, but the function
 
