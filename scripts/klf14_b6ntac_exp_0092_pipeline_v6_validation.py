@@ -1104,7 +1104,7 @@ for i_fold in range(len(idx_test_all)):
             df_auto_all = df_auto_all.append(df_auto, ignore_index=True)
 
         ''' Only manual contours and their corresponding auto labels loop '''
-@@@@@@@        for j, contour in enumerate(contours):
+        for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
             df_manual = df_common.copy()
@@ -1960,15 +1960,23 @@ df_manual_all = pd.read_pickle(data_filename)
 
 # keep only WAT cells
 df_manual_all = df_manual_all.loc[df_manual_all['type'] == 'wat', :]
+df_manual_all = df_manual_all.drop('type', axis=1)
+
+# drop the 'wat_prop_X' columns
+col_to_drop = df_manual_all.columns
+col_to_drop = col_to_drop[['wat_prop_' in x for x in col_to_drop]]
+df_manual_all = df_manual_all.drop(col_to_drop, axis=1)
 
 ## extra files that were not used in the CNN training and segmentation, but that they were added so that we could have
 ## respresentative ECDFs for animals that were undersampled
 
 file_svg_list_extra = [
     os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg'),
-    os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg')
+    os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg'),
+    os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006040_col_005272.svg'),
+    os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_012680_col_023936.svg'),
+    os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_017360_col_024712.svg')
 ]
-
 for i, file_svg in enumerate(file_svg_list_extra):
 
     # open histology testing image
@@ -1987,8 +1995,26 @@ for i, file_svg in enumerate(file_svg_list_extra):
     print('Cells: ' + str(len(contours)))
     print('')
 
+    # create dataframe for this image
+    im_idx = 'extra_' + str(i)
+    df_manual = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                          values=[im_idx] * len(contours), values_tag='im',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
+    df_manual['contour'] = range(0, len(contours))
+    df_manual['area'] = np.nan
 
-    @@@@@@@@@@@@@@@@
+    for j, contour in enumerate(contours):
+
+        # manual segmentation: rasterise object described by contour
+        cell_seg_contour = Image.new("1", im.size, "black")  # I = 32-bit signed integer pixels
+        draw = ImageDraw.Draw(cell_seg_contour)
+        draw.polygon(contour, outline="white", fill="white")
+        cell_seg_contour = np.array(cell_seg_contour, dtype=np.bool)
+
+        df_manual.loc[j, 'area'] = np.count_nonzero(cell_seg_contour) * xres * yres
+
+    # append contours from this image to the total dataframe
+    df_manual_all = df_manual_all.append(df_manual, ignore_index=True, sort=False)
 
 ## boxplots of PAT vs MAT in male
 
