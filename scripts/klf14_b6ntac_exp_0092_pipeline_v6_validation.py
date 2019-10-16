@@ -2110,6 +2110,9 @@ if DEBUG:
     plt.legend([idx_f_pat, idx_m_pat], ['Female PAT', 'Male PAT'], loc='best', prop={'size': 12})
     plt.tight_layout()
 
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male.png'))
+
 # MAT
 if DEBUG:
     plt.clf()
@@ -2122,6 +2125,9 @@ if DEBUG:
     plt.ylim(-0.5, 18)
     plt.tight_layout()
 
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male.png'))
+
 # Female
 if DEBUG:
     plt.clf()
@@ -2133,6 +2139,9 @@ if DEBUG:
     plt.legend([idx_f_pat, idx_f_mat], ['Female PAT', 'Female MAT'], loc='best', prop={'size': 12})
     plt.tight_layout()
 
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat.png'))
+
 # Male
 if DEBUG:
     plt.clf()
@@ -2143,6 +2152,9 @@ if DEBUG:
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend([idx_m_pat, idx_m_mat], ['Male PAT', 'Male MAT'], loc='best', prop={'size': 12})
     plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat.png'))
 
 # compute variability of area values for each quantile
 area_interval_f_pat = stats.mstats.hdquantiles(area_perc_f_pat, prob=[0.025, 0.5, 0.975], axis=0)
@@ -2171,6 +2183,9 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male_bands.png'))
+
 # MAT (females and males)
 if DEBUG:
     plt.clf()
@@ -2191,6 +2206,9 @@ if DEBUG:
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male_bands.png'))
 
 # Female (PAT and MAT)
 if DEBUG:
@@ -2213,6 +2231,9 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat_bands.png'))
+
 # Male (PAT and MAT)
 if DEBUG:
     plt.clf()
@@ -2233,6 +2254,9 @@ if DEBUG:
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat_bands.png'))
 
 # test whether the median values are different enough between female vs. male
 pval_perc_f2m_pat = np.zeros(shape=(len(quantiles),))
@@ -2263,7 +2287,7 @@ if DEBUG:
     idx = pval_perc_f2m_mat < 0.05
     delta_a_f2m_mat = (area_interval_m_mat[1, :] - area_interval_f_mat[1, :]) / area_interval_f_mat[1, :]
     plt.stem(quantiles[idx], 100 * delta_a_f2m_mat[idx],
-             markerfmt='.', linefmt='C1-', basefmt='C1', bottom=250,
+             markerfmt='.', linefmt='C1:', basefmt='C1', bottom=250,
              label='p-val$_{\mathrm{MAT}}$ < 0.05')
 
     plt.plot(quantiles, 100 * delta_a_f2m_pat, 'C0', linewidth=3, label='PAT')
@@ -2274,6 +2298,9 @@ if DEBUG:
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='lower right', prop={'size': 12})
     plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_female_2_male.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_female_2_male.png'))
 
 # test whether the median values are different enough between PAT vs. MAT
 pval_perc_f_pat2mat = np.zeros(shape=(len(quantiles),))
@@ -2318,4 +2345,5 @@ if DEBUG:
     plt.legend(loc='lower right', prop={'size': 12})
     plt.tight_layout()
 
-
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_pat_2_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_pat_2_mat.png'))
