@@ -280,6 +280,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         outfilename = os.path.join(training_dir, outfilename + '.tif')
 
         # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
+        print('Saving ' + outfilename)
         tifffile.imsave(outfilename, tile,
                         compress=9,
                         resolution=(int(im.properties["tiff.XResolution"]),
