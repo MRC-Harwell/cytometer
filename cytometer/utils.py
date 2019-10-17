@@ -2541,8 +2541,8 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
     return labels, labels_info
 
-
-def segmentation_pipeline3(im,
+# im = tile
+def segmentation_pipeline6(im,
                            contour_model, dmap_model, classifier_model, correction_model=None,
                            local_threshold_block_size=41,
                            min_cell_area=804, mask=None, min_mask_overlap=0.6, phagocytosis=True,
