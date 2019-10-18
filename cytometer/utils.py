@@ -914,7 +914,7 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, classifier_model=None
     return labels_all, labels_borders_all
 
 
-def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None, border_dilation=0):
+def segment_dmap_contour_v4(im, dmap_model, contour_model, classifier_model=None, border_dilation=0):
     """
     Segment cells in histology using the architecture pipeline v6:
       * distance transformation is estimated from histology using CNN.
@@ -958,10 +958,10 @@ def segment_dmap_contour_v4(im, contour_model, dmap_model, classifier_model=None
         raise ValueError('Input im_array must be (n, row, col, 3) or (row, col, 3)')
 
     # load models if they are provided as filenames
-    if isinstance(contour_model, six.string_types):
-        contour_model = keras.models.load_model(contour_model)
     if isinstance(dmap_model, six.string_types):
         dmap_model = keras.models.load_model(dmap_model)
+    if isinstance(contour_model, six.string_types):
+        contour_model = keras.models.load_model(contour_model)
     if isinstance(classifier_model, six.string_types):
         classifier_model = keras.models.load_model(classifier_model)
 
@@ -2565,13 +2565,17 @@ def segmentation_pipeline6(im,
         plt.axis('off')
 
     # segment histology
-    labels, _ = segment_dmap_contour_v3(im, contour_model=contour_model, dmap_model=dmap_model,
-                                        local_threshold_block_size=local_threshold_block_size, border_dilation=0)
+    labels, labels_class, _ \
+        = segment_dmap_contour_v4(im,
+                                  contour_model=contour_model, dmap_model=dmap_model, classifier_model=classifier_model,
+                                  border_dilation=0)
+    labels = labels[0, :, :]
 
     if DEBUG:
             plt.clf()
             plt.subplot(221)
             plt.imshow(im)
+            plt.contour(mask, colors='k')
             plt.axis('off')
             plt.title('Histology', fontsize=14)
 
