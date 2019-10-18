@@ -41,13 +41,12 @@ def change_input_size(model, batch_shape):
     """
 
     if type(model.get_layer(index=0)) == keras.engine.input_layer.InputLayer:
-        # remove the input layer of the model
-        model.layers.pop(0)
+        model.layers[0] = Input(batch_shape=batch_shape, name=model.layers[0].name)
+    else:
+        newInput = Input(batch_shape=batch_shape)
+        newOutputs = model(newInput)
+        model = Model(newInput, newOutputs)
 
-    # create new input to fit the requested tensor size
-    newInput = Input(batch_shape=batch_shape)
-    newOutputs = model(newInput)
-    model = Model(newInput, newOutputs)
     return model
 
 
