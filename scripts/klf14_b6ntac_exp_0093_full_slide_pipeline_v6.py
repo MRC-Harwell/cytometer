@@ -226,10 +226,6 @@ for i_file, file in enumerate(files_list):
         istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
                                                resample=PIL.Image.NEAREST)
 
-        # format im to what the CNNs expect
-        tile = tile.astype(np.float32)
-        tile /= 255
-
         if DEBUG:
             plt.clf()
             plt.imshow(tile)
