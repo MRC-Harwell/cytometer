@@ -2558,6 +2558,13 @@ def segmentation_pipeline6(im,
     if isinstance(correction_model, six.string_types):
         correction_model = keras.models.load_model(correction_model)
 
+    # format im to what the CNNs expect
+    if type(im) != np.ndarray:
+        raise TypeError('im expected to be np.ndarray')
+    if im.dtype == np.uint8:
+        im = im.astype(np.float32)
+        im /= 255
+
     if DEBUG:
         plt.clf()
         plt.imshow(im)
