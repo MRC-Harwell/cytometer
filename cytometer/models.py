@@ -26,28 +26,23 @@ elif K.image_data_format() == 'channels_last':
 
 def change_input_size(model, batch_shape):
     """
-    Add an input layer to the model to suit a certain tensor size.
-
-    If the model already has an input layer, it's removed (Note: the
-    removal of the input layer is by reference, so it will change the
-    input model outside of the function).
-
-    Note that after using this function model.summary() will display
-    a single input layer followed by the old model as a single layer.
+    Change the expected shape of the model's input tensor.
 
     :param model: Keras model.
     :param batch_shape: New input shape, e.g. (None, 500, 500, 3).
     :return: Keras model with modified input layer.
     """
 
-    if type(model.get_layer(index=0)) == keras.engine.input_layer.InputLayer:
-        model.layers[0] = Input(batch_shape=batch_shape, name=model.layers[0].name)
-    else:
-        newInput = Input(batch_shape=batch_shape)
-        newOutputs = model(newInput)
-        model = Model(newInput, newOutputs)
+    if type(model.get_layer(index=0)) != keras.engine.input_layer.InputLayer:
+        raise TypeError('First layer is not an input layer (keras.engine.input_layer.InputLayer)')
 
-    return model
+    newInput = Input(batch_shape=batch_shape, name=model.layers[0].name)
+    out = newInput
+    for layer in model.layers[1:]:
+        out = layer(out)
+    model_out = Model(inputs=newInput, outputs=out)
+
+    return model_out
 
 
 def check_model(model):
