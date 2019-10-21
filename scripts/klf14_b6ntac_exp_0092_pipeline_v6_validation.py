@@ -947,7 +947,7 @@ for i_fold in range(len(idx_test_all)):
 
     # segment histology
     pred_seg_test, pred_class_test, _ \
-        = cytometer.utils.segment_dmap_contour_v4(im_array_test,
+        = cytometer.utils.segment_dmap_contour_v6(im_array_test,
                                                   dmap_model=dmap_model_filename,
                                                   contour_model=contour_model_filename,
                                                   classifier_model=classifier_model_filename,

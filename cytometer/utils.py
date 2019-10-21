@@ -914,7 +914,7 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, classifier_model=None
     return labels_all, labels_borders_all
 
 
-def segment_dmap_contour_v4(im, dmap_model, contour_model, classifier_model=None, border_dilation=0):
+def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None, border_dilation=0):
     """
     Segment cells in histology using the architecture pipeline v6:
       * distance transformation is estimated from histology using CNN.
@@ -2573,7 +2573,7 @@ def segmentation_pipeline6(im,
 
     # segment histology
     labels, labels_class, _ \
-        = segment_dmap_contour_v4(im,
+        = segment_dmap_contour_v6(im,
                                   contour_model=contour_model, dmap_model=dmap_model, classifier_model=classifier_model,
                                   border_dilation=0)
     labels = labels[0, :, :]
