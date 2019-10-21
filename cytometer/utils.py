@@ -1992,11 +1992,11 @@ def clean_segmentation(labels,
       * Remove labels that are smaller than a certain size.
       * Remove labels that don't overlap enough with a binary mask.
     
-    :param labels: (row, col) np.ndarray with segmentation labels.
+    :param labels: (row, col) or (n, row, col) np.ndarray with segmentation labels.
     :param min_cell_area: (def 0) Remove labels with area < min_cell_area.
     :param remove_edge_labels: (def False) Boolean to remove labels that touch the edge of the image.
-    :param mask: (def None) (row, col) np.ndarray binary mask. If provided, remove labels that don't overlap
-    enough with the mask.
+    :param mask: (def None) (row, col) or (n, row, col) np.ndarray binary mask. If provided, remove labels that don't
+    overlap enough with the mask.
     :param min_mask_overlap: (def 0.6) Remove labels that don't have at least min_mask_overlap of their pixels
     within the mask.
     :param phagocytosis: (def False) Boolean to merge labels that are completely surrounded by another label to the
@@ -2018,10 +2018,15 @@ def clean_segmentation(labels,
         graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
         graph.node[dst]['mean color'] = (graph.node[dst]['total color'] / graph.node[dst]['pixel count'])
 
-    # to simply code, we treat (row, col) labels as (1, row, col)
+    # if mask provided, it must have the same shape as the labels array
+    if mask is not None and labels.shape != mask.shape:
+        raise ValueError('If provided, mask must have the same shape as labels')
+
+    # to simplify code, we convert (row, col) labels to (1, row, col)
     labels_is2d = labels.ndim == 2
     if labels_is2d:
         labels = np.expand_dims(labels, axis=0)
+        mask = np.expand_dims(mask, axis=0)
 
     for i in range(labels.shape[0]):
 
@@ -2082,6 +2087,20 @@ def clean_segmentation(labels,
         labels_list = np.unique(labels[i, :, :])
         n_non_background_labels = np.count_nonzero(labels_list != background)
         if phagocytosis and n_non_background_labels >= 2:
+
+            # a donut is a label with another label inside
+            there_are_donuts = True
+            while there_are_donuts:
+
+                prop = regionprops(labels[i, :, :])
+                for p in prop:
+                    print('label:' + str(p.label) + ', area: ' + str(p.area) + ', filled_area: ' + str(p.filled_area))
+
+                    # if this label has another label inside
+                    if p.area != p.filled_area:
+                        filled_label = @@@@@@@@@
+
+
             # compute Region Adjacency Graph (RAG) for labels. Note that we don't care about the mean colour difference
             # between regions. We only care about whether labels are adjacent to others or not
             rag = rag_mean_color(image=labels[i, :, :], labels=labels[i, :, :])
