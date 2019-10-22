@@ -2100,7 +2100,7 @@ def clean_segmentation(labels,
     return labels
 
 
-def correct_segmentation(im, seg, correction_model, model_type='-1_1', batch_size=16, smoothing=11):
+def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing=11, batch_size=16):
     """
     Correct histology segmentation using a fully convolutional neural network.
 
@@ -2117,9 +2117,9 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', batch_siz
     :param model_type: (def '-1_1') How the segmentation and histology are combined for the model. E.g. '-1_1' means
     that outside of the segmentation the histology intensity values are multiplied by -1, and by 1 inside. A list of
     all types can be found in the help for quality_model_mask().
+    :param smoothing: (def 11) Size of the smoothing kernel for each segmentation.
     :param batch_size: (def 16) Size of the batch processed at a time by the keras model. Larger values make better use
     of GPU parallelisation, but they also require more GPU memory.
-    :param smoothing: (def 11) Size of the smoothing kernel for each segmentation.
     :return:
     * corrected_seg: (n, row, col) Corrected segmentations.
     """
@@ -2532,10 +2532,58 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
 
 def segmentation_pipeline6(im,
-                           contour_model, dmap_model, classifier_model, correction_model=None,
-                           local_threshold_block_size=41,
+                           dmap_model, contour_model, classifier_model, correction_model=None,
                            min_cell_area=804, mask=None, min_mask_overlap=0.6, phagocytosis=True,
+                           correction_window_len=401, correction_smoothing=11,
                            batch_size=16):
+    """
+    White adipocyte segmentation pipeline v6 using convolution neural networks (CNNs).
+
+    1. This function segments an H&E histology image of white adipose tissue (WAT) into non-overlapping objects. For
+    this, it uses
+      * A dmap CNN that estimates a distance transformation of the histology (distance from each pixel to the closest
+        membrane).
+      * A contour CNN that computes the valleys in the distance transformation. These contours are a compromise to
+        separate adjacent cells as if they don't overlap.
+
+    2. The segmentation is cleaned removing labels that
+      * touch the edges of the segmentation;
+      * are smaller than a certain size;
+      * don't overlap enough with a binary mask;
+      * are completely surrounded by another label;
+      * are outside of a mask, if provided.
+
+    3. A classifier CNN assigns a score z to each pixel (z<=0.5: other type of tissue, z>0.5: WAT).
+
+    4. Each label is scaled to the same size and cropped.
+
+    5. A correction CNN and morphological operators then correct each individual segmentation, to account for cell
+       overlap.
+
+    :param im: (row, col, 3) np.array with H&E white adipose tissue histology.
+    :param dmap_model: Keras fully convolutional NN: Cytometer project experiment 0086.
+    Input: (n, row, col, 3) histology.
+    Output: (n, row, col) distance transformation.
+    :param contour_model: Keras fully convolutional NN: Cytometer project experiment 0091.
+    Input: output from dmap_model.
+    Output: (n, row, col) contour detection.
+    :param classifier_model: Keras fully convolutional NN: Cytometer project experiment 0088.
+    Input: (n, row, col, 3) histology.
+    Output: (n, row, col) pixel type score z (z<=0.5: other type of tissue, z>0.5: WAT).
+    :param correction_model: Keras fully convolutional NN: Cytometer project experiment 0089.
+    Input: (n', row', col', 3) cropped histology with cell in the middle. The image is multiplied by a cell segmentation
+    mask where the mask is +1 inside the segmentation, and -1 outside the segmentation.
+    Output: (n', row', col') pixel scores z' (z'<-0.5: pixel is segmented and shouldn't, z'>0.5: pixel is not segmented
+    and should).
+    :param min_cell_area: Scalar size in pixels of the minimum acceptable segmentation size.
+    :param mask:
+    :param min_mask_overlap:
+    :param phagocytosis:
+    :param correction_window_len:
+    :param correction_smoothing:
+    :param batch_size:
+    :return: window_labels, window_labels_corrected, index_list, scaling_factor_list
+    """
 
     # load model if filename provided
     if isinstance(contour_model, six.string_types):
@@ -2566,6 +2614,7 @@ def segmentation_pipeline6(im,
                                   contour_model=contour_model, dmap_model=dmap_model, classifier_model=classifier_model,
                                   border_dilation=0)
     labels = labels[0, :, :]
+    labels_class = labels_class[0, :, :, 0]
 
     if DEBUG:
             plt.clf()
@@ -2584,32 +2633,70 @@ def segmentation_pipeline6(im,
             plt.subplot(223)
             plt.cla()
             plt.imshow(im)
-            plt.contour(labels, levels=np.unique(labels), colors='k')
+            plt.contour(labels, levels=np.unique(labels), colors='C0')
+            plt.contour(mask, levels=np.unique(labels), colors='k')
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
     # remove labels that touch the edges, that are too small, or fully surrounded by another label
-    labels = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area, mask=mask,
-                                phagocytosis=True)
+    labels = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
+                                mask=mask, min_mask_overlap=min_mask_overlap,
+                                phagocytosis=phagocytosis)
 
     if DEBUG:
         plt.subplot(224)
         plt.cla()
         plt.imshow(im)
-        plt.contour(labels, levels=np.unique(labels), colors='k')
-        plt.contour(mask, levels=np.unique(labels), colors='r')
+        plt.contour(labels, levels=np.unique(labels), colors='C0')
+        plt.contour(mask, levels=np.unique(labels), colors='k')
         plt.axis('off')
         plt.title('Cleaned segmentation', fontsize=14)
 
-    # list of unique segmentation labels (remove background)
-    labels_seg = list(np.unique(labels))
-    if 0 in labels_seg:
-        labels_seg.remove(0)
+    # split image into individual labels
+    labels = np.expand_dims(labels, axis=0)
+    im = np.expand_dims(im, axis=0)
+    mask = np.expand_dims(mask, axis=0)
+    labels_class = np.expand_dims(labels_class, axis=0)
+    (window_labels, window_im, window_mask, window_labels_class), index_list, scaling_factor_list \
+        = one_image_per_label_v2((labels, im, mask, labels_class),
+                                 resize_to=(correction_window_len, correction_window_len),
+                                 resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
+                                 only_central_label=True)
 
-    if len(labels_seg) == 0:
-        warnings.warn('No labels produced!')
-        return labels
+    if DEBUG:
+        for j in range(window_im.shape[0]):
+            plt.clf()
+            plt.imshow(window_im[j, :, :, :])
+            plt.contour(window_labels[j, :, :], colors='C0')
+            plt.contour(window_mask[j, :, :], colors='k')
+            plt.title('j = ' + str(j), fontsize=14)
+            plt.axis('off')
+            plt.pause(1)
 
+    # correct segmentations
+    if correction_model is not None:
+
+        window_labels_corrected = correct_segmentation(im=window_im, seg=window_labels,
+                                                       correction_model=correction_model, model_type='-1_1',
+                                                       smoothing=correction_smoothing,
+                                                       batch_size=batch_size)
+
+    else:
+
+        window_labels_corrected = None
+
+    if DEBUG:
+        for j in range(window_im.shape[0]):
+            plt.clf()
+            plt.imshow(window_im[j, :, :, :])
+            plt.contour(window_labels[j, :, :], colors='C0')
+            plt.contour(window_labels_corrected[j, :, :], colors='C1')
+            plt.contour(window_mask[j, :, :], colors='k')
+            plt.title('j = ' + str(j), fontsize=14)
+            plt.axis('off')
+            plt.pause(1)
+
+    return window_labels, window_labels_corrected, index_list, scaling_factor_list
 
 
 def colour_labels_with_receptive_field(labels, receptive_field):
