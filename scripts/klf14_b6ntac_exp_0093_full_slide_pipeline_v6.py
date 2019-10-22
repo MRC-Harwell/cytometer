@@ -92,9 +92,13 @@ block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
 block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
 
 # segmentation parameters
-min_mask_overlap = 0.8
 min_cell_area = 1500
+min_mask_overlap = 0.8
+phagocytosis = True
+correction_window_len = 401
 batch_size = 16
+
+# segmentation correction parameters
 
 # process all histology slices in the data directory
 # files_list = glob.glob(os.path.join(data_dir, 'KLF14*.ndpi'))
@@ -238,10 +242,11 @@ for i_file, file in enumerate(files_list):
                                                                      dmap_model=dmap_model,
                                                                      correction_model=correction_model,
                                                                      classifier_model=classifier_model,
-                                                                     local_threshold_block_size=41,
+                                                                     min_cell_area=min_cell_area,
                                                                      mask=istissue_tile,
                                                                      min_mask_overlap=min_mask_overlap,
-                                                                     min_cell_area=min_cell_area,
+                                                                     phagocytosis=phagocytosis,
+                                                                     correction_window_len=correction_window_len,
                                                                      batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
