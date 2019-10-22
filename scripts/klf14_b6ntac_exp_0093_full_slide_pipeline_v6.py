@@ -96,6 +96,7 @@ min_cell_area = 1500
 min_mask_overlap = 0.8
 phagocytosis = True
 correction_window_len = 401
+correction_smoothing = 11
 batch_size = 16
 
 # segmentation correction parameters
@@ -238,8 +239,8 @@ for i_file, file in enumerate(files_list):
 
         # segment histology
         labels, labels_info = cytometer.utils.segmentation_pipeline6(tile,
-                                                                     contour_model=contour_model,
                                                                      dmap_model=dmap_model,
+                                                                     contour_model=contour_model,
                                                                      correction_model=correction_model,
                                                                      classifier_model=classifier_model,
                                                                      min_cell_area=min_cell_area,
@@ -247,6 +248,7 @@ for i_file, file in enumerate(files_list):
                                                                      min_mask_overlap=min_mask_overlap,
                                                                      phagocytosis=phagocytosis,
                                                                      correction_window_len=correction_window_len,
+                                                                     correction_smoothing=correction_smoothing,
                                                                      batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
