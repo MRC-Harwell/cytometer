@@ -1991,6 +1991,7 @@ def clean_segmentation(labels,
       * Remove labels that touch the edges of the segmentation.
       * Remove labels that are smaller than a certain size.
       * Remove labels that don't overlap enough with a binary mask.
+      * Remove labels that are completely surrounded by another label.
     
     :param labels: (row, col) or (n, row, col) np.ndarray with segmentation labels.
     :param min_cell_area: (def 0) Remove labels with area < min_cell_area.
@@ -1999,24 +2000,10 @@ def clean_segmentation(labels,
     overlap enough with the mask.
     :param min_mask_overlap: (def 0.6) Remove labels that don't have at least min_mask_overlap of their pixels
     within the mask.
-    :param phagocytosis: (def False) Boolean to merge labels that are completely surrounded by another label to the
+    :param phagocytosis: (def False) Boolean to remove labels that are completely surrounded by another label to the
     surrounding label.
     :return: (row, col) np.ndarray with removed labels as requested.
     """
-
-    # auxiliary functions for merge_hierarchical() taken from
-    # https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_rag_merge.html#sphx-glr-auto-examples-segmentation-plot-rag-merge-py
-    #
-    # For the purpose of this function, the details of what they do are not very important
-    def _weight_mean_color(graph, src, dst, n):
-        diff = graph.node[dst]['mean color'] - graph.node[n]['mean color']
-        diff = np.linalg.norm(diff)
-        return {'weight': diff}
-
-    def merge_mean_color(graph, src, dst):
-        graph.node[dst]['total color'] += graph.node[src]['total color']
-        graph.node[dst]['pixel count'] += graph.node[src]['pixel count']
-        graph.node[dst]['mean color'] = (graph.node[dst]['total color'] / graph.node[dst]['pixel count'])
 
     # if mask provided, it must have the same shape as the labels array
     if mask is not None and labels.shape != mask.shape:
@@ -2092,40 +2079,23 @@ def clean_segmentation(labels,
             there_are_donuts = True
             while there_are_donuts:
 
+                # unless we find a donut, by default we stop
+                there_are_donuts = False
+
                 prop = regionprops(labels[i, :, :])
                 for p in prop:
-                    print('label:' + str(p.label) + ', area: ' + str(p.area) + ', filled_area: ' + str(p.filled_area))
-
                     # if this label has another label inside
-                    if p.area != p.filled_area:
-                        filled_label = @@@@@@@@@
-
-
-            # compute Region Adjacency Graph (RAG) for labels. Note that we don't care about the mean colour difference
-            # between regions. We only care about whether labels are adjacent to others or not
-            rag = rag_mean_color(image=labels[i, :, :], labels=labels[i, :, :])
-
-            # a label is completely surrounded by another label if it has only one neighbour that is not the background.
-            # It doesn't matter which label surrounds which, as we just need to give both the same label to merge them.
-            # iterate pairs of adjacent labels (note that if rag.edges has (1,2), it doesn't also have (2,1))
-            for lab in rag.nodes:
-
-                # number of neighbours of this label
-                neigh = list(rag.neighbors(lab))
-
-                # if there's one and only one neighbour, and it's not the background, both labels should be merged
-                if len(neigh) == 1 and neigh[0] != background:
-                    if DEBUG:
-                        print('Merging ' + str((lab, neigh[0])))
-                    nx.set_edge_attributes(rag, {(lab, neigh[0]): {'weight': 0}})
-
-            # update the labels by greedy merging
-            labels[i, :, :] = merge_hierarchical(labels[i, :, :], rag, thresh=0.1, rag_copy=False, in_place_merge=True,
-                                                 merge_func=merge_mean_color, weight_func=_weight_mean_color)
+                    there_are_donuts = p.area != p.filled_area
+                    if there_are_donuts:
+                        # fill up the donut
+                        lab = labels[i, :, :]
+                        lab[binary_fill_holes(lab == p.label)] = p.label
+                        labels[i, :, :] = lab
+                        break
 
     # remove dummy dimension if the input was 2D
     if labels_is2d:
-        labels = [0, ...]
+        labels = labels[0, ...]
 
     return labels
 
@@ -2560,7 +2530,7 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
     return labels, labels_info
 
-# im = tile
+
 def segmentation_pipeline6(im,
                            contour_model, dmap_model, classifier_model, correction_model=None,
                            local_threshold_block_size=41,
@@ -2618,7 +2588,7 @@ def segmentation_pipeline6(im,
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
-    # remove labels that touch the edges or that are too small
+    # remove labels that touch the edges, that are too small, or fully surrounded by another label
     labels = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area, mask=mask,
                                 phagocytosis=True)
 
@@ -2636,15 +2606,15 @@ def segmentation_pipeline6(im,
     if 0 in labels_seg:
         labels_seg.remove(0)
 
-    # if len(labels_seg) == 0:
-    #     warnings.warn('No labels produced!')
-    #     continue
-    #
-    # # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
-    # df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-    #                                                   values=[i_fold], values_tag='fold',
-    #                                                   tags_to_keep=['id', 'ko', 'sex'])
-    #
+    if len(labels_seg) == 0:
+        warnings.warn('No labels produced!')
+        return labels
+
+    # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
+    df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                      values=[i_fold], values_tag='fold',
+                                                      tags_to_keep=['id', 'ko', 'sex'])
+
     # '''Iterate segmentation labels'''
     #
     # # loop segmentation labels
