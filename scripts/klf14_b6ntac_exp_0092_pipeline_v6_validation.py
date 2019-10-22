@@ -980,6 +980,8 @@ for i_fold in range(len(idx_test_all)):
 
     # clean segmentation: remove labels that are too small or that don't overlap enough with
     # the rough foreground mask
+    #
+    # Note: In 0093, we set phagocytosis=True, as we changed the method and made it much faster.
     pred_seg_test \
         = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=False, min_cell_area=min_cell_area,
                                              mask=rough_mask_test, phagocytosis=False)
