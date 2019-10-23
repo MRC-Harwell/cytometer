@@ -237,23 +237,25 @@ for i_file, file in enumerate(files_list):
             plt.contour(istissue_tile, colors='k')
             plt.axis('off')
 
-        # segment histology
-        labels, labels_info = cytometer.utils.segmentation_pipeline6(tile,
-                                                                     dmap_model=dmap_model,
-                                                                     contour_model=contour_model,
-                                                                     correction_model=correction_model,
-                                                                     classifier_model=classifier_model,
-                                                                     min_cell_area=min_cell_area,
-                                                                     mask=istissue_tile,
-                                                                     min_mask_overlap=min_mask_overlap,
-                                                                     phagocytosis=phagocytosis,
-                                                                     correction_window_len=correction_window_len,
-                                                                     correction_smoothing=correction_smoothing,
-                                                                     batch_size=batch_size)
+        # segment histology, split into individual objects, and apply segmentation correction
+        labels, labels_class, \
+        window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
+            = cytometer.utils.segmentation_pipeline6(tile,
+                                                     dmap_model=dmap_model,
+                                                     contour_model=contour_model,
+                                                     correction_model=correction_model,
+                                                     classifier_model=classifier_model,
+                                                     min_cell_area=min_cell_area,
+                                                     mask=istissue_tile,
+                                                     min_mask_overlap=min_mask_overlap,
+                                                     phagocytosis=phagocytosis,
+                                                     correction_window_len=correction_window_len,
+                                                     correction_smoothing=correction_smoothing,
+                                                     batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
-        if len(labels) == 0:
+        if len(window_labels) == 0:
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
             contours_all.append([])
             areas_all.append([])
@@ -263,12 +265,14 @@ for i_file, file in enumerate(files_list):
         if DEBUG:
             plt.clf()
             plt.subplot(221)
-            plt.imshow(tile[0, :, :, :])
+            plt.imshow(tile[:, :, :])
             plt.title('Histology', fontsize=16)
+            plt.axis('off')
             plt.subplot(222)
-            plt.imshow(tile[0, :, :, :])
-            plt.contour(labels[0, :, :, 0], levels=labels_info['label'], colors='blue', linewidths=1)
+            plt.imshow(tile[:, :, :])
+            plt.contour(labels, levels=np.unique(labels), colors='C0')
             plt.title('Full segmentation', fontsize=16)
+            plt.axis('off')
             plt.subplot(223)
             plt.boxplot(labels_info['quality'])
             plt.tick_params(labelbottom=False, bottom=False)
@@ -281,40 +285,6 @@ for i_file, file in enumerate(files_list):
             plt.contour(aux[0, :, :, 0] * labels[0, :, :, 0],
                         levels=labels_info['label'], colors='blue', linewidths=1)
             plt.title('Labels with quality >= 0.9', fontsize=16)
-
-        # list of cells that are on the edges
-        edge_labels = cytometer.utils.edge_labels(labels[0, :, :, 0])
-
-        # list of cells that are not on the edges
-        non_edge_labels = np.setdiff1d(labels_info['label'], edge_labels)
-
-        # list of cells that are OK'ed by quality network
-        good_labels = labels_info['label'][labels_info['quality'] >= quality_threshold]
-
-        # remove edge cells from the list of good cells
-        good_labels = np.setdiff1d(good_labels, edge_labels)
-
-        if DEBUG:
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(tile[0, :, :, :])
-            plt.title('Histology', fontsize=16)
-            plt.subplot(222)
-            plt.imshow(tile[0, :, :, :])
-            plt.contour(labels[0, :, :, 0], levels=labels_info['label'], colors='blue', linewidths=1)
-            plt.title('Full segmentation', fontsize=16)
-            plt.subplot(223)
-            plt.boxplot(labels_info['quality'])
-            plt.tick_params(labelbottom=False, bottom=False)
-            plt.title('Quality values', fontsize=16)
-            plt.xticks(fontsize=16)
-            plt.yticks(fontsize=16)
-            plt.subplot(224)
-            aux = cytometer.utils.paint_labels(labels, labels_info['label'], np.isin(labels_info['label'], good_labels))
-            plt.imshow(tile[0, :, :, :])
-            plt.contour(aux[0, :, :, 0] * labels[0, :, :, 0],
-                        levels=labels_info['label'], colors='blue', linewidths=1)
-            plt.title('Labels with quality >= ' + str(quality_threshold), fontsize=16)
 
         # mark all edge cells as "to do"
         todo_labels = np.isin(labels[0, :, :, 0], edge_labels) * istissue_tile

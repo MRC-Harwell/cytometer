@@ -1984,7 +1984,7 @@ def edge_labels(labels):
 def clean_segmentation(labels,
                        min_cell_area=0,
                        remove_edge_labels=False,
-                       mask=None, min_mask_overlap=0.6,
+                       mask=None, min_mask_overlap=0.8,
                        phagocytosis=False):
     """
     The function packs several methods to remove unwanted labels from a segmentation:
@@ -1998,10 +1998,9 @@ def clean_segmentation(labels,
     :param remove_edge_labels: (def False) Boolean to remove labels that touch the edge of the image.
     :param mask: (def None) (row, col) or (n, row, col) np.ndarray binary mask. If provided, remove labels that don't
     overlap enough with the mask.
-    :param min_mask_overlap: (def 0.6) Remove labels that don't have at least min_mask_overlap of their pixels
+    :param min_mask_overlap: (def 0.8) Remove labels that don't have at least min_mask_overlap of their pixels
     within the mask.
-    :param phagocytosis: (def False) Boolean to remove labels that are completely surrounded by another label to the
-    surrounding label.
+    :param phagocytosis: (def False) Boolean to remove labels that are completely surrounded by another label.
     :return: (row, col) np.ndarray with removed labels as requested.
     """
 
@@ -2117,9 +2116,10 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
     :param model_type: (def '-1_1') How the segmentation and histology are combined for the model. E.g. '-1_1' means
     that outside of the segmentation the histology intensity values are multiplied by -1, and by 1 inside. A list of
     all types can be found in the help for quality_model_mask().
-    :param smoothing: (def 11) Size of the smoothing kernel for each segmentation.
-    :param batch_size: (def 16) Size of the batch processed at a time by the keras model. Larger values make better use
-    of GPU parallelisation, but they also require more GPU memory.
+    :param smoothing: (def 11) Size of the smoothing kernel for each corrected segmentation.
+    :param batch_size: (def None) Scalar batch_size passed to keras correction model. Maximum number of images processed
+    at the same time by the GPUs. A larger number produces faster processing, but it also requires larger GPU memory. If
+    batch_size is None, then batch_size is the number of images for the correction model.
     :return:
     * corrected_seg: (n, row, col) Corrected segmentations.
     """
@@ -2140,6 +2140,8 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
     im = quality_model_mask(seg_out, im=im, quality_model_type=model_type)
 
     # process (histology * mask) to estimate which pixels are underestimated and which overestimated in the segmentation
+    if batch_size is None:
+        batch_size = im.shape[0]
     im = correction_model.predict(im, batch_size=batch_size)
 
     # compute the correction to be applied to the segmentation
@@ -2533,9 +2535,9 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
 def segmentation_pipeline6(im,
                            dmap_model, contour_model, classifier_model, correction_model=None,
-                           min_cell_area=804, mask=None, min_mask_overlap=0.6, phagocytosis=True,
+                           min_cell_area=804, mask=None, min_mask_overlap=0.8, phagocytosis=True,
                            correction_window_len=401, correction_smoothing=11,
-                           batch_size=16):
+                           batch_size=None):
     """
     White adipocyte segmentation pipeline v6 using convolution neural networks (CNNs).
 
@@ -2575,14 +2577,34 @@ def segmentation_pipeline6(im,
     mask where the mask is +1 inside the segmentation, and -1 outside the segmentation.
     Output: (n', row', col') pixel scores z' (z'<-0.5: pixel is segmented and shouldn't, z'>0.5: pixel is not segmented
     and should).
-    :param min_cell_area: Scalar size in pixels of the minimum acceptable segmentation size.
-    :param mask:
-    :param min_mask_overlap:
-    :param phagocytosis:
-    :param correction_window_len:
-    :param correction_smoothing:
-    :param batch_size:
-    :return: window_labels, window_labels_corrected, index_list, scaling_factor_list
+    :param min_cell_area: Scalar size in pixels of the minimum acceptable object size. This size refers to the input
+    image, before scaling for correction. (See clean_segmentation().)
+    :param mask: (def None) (row, col) np.array. Rough binary mask of tissue. Objects substantially outside this mask
+    will be discarded. By default, no mask is used. (See clean_segmentation().)
+    :param min_mask_overlap: (def 0.8) Scalar. Remove labels that don't have at least min_mask_overlap of their pixels
+    within the mask. (See clean_segmentation().)
+    :param phagocytosis: (def True). Boolean to remove labels that are completely surrounded by another label. (See
+    clean_segmentation().)
+    :param correction_window_len: (def 401) Scalar such that (correction_window_len, correction_window_len) is the final
+    size of the croppings after resizing. (See one_image_per_label_v2().)
+    :param correction_smoothing: (def 11) Size of the smoothing kernel for each corrected segmentation. (See
+    correct_segmentation().)
+    :param batch_size: (def None) Scalar batch_size passed to keras correction model. Maximum number of images processed
+    at the same time by the GPUs. A larger number produces faster processing, but it also requires larger GPU memory. If
+    batch_size is None, then batch_size is the number of images for the correction model.
+    :return:
+      * labels: (row, col) np.array (np.int32). Integer labels for non-overlap segmentation. All pixels with the same
+        label belong to the same object.
+      * labels_class: (row, col) np.array (np.bool). Pixel-wise boolean classification as "Other type of tissue" (False)
+        or "White Adipocyte Tissue" (True).
+      * window_labels: (num_cells, correction_window_len, correction_window_len) np.array (np.uint8). Non-overlap
+        segmentation of cropped histology.
+      * window_labels_corrected: (num_cells, correction_window_len, correction_window_len) np.array (np.uint8).
+        Corrected segmentation of cropped histology.
+      * window_labels_class: (num_cells, correction_window_len, correction_window_len) np.array (np.bool). Pixel-wise
+        boolean classification of cropped histology. "Other type of tissue" (False) or "White Adipocyte Tissue" (True).
+      * index_list: List of tuples (0, lab), where lab is the segmentation label of each crop.
+      * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
     """
 
     # load model if filename provided
@@ -2598,6 +2620,8 @@ def segmentation_pipeline6(im,
     # format im to what the CNNs expect
     if type(im) != np.ndarray:
         raise TypeError('im expected to be np.ndarray')
+    if im.ndim != 3:
+        raise ValueError('im expected to have shape (row, col, num_channel)')
     if im.dtype == np.uint8:
         im = im.astype(np.float32)
         im /= 255
@@ -2638,7 +2662,8 @@ def segmentation_pipeline6(im,
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
-    # remove labels that touch the edges, that are too small, or fully surrounded by another label
+    # remove labels that touch the edges, that are too small, don't overlap enough with the tissue mask, or are fully
+    # surrounded by another label
     labels = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
                                 mask=mask, min_mask_overlap=min_mask_overlap,
                                 phagocytosis=phagocytosis)
@@ -2675,14 +2700,11 @@ def segmentation_pipeline6(im,
 
     # correct segmentations
     if correction_model is not None:
-
         window_labels_corrected = correct_segmentation(im=window_im, seg=window_labels,
                                                        correction_model=correction_model, model_type='-1_1',
                                                        smoothing=correction_smoothing,
                                                        batch_size=batch_size)
-
     else:
-
         window_labels_corrected = None
 
     if DEBUG:
@@ -2696,7 +2718,8 @@ def segmentation_pipeline6(im,
             plt.axis('off')
             plt.pause(1)
 
-    return window_labels, window_labels_corrected, index_list, scaling_factor_list
+    return labels[0, ...], labels_class[0, ...], \
+           window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, index_list, scaling_factor_list
 
 
 def colour_labels_with_receptive_field(labels, receptive_field):
