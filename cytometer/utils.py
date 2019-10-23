@@ -2012,7 +2012,8 @@ def clean_segmentation(labels,
     labels_is2d = labels.ndim == 2
     if labels_is2d:
         labels = np.expand_dims(labels, axis=0)
-        mask = np.expand_dims(mask, axis=0)
+        if mask is not None:
+            mask = np.expand_dims(mask, axis=0)
 
     for i in range(labels.shape[0]):
 
@@ -2037,6 +2038,8 @@ def clean_segmentation(labels,
             idx = np.isin(labels[i, :, :], test_elements=labels_edge)
             aux = labels[i, :, :]
             aux[idx] = 0
+        else:
+            todo_edge = None
 
         if DEBUG:
             plt.subplot(223)
@@ -2597,6 +2600,7 @@ def segmentation_pipeline6(im,
         label belong to the same object.
       * labels_class: (row, col) np.array (np.bool). Pixel-wise boolean classification as "Other type of tissue" (False)
         or "White Adipocyte Tissue" (True).
+      * window_im: (num_cells, correction_window_len, correction_window_len, 3) np.array (np.uint8).
       * window_labels: (num_cells, correction_window_len, correction_window_len) np.array (np.uint8). Non-overlap
         segmentation of cropped histology.
       * window_labels_corrected: (num_cells, correction_window_len, correction_window_len) np.array (np.uint8).
@@ -2622,7 +2626,8 @@ def segmentation_pipeline6(im,
         raise TypeError('im expected to be np.ndarray')
     if im.ndim != 3:
         raise ValueError('im expected to have shape (row, col, num_channel)')
-    if im.dtype == np.uint8:
+    im_type = im.dtype
+    if im_type == np.uint8:
         im = im.astype(np.float32)
         im /= 255
 
@@ -2664,9 +2669,9 @@ def segmentation_pipeline6(im,
 
     # remove labels that touch the edges, that are too small, don't overlap enough with the tissue mask, or are fully
     # surrounded by another label
-    labels = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                mask=mask, min_mask_overlap=min_mask_overlap,
-                                phagocytosis=phagocytosis)
+    labels, todo_edge = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
+                                           mask=mask, min_mask_overlap=min_mask_overlap,
+                                           phagocytosis=phagocytosis)
 
     if DEBUG:
         plt.subplot(224)
@@ -2718,8 +2723,14 @@ def segmentation_pipeline6(im,
             plt.axis('off')
             plt.pause(1)
 
-    return labels[0, ...], labels_class[0, ...], \
-           window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, index_list, scaling_factor_list
+    # convert cropped histology back to histology dtype
+    if im_type == np.uint8:
+        window_im *= 255
+        window_im = window_im.astype(im_type)
+
+    return labels[0, ...], labels_class[0, ...], todo_edge, \
+           window_im, window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, \
+           index_list, scaling_factor_list
 
 
 def colour_labels_with_receptive_field(labels, receptive_field):
