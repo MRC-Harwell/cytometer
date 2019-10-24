@@ -2002,8 +2002,9 @@ def clean_segmentation(labels,
     within the mask.
     :param phagocytosis: (def False) Boolean to remove labels that are completely surrounded by another label.
     :return:
-    * labels: (row, col) np.ndarray with removed labels as requested.
-    * todo_edge:
+    * labels: (row, col) or (n, row, col) np.ndarray with removed labels as requested.
+    * is_removed_edge_label: (row, col) or (n, row, col) boolean np.ndarray. True pixels belong to edge labels that were
+      removed.
     """
 
     # if mask provided, it must have the same shape as the labels array
@@ -2017,6 +2018,7 @@ def clean_segmentation(labels,
         if mask is not None:
             mask = np.expand_dims(mask, axis=0)
 
+    is_removed_edge_label = np.zeros(shape=labels.shape, dtype=np.bool)
     for i in range(labels.shape[0]):
 
         if DEBUG:
@@ -2091,21 +2093,21 @@ def clean_segmentation(labels,
         # remove edge segmentations, because in general they correspond to incomplete objects
         if remove_edge_labels:
             labels_edge = edge_labels(labels[i, :, :])
-            idx = np.isin(labels[i, :, :], test_elements=labels_edge)
+            is_removed_edge_label[i, :, :] = np.isin(labels[i, :, :], test_elements=labels_edge)  # bool of pixels on edge cells
             aux = labels[i, :, :]
-            aux[idx] = 0
-        else:
-            todo_edge = None
+            aux[is_removed_edge_label[i, :, :]] = 0
 
         if DEBUG:
-            plt.subplot(223)
+            plt.subplot(224)
             plt.imshow(labels[i, :, :])
+            plt.contour(is_removed_edge_label[i, :, :], colors='w')
 
     # remove dummy dimension if the input was 2D
     if labels_is2d:
         labels = labels[0, ...]
+        is_removed_edge_label = is_removed_edge_label[0, ...]
 
-    return labels
+    return labels, is_removed_edge_label
 
 
 def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing=11, batch_size=16):
@@ -2261,9 +2263,9 @@ def segmentation_pipeline(im, contour_model, dmap_model, quality_model,
 
         # remove labels that touch the edges, that are too small or that don't overlap enough with the rough foreground
         # mask
-        labels[i, :, :, 0] = clean_segmentation(labels[i, :, :, 0],
-                                                remove_edge_labels=False, min_cell_area=smallest_cell_area,
-                                                mask=mask[i, :, :], min_mask_overlap=0.6)
+        labels[i, :, :, 0], _ = clean_segmentation(labels[i, :, :, 0],
+                                                   remove_edge_labels=False, min_cell_area=smallest_cell_area,
+                                                   mask=mask[i, :, :], min_mask_overlap=0.6)
 
         if DEBUG:
             plt.clf()
