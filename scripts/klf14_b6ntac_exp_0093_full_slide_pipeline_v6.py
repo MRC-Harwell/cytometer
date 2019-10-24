@@ -251,7 +251,7 @@ for i_file, file in enumerate(files_list):
                                                      phagocytosis=phagocytosis,
                                                      correction_window_len=correction_window_len,
                                                      correction_smoothing=correction_smoothing,
-                                                     batch_size=batch_size)
+                                                     batch_size=batch_size, return_bbox=True)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
@@ -284,33 +284,44 @@ for i_file, file in enumerate(files_list):
             plt.tight_layout()
 
         # downsample "to do"
-        lores_todo_labels = PIL.Image.fromarray(todo_labels[0, :, :])
-        lores_todo_labels = lores_todo_labels.resize((lores_last_col - lores_first_col,
-                                                      lores_last_row - lores_first_row),
-                                                     resample=PIL.Image.NEAREST)
-        lores_todo_labels = np.array(lores_todo_labels)
+        lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
+        lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
+                                                  lores_last_row - lores_first_row),
+                                                 resample=PIL.Image.NEAREST)
+        lores_todo_edge = np.array(lores_todo_edge)
 
         if DEBUG:
             plt.clf()
             plt.subplot(221)
             plt.imshow(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col])
             plt.title('Low res tissue mask', fontsize=16)
+            plt.axis('off')
             plt.subplot(222)
-            plt.imshow(istissue_tile[0, :, :])
+            plt.imshow(istissue_tile)
             plt.title('Full res tissue mask', fontsize=16)
+            plt.axis('off')
             plt.subplot(223)
-            plt.imshow(todo_labels[0, :, :])
+            plt.imshow(todo_edge)
             plt.title('Full res left over tissue', fontsize=16)
+            plt.axis('off')
             plt.subplot(224)
-            plt.imshow(lores_todo_labels)
+            plt.imshow(lores_todo_edge)
             plt.title('Low res left over tissue', fontsize=16)
+            plt.axis('off')
+            plt.tight_layout()
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(tile)
 
         # convert labels to contours (points) using marching squares
         # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
         contours = []
-        for lab in good_labels:
-            # load (row, col) coordinates
-            aux = find_contours(labels[0, :, :, 0] == lab, 0.5,
+        for lab in np.unique(labels):
+            if lab == 0:
+                continue
+            # compute (row, col) coordinates for contour points from binary mask
+            aux = find_contours(labels == lab, 0.5,
                                 fully_connected='low', positive_orientation='low')[0]
             # convert to (x, y) coordinates
             aux = aux[:, [1, 0]]
@@ -350,13 +361,13 @@ for i_file, file in enumerate(files_list):
         areas_all.append(areas)
 
         # update the tissue segmentation mask with the current window
-        if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_labels):
+        if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
             # if the mask remains identical, wipe out the whole window, as otherwise we'd have an
             # infinite loop
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
         else:
             # if the mask has been updated, use it to update the total tissue segmentation
-            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_labels
+            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
 
         # save results after every window computation
         np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)

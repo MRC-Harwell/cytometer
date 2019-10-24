@@ -1651,7 +1651,8 @@ def extract_bbox(im, bbox):
         return out
 
 
-def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, only_central_label=False):
+def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, only_central_label=False,
+                           return_bbox=False):
     """
     Crop a squared bounding box around each label in a segmentation array. Optionally, more volumes of the same size
     can be provided and they will be cropped according to the same labels (this is useful if e.g. you want to also crop
@@ -1661,7 +1662,7 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
 
         * The crops can all be scaled to the same size. This is useful to create inputs for a neural network.
 
-        * The labels volume can be masked so that only the label used to compute the bounding box is output.
+        * The labels volume can be masked so that only the label used to compute the bounding box is in the output.
 
     A typical syntax of this function is
 
@@ -1688,6 +1689,8 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
     Image.LINEAR.
     :param bbox_inc: (def 1.0) Increment in size applied to the bounding box.
     :param only_central_label: (def False) If True, delete the labels that are around the central label.
+    :param return_bbox: (def False) If True, return the four coordinates of the bounding box in the index_list output
+    argument as (r0, c0, rend, cend).
 
     First, the bounding box is computed as the tightest square that contains the label. Then, this size is increased by
     bbox_inc*100%. For example, bbox_inc=0.2 will increase the size by 20%. By default, bbox_inc=1.0 increases the size
@@ -1708,7 +1711,7 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
         where m is the total number of labels found in the first volume.
 
     * index_list: List of tuples (i, lab), where i is the image index, and lab is the segmentation label of each
-    crop.
+    crop. If input return_bbox=True, then (i, lab, r0, c0, rend, cend).
 
     * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
     """
@@ -1755,7 +1758,10 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
 
             # append results to output
             scaling_factor_list.append(scaling_factor)
-            index_list.append((i, lab))
+            if return_bbox:
+                index_list.append((i, lab) + bbox_rc)
+            else:
+                index_list.append((i, lab))
 
             # loop vols
             for k, vol in enumerate(vols):
@@ -2548,7 +2554,7 @@ def segmentation_pipeline6(im,
                            dmap_model, contour_model, classifier_model, correction_model=None,
                            min_cell_area=804, mask=None, min_mask_overlap=0.8, phagocytosis=True,
                            correction_window_len=401, correction_smoothing=11,
-                           batch_size=None):
+                           batch_size=None, return_bbox=False):
     """
     White adipocyte segmentation pipeline v6 using convolution neural networks (CNNs).
 
@@ -2603,6 +2609,8 @@ def segmentation_pipeline6(im,
     :param batch_size: (def None) Scalar batch_size passed to keras correction model. Maximum number of images processed
     at the same time by the GPUs. A larger number produces faster processing, but it also requires larger GPU memory. If
     batch_size is None, then batch_size is the number of images for the correction model.
+    :param return_bbox: (def False) If True, return the four coordinates of the bounding box in the index_list output
+    argument as (r0, c0, rend, cend).
     :return:
       * labels: (row, col) np.array (np.int32). Integer labels for non-overlap segmentation. All pixels with the same
         label belong to the same object.
@@ -2617,7 +2625,8 @@ def segmentation_pipeline6(im,
         Corrected segmentation of cropped histology.
       * window_labels_class: (num_cells, correction_window_len, correction_window_len) np.array (np.bool). Pixel-wise
         boolean classification of cropped histology. "Other type of tissue" (False) or "White Adipocyte Tissue" (True).
-      * index_list: List of tuples (0, lab), where lab is the segmentation label of each crop.
+      * index_list: List of tuples (i, lab), where i is the image index, and lab is the segmentation label of each
+        crop. If input return_bbox=True, then (i, lab, r0, c0, rend, cend).
       * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
     """
 
@@ -2701,7 +2710,7 @@ def segmentation_pipeline6(im,
         = one_image_per_label_v2((labels, im, mask, labels_class),
                                  resize_to=(correction_window_len, correction_window_len),
                                  resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
-                                 only_central_label=True)
+                                 only_central_label=True, return_bbox=return_bbox)
 
     if DEBUG:
         for j in range(window_im.shape[0]):
