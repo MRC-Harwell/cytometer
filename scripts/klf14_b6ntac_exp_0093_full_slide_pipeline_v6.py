@@ -238,7 +238,7 @@ for i_file, file in enumerate(files_list):
             plt.axis('off')
 
         # segment histology, split into individual objects, and apply segmentation correction
-        labels, labels_class, labels_edge, \
+        labels, labels_class, todo_edge, \
         window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
             = cytometer.utils.segmentation_pipeline6(tile,
                                                      dmap_model=dmap_model,
@@ -255,7 +255,7 @@ for i_file, file in enumerate(files_list):
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
-        if len(window_labels) == 0:
+        if len(index_list) == 0:
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
             contours_all.append([])
             areas_all.append([])
@@ -272,6 +272,7 @@ for i_file, file in enumerate(files_list):
             plt.subplot(222)
             plt.imshow(tile[:, :, :])
             plt.contour(labels, levels=np.unique(labels), colors='C0')
+            plt.contourf(todo_edge, colors='C2', levels=[0.5, 1])
             plt.title('Full segmentation', fontsize=16)
             plt.axis('off')
             plt.subplot(212)
@@ -281,13 +282,6 @@ for i_file, file in enumerate(files_list):
             plt.title('Crop around object and corrected segmentation', fontsize=16)
             plt.axis('off')
             plt.tight_layout()
-
-        # pixels in the tissue mask that are not segmented still need to be done in the next iteration
-        todo_labels = np.logical_xor(labels, istissue_tile)
-
-        if DEBUG:
-            plt.subplot(222)
-            plt.contour(todo_labels, colors='C2')
 
         # downsample "to do"
         lores_todo_labels = PIL.Image.fromarray(todo_labels[0, :, :])
