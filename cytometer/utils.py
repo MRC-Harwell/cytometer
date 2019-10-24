@@ -2608,6 +2608,8 @@ def segmentation_pipeline6(im,
         label belong to the same object.
       * labels_class: (row, col) np.array (np.bool). Pixel-wise boolean classification as "Other type of tissue" (False)
         or "White Adipocyte Tissue" (True).
+      * todo_edge: (row, col) np.array (np.bool). Pixels-wise boolean classification of pixels that belong to cells on
+        the edge that need to be processed in the next iteration.
       * window_im: (num_cells, correction_window_len, correction_window_len, 3) np.array (np.uint8).
       * window_labels: (num_cells, correction_window_len, correction_window_len) np.array (np.uint8). Non-overlap
         segmentation of cropped histology.
