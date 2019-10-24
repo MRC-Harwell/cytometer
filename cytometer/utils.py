@@ -2001,14 +2001,16 @@ def clean_segmentation(labels,
     :param min_mask_overlap: (def 0.8) Remove labels that don't have at least min_mask_overlap of their pixels
     within the mask.
     :param phagocytosis: (def False) Boolean to remove labels that are completely surrounded by another label.
-    :return: (row, col) np.ndarray with removed labels as requested.
+    :return:
+    * labels: (row, col) np.ndarray with removed labels as requested.
+    * todo_edge:
     """
 
     # if mask provided, it must have the same shape as the labels array
     if mask is not None and labels.shape != mask.shape:
         raise ValueError('If provided, mask must have the same shape as labels')
 
-    # to simplify code, we convert (row, col) labels to (1, row, col)
+    # convert (row, col) labels to (1, row, col), so that we can use the same code for one or multiple inputs
     labels_is2d = labels.ndim == 2
     if labels_is2d:
         labels = np.expand_dims(labels, axis=0)
@@ -2030,19 +2032,6 @@ def clean_segmentation(labels,
 
         if DEBUG:
             plt.subplot(222)
-            plt.imshow(labels[i, :, :])
-
-        # remove edge segmentations, because in general they correspond to incomplete objects
-        if remove_edge_labels:
-            labels_edge = edge_labels(labels[i, :, :])
-            idx = np.isin(labels[i, :, :], test_elements=labels_edge)
-            aux = labels[i, :, :]
-            aux[idx] = 0
-        else:
-            todo_edge = None
-
-        if DEBUG:
-            plt.subplot(223)
             plt.imshow(labels[i, :, :])
 
         # remove labels that are not substantially within the mask
@@ -2068,7 +2057,7 @@ def clean_segmentation(labels,
                     aux[labels[i, :, :] == p.label] = 0
 
         if DEBUG:
-            plt.subplot(224)
+            plt.subplot(223)
             plt.imshow(labels[i, :, :])
 
         # remove labels that are completely surrounded by another label
@@ -2094,6 +2083,23 @@ def clean_segmentation(labels,
                         lab[binary_fill_holes(lab == p.label)] = p.label
                         labels[i, :, :] = lab
                         break
+
+        if DEBUG:
+            plt.subplot(223)
+            plt.imshow(labels[i, :, :])
+
+        # remove edge segmentations, because in general they correspond to incomplete objects
+        if remove_edge_labels:
+            labels_edge = edge_labels(labels[i, :, :])
+            idx = np.isin(labels[i, :, :], test_elements=labels_edge)
+            aux = labels[i, :, :]
+            aux[idx] = 0
+        else:
+            todo_edge = None
+
+        if DEBUG:
+            plt.subplot(223)
+            plt.imshow(labels[i, :, :])
 
     # remove dummy dimension if the input was 2D
     if labels_is2d:
