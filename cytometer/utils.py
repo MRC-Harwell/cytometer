@@ -16,7 +16,7 @@ from skimage import measure
 from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing, \
     binary_erosion, thin
 from skimage.future.graph import rag_mean_color, show_rag, merge_hierarchical
-from skimage.measure import regionprops
+from skimage.measure import regionprops, find_contours
 from skimage.segmentation import clear_border
 from skimage.transform import EuclideanTransform, AffineTransform, warp, matrix_transform
 from skimage.color import rgb2hsv, hsv2rgb
@@ -2762,6 +2762,57 @@ def segmentation_pipeline6(im,
     return labels[0, ...], labels_class[0, ...], todo_edge, \
            window_im, window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, \
            index_list, scaling_factor_list
+
+
+def labels2contours(window_labels, offset_xy=None):
+    """
+    Extract contours from labels.
+
+    Each label is assumed to be a polygon. The polygon border is extracted as a list of (x, y)-points using marching
+    cubes (http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours).
+
+    The contour points assume that pixel size is (1, 1).
+
+    :param window_labels: np.array (n, row, col). Each (i, ...) is a 2D image with one or more labels.
+    :param offset_xy: (def None) np.array (n, 2). Each row contains the (x, y) coordinates of the first pixel. This
+    is useful when you have a collection of cropped objects obtained with one_image_per_label_v2, and you want to
+    compute the coordinates that the contours had in the original image, before the cropping.
+    :return:
+    * contours: List of np.array (m_i, x, y). Each np.array contains the points of a contour.
+    """
+
+    warnings.warn('Broken function. It is not taking into account the scaling of the cropped windows')
+
+    if offset_xy is not None:
+        if window_labels.shape[0] != offset_xy.shape[0] or offset_xy.shape[1] != 2:
+            raise ValueError('offset must have shape (n, 2) if window_labels has shape (n, row, col)')
+
+    # convert labels to contours (points) using marching squares
+    # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
+    contours = []
+    for i in range(window_labels.shape[0]):
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(window_labels[i, ...])
+
+        for lab in np.unique(window_labels[i, ...]):
+            if lab == 0:
+                continue
+            # compute (row, col) coordinates for contour points from binary mask
+            aux = find_contours(window_labels[i, ...] == lab, 0.5,
+                                fully_connected='low', positive_orientation='low')[0]
+            # convert to (x, y) coordinates
+            aux = aux[:, [1, 0]]
+            if DEBUG:
+                plt.plot(aux[:, 0], aux[:, 1], 'w')
+            # add window offset
+            aux[:, 0] = aux[:, 0] + offset_xy[i, 0]
+            aux[:, 1] = aux[:, 1] + offset_xy[i, 1]
+            # add to the list of contours
+            contours.append(aux)
+
+    return contours
 
 
 def colour_labels_with_receptive_field(labels, receptive_field):
