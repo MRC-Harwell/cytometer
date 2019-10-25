@@ -2554,7 +2554,7 @@ def segmentation_pipeline6(im,
                            dmap_model, contour_model, classifier_model, correction_model=None,
                            min_cell_area=804, mask=None, min_mask_overlap=0.8, phagocytosis=True,
                            correction_window_len=401, correction_smoothing=11,
-                           batch_size=None, return_bbox=False):
+                           batch_size=None, return_bbox=False, return_bbox_coordinates='rc'):
     """
     White adipocyte segmentation pipeline v6 using convolution neural networks (CNNs).
 
@@ -2611,6 +2611,7 @@ def segmentation_pipeline6(im,
     batch_size is None, then batch_size is the number of images for the correction model.
     :param return_bbox: (def False) If True, return the four coordinates of the bounding box in the index_list output
     argument as (r0, c0, rend, cend).
+    :param return_bbox_coordinates: (def 'rc') Type of bbox_coordinates: 'rc': (row, col). 'xy': (x, y).
     :return:
       * labels: (row, col) np.array (np.int32). Integer labels for non-overlap segmentation. All pixels with the same
         label belong to the same object.
@@ -2625,8 +2626,12 @@ def segmentation_pipeline6(im,
         Corrected segmentation of cropped histology.
       * window_labels_class: (num_cells, correction_window_len, correction_window_len) np.array (np.bool). Pixel-wise
         boolean classification of cropped histology. "Other type of tissue" (False) or "White Adipocyte Tissue" (True).
-      * index_list: List of tuples (i, lab), where i is the image index, and lab is the segmentation label of each
-        crop. If input return_bbox=True, then (i, lab, r0, c0, rend, cend).
+      * index_list: np.array where each row is [i, lab], where i is the image index, and lab is the segmentation label
+        of each crop.
+        If input return_bbox=True and return_bbox_coordinates=='rc', then each row is [i, lab, r0, c0, rend, cend] where
+        [r0, c0, rend, cend] are the coordinates that define the bounding box. (Note that the coordinates can be
+        negative because the bounding box may fall outside the image).
+        If input return_bbox=True and return_bbox_coordinates=='rc', then each row is [i, lab, x0, y0, xend, yend].
       * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
     """
 
@@ -2746,6 +2751,13 @@ def segmentation_pipeline6(im,
     if im_type == np.uint8:
         window_im *= 255
         window_im = window_im.astype(im_type)
+
+    if return_bbox:
+        if return_bbox_coordinates == 'rc':
+            index_list = np.vstack(index_list)
+        elif return_bbox_coordinates == 'xy':
+            index_list = np.vstack(index_list)
+            index_list[:, [2, 3, 4, 5]] = index_list[:, [4, 5, 2, 3]]
 
     return labels[0, ...], labels_class[0, ...], todo_edge, \
            window_im, window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, \
