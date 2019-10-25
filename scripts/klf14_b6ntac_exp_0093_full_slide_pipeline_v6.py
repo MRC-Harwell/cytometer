@@ -41,9 +41,8 @@ from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_j
 import PIL
 import tensorflow as tf
 import keras
-from skimage.measure import find_contours, regionprops
+from skimage.measure import regionprops
 import shutil
-import inspect
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -251,7 +250,8 @@ for i_file, file in enumerate(files_list):
                                                      phagocytosis=phagocytosis,
                                                      correction_window_len=correction_window_len,
                                                      correction_smoothing=correction_smoothing,
-                                                     batch_size=batch_size, return_bbox=True)
+                                                     return_bbox=True, return_bbox_coordinates='xy',
+                                                     batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
@@ -283,7 +283,7 @@ for i_file, file in enumerate(files_list):
             plt.axis('off')
             plt.tight_layout()
 
-        # downsample "to do"
+        # downsample "to do" mask so that the rough tissue segmentation can be updated
         lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
         lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
                                                   lores_last_row - lores_first_row),
@@ -310,28 +310,17 @@ for i_file, file in enumerate(files_list):
             plt.axis('off')
             plt.tight_layout()
 
+        # convert labels to contours (points)
+        offset_xy = index_list[:, 2:4]  # index_list: [i, lab, x0, y0, xend, yend]
+        # offset_xy[:, 0] += first_col
+        # offset_xy[:, 1] += first_row
+        contour = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy)
+
         if DEBUG:
             plt.clf()
             plt.imshow(tile)
-
-        # convert labels to contours (points) using marching squares
-        # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
-        contours = []
-        for lab in np.unique(labels):
-            if lab == 0:
-                continue
-            # compute (row, col) coordinates for contour points from binary mask
-            aux = find_contours(labels == lab, 0.5,
-                                fully_connected='low', positive_orientation='low')[0]
-            # convert to (x, y) coordinates
-            aux = aux[:, [1, 0]]
-            if DEBUG:
-                plt.plot(aux[:, 0], aux[:, 1])
-            # add window offset
-            aux[:, 0] = aux[:, 0] + first_col
-            aux[:, 1] = aux[:, 1] + first_row
-            # add to the list of contours
-            contours.append(aux)
+            for j in range(len(contour)):
+                plt.fill(contour[j][:, 0], contour[j][:, 1], edgecolor='C0', fill=False)
 
         # compute cell areas
         props = regionprops(labels)
