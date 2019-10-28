@@ -1713,7 +1713,7 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
     * index_list: List of tuples (i, lab), where i is the image index, and lab is the segmentation label of each
     crop. If input return_bbox=True, then (i, lab, r0, c0, rend, cend).
 
-    * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
+    * scaling_factor_rc_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
     """
 
     # input preprocessing
@@ -1737,7 +1737,7 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
     # loop labels in each image (we could also use regionprops() and reuse code from one_image_per_label, but this way
     # the code is a lot shorter and clearer)
     index_list = []
-    scaling_factor_list = []
+    scaling_factor_rc_list = []
     for i in range(labels.shape[0]):
         for lab in np.unique(labels[i, :, :]):
 
@@ -1745,19 +1745,19 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
                 # skip background label
                 continue
 
-            # bounding box for current label
+            # bounding box for current label: bbox_rc = (r0, c0, rend, cend)
             bbox_rc = bounding_box_with_margin(labels[i, :, :] == lab, inc=bbox_inc, coordinates='rc')
 
             # compute scaling factor
             if resize_to is None:
-                scaling_factor = np.array([1., 1.])
+                scaling_factor_rc = np.array([1., 1.])
             else:
-                # scaling factor for the cropped image
-                scaling_factor = np.array(resize_to) / np.array([bbox_rc[2] - bbox_rc[0],
+                # scaling factor for the cropped image: bbox_rc = (r0, c0, rend, cend)
+                scaling_factor_rc = np.array(resize_to) / np.array([bbox_rc[2] - bbox_rc[0],
                                                                  bbox_rc[3] - bbox_rc[1]])
 
             # append results to output
-            scaling_factor_list.append(scaling_factor)
+            scaling_factor_rc_list.append(scaling_factor_rc)
             if return_bbox:
                 index_list.append((i, lab) + bbox_rc)
             else:
@@ -1790,7 +1790,7 @@ def one_image_per_label_v2(vols, resize_to=None, resample=None, bbox_inc=1.0, on
         vols_crop = vols_crop[0]
 
     # exit function
-    return vols_crop, index_list, scaling_factor_list
+    return vols_crop, index_list, scaling_factor_rc_list
 
 
 def quality_model_mask(seg, im=None, quality_model_type='0_1', quality_model_type_param=None):
@@ -2757,7 +2757,7 @@ def segmentation_pipeline6(im,
             index_list = np.vstack(index_list)
         elif return_bbox_coordinates == 'xy':
             index_list = np.vstack(index_list)
-            index_list[:, [2, 3, 4, 5]] = index_list[:, [4, 5, 2, 3]]
+            index_list[:, [2, 3, 4, 5]] = index_list[:, [3, 2, 5, 4]]
 
     return labels[0, ...], labels_class[0, ...], todo_edge, \
            window_im, window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, \
