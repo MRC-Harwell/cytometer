@@ -43,6 +43,7 @@ import tensorflow as tf
 import keras
 from skimage.measure import regionprops
 import shutil
+import itertools
 
 # limit GPU memory used
 from keras.backend.tensorflow_backend import set_session
@@ -263,7 +264,7 @@ for i_file, file in enumerate(files_list):
             continue
 
         if DEBUG:
-            j = 23
+            j = 4
             plt.clf()
             plt.subplot(221)
             plt.imshow(tile[:, :, :])
@@ -310,40 +311,51 @@ for i_file, file in enumerate(files_list):
             plt.axis('off')
             plt.tight_layout()
 
-        # convert labels to contours (points)
+        # convert overlap labels in cropped images to contours (points), and add cropping window offset so that the
+        # contours are in the tile-window coordinates
         offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
-        # offset_xy[:, 0] += first_col
-        # offset_xy[:, 1] += first_row
-        contour = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
+        contours = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
                                                   scaling_factor_xy=scaling_factor_list)
 
         if DEBUG:
             plt.clf()
             plt.imshow(tile)
-            for j in range(len(contour)):
-                plt.fill(contour[j][:, 0], contour[j][:, 1], edgecolor='C0', fill=False)
+            for j in range(len(contours)):
+                plt.fill(contours[j][:, 0], contours[j][:, 1], edgecolor='C0', fill=False)
 
-        # compute cell areas
+        # compute non-overlap cell areas
         props = regionprops(labels)
         p_label = [p['label'] for p in props]
         p_area = np.array([p['area'] for p in props])
-        areas = p_area[np.isin(p_label, good_labels)] * xres * yres  # (m^2)
+        areas = p_area * xres * yres  # (m^2)
 
         # downsample contours for AIDA annotations file
         lores_contours = []
         for c in contours:
             lores_c = bspline_resample(c, factor=contour_downsample_factor, k=bspline_k, is_closed=True)
             lores_contours.append(lores_c)
-            if DEBUG:
-                plt.plot(c[:, 0], c[:, 1], 'b')
-                plt.plot(lores_c[:, 0], lores_c[:, 1], 'r')
+
+        if DEBUG:
+            for j in range(len(contours)):
+                plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C1', fill=False)
+
+        # add tile offset, so that contours are in full slide coordinates
+        for j in range(len(contours)):
+            lores_contours[j][:, 0] += first_col
+            lores_contours[j][:, 1] += first_row
+
+        # give one of four colours to each output contour
+        iter = itertools.cycle([0, 90, 180, 270])
+        hue = []
+        for j in range(len(lores_contours)):
+            hue.append(next(iter))
 
         # add segmented contours to annotations file
         if os.path.isfile(annotations_file):
-            append_paths_to_aida_json_file(annotations_file, lores_contours)
+            append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue)
         elif len(contours) > 0:
             fp = open(annotations_file, 'w')
-            write_paths_to_aida_json_file(fp, lores_contours)
+            write_paths_to_aida_json_file(fp, lores_contours, hue=hue)
             fp.close()
 
         # add contours to list of all contours for the image
