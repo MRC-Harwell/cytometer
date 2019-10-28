@@ -568,7 +568,7 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, m
     return paths_out
 
 
-def write_path_to_aida_json_file(fp, x):
+def write_path_to_aida_json_file(fp, x, hue=170):
     """
     Write single contour to a JSON file in AIDA's annotation format.
 
@@ -576,6 +576,7 @@ def write_path_to_aida_json_file(fp, x):
 
     :param fp: file pointer to text file that is open for writing/appending.
     :param x: numpy.ndarray with two columns, for (x,y)-coordinates of the points of a polygonal contour.
+    :param hue: (def 170, which is a greenish blue) The hue of the color as a value in degrees between 0 and 360.
     :return: None.
     """
     fp.write('        {\n')
@@ -583,13 +584,13 @@ def write_path_to_aida_json_file(fp, x):
     fp.write('          "type": "path",\n')
     fp.write('          "color": {\n')
     fp.write('            "fill": {\n')
-    fp.write('              "hue": 170,\n')
+    fp.write('              "hue": ' + str(hue) + ',\n')
     fp.write('              "saturation": 0.44,\n')
     fp.write('              "lightness": 0.69,\n')
     fp.write('              "alpha": 0.7\n')
     fp.write('            },\n')
     fp.write('            "stroke": {\n')
-    fp.write('              "hue": 170,\n')
+    fp.write('              "hue": ' + str(hue) + ',\n')
     fp.write('              "saturation": 0.44,\n')
     fp.write('              "lightness": 0.69,\n')
     fp.write('              "alpha": 1.0\n')
@@ -621,14 +622,19 @@ def write_path_to_aida_json_file(fp, x):
     return
 
 
-def write_paths_to_aida_json_file(fp, xs):
+def write_paths_to_aida_json_file(fp, xs, hue=170):
     """
     Write a list/tuple of contours to a JSON file in AIDA's annotation format.
 
     :param fp: file pointer to text file that is open for writing/appending.
     :param xs: List of contours. Each contour is a list of points given as [x,y] or (x,y).
+    :param hue: (def 170, a greenish blue). Integer or list of integers with hue value (between 0 and 360 degrees), one
+    per contour in xs. If hue is an integer, the same hue is applied to each contour.
     :return: None.
     """
+
+    if type(hue) != list:
+        hue = [hue] * len(xs)
 
     # write file header
     fp.write('{\n')
@@ -639,7 +645,7 @@ def write_paths_to_aida_json_file(fp, xs):
     fp.write('      "opacity": 1,\n')
     fp.write('      "items": [\n')
     for i, x in enumerate(xs):
-        write_path_to_aida_json_file(fp, x)
+        write_path_to_aida_json_file(fp, x, hue=hue[i])
         if i == len(xs) - 1:
             fp.write('\n')  # last path
         else:
@@ -652,12 +658,14 @@ def write_paths_to_aida_json_file(fp, xs):
     return
 
 
-def append_paths_to_aida_json_file(file, xs):
+def append_paths_to_aida_json_file(file, xs, hue=170):
     """
     Add contours to AIDA's annotation file in JSON format.
 
     :param file: Path and filename of .json file with AIDA annotations.
     :param xs: List of contours. Each contour is a list of points given as [x,y] or (x,y).
+    :param hue: (def 170, a greenish blue). Integer or list of integers with hue value (between 0 and 360 degrees), one
+    per contour in xs. If hue is an integer, the same hue is applied to each contour.
     :return: None.
     """
 
@@ -682,6 +690,9 @@ def append_paths_to_aida_json_file(file, xs):
 
     if len(xs) == 0:
         return
+
+    if type(hue) != list:
+        hue = [hue] * len(xs)
 
     # truncate the tail of the annotations file:
     #
@@ -738,7 +749,7 @@ def append_paths_to_aida_json_file(file, xs):
 
     # append new contours to JSON file
     for i, x in enumerate(xs):
-        write_path_to_aida_json_file(fp, x)
+        write_path_to_aida_json_file(fp, x, hue=hue[i])
         if i == len(xs) - 1:
             fp.write('\n')  # last path
         else:
