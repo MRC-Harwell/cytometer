@@ -6,7 +6,7 @@ import six
 import matplotlib.pyplot as plt
 from PIL import Image, TiffImagePlugin
 from statistics import mode
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, splev
 from scipy.ndimage import median_filter
 from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage.morphology import binary_fill_holes, generate_binary_structure
