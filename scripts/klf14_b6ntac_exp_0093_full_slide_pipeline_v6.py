@@ -311,10 +311,11 @@ for i_file, file in enumerate(files_list):
             plt.tight_layout()
 
         # convert labels to contours (points)
-        offset_xy = index_list[:, 2:4]  # index_list: [i, lab, x0, y0, xend, yend]
+        offset_xy = index_list[:, [2, 4]]  # index_list: [i, lab, x0, xend, y0, yend]
         # offset_xy[:, 0] += first_col
         # offset_xy[:, 1] += first_row
-        contour = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy)
+        contour = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
+                                                  scaling_factor_xy=scaling_factor_list)
 
         if DEBUG:
             plt.clf()

@@ -2764,7 +2764,7 @@ def segmentation_pipeline6(im,
            index_list, scaling_factor_list
 
 
-def labels2contours(window_labels, offset_xy=None):
+def labels2contours(window_labels, offset_xy=None, scaling_factor_xy=None):
     """
     Extract contours from labels.
 
@@ -2781,14 +2781,14 @@ def labels2contours(window_labels, offset_xy=None):
     * contours: List of np.array (m_i, x, y). Each np.array contains the points of a contour.
     """
 
-    warnings.warn('Broken function. It is not taking into account the scaling of the cropped windows')
-
     if offset_xy is not None:
         if window_labels.shape[0] != offset_xy.shape[0] or offset_xy.shape[1] != 2:
             raise ValueError('offset must have shape (n, 2) if window_labels has shape (n, row, col)')
 
-    # convert labels to contours (points) using marching squares
-    # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
+    if scaling_factor_xy is not None:
+        if window_labels.shape[0] != len(scaling_factor_xy):
+            raise ValueError('scaling factor must be a list with n elements if window_labels has shape (n, row, col)')
+
     contours = []
     for i in range(window_labels.shape[0]):
 
@@ -2799,6 +2799,8 @@ def labels2contours(window_labels, offset_xy=None):
         for lab in np.unique(window_labels[i, ...]):
             if lab == 0:
                 continue
+            # convert labels to contours (points) using marching squares
+            # http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.find_contours
             # compute (row, col) coordinates for contour points from binary mask
             aux = find_contours(window_labels[i, ...] == lab, 0.5,
                                 fully_connected='low', positive_orientation='low')[0]
@@ -2806,9 +2808,14 @@ def labels2contours(window_labels, offset_xy=None):
             aux = aux[:, [1, 0]]
             if DEBUG:
                 plt.plot(aux[:, 0], aux[:, 1], 'w')
+            # undo scaling
+            if scaling_factor_xy is not None:
+                aux[:, 0] /= scaling_factor_xy[i][0]
+                aux[:, 1] /= scaling_factor_xy[i][1]
             # add window offset
-            aux[:, 0] = aux[:, 0] + offset_xy[i, 0]
-            aux[:, 1] = aux[:, 1] + offset_xy[i, 1]
+            if offset_xy is not None:
+                aux[:, 0] = aux[:, 0] + offset_xy[i, 0]
+                aux[:, 1] = aux[:, 1] + offset_xy[i, 1]
             # add to the list of contours
             contours.append(aux)
 
