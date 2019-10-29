@@ -74,7 +74,8 @@ classifier_model_basename = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
 # full resolution image window and network expected receptive field parameters
-fullres_box_size = np.array([1751, 1751])
+# fullres_box_size = np.array([1751, 1751])
+fullres_box_size = np.array([2501, 2501])
 receptive_field = np.array([131, 131])
 
 # rough_foreground_mask() parameters
@@ -191,17 +192,22 @@ for i_file, file in enumerate(files_list):
 
     # keep extracting histology windows until we have finished
     step = -1
-    time0 = time.time()
+    time_0 = time_curr = time.time()
     while np.count_nonzero(lores_istissue) > 0:
 
         # next step (it starts from 0)
         step += 1
 
+        time_prev = time_curr
+        time_curr = time.time()
+
         print('File ' + str(i_file) + '/' + str(len(files_list)) + ': step ' +
               str(step) + ': ' +
               str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
               "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
-              '% completed: time ' + "{0:.2f}".format(time.time() - time0) + ' s')
+              '% completed: ' +
+              'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
+              ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
@@ -209,16 +215,6 @@ for i_file, file in enumerate(files_list):
             cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
                                                     max_window_size=fullres_box_size,
                                                     border=np.round((receptive_field-1)/2))
-
-        # # DEBUG
-        # first_row = int(3190 * downsample_factor)
-        # last_row = first_row + 1001
-        # first_col = int(3205 * downsample_factor)
-        # last_col = first_col + 1001
-        # lores_first_row = 3190
-        # lores_last_row = lores_first_row + int(np.round(1001 / downsample_factor))
-        # lores_first_col = 3205
-        # lores_last_col = lores_first_col + int(np.round(1001 / downsample_factor))
 
         # load window from full resolution slide
         tile = im.read_region(location=(first_col, first_row), level=0,
@@ -336,6 +332,8 @@ for i_file, file in enumerate(files_list):
             lores_contours.append(lores_c)
 
         if DEBUG:
+            plt.clf()
+            plt.imshow(tile)
             for j in range(len(contours)):
                 plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C1', fill=False)
 
@@ -345,7 +343,7 @@ for i_file, file in enumerate(files_list):
             lores_contours[j][:, 1] += first_row
 
         # give one of four colours to each output contour
-        iter = itertools.cycle([0, 90, 180, 270])
+        iter = itertools.cycle(np.linspace(0, 270, 10).astype(np.int))
         hue = []
         for j in range(len(lores_contours)):
             hue.append(next(iter))
