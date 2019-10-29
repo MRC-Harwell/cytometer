@@ -28,19 +28,23 @@ def change_input_size(model, batch_shape):
     """
     Change the expected shape of the model's input tensor.
 
+    This function works by creating a new model with the same structure, and then copying the weights from the original
+    model onto the new model. It follows the solution by Christos Kyrkou
+    (https://medium.com/@ckyrkou/changing-input-size-of-pre-trained-models-in-keras-3dfbe3ca3091).
+
     :param model: Keras model.
     :param batch_shape: New input shape, e.g. (None, 500, 500, 3).
     :return: Keras model with modified input layer.
     """
 
-    if type(model.get_layer(index=0)) != keras.engine.input_layer.InputLayer:
-        raise TypeError('First layer is not an input layer (keras.engine.input_layer.InputLayer)')
+    model._layers[0].batch_input_shape = batch_shape
+    model_out = keras.models.model_from_json(model.to_json())
 
-    newInput = Input(batch_shape=batch_shape, name=model.layers[0].name)
-    out = newInput
-    for layer in model.layers[1:]:
-        out = layer(out)
-    model_out = Model(inputs=newInput, outputs=out)
+    for layer in model_out.layers:
+        try:
+            layer.set_weights(model.get_layer(name=layer.name).get_weights())
+        except:
+            pass
 
     return model_out
 
