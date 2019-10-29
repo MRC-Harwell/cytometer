@@ -260,7 +260,7 @@ for i_file, file in enumerate(files_list):
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
             contours_all.append([])
             areas_all.append([])
-            np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
+            # np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
             continue
 
         if DEBUG:
