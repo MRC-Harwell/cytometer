@@ -75,7 +75,8 @@ correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_o
 
 # full resolution image window and network expected receptive field parameters
 # fullres_box_size = np.array([1751, 1751])
-fullres_box_size = np.array([2501, 2501])
+# fullres_box_size = np.array([2501, 2501])
+fullres_box_size = np.array([2751, 2751])
 receptive_field = np.array([131, 131])
 
 # rough_foreground_mask() parameters
@@ -348,17 +349,17 @@ for i_file, file in enumerate(files_list):
         for j in range(len(lores_contours)):
             hue.append(next(iter))
 
-        # add segmented contours to annotations file
-        if os.path.isfile(annotations_file):
-            append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue)
-        elif len(contours) > 0:
-            fp = open(annotations_file, 'w')
-            write_paths_to_aida_json_file(fp, lores_contours, hue=hue)
-            fp.close()
+        # # add segmented contours to annotations file
+        # if os.path.isfile(annotations_file):
+        #     append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue)
+        # elif len(contours) > 0:
+        #     fp = open(annotations_file, 'w')
+        #     write_paths_to_aida_json_file(fp, lores_contours, hue=hue)
+        #     fp.close()
 
-        # add contours to list of all contours for the image
-        contours_all.append(lores_contours)
-        areas_all.append(areas)
+        # # add contours to list of all contours for the image
+        # contours_all.append(lores_contours)
+        # areas_all.append(areas)
 
         # update the tissue segmentation mask with the current window
         if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
