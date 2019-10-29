@@ -2706,6 +2706,20 @@ def segmentation_pipeline6(im,
         plt.axis('off')
         plt.title('Cleaned segmentation', fontsize=14)
 
+    # check that there's at least one segmented object
+    labels_unique = np.unique(labels)
+    labels_unique = labels_unique[labels_unique != 0]
+    if len(labels_unique) == 0:
+        window_im = []
+        window_labels = []
+        window_labels_corrected = []
+        window_labels_class = []
+        index_list = []
+        scaling_factor_list = []
+        return labels[0, ...], labels_class[0, ...], todo_edge, \
+               window_im, window_labels, window_labels_corrected, window_labels_class, \
+               index_list, scaling_factor_list
+
     # split image into individual labels
     labels = np.expand_dims(labels, axis=0)
     im = np.expand_dims(im, axis=0)
