@@ -99,6 +99,7 @@ block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np
 
 # segmentation parameters
 min_cell_area = 1500
+max_cell_area = 100e3
 min_mask_overlap = 0.8
 phagocytosis = True
 correction_window_len = 401

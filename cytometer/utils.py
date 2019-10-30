@@ -1990,7 +1990,7 @@ def edge_labels(labels):
 
 
 def clean_segmentation(labels,
-                       min_cell_area=0,
+                       min_cell_area=0, max_cell_area=np.inf,
                        remove_edge_labels=False,
                        mask=None, min_mask_overlap=0.8,
                        phagocytosis=False):
@@ -1998,11 +1998,14 @@ def clean_segmentation(labels,
     The function packs several methods to remove unwanted labels from a segmentation:
       * Remove labels that touch the edges of the segmentation.
       * Remove labels that are smaller than a certain size.
+      * Remove labels that are larger than a certain size.
       * Remove labels that don't overlap enough with a binary mask.
       * Remove labels that are completely surrounded by another label.
     
     :param labels: (row, col) or (n, row, col) np.ndarray with segmentation labels.
-    :param min_cell_area: (def 0) Remove labels with area < min_cell_area.
+    :param min_cell_area: (def 0) Remove labels with area < min_cell_area. Area is computed as the number of pixels.
+    :param max_cell_area: (def np.inf) Remove labels with area > max_cell_area. Area is computed as the number of
+    pixels.
     :param remove_edge_labels: (def False) Boolean to remove labels that touch the edge of the image.
     :param mask: (def None) (row, col) or (n, row, col) np.ndarray binary mask. If provided, remove labels that don't
     overlap enough with the mask.
@@ -2109,6 +2112,19 @@ def clean_segmentation(labels,
             plt.subplot(224)
             plt.imshow(labels[i, :, :])
             plt.contour(is_removed_edge_label[i, :, :], colors='w')
+
+        # remove large objects
+        if max_cell_area < np.inf:
+            aux = labels[i, :, :]
+            prop = regionprops(aux)
+            for p in prop:
+                if p.area > max_cell_area:
+                    aux[aux == p.label] = 0
+
+        if DEBUG:
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(labels[i, :, :])
 
     # remove dummy dimension if the input was 2D
     if labels_is2d:
@@ -2554,7 +2570,7 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
 def segmentation_pipeline6(im,
                            dmap_model, contour_model, classifier_model, correction_model=None,
-                           min_cell_area=804, mask=None, min_mask_overlap=0.8, phagocytosis=True,
+                           min_cell_area=1500, max_cell_area=100e3, mask=None, min_mask_overlap=0.8, phagocytosis=True,
                            correction_window_len=401, correction_smoothing=11,
                            batch_size=None, return_bbox=False, return_bbox_coordinates='rc'):
     """
@@ -2597,6 +2613,8 @@ def segmentation_pipeline6(im,
     Output: (n', row', col') pixel scores z' (z'<-0.5: pixel is segmented and shouldn't, z'>0.5: pixel is not segmented
     and should).
     :param min_cell_area: Scalar size in pixels of the minimum acceptable object size. This size refers to the input
+    image, before scaling for correction. (See clean_segmentation().)
+    :param max_cell_area: Scalar size in pixels of the maximum acceptable object size. This size refers to the input
     image, before scaling for correction. (See clean_segmentation().)
     :param mask: (def None) (row, col) np.array. Rough binary mask of tissue. Objects substantially outside this mask
     will be discarded. By default, no mask is used. (See clean_segmentation().)
@@ -2695,10 +2713,10 @@ def segmentation_pipeline6(im,
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
-    # remove labels that touch the edges, that are too small, don't overlap enough with the tissue mask, or are fully
-    # surrounded by another label
-    labels, todo_edge = clean_segmentation(labels, remove_edge_labels=True, min_cell_area=min_cell_area,
-                                           mask=mask, min_mask_overlap=min_mask_overlap,
+    # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask, or
+    # are fully surrounded by another label
+    labels, todo_edge = clean_segmentation(labels, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
+                                           remove_edge_labels=True, mask=mask, min_mask_overlap=min_mask_overlap,
                                            phagocytosis=phagocytosis)
 
     if DEBUG:
