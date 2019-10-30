@@ -2710,10 +2710,10 @@ def segmentation_pipeline6(im,
     labels_unique = np.unique(labels)
     labels_unique = labels_unique[labels_unique != 0]
     if len(labels_unique) == 0:
-        window_im = []
-        window_labels = []
-        window_labels_corrected = []
-        window_labels_class = []
+        window_im = np.array([])
+        window_labels = np.array([])
+        window_labels_corrected = np.array([])
+        window_labels_class = np.array([])
         index_list = []
         scaling_factor_list = []
         return labels[0, ...], labels_class[0, ...], todo_edge, \
