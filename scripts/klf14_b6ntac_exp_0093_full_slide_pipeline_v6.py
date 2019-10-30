@@ -26,6 +26,9 @@ import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 
+# Filter out INFO & WARNING messages
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 # limit number of GPUs
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
@@ -41,6 +44,7 @@ from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_j
 import PIL
 import tensorflow as tf
 import keras
+from keras import backend as K
 from skimage.measure import regionprops
 import shutil
 import itertools
@@ -132,12 +136,6 @@ dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_f
 classifier_model_file = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(fold_i) + '.h5')
 correction_model_file = os.path.join(saved_models_dir, correction_model_basename + '_model_fold_' + str(fold_i) + '.h5')
 
-# load models
-contour_model = keras.models.load_model(contour_model_file)
-dmap_model = keras.models.load_model(dmap_model_file)
-classifier_model = keras.models.load_model(classifier_model_file)
-correction_model = keras.models.load_model(correction_model_file)
-
 # "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
 # file_i = 10; file = files_list[file_i]
 # "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
@@ -187,9 +185,9 @@ for i_file, file in enumerate(files_list):
     xres = 1e-2 / float(im.properties['tiff.XResolution'])
     yres = 1e-2 / float(im.properties['tiff.YResolution'])
 
-    # init empty list to store area values and contour coordinates
-    areas_all = []
-    contours_all = []
+    # # init empty list to store area values and contour coordinates
+    # areas_all = []
+    # contours_all = []
 
     # keep extracting histology windows until we have finished
     step = -1
@@ -234,14 +232,18 @@ for i_file, file in enumerate(files_list):
             plt.contour(istissue_tile, colors='k')
             plt.axis('off')
 
+        # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
+        # reload the models every time
+        K.clear_session()
+
         # segment histology, split into individual objects, and apply segmentation correction
         labels, labels_class, todo_edge, \
         window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
             = cytometer.utils.segmentation_pipeline6(tile,
-                                                     dmap_model=dmap_model,
-                                                     contour_model=contour_model,
-                                                     correction_model=correction_model,
-                                                     classifier_model=classifier_model,
+                                                     dmap_model=dmap_model_file,
+                                                     contour_model=contour_model_file,
+                                                     correction_model=correction_model_file,
+                                                     classifier_model=classifier_model_file,
                                                      min_cell_area=min_cell_area,
                                                      mask=istissue_tile,
                                                      min_mask_overlap=min_mask_overlap,
@@ -255,8 +257,8 @@ for i_file, file in enumerate(files_list):
         # enter an infinite loop
         if len(index_list) == 0:
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
-            contours_all.append([])
-            areas_all.append([])
+            # contours_all.append([])
+            # areas_all.append([])
             # np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
             continue
 
@@ -349,13 +351,13 @@ for i_file, file in enumerate(files_list):
         for j in range(len(lores_contours)):
             hue.append(next(iter))
 
-        # # add segmented contours to annotations file
-        # if os.path.isfile(annotations_file):
-        #     append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue)
-        # elif len(contours) > 0:
-        #     fp = open(annotations_file, 'w')
-        #     write_paths_to_aida_json_file(fp, lores_contours, hue=hue)
-        #     fp.close()
+        # add segmented contours to annotations file
+        if os.path.isfile(annotations_file):
+            append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue)
+        elif len(contours) > 0:
+            fp = open(annotations_file, 'w')
+            write_paths_to_aida_json_file(fp, lores_contours, hue=hue)
+            fp.close()
 
         # # add contours to list of all contours for the image
         # contours_all.append(lores_contours)
@@ -370,8 +372,8 @@ for i_file, file in enumerate(files_list):
             # if the mask has been updated, use it to update the total tissue segmentation
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
 
-        # save results after every window computation
-        np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
+        # # save results after every window computation
+        # np.savez(results_file, contours=contours_all, areas=areas_all, lores_istissue=lores_istissue)
 
 # end of "keep extracting histology windows until we have finished"
 
