@@ -1,5 +1,3 @@
-import sys
-import os
 import warnings
 import openslide
 import cv2
@@ -1993,7 +1991,8 @@ def clean_segmentation(labels,
                        min_cell_area=0, max_cell_area=np.inf,
                        remove_edge_labels=False,
                        mask=None, min_mask_overlap=0.8,
-                       phagocytosis=False):
+                       phagocytosis=False,
+                       labels_class=None, min_class_prop=1.0):
     """
     The function packs several methods to remove unwanted labels from a segmentation:
       * Remove labels that touch the edges of the segmentation.
@@ -2001,6 +2000,7 @@ def clean_segmentation(labels,
       * Remove labels that are larger than a certain size.
       * Remove labels that don't overlap enough with a binary mask.
       * Remove labels that are completely surrounded by another label.
+      * Remove labels that don't contain enough pixels of class 1.
     
     :param labels: (row, col) or (n, row, col) np.ndarray with segmentation labels.
     :param min_cell_area: (def 0) Remove labels with area < min_cell_area. Area is computed as the number of pixels.
@@ -2012,6 +2012,10 @@ def clean_segmentation(labels,
     :param min_mask_overlap: (def 0.8) Remove labels that don't have at least min_mask_overlap of their pixels
     within the mask.
     :param phagocytosis: (def False) Boolean to remove labels that are completely surrounded by another label.
+    :param labels_class: (def None) np.array with the same size as labels. Each pixel has class False or True.
+    :param min_class_prop: (def 1.0) Scalar. Minimum proportion of pixels with class True that an object must have to be
+    accepted. If min_class_prop=1.0, then all pixels must be of class True. If min_class_prop=0.6, then at least 60% of
+    pixels need to be of class True.
     :return:
     * labels: (row, col) or (n, row, col) np.ndarray with removed labels as requested.
     * is_removed_edge_label: (row, col) or (n, row, col) boolean np.ndarray. True pixels belong to edge labels that were
@@ -2022,12 +2026,18 @@ def clean_segmentation(labels,
     if mask is not None and labels.shape != mask.shape:
         raise ValueError('If provided, mask must have the same shape as labels')
 
+    # if labels_class provided, it must have the same shape as the labels array
+    if labels_class is not None and labels.shape != mask.shape:
+        raise ValueError('If provided, labels_class must have the same shape as labels')
+
     # convert (row, col) labels to (1, row, col), so that we can use the same code for one or multiple inputs
     labels_is2d = labels.ndim == 2
     if labels_is2d:
         labels = np.expand_dims(labels, axis=0)
         if mask is not None:
             mask = np.expand_dims(mask, axis=0)
+        if labels_class is not None:
+            labels_class = np.expand_dims(labels_class, axis=0)
 
     is_removed_edge_label = np.zeros(shape=labels.shape, dtype=np.bool)
     for i in range(labels.shape[0]):
@@ -2123,6 +2133,32 @@ def clean_segmentation(labels,
 
         if DEBUG:
             plt.subplot(223)
+            plt.cla()
+            plt.imshow(labels[i, :, :])
+
+        # remove objects that don't contain enough pixels of class 1
+        if labels_class is not None:
+            # list of labels that are not 0
+            lab_list = np.unique(labels[i, :, :])
+            lab_list = lab_list[lab_list != 0]
+
+            # loop labels
+            for lab in lab_list:
+
+                # pixels that belong to the current label
+                aux = labels[i, :, :]
+                idx = aux == lab
+
+                # proportion of class=True pixels
+                aux_class = labels_class[i, :, :]
+                pixel_prop = np.count_nonzero(aux_class[idx]) / np.count_nonzero(idx)
+
+                # delete the label if it doesn't contain enough pixels of class True
+                if pixel_prop < min_class_prop:
+                    aux[idx] = 0
+
+        if DEBUG:
+            plt.subplot(224)
             plt.cla()
             plt.imshow(labels[i, :, :])
 
@@ -2571,6 +2607,7 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 def segmentation_pipeline6(im,
                            dmap_model, contour_model, classifier_model, correction_model=None,
                            min_cell_area=1500, max_cell_area=100e3, mask=None, min_mask_overlap=0.8, phagocytosis=True,
+                           min_class_prop=1.0,
                            correction_window_len=401, correction_smoothing=11,
                            batch_size=None, return_bbox=False, return_bbox_coordinates='rc'):
     """
@@ -2717,7 +2754,8 @@ def segmentation_pipeline6(im,
     # are fully surrounded by another label
     labels, todo_edge = clean_segmentation(labels, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
                                            remove_edge_labels=True, mask=mask, min_mask_overlap=min_mask_overlap,
-                                           phagocytosis=phagocytosis)
+                                           phagocytosis=phagocytosis,
+                                           labels_class=labels_class, min_class_prop=min_class_prop)
 
     if DEBUG:
         plt.subplot(224)

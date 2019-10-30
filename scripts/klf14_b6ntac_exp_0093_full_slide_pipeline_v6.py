@@ -102,6 +102,7 @@ min_cell_area = 1500
 max_cell_area = 100e3
 min_mask_overlap = 0.8
 phagocytosis = True
+min_class_prop = 1.0
 correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
@@ -249,6 +250,7 @@ for i_file, file in enumerate(files_list):
                                                      mask=istissue_tile,
                                                      min_mask_overlap=min_mask_overlap,
                                                      phagocytosis=phagocytosis,
+                                                     min_class_prop=min_class_prop,
                                                      correction_window_len=correction_window_len,
                                                      correction_smoothing=correction_smoothing,
                                                      return_bbox=True, return_bbox_coordinates='xy',
