@@ -2750,8 +2750,8 @@ def segmentation_pipeline6(im,
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
 
-    # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask, or
-    # are fully surrounded by another label
+    # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask,
+    # are fully surrounded by another label or are not white adipose tissue
     labels, todo_edge = clean_segmentation(labels, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
                                            remove_edge_labels=True, mask=mask, min_mask_overlap=min_mask_overlap,
                                            phagocytosis=phagocytosis,
