@@ -1,19 +1,12 @@
 """
-Read full .ndpi slides, rough segmentation of tissue areas, random selection of centroids, extract
-1001x1001 windows around centroids.
+Read full .ndpi slides, extract 1001x1001 windows manually selected to increase the dataset randomly created with 0074.
 
 The windows are saved with row_R_col_C, where R, C are the row, col centroid of the image. You can get the offset of the
 image from the centroid as offset = centroid - box_half_size = centroid - 500.
-
-We include two version of the code:
-    * OLD_CODE=True: This is how things were done for the KLF14 training dataset. There's a bug because instead of using
-      the high resolution centroid we used the low resolution centroid. This still created a valid training dataset,
-      though.
-    * OLD_CODE=False: This is how we would do things in future.
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0076_generate_training_images'
+experiment_id = 'klf14_b6ntac_exp_0094_generate_extra_training_images'
 
 # cross-platform home directory
 from pathlib import Path
@@ -37,17 +30,12 @@ training_dir = os.path.join(home, 'Data/cytometer_data/klf14/klf14_b6ntac_traini
 seg_dir = os.path.join(home, 'Data/cytometer_data/klf14/klf14_b6ntac_seg')
 downsample_factor = 8.0
 
-# use the old version of the code that was used for the KLF14 experiments. The new function rough_foreground_mask()
-# produces a similar result, but because there are a few different pixels in "seg", the randomly selected training
-# windows would be different.
-OLD_CODE = True
-
+# dimensions of the box that we use to crop the full histology image
 box_size = 1001
 box_half_size = int((box_size - 1) / 2)
 n_samples = 5
 
-# explicit list of files, to avoid differences if the files in the directory change (note that the order of the
-# files is important, because it's used for the random seed when selecting training windows)
+# explicit list of files, to avoid differences if the files in the directory change
 ndpi_files_list = [
     'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04.ndpi',
     'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57.ndpi',
@@ -75,12 +63,70 @@ ndpi_files_list = [os.path.join(ndpi_dir, x) for x in ndpi_files_list]
 # Note: if you want to read the full list of KLF14*.ndpi
 # ndpi_files_list = glob.glob(os.path.join(ndpi_dir, 'KLF14*.ndpi'))
 
+# level that we downsample the image to
+level = 4
+
 for i_file, ndpi_file in enumerate(ndpi_files_list):
 
     print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)) + ': ' + ndpi_file)
 
     # load file
     im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
+
+    # box for left half of image
+    box_corner_col = 0
+    box_corner_row = 0
+    location = (box_corner_col, box_corner_row)
+    size = (int(im.level_dimensions[level][0]/2), int(im.level_dimensions[level][1]))
+
+    # extract tile from full resolution image, downsampled so that we can look for regions of interest
+    tile_lo = im.read_region(location=location, level=level, size=size)
+    tile_lo = np.array(tile_lo)
+    tile_lo = tile_lo[:, :, 0:3]
+
+    if DEBUG:
+        plt.clf()
+        plt.imshow(tile_lo)
+
+for i_file, ndpi_file in enumerate(ndpi_files_list):
+
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)) + ': ' + ndpi_file)
+
+    # load file
+    im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
+
+    # locations of cropping windows in the coordinates of the downsampled image
+    if i_file == 0:
+        location_list = ((1059, 1052), (682, 1174), (918, 1533))
+    elif i_file == 1:
+        location_list = ((883, 866), (864, 1278), (665, 456))
+    elif i_file == 2:
+        location_list = ((672, 397), (885, 877), (870, 1303))
+    elif i_file == 3:
+        location_list = ((549, 615), (1094, 1112), (546, 615))
+    elif i_file == 4:
+        location_list = ((230, 500), (488, 1435), (1225, 1198))
+    elif i_file == 5:
+        location_list = ((874, 730), (776, 991), (1947, 1170))
+    elif i_file == 6:
+        location_list = ((786, 874))
+
+    for j in len(location_list):
+
+        location = location_list[j]
+        location = np.array(location) * im.level_downsamples[level]
+
+        # extract tile at full resolution
+        tile = im.read_region(location=location.astype(np.int), level=0, size=(box_size, box_size))
+        tile = np.array(tile)
+        tile = tile[:, :, 0:3]
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(tile)
+
+
+########################## BELOW: OLD CODE  ######################################################
 
     # level for a x8 downsample factor
     level_8 = im.get_best_level_for_downsample(downsample_factor)
