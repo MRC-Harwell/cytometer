@@ -109,11 +109,38 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 5:
         location_list = ((874, 730), (776, 991), (1947, 1170))
     elif i_file == 6:
-        location_list = ((786, 874))
+        location_list = ((786, 874), (995, 950), (1193, 903), (1080, 224))
+    elif i_file == 7:
+        location_list = ((686, 986), (846, 633), (1677, 999))
+    elif i_file == 8:
+        location_list = ((553, 415), (341, 274), (164, 872))
+    elif i_file == 9:
+        location_list = ((563, 827), (116, 628), (1030, 1230))
+    elif i_file == 10:
+        location_list = ((632, 1508), (1311, 925), (1210, 334))
+    elif i_file == 11:
+        location_list = ((1627, 2587), (1532, 1804), (1411, 923), (1430, 850))
+    elif i_file == 12:
+        location_list = ((1133, 1388), (1113, 430), (372, 1187))
+    elif i_file == 13:
+        location_list = ((330, 744), (264, 350), (556, 451))
+    elif i_file == 14:
+        location_list = ((591, 1262), (927, 1170), (1140, 1173))
+    elif i_file == 15:
+        location_list = ((441, 759), (652, 339), (1097, 266))
+    elif i_file == 16:
+        location_list = ((467, 763), (1197, 855), (1806, 1253))
+    elif i_file == 17:
+        location_list = ((475, 895), (680, 1334), (1346, 950))
+    elif i_file == 18:
+        location_list = ((744, 1483), (1216, 992), (1854, 581))
+    elif i_file == 19:
+        location_list = ((970, 1852), (432, 657), (1015, 803))
 
     for j in len(location_list):
 
         location = location_list[j]
+
         location = np.array(location) * im.level_downsamples[level]
 
         # extract tile at full resolution
