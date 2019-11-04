@@ -236,72 +236,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         plt.imshow(seg)
         plt.pause(.1)
 
-    # these are the low-res centroids within the segmentation masks that were randomly selected in the old script
-    if OLD_CODE:
-        if os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04.ndpi':
-            sample_centroid = [(10716, 8924), (19676, 18716), (20860, 64580),
-                               (22276, 15492), (26108, 68956)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57.ndpi':
-            sample_centroid = [(6788, 5516), (13860, 10964), (13980, 4956),
-                               (18380, 63068), (24076, 20404)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52.ndpi':
-            sample_centroid = [(4852, 58628), (6124, 58212), (6268, 13820),
-                               (13820, 57052), (14220, 60412)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39.ndpi':
-            sample_centroid = [(10372, 21228), (22956, 57156), (25644, 26132),
-                               (30820, 22204), (33004, 61228)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54.ndpi':
-            sample_centroid = [(7500, 50372), (11452, 16252), (13348, 19316),
-                               (14332, 19564), (26132, 12148)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi':
-            sample_centroid = [(7676, 28900), (9588, 28676), (12476, 31852),
-                               (13804, 8004), (21796, 55852)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41.ndpi':
-            sample_centroid = [(4324, 55084), (6124, 59516), (12908, 10212),
-                               (24276, 18652), (28156, 18596)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52.ndpi':
-            sample_centroid = []
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46.ndpi':
-            sample_centroid = [(4124, 12524), (8532, 9804), (17044, 31228),
-                               (18852, 29164), (21804, 35412)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08.ndpi':
-            sample_centroid = [(11684, 51748), (12172, 49588), (12700, 52388),
-                               (16068, 7276), (20380, 19420)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33.ndpi':
-            sample_centroid = [(9236, 18316), (16540, 18252), (16756, 63692),
-                               (24836, 55124), (29564, 19260)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38.ndpi':
-            sample_centroid = [(5348, 19844), (6548, 15236), (6652, 61724),
-                               (6900, 71980), (10356, 31316), (10732, 16692),
-                               (12828, 18388), (14980, 27052), (18780, 69468),
-                               (27388, 18468)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53.ndpi':
-            sample_centroid = [(8212, 15364), (11004, 5988), (15004, 10364),
-                               (19556, 57972), (21812, 22916)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45.ndpi':
-            sample_centroid = [(1292, 4348), (7372, 8556), (12588, 53084),
-                               (12732, 39812), (16612, 37372)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52.ndpi':
-            sample_centroid = [(5428, 58372), (12404, 54316), (13604, 24644),
-                               (14628, 69148), (19340, 17348)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32.ndpi':
-            sample_centroid = [(6412, 12484), (13012, 19820), (31172, 25996),
-                               (34628, 40116), (35948, 41492)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11.ndpi':
-            sample_centroid = [(10084, 58476), (16260, 58300), (19220, 61724),
-                               (21012, 57844), (23236, 11084)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06.ndpi':
-            sample_centroid = [(9644, 61660), (11852, 71620), (13300, 55476),
-                               (16332, 65356), (17204, 19444)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi':
-            sample_centroid = [(6124, 82236), (7436, 19092), (16556, 10292),
-                               (23100, 9220), (31860, 33476)]
-        elif os.path.basename(ndpi_file) == 'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00.ndpi':
-            sample_centroid = [(2772, 5332), (7124, 13028), (16812, 17484),
-                               (19228, 15060), (29684, 15172)]
-        else:
-            raise ValueError('Unknown NDPI file:' + ndpi_file)
-
+   
     else:  # not OLD_CODE
 
         np.random.seed(i_file)
