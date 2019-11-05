@@ -22,18 +22,34 @@ from random import randint, seed
 import tifffile
 import glob
 from cytometer.utils import rough_foreground_mask
+import pickle
 
 DEBUG = False
-
-ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_dir = os.path.join(home, 'Data/cytometer_data/klf14/klf14_b6ntac_training')
-seg_dir = os.path.join(home, 'Data/cytometer_data/klf14/klf14_b6ntac_seg')
-downsample_factor = 8.0
 
 # dimensions of the box that we use to crop the full histology image
 box_size = 1001
 box_half_size = int((box_size - 1) / 2)
 n_samples = 5
+
+# level that we downsample the image to
+level = 4
+
+'''Directories and filenames
+'''
+
+# data paths
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
+training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
+training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
+training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+
+saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
+seg_dir = os.path.join(root_data_dir, 'klf14_b6ntac_seg')
 
 # explicit list of files, to avoid differences if the files in the directory change
 ndpi_files_list = [
@@ -63,12 +79,10 @@ ndpi_files_list = [os.path.join(ndpi_dir, x) for x in ndpi_files_list]
 # Note: if you want to read the full list of KLF14*.ndpi
 # ndpi_files_list = glob.glob(os.path.join(ndpi_dir, 'KLF14*.ndpi'))
 
-# level that we downsample the image to
-level = 4
-
+# loop downsampled histology slides (this was used to find the coordinates of cropping boxes for the next for loop)
 for i_file, ndpi_file in enumerate(ndpi_files_list):
 
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)) + ': ' + ndpi_file)
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)-1) + ': ' + ndpi_file)
 
     # load file
     im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
@@ -88,6 +102,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         plt.clf()
         plt.imshow(tile_lo)
 
+new_outfilename_list = []
 for i_file, ndpi_file in enumerate(ndpi_files_list):
 
     print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)) + ': ' + ndpi_file)
@@ -95,7 +110,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # load file
     im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
 
-    # locations of cropping windows in the coordinates of the downsampled image
+    # (x,y)-locations of cropping windows in the coordinates of the downsampled image by a factor of 16
     if i_file == 0:
         location_list = ((1059, 1052), (682, 1174), (918, 1533))
     elif i_file == 1:
@@ -137,10 +152,12 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 19:
         location_list = ((970, 1852), (432, 657), (1015, 803))
 
-    for j in len(location_list):
+    for j in range(len(location_list)):
 
+        # (x,y)-coordinates of cropping box first corner at 16x downsample level
         location = location_list[j]
 
+        # (x.y)-coordinates in the full resolution histology
         location = np.array(location) * im.level_downsamples[level]
 
         # extract tile at full resolution
@@ -152,140 +169,21 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.clf()
             plt.imshow(tile)
 
+        # (row, col)-coordinates in the full resolution histology
+        box_corner_col = int(location[0])
+        box_corner_row = int(location[1])
 
-########################## BELOW: OLD CODE  ######################################################
-
-    # level for a x8 downsample factor
-    level_8 = im.get_best_level_for_downsample(downsample_factor)
-
-    assert (im.level_downsamples[level_8] == downsample_factor)
-
-    if OLD_CODE:  # this is the code that was used for the KLF14 experiments
-
-        # Note: Now we have function cytometer.utils.rough_foreground_mask() to do the following, but the function
-
-        # get downsampled image
-        im_8 = im.read_region(location=(0, 0), level=level_8, size=im.level_dimensions[level_8])
-        im_8 = np.array(im_8)
-        im_8 = im_8[:, :, 0:3]
-
-        if DEBUG:
-            plt.clf()
-            plt.imshow(im_8)
-            plt.pause(.1)
-
-        # reshape image to matrix with one column per colour channel
-        im_8_mat = im_8.copy()
-        im_8_mat = im_8_mat.reshape((im_8_mat.shape[0] * im_8_mat.shape[1], im_8_mat.shape[2]))
-
-        # background colour
-        background_colour = []
-        for i in range(3):
-            background_colour += [mode(im_8_mat[:, i]), ]
-        background_colour_std = np.std(im_8_mat, axis=0)
-
-        # threshold segmentation
-        seg = np.ones(im_8.shape[0:2], dtype=bool)
-        for i in range(3):
-            seg = np.logical_and(seg, im_8[:, :, i] < background_colour[i] - background_colour_std[i])
-        seg = seg.astype(dtype=np.uint8)
-        seg[seg == 1] = 255
-
-        # dilate the segmentation to fill gaps within tissue
-        kernel = np.ones((25, 25), np.uint8)
-        seg = cv2.dilate(seg, kernel, iterations=1)
-        seg = cv2.erode(seg, kernel, iterations=1)
-
-        # find connected components
-        labels = seg.copy()
-        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(seg)
-        lblareas = stats[:, cv2.CC_STAT_AREA]
-
-        # labels of large components, that we assume correspond to tissue areas
-        labels_large = np.where(lblareas > 1e5)[0]
-        labels_large = list(labels_large)
-
-        # label=0 is the background, so we remove it
-        labels_large.remove(0)
-
-        # only set pixels that belong to the large components
-        seg = np.zeros(im_8.shape[0:2], dtype=np.uint8)
-        for i in labels_large:
-            seg[labels == i] = 255
-
-    else:  # not OLD_CODE
-
-        seg, im_8 = rough_foreground_mask(ndpi_file, downsample_factor=8.0, dilation_size=25,
-                                          component_size_threshold=1e5, hole_size_treshold=0,
-                                          return_im=True)
-        seg *= 255
-
-    # save segmentation as a tiff file (with ZLIB compression)
-    outfilename = os.path.basename(ndpi_file)
-    outfilename = os.path.splitext(outfilename)[0] + '_seg'
-    outfilename = os.path.join(seg_dir, outfilename + '.tif')
-    tifffile.imsave(outfilename, seg,
-                    compress=9,
-                    resolution=(int(im.properties["tiff.XResolution"]) / downsample_factor,
-                                int(im.properties["tiff.YResolution"]) / downsample_factor,
-                                im.properties["tiff.ResolutionUnit"].upper()))
-
-    # plot the segmentation
-    if DEBUG:
-        plt.clf()
-        plt.imshow(seg)
-        plt.pause(.1)
-
-   
-    else:  # not OLD_CODE
-
-        np.random.seed(i_file)
-        sample_centroid = []
-        while len(sample_centroid) < n_samples:
-            row = randint(0, seg.shape[0] - 1)
-            col = randint(0, seg.shape[1] - 1)
-            # if the centroid is a pixel that belongs to tissue...
-
-            if seg[row, col] != 0:
-                # ... add it to the list of random samples
-                sample_centroid.append((row, col))
-
-    # compute the centroid in high-res
-    sample_centroid_upsampled = []
-    for row, col in sample_centroid:
-        sample_centroid_upsampled.append(
-            (int(row * downsample_factor + np.round((downsample_factor - 1) / 2)),
-             int(col * downsample_factor + np.round((downsample_factor - 1) / 2)))
-        )
-
-    # create the training dataset by sampling the full resolution image with boxes around the centroids
-    for j in range(len(sample_centroid_upsampled)):
-
-        # high resolution centroid
-        if OLD_CODE:
-            # Note: this is a bug. The centroid used should have been the high resolution one
-            row, col = sample_centroid[j]
-        else:
-            row, col = sample_centroid_upsampled[j]
-
-        # compute top-left corner of the box from the centroid
-        box_corner_row = row - box_half_size
-        box_corner_col = col - box_half_size
-
-        # extract tile from full resolution image
-        tile = im.read_region(location=(box_corner_col, box_corner_row), level=0, size=(box_size, box_size))
-        tile = np.array(tile)
-        tile = tile[:, :, 0:3]
-
-        # output filename
+        # name of the file with the cropped histology
         outfilename = os.path.basename(ndpi_file)
-        if OLD_CODE:
-            outfilename = os.path.splitext(outfilename)[0] + '_row_' + str(row).zfill(6) \
-                          + '_col_' + str(col).zfill(6)
-        else:
-            outfilename = os.path.splitext(outfilename)[0] + '_row_' + str(box_corner_row).zfill(6) \
-                          + '_col_' + str(box_corner_col).zfill(6)
+        outfilename = os.path.splitext(outfilename)[0] + '_row_' + str(box_corner_row).zfill(6) \
+                      + '_col_' + str(box_corner_col).zfill(6)
         outfilename = os.path.join(training_dir, outfilename + '.tif')
+
+        # check that file doesn't exist
+        if os.path.isfile(outfilename):
+            raise FileExistsError('File exists: ' + outfilename)
+
+        new_outfilename_list.append(outfilename)
 
         # save tile as a tiff file with ZLIB compression (LZMA or ZSTD can't be opened by QuPath)
         print('Saving ' + outfilename)
@@ -295,13 +193,79 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                     int(im.properties["tiff.YResolution"]),
                                     im.properties["tiff.ResolutionUnit"].upper()))
 
-        # plot tile
-        if DEBUG:
-            plt.clf()
-            plt.subplot(121)
-            plt.imshow(tile)
-            plt.subplot(122)
-            foo = tifffile.imread(outfilename)
-            plt.imshow(foo)
-            plt.pause(.1)
+new_n_klf14 = len(new_outfilename_list)
 
+'''Load folds'''
+
+# load list of images, and indices for training vs. testing indices
+contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(contour_model_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_svg_list = aux['file_list']
+idx_test_all = aux['idx_test']
+idx_train_all = aux['idx_train']
+
+# correct home directory
+file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
+
+# number of images
+n_im = len(file_svg_list)
+
+# loop folds
+new_outfilename_list_trimmed = [x.split('_row')[0] for x in new_outfilename_list]
+new_idx_test_all = []
+for k in range(len(idx_test_all)):
+
+    # test indices
+    idx_test = idx_test_all[k]
+
+    # file names of the original training data files for this fold
+    file_svg_test = np.array(file_svg_list)[idx_test]
+
+    # remove the '_row_*_col_*' strings and remove duplicates
+    file_svg_test_trimmed = np.unique([x.split('_row')[0] for x in file_svg_test])
+
+    # find the new training windows that correspond to the current fold
+    new_idx_test = np.where(np.isin(new_outfilename_list_trimmed, file_svg_test_trimmed))[0]
+
+    new_idx_test_all.append(new_idx_test)
+
+# split indices into train and test sets
+new_idx_train_all = []
+for k in range(len(new_idx_test_all)):
+    new_idx_train = set(range(len(new_outfilename_list))) - set(new_idx_test_all[k])
+    new_idx_train_all.append(np.array(list(new_idx_train)))
+
+# save file list
+new_kfolds_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle')
+with open(new_kfolds_filename, 'wb') as f:
+    x = {'file_list': new_outfilename_list, 'idx_train': new_idx_train_all, 'idx_test': new_idx_test_all,
+         'fold_seed': 0, 'n_klf14': new_n_klf14}
+    pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
+
+# debug folds (make sure that each fold contains the same .ndpi data in the old and new datasets)
+if DEBUG:
+    for k in range(len(idx_test_all)):
+
+        print('Fold: ' + str(k))
+
+        # file names in old dataset
+        idx_test = idx_test_all[k]
+        file_svg_test = np.array(file_svg_list)[idx_test]
+
+        # file names in new dataset
+        new_idx_test = new_idx_test_all[k]
+        new_outfilename = np.array(new_outfilename_list)[new_idx_test]
+
+        print('    Old files')
+        for file in file_svg_test:
+            print('        ' + os.path.basename(file))
+        print('    New files')
+        for file in new_outfilename:
+            print('        ' + os.path.basename(file))
+
+for i, file in enumerate(new_outfilename_list):
+
+    print('i = ' + str(i) + ': ' + os.path.basename(file))
+
+# i = 7 next window to label
