@@ -79,6 +79,8 @@ ndpi_files_list = [os.path.join(ndpi_dir, x) for x in ndpi_files_list]
 # Note: if you want to read the full list of KLF14*.ndpi
 # ndpi_files_list = glob.glob(os.path.join(ndpi_dir, 'KLF14*.ndpi'))
 
+# TODO: next i_file = 14
+
 # loop downsampled histology slides (this was used to find the coordinates of cropping boxes for the next for loop)
 for i_file, ndpi_file in enumerate(ndpi_files_list):
 
@@ -88,13 +90,10 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
 
     # box for left half of image
-    box_corner_col = 0
-    box_corner_row = 0
-    location = (box_corner_col, box_corner_row)
     size = (int(im.level_dimensions[level][0]/2), int(im.level_dimensions[level][1]))
 
     # extract tile from full resolution image, downsampled so that we can look for regions of interest
-    tile_lo = im.read_region(location=location, level=level, size=size)
+    tile_lo = im.read_region(location=(0, 0), level=level, size=size)
     tile_lo = np.array(tile_lo)
     tile_lo = tile_lo[:, :, 0:3]
 
@@ -116,11 +115,11 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 1:
         location_list = ((883, 866), (864, 1278), (665, 456))
     elif i_file == 2:
-        location_list = ((672, 397), (885, 877), (870, 1303))
+        location_list = ((431, 339), (504, 892), (775, 1113))
     elif i_file == 3:
-        location_list = ((549, 615), (1094, 1112), (546, 615))
+        location_list = ((1094, 1112), (546, 615), (1165, 1252))
     elif i_file == 4:
-        location_list = ((230, 500), (488, 1435), (1225, 1198))
+        location_list = ((230, 500), (488, 1435), (1225, 1198), (700, 1748))
     elif i_file == 5:
         location_list = ((874, 730), (776, 991), (1947, 1170))
     elif i_file == 6:
@@ -128,17 +127,17 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 7:
         location_list = ((686, 986), (846, 633), (1677, 999))
     elif i_file == 8:
-        location_list = ((553, 415), (341, 274), (164, 872))
+        location_list = ((553, 415), (341, 274), (164, 860))
     elif i_file == 9:
         location_list = ((563, 827), (116, 628), (1030, 1230))
     elif i_file == 10:
-        location_list = ((632, 1508), (1311, 925), (1210, 334))
+        location_list = ((632, 1508), (1311, 925), (1210, 334), (878, 120))
     elif i_file == 11:
         location_list = ((1627, 2587), (1532, 1804), (1411, 923), (1430, 850))
     elif i_file == 12:
         location_list = ((1133, 1388), (1113, 430), (372, 1187))
     elif i_file == 13:
-        location_list = ((330, 744), (264, 350), (556, 451))
+        location_list = ((330, 744), (264, 350), (552, 436))
     elif i_file == 14:
         location_list = ((591, 1262), (927, 1170), (1140, 1173))
     elif i_file == 15:
@@ -152,6 +151,19 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 19:
         location_list = ((970, 1852), (432, 657), (1015, 803))
 
+
+    if DEBUG:
+        # plot selected boxes on hbistology image
+        plt.clf()
+        plt.imshow(tile_lo)
+        f = plt.figure(1)
+        for j in range(len(location_list)):
+            f.axes[0].add_patch(plt.Rectangle(location_list[j],
+                                              box_size / im.level_downsamples[level],
+                                              box_size / im.level_downsamples[level],
+                                              color='k', fill=False, zorder=2))
+            plt.text(location_list[j][0], location_list[j][1], str(j))
+
     for j in range(len(location_list)):
 
         # (x,y)-coordinates of cropping box first corner at 16x downsample level
@@ -159,6 +171,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
 
         # (x.y)-coordinates in the full resolution histology
         location = np.array(location) * im.level_downsamples[level]
+        print(location)
 
         # extract tile at full resolution
         tile = im.read_region(location=location.astype(np.int), level=0, size=(box_size, box_size))
@@ -268,4 +281,3 @@ for i, file in enumerate(new_outfilename_list):
 
     print('i = ' + str(i) + ': ' + os.path.basename(file))
 
-# i = 7 next window to label
