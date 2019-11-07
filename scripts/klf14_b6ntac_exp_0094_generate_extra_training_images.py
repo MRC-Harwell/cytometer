@@ -85,10 +85,10 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # box for left half of image
     size = (int(im.level_dimensions[level][0]/2), int(im.level_dimensions[level][1]))
 
-    # extract tile from full resolution image, downsampled so that we can look for regions of interest
-    tile_lo = im.read_region(location=(0, 0), level=level, size=size)
-    tile_lo = np.array(tile_lo)
-    tile_lo = tile_lo[:, :, 0:3]
+    # # extract tile from full resolution image, downsampled so that we can look for regions of interest
+    # tile_lo = im.read_region(location=(0, 0), level=level, size=size)
+    # tile_lo = np.array(tile_lo)
+    # tile_lo = tile_lo[:, :, 0:3]
 
     # (x,y)-locations of cropping windows in the coordinates of the downsampled image by a factor of 16
     if i_file == 0:
@@ -172,9 +172,9 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                       + '_col_' + str(box_corner_col).zfill(6)
         outfilename = os.path.join(training_dir, outfilename + '.tif')
 
-        # check that file doesn't exist
-        if os.path.isfile(outfilename):
-            raise FileExistsError('File exists: ' + outfilename)
+        # # check that file doesn't exist
+        # if os.path.isfile(outfilename):
+        #     raise FileExistsError('File exists: ' + outfilename)
 
         new_outfilename_list.append(outfilename)
 
@@ -204,24 +204,30 @@ file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 # number of images
 n_im = len(file_svg_list)
 
-# loop folds
+# loop folds to split the files in the new dataset according to the same animals as in the old dataset
 new_outfilename_list_trimmed = [x.split('_row')[0] for x in new_outfilename_list]
 new_idx_test_all = []
+new_idx_train_all = []
 for k in range(len(idx_test_all)):
 
     # test indices
     idx_test = idx_test_all[k]
+    idx_train = idx_train_all[k]
 
     # file names of the original training data files for this fold
     file_svg_test = np.array(file_svg_list)[idx_test]
+    file_svg_train = np.array(file_svg_list)[idx_train]
 
     # remove the '_row_*_col_*' strings and remove duplicates
     file_svg_test_trimmed = np.unique([x.split('_row')[0] for x in file_svg_test])
+    file_svg_train_trimmed = np.unique([x.split('_row')[0] for x in file_svg_train])
 
     # find the new training windows that correspond to the current fold
     new_idx_test = np.where(np.isin(new_outfilename_list_trimmed, file_svg_test_trimmed))[0]
+    new_idx_train = np.where(np.isin(new_outfilename_list_trimmed, file_svg_train_trimmed))[0]
 
     new_idx_test_all.append(new_idx_test)
+    new_idx_train_all.append(new_idx_train)
 
 # split indices into train and test sets
 new_idx_train_all = []
