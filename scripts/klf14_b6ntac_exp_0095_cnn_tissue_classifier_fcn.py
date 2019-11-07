@@ -7,6 +7,8 @@ Like 0061, but:
   * We just map the histo input to a pixel-wise binary classifier.
 Like 0074, but:
   * k-folds = 10 instead of 11.
+Like 0088:
+  * add new "other" tissue data samples to training dataset.
 
 Use hand traced areas of white adipocytes and "other" tissues to train classifier to differentiate.
 
@@ -21,7 +23,7 @@ network has not seen neighbour cells to the ones used for training.
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
+experiment_id = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 print('Experiment ID: ' + experiment_id)
 
 # cross-platform home directory
@@ -109,6 +111,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 '''CNN Model
 '''
@@ -183,12 +186,22 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
 '''Load folds'''
 
 # load list of images, and indices for training vs. testing indices
-contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
-with open(contour_model_kfold_filename, 'rb') as f:
+
+# original dataset used in pipelines up to v6
+kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(kfold_filename, 'rb') as f:
     aux = pickle.load(f)
 file_svg_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
+
+# new dataset with extra "Other" tissue samples
+extra_kfold_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
+with open(extra_kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_extra_svg_list = aux['file_list']
+idx_extra_test_all = aux['idx_test']
+idx_extra_train_all = aux['idx_train']
 
 # correct home directory
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
