@@ -15,13 +15,8 @@ home = str(Path.home())
 import os
 import openslide
 import numpy as np
-from statistics import mode
 import matplotlib.pyplot as plt
-import cv2
-from random import randint, seed
 import tifffile
-import glob
-from cytometer.utils import rough_foreground_mask
 import pickle
 
 DEBUG = False
