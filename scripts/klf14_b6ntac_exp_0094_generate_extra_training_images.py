@@ -79,7 +79,7 @@ ndpi_files_list = [os.path.join(ndpi_dir, x) for x in ndpi_files_list]
 # Note: if you want to read the full list of KLF14*.ndpi
 # ndpi_files_list = glob.glob(os.path.join(ndpi_dir, 'KLF14*.ndpi'))
 
-# TODO: next i_file = 14
+# TODO: next i_file = 17
 
 # loop downsampled histology slides (this was used to find the coordinates of cropping boxes for the next for loop)
 for i_file, ndpi_file in enumerate(ndpi_files_list):
@@ -139,7 +139,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 13:
         location_list = ((330, 744), (264, 350), (552, 436))
     elif i_file == 14:
-        location_list = ((591, 1262), (927, 1170), (1140, 1173))
+        location_list = ((631, 1258), (918, 1149), (973, 1375))
     elif i_file == 15:
         location_list = ((441, 759), (652, 339), (1097, 266))
     elif i_file == 16:
