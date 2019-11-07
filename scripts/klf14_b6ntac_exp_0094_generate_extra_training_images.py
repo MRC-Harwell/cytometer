@@ -79,12 +79,10 @@ ndpi_files_list = [os.path.join(ndpi_dir, x) for x in ndpi_files_list]
 # Note: if you want to read the full list of KLF14*.ndpi
 # ndpi_files_list = glob.glob(os.path.join(ndpi_dir, 'KLF14*.ndpi'))
 
-# TODO: next i_file = 17
-
-# loop downsampled histology slides (this was used to find the coordinates of cropping boxes for the next for loop)
+new_outfilename_list = []
 for i_file, ndpi_file in enumerate(ndpi_files_list):
 
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)-1) + ': ' + ndpi_file)
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)) + ': ' + ndpi_file)
 
     # load file
     im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
@@ -96,18 +94,6 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     tile_lo = im.read_region(location=(0, 0), level=level, size=size)
     tile_lo = np.array(tile_lo)
     tile_lo = tile_lo[:, :, 0:3]
-
-    if DEBUG:
-        plt.clf()
-        plt.imshow(tile_lo)
-
-new_outfilename_list = []
-for i_file, ndpi_file in enumerate(ndpi_files_list):
-
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list)) + ': ' + ndpi_file)
-
-    # load file
-    im = openslide.OpenSlide(os.path.join(ndpi_dir, ndpi_file))
 
     # (x,y)-locations of cropping windows in the coordinates of the downsampled image by a factor of 16
     if i_file == 0:
@@ -145,15 +131,15 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 16:
         location_list = ((467, 763), (1197, 855), (1806, 1253))
     elif i_file == 17:
-        location_list = ((475, 895), (680, 1334), (1346, 950))
+        location_list = ((475, 895), (680, 1321), (1346, 950), (180, 1266))
     elif i_file == 18:
         location_list = ((744, 1483), (1216, 992), (1854, 581))
     elif i_file == 19:
-        location_list = ((970, 1852), (432, 657), (1015, 803))
+        location_list = ((970, 1842), (432, 657), (1015, 803))
 
 
     if DEBUG:
-        # plot selected boxes on hbistology image
+        # plot selected boxes on histology image
         plt.clf()
         plt.imshow(tile_lo)
         f = plt.figure(1)
@@ -171,7 +157,6 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
 
         # (x.y)-coordinates in the full resolution histology
         location = np.array(location) * im.level_downsamples[level]
-        print(location)
 
         # extract tile at full resolution
         tile = im.read_region(location=location.astype(np.int), level=0, size=(box_size, box_size))
@@ -206,9 +191,9 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                     int(im.properties["tiff.YResolution"]),
                                     im.properties["tiff.ResolutionUnit"].upper()))
 
-new_n_klf14 = len(new_outfilename_list)
-
 '''Load folds'''
+
+new_n_klf14 = len(new_outfilename_list)
 
 # load list of images, and indices for training vs. testing indices
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
