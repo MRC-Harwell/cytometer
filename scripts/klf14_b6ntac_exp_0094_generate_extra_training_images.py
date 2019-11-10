@@ -186,11 +186,11 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                     int(im.properties["tiff.YResolution"]),
                                     im.properties["tiff.ResolutionUnit"].upper()))
 
-'''Load folds'''
-
 new_n_klf14 = len(new_outfilename_list)
 
-# load list of images, and indices for training vs. testing indices
+'''Load folds'''
+
+# old dataset: load list of images, and indices for training vs. testing indices
 contour_model_kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
 with open(contour_model_kfold_filename, 'rb') as f:
     aux = pickle.load(f)
@@ -198,10 +198,10 @@ file_svg_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
-# correct home directory
+# old dataset: correct home directory
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
-# number of images
+# old dataset: number of images
 n_im = len(file_svg_list)
 
 # loop folds to split the files in the new dataset according to the same animals as in the old dataset
@@ -229,20 +229,31 @@ for k in range(len(idx_test_all)):
     new_idx_test_all.append(new_idx_test)
     new_idx_train_all.append(new_idx_train)
 
-# split indices into train and test sets
-new_idx_train_all = []
-for k in range(len(new_idx_test_all)):
-    new_idx_train = set(range(len(new_outfilename_list))) - set(new_idx_test_all[k])
-    new_idx_train_all.append(np.array(list(new_idx_train)))
+## add the 18.2g images as test to the last fold (and as training to the other folds). That animal was not in the old
+# dataset, so the new images have not been added
+idx = np.where(['18.2g' in file for file in new_outfilename_list])[0]
+for k in range(9):
+    new_idx_train_all[k] = np.concatenate((new_idx_train_all[k], idx))
+new_idx_test_all[9] = np.concatenate((new_idx_test_all[9], idx))
+
+# concatenate new images to old ones
+new_file_svg_list = [x.replace('.tif', '.svg') for x in new_outfilename_list]
+file_svg_list += new_file_svg_list
+for k in range(10):
+    idx_test_all[k] = np.concatenate((idx_test_all[k], n_im + new_idx_test_all[k]))
+    idx_train_all[k] = np.concatenate((idx_train_all[k], n_im + new_idx_train_all[k]))
 
 # save file list
 new_kfolds_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle')
 with open(new_kfolds_filename, 'wb') as f:
-    x = {'file_list': new_outfilename_list, 'idx_train': new_idx_train_all, 'idx_test': new_idx_test_all,
-         'fold_seed': 0, 'n_klf14': new_n_klf14}
+    x = {'file_list': file_svg_list, 'idx_train': idx_train_all, 'idx_test': idx_test_all,
+         'fold_seed': 0}
     pickle.dump(x, f, pickle.HIGHEST_PROTOCOL)
 
-# debug folds (make sure that each fold contains the same .ndpi data in the old and new datasets)
+# debug the new folds. Check that all indices are present both in test and training
+assert(np.all(np.unique(np.concatenate(new_idx_train_all)) == np.array(list(range(len(new_outfilename_list))))))
+
+# debug the new folds (make sure that each fold contains the same .ndpi data in the old and new datasets)
 if DEBUG:
     for k in range(len(idx_test_all)):
 
@@ -251,17 +262,25 @@ if DEBUG:
         # file names in old dataset
         idx_test = idx_test_all[k]
         file_svg_test = np.array(file_svg_list)[idx_test]
+        idx_train = idx_train_all[k]
+        file_svg_train = np.array(file_svg_list)[idx_train]
 
         # file names in new dataset
         new_idx_test = new_idx_test_all[k]
-        new_outfilename = np.array(new_outfilename_list)[new_idx_test]
+        file_svg_test = np.array(new_outfilename_list)[new_idx_test]
+        new_idx_train = new_idx_train_all[k]
+        file_svg_train = np.array(new_outfilename_list)[new_idx_train]
 
         print('    Old files')
         for file in file_svg_test:
-            print('        ' + os.path.basename(file))
+            print('        test: ' + os.path.basename(file))
+        for file in file_svg_train:
+            print('        train: ' + os.path.basename(file))
         print('    New files')
-        for file in new_outfilename:
-            print('        ' + os.path.basename(file))
+        for file in file_svg_test:
+            print('        test: ' + os.path.basename(file))
+        for file in file_svg_train:
+            print('        train: ' + os.path.basename(file))
 
 for i, file in enumerate(new_outfilename_list):
 
