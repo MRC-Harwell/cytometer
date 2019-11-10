@@ -108,7 +108,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 7:
         location_list = ((686, 986), (846, 633), (1677, 999))
     elif i_file == 8:
-        location_list = ((553, 415), (341, 274), (164, 860))
+        location_list = ((553, 415), (341, 274), (164, 872))
     elif i_file == 9:
         location_list = ((563, 827), (116, 628), (1030, 1230))
     elif i_file == 10:
@@ -118,7 +118,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     elif i_file == 12:
         location_list = ((1133, 1388), (1113, 430), (372, 1187))
     elif i_file == 13:
-        location_list = ((330, 744), (264, 350), (552, 436))
+        location_list = ((330, 744), (264, 350), (556, 451))
     elif i_file == 14:
         location_list = ((631, 1258), (918, 1149), (973, 1375))
     elif i_file == 15:
@@ -165,6 +165,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         # (row, col)-coordinates in the full resolution histology
         box_corner_col = int(location[0])
         box_corner_row = int(location[1])
+        print("row: " + str(box_corner_row) + ", col: " + str(box_corner_col))
 
         # name of the file with the cropped histology
         outfilename = os.path.basename(ndpi_file)
