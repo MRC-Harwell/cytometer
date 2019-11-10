@@ -110,7 +110,7 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
-saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+# saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
 saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 '''CNN Model
@@ -187,21 +187,13 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
 
 # load list of images, and indices for training vs. testing indices
 
-# original dataset used in pipelines up to v6
-kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+# original dataset used in pipelines up to v6 + extra "other" tissue images
+kfold_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
 with open(kfold_filename, 'rb') as f:
     aux = pickle.load(f)
 file_svg_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
-
-# new dataset with extra "Other" tissue samples
-extra_kfold_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
-with open(extra_kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-file_extra_svg_list = aux['file_list']
-idx_extra_test_all = aux['idx_test']
-idx_extra_train_all = aux['idx_train']
 
 # correct home directory
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
