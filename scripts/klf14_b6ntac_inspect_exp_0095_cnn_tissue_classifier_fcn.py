@@ -7,6 +7,8 @@ Like 0061, but:
   * We just map the histo input to a pixel-wise binary classifier.
 Like 0074, but:
   * k-folds = 10 instead of 11.
+Like 0088:
+  * add new "other" tissue data samples to training dataset.
 
 Use hand traced areas of white adipocytes and "other" tissues to train classifier to differentiate.
 
@@ -21,8 +23,8 @@ network has not seen neighbour cells to the ones used for training.
 '''
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_inspect_exp_0088_cnn_tissue_classifier_fcn'
-original_experiment_id = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
+experiment_id = 'klf14_b6ntac_inspect_exp_0095_cnn_tissue_classifier_fcn'
+original_experiment_id = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 
 # cross-platform home directory
 from pathlib import Path
@@ -41,6 +43,7 @@ import warnings
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -69,7 +72,7 @@ klf14_training_augmented_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_t
 saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 
 # k-folds only for KLF14 data
-saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 
 '''Load folds'''
@@ -84,21 +87,6 @@ idx_train_all = aux['idx_train']
 
 # correct home directory
 svg_file_list = [x.replace('/home/rcasero', home) for x in svg_file_list]
-
-# TIFF files that correspond to the SVG files (without augmentation)
-im_orig_file_list = []
-for i, file in enumerate(svg_file_list):
-    im_orig_file_list.append(file.replace('.svg', '.tif'))
-    im_orig_file_list[i] = os.path.join(os.path.dirname(im_orig_file_list[i]) + '_augmented',
-                                        'im_seed_nan_' + os.path.basename(im_orig_file_list[i]))
-
-    # check that files exist
-    if not os.path.isfile(file):
-        # warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(file))
-        warnings.warn('i = ' + str(i) + ': File does not exist: ' + file)
-    if not os.path.isfile(im_orig_file_list[i]):
-        # warnings.warn('i = ' + str(i) + ': File does not exist: ' + os.path.basename(im_orig_file_list[i]))
-        warnings.warn('i = ' + str(i) + ': File does not exist: ' + im_orig_file_list[i])
 
 '''Inspect training convergence'''
 
@@ -212,37 +200,39 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     '''Load data'''
 
-    # split the data list into training and testing lists
-    im_test_file_list, im_train_file_list = cytometer.data.split_list(im_orig_file_list, idx_test)
+    # change file extension from .svg to .tif
+    tif_file_list = [x.replace('.svg', '.tif') for x in svg_file_list]
 
-    # load the test data (im, dmap, mask)
-    test_dataset, test_file_list, test_shuffle_idx = \
-        cytometer.data.load_datasets(im_test_file_list, prefix_from='im', prefix_to=['im', 'dmap', 'mask'],
-                                     nblocks=1, shuffle_seed=None)
+    # list of test files for this fold
+    im_test_file_list = np.array(tif_file_list)[idx_test]
 
     # load tissue classifier
     saved_model_filename = os.path.join(saved_models_dir, original_experiment_id + '_model_fold_' + str(i_fold) + '.h5')
     tissue_model = keras.models.load_model(saved_model_filename)
-    if tissue_model.input_shape[1:3] != test_dataset['im'].shape[1:3]:
-        tissue_model = cytometer.utils.change_input_size(tissue_model, batch_shape=test_dataset['im'].shape)
+    tissue_model = cytometer.utils.change_input_size(tissue_model, batch_shape=(1, 1001, 1001, 3))
 
-    # classify tissue
-    pred_tissue = tissue_model.predict(test_dataset['im'], batch_size=4)
+    for i, file_tif in enumerate(tif_file_list):
+
+        # load image
+        im = Image.open(file_tif)
+        im = np.array(im)
+        im = im.astype(np.float32) / 255
+        im = np.expand_dims(im, axis=0)
+
+        # classify tissue
+        # pred_tissue = tissue_model.predict(im, batch_size=4)
+        pred_tissue = tissue_model.predict(im, batch_size=4)
 
     if DEBUG:
-        for i in range(test_dataset['im'].shape[0]):
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(test_dataset['im'][i, :, :, :])
-            plt.axis('off')
-            plt.subplot(222)
-            plt.imshow(test_dataset['im'][i, :, :, :])
-            plt.contour(pred_tissue[i, :, :, 0] >= 0.5, levels=[0, 1], colors='red')
-            plt.axis('off')
-            plt.subplot(223)
-            plt.imshow(test_dataset['mask'][i, :, :, 0])
-            plt.axis('off')
-            plt.subplot(224)
-            plt.imshow(pred_tissue[i, :, :, 0])
-            plt.axis('off')
-            plt.pause(2)
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(im[0, ...])
+        plt.axis('off')
+        plt.subplot(222)
+        plt.imshow(im[0, ...])
+        plt.contourf(pred_tissue[0, :, :, 0] > 0.4, alpha=0.5, levels=[0, 0.5, 1], colors=['C0', 'C1'])
+        plt.axis('off')
+        plt.subplot(212)
+        plt.imshow(pred_tissue[0, :, :, 0])
+        plt.axis('off')
+        plt.tight_layout()
