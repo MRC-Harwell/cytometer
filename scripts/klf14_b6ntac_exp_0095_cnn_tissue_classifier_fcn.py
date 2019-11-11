@@ -234,6 +234,11 @@ for i, file_svg in enumerate(file_svg_list):
 
     print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
 
+    # HACK: skip models already done
+    if i <= 1:
+        print('Already computed, skipping')
+        continue
+
     # change file extension from .svg to .tif
     file_tif = file_svg.replace('.svg', '.tif')
 
