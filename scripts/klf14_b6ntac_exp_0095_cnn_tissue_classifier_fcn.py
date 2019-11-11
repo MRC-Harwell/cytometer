@@ -37,6 +37,7 @@ import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import pickle
 import json
+import tempfile
 
 # other imports
 import datetime
@@ -399,6 +400,33 @@ im_array_all = np.concatenate(im_array_all)
 out_class_all = np.concatenate(out_class_all)
 out_mask_all = np.concatenate(out_mask_all)
 
+tempdir = tempfile.mkdtemp(prefix=experiment_id)
+filename_im_array_all = os.path.join(tempdir, 'im_array_all.dat')
+filename_out_class_all = os.path.join(tempdir, 'out_class_all.dat')
+filename_out_mask_all = os.path.join(tempdir, 'out_mask_all.dat')
+
+# move all the data to disk, so that it doesn't fill up the RAM
+shape_im_array_all = im_array_all.shape
+fp_im_array_all = np.memmap(filename_im_array_all, dtype=im_array_all.dtype, mode='w+', shape=im_array_all.shape)
+fp_im_array_all[:] = im_array_all[:]
+fp_im_array_all.flush()
+del im_array_all
+del fp_im_array_all
+
+shape_out_class_all = out_class_all.shape
+fp_out_class_all = np.memmap(filename_out_class_all, dtype=out_class_all.dtype, mode='w+', shape=out_class_all.shape)
+fp_out_class_all[:] = out_class_all[:]
+fp_out_class_all.flush()
+del out_class_all
+del fp_out_class_all
+
+shape_out_mask_all = out_mask_all.shape
+fp_out_mask_all = np.memmap(filename_out_mask_all, dtype=out_mask_all.dtype, mode='w+', shape=out_mask_all.shape)
+fp_out_mask_all[:] = out_mask_all[:]
+fp_out_mask_all.flush()
+del out_mask_all
+del fp_out_mask_all
+
 '''Convolutional neural network training
 
     Note: you need to use my branch of keras with the new functionality, that allows element-wise weights of the loss
@@ -426,34 +454,40 @@ for i_fold, idx_test in enumerate(idx_test_all):
     print('## len(idx_train) = ' + str(len(idx_train)))
     print('## len(idx_test) = ' + str(len(idx_test)))
 
-    # split data into training and testing
-    im_array_train = im_array_all[idx_train, :, :, :]
-    im_array_test = im_array_all[idx_test, :, :, :]
+    # split data into training and testing, and split into blocks
+    fp_im_array_all = np.memmap(filename_im_array_all, dtype=np.float32, mode='r', shape=shape_im_array_all)
+    im_array_train = fp_im_array_all[idx_train, :, :, :]
+    im_array_test = fp_im_array_all[idx_test, :, :, :]
+    del fp_im_array_all
 
-    out_class_train = out_class_all[idx_train, :, :, :]
-    out_class_test = out_class_all[idx_test, :, :, :]
+    im_array_train = np.concatenate(np.split(im_array_train, 2, axis=1))
+    im_array_train = np.concatenate(np.split(im_array_train, 2, axis=2))
+    im_array_test = np.concatenate(np.split(im_array_test, 2, axis=1))
+    im_array_test = np.concatenate(np.split(im_array_test, 2, axis=2))
 
-    out_mask_train = out_mask_all[idx_train, :, :]
-    out_mask_test = out_mask_all[idx_test, :, :]
+    fp_out_class_all = np.memmap(filename_out_class_all, dtype=np.float32, mode='r', shape=shape_out_class_all)
+    out_class_train = fp_out_class_all[idx_train, :, :, :]
+    out_class_test = fp_out_class_all[idx_test, :, :, :]
+    del fp_out_class_all
+
+    out_class_train = np.concatenate(np.split(out_class_train, 2, axis=1))
+    out_class_train = np.concatenate(np.split(out_class_train, 2, axis=2))
+    out_class_test = np.concatenate(np.split(out_class_test, 2, axis=1))
+    out_class_test = np.concatenate(np.split(out_class_test, 2, axis=2))
+
+    fp_out_mask_all = np.memmap(filename_out_mask_all, dtype=np.float32, mode='r', shape=shape_out_mask_all)
+    out_mask_train = fp_out_mask_all[idx_train, :, :]
+    out_mask_test = fp_out_mask_all[idx_test, :, :]
+    del fp_out_mask_all
+
+    out_mask_train = np.concatenate(np.split(out_mask_train, 2, axis=1))
+    out_mask_train = np.concatenate(np.split(out_mask_train, 2, axis=2))
+    out_mask_test = np.concatenate(np.split(out_mask_test, 2, axis=1))
+    out_mask_test = np.concatenate(np.split(out_mask_test, 2, axis=2))
 
     # encode as 0: other, 1: WAT
     out_class_train = 1 - out_class_train
     out_class_test = 1 - out_class_test
-
-    # split into blocks
-    _, im_array_train, _ = pysto.imgproc.block_split(im_array_train, nblocks=[1, 2, 2, 1])
-    im_array_train = np.concatenate(im_array_train, axis=0)
-    _, out_class_train, _ = pysto.imgproc.block_split(out_class_train, nblocks=[1, 2, 2, 1])
-    out_class_train = np.concatenate(out_class_train, axis=0)
-    _, out_mask_train, _ = pysto.imgproc.block_split(out_mask_train, nblocks=[1, 2, 2])
-    out_mask_train = np.concatenate(out_mask_train, axis=0)
-
-    _, im_array_test, _ = pysto.imgproc.block_split(im_array_test, nblocks=[1, 2, 2, 1])
-    im_array_test = np.concatenate(im_array_test, axis=0)
-    _, out_class_test, _ = pysto.imgproc.block_split(out_class_test, nblocks=[1, 2, 2, 1])
-    out_class_test = np.concatenate(out_class_test, axis=0)
-    _, out_mask_test, _ = pysto.imgproc.block_split(out_mask_test, nblocks=[1, 2, 2])
-    out_mask_test = np.concatenate(out_mask_test, axis=0)
 
     if DEBUG:
         i = 10
@@ -505,7 +539,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # compile model
     parallel_model = multi_gpu_model(model, gpus=gpu_number)
-    parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.80, gamma=2)},
+    parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.40, gamma=2)},
                            optimizer='Adadelta',
                            metrics={'classification_output': 'accuracy'},
                            sample_weight_mode='element')
@@ -518,7 +552,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
                               validation_data=(im_array_test,
                                                {'classification_output': out_class_test},
                                                {'classification_output': out_mask_test}),
-                              batch_size=batch_size, epochs=epochs, initial_epoch=0,
+                              batch_size=batch_size, epochs=epochs, initial_epoch=0, shuffle=True,
                               callbacks=[checkpointer, tensorboard, clr])
     toc = datetime.datetime.now()
     print('Training duration: ' + str(toc - tic))
