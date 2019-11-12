@@ -234,11 +234,6 @@ for i, file_svg in enumerate(file_svg_list):
 
     print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
 
-    # HACK: skip models already done
-    if i <= 1:
-        print('Already computed, skipping')
-        continue
-
     # change file extension from .svg to .tif
     file_tif = file_svg.replace('.svg', '.tif')
 
@@ -448,6 +443,11 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
+    # HACK: skip folds that are already done
+    if i_fold <= 0:
+        print('Already computed, skipping')
+        continue
+
     # test and training image indices
     idx_test = idx_test_all[i_fold]
     idx_train = idx_train_all[i_fold]
@@ -544,7 +544,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
 
     # compile model
     parallel_model = multi_gpu_model(model, gpus=gpu_number)
-    parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(alpha=.40, gamma=2)},
+    parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(gamma=2, alpha=.40)},
                            optimizer='Adadelta',
                            metrics={'classification_output': 'accuracy'},
                            sample_weight_mode='element')
