@@ -86,6 +86,7 @@ idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
 # correct home directory
+svg_file_list = [x.replace('/users/rittscher/rcasero', home) for x in svg_file_list]
 svg_file_list = [x.replace('/home/rcasero', home) for x in svg_file_list]
 
 '''Inspect training convergence'''
@@ -223,16 +224,16 @@ for i_fold, idx_test in enumerate(idx_test_all):
         # pred_tissue = tissue_model.predict(im, batch_size=4)
         pred_tissue = tissue_model.predict(im, batch_size=4)
 
-    if DEBUG:
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im[0, ...])
-        plt.axis('off')
-        plt.subplot(222)
-        plt.imshow(im[0, ...])
-        plt.contourf(pred_tissue[0, :, :, 0] > 0.4, alpha=0.5, levels=[0, 0.5, 1], colors=['C0', 'C1'])
-        plt.axis('off')
-        plt.subplot(212)
-        plt.imshow(pred_tissue[0, :, :, 0])
-        plt.axis('off')
-        plt.tight_layout()
+        if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(im[0, ...])
+            plt.axis('off')
+            plt.subplot(222)
+            plt.imshow(im[0, ...])
+            plt.contourf(pred_tissue[0, :, :, 0] > 0.4, alpha=0.5, levels=[0, 0.5, 1], colors=['C0', 'C1'])
+            plt.axis('off')
+            plt.subplot(212)
+            plt.imshow(pred_tissue[0, :, :, 0])
+            plt.axis('off')
+            plt.tight_layout()
