@@ -1,20 +1,20 @@
 """
-Validate pipeline v6:
+Validate pipeline v7:
  * data generation
    * training images (*0076*)
    * non-overlap training images (*0077*)
    * augmented training images (*0078*)
-   * k-folds (*0079*)
+   * k-folds + extra "other" for classifier (*0094*)
  * segmentation
    * dmap (*0086*)
-   * contour from dmap (0091)
- * classifier (*0088*)
- * segmentation correction (0089) networks"
- * validation (0092)
+   * contour from dmap (*0091*)
+ * classifier (*0095*)
+ * segmentation correction (*0089*) networks""
+ * validation (0096)"
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0092_pipeline_v6_validation'
+experiment_id = 'klf14_b6ntac_exp_0096_pipeline_v7_validation'
 
 # cross-platform home directory
 from pathlib import Path
@@ -53,8 +53,8 @@ import keras.backend as K
 
 import cytometer.utils
 import cytometer.data
-import tensorflow as tf
 
+# import tensorflow as tf
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
 # config = tf.ConfigProto()
@@ -119,12 +119,12 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 saved_figures_dir = os.path.join(root_data_dir, 'figures')
 
 # k-folds file
-saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # model names
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
 contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
-classifier_model_basename = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
+classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
 '''Load folds'''
@@ -138,6 +138,7 @@ idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
 # correct home directory
+file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
 # number of images
