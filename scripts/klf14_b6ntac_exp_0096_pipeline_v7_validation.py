@@ -377,6 +377,7 @@ Object-wise classification validation
 '''
 
 # correct home directory in file paths
+file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/home/rcasero', home, check_isfile=True)
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
 
 # load data computed in the previous section
