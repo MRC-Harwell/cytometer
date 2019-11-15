@@ -393,7 +393,8 @@ t0 = time.time()
 # init
 df_manual_all = pd.DataFrame()
 
-for i_fold in range(len(idx_test_all)):
+# for i_fold in range(len(idx_test_all)):
+for i_fold in range(8):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
@@ -517,7 +518,7 @@ for i_fold in range(len(idx_test_all)):
             plt.title('Manual contours', fontsize=14)
             plt.tight_layout()
 
-            plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_manual_contours.svg'))
+            plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_manual_contours.svg'))
 
         # loop contours
         for j, contour in enumerate(contours):
