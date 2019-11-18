@@ -48,5 +48,5 @@ dependencies:
     - prokaryote==2.4.0
     - javabridge==1.0.15
     - python-bioformats==1.4.0
-    - git+https://github.com/CellProfiler/CellProfiler.git@master
+    - git+https://github.com/CellProfiler/CellProfiler.git@v3.1.8
     
