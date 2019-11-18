@@ -231,7 +231,7 @@ for i_fold, idx_test in enumerate(idx_test_all):
             plt.axis('off')
             plt.subplot(222)
             plt.imshow(im[0, ...])
-            plt.contourf(pred_tissue[0, :, :, 0] > 0.4, alpha=0.5, levels=[0, 0.5, 1], colors=['C0', 'C1'])
+            plt.contourf(pred_tissue[0, :, :, 0] > 0.5, alpha=0.5, levels=[0, 0.5, 1], colors=['C0', 'C1'])
             plt.axis('off')
             plt.subplot(212)
             plt.imshow(pred_tissue[0, :, :, 0])
