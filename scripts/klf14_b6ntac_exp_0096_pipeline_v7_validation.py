@@ -653,98 +653,41 @@ y_wat_true = df_manual_all['type'] == 'wat'
 
 if DEBUG:
 
-    # init outputs
-    tpr_target = []
-    obj_thr_target = []
-    roc_auc = []
+    # bloxplots of WAT pixel proportion split between WAT and Other objects
+    plt.clf()
+    plt.boxplot((df_manual_all['wat_prop_50'][~y_wat_true], df_manual_all['wat_prop_50'][y_wat_true]))
 
     # pixel score thresholds
-    pix_thr = np.array(range(50, 101))
-    for p in pix_thr:
-        # ROC curve
-        fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_' + str(p)])
-        roc_auc.append(auc(fpr, tpr))
+    # ROC curve
+    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_50'])
+    roc_auc = auc(fpr, tpr)
 
-        # we fix the FPR (False Positive Rate) and interpolate the TPR (True Positive Rate) on the ROC curve
-        fpr_target = 0.10
-        tpr_target.append(np.interp(fpr_target, fpr, tpr))
+    # we fix the FPR (False Positive Rate) and interpolate the TPR (True Positive Rate) on the ROC curve
+    fpr_target = 0.10
+    tpr_target = np.interp(fpr_target, fpr, tpr)
 
-        # we also interpolate the corresponding object proportion threshold
-        aux = np.interp(fpr_target, fpr, thr)
-        aux = np.min((1.0, aux))
-        obj_thr_target.append(aux)
+    # we also interpolate the corresponding object proportion threshold
+    obj_thr_target = np.interp(fpr_target, fpr, thr)
+    obj_thr_target = np.min((1.0, obj_thr_target))
     tpr_target = np.array(tpr_target)
     obj_thr_target = np.array(obj_thr_target)
 
-    # maximum TPR for the FPR = 0.05
-    idx_max_tpr = np.argmax(tpr_target)
-
     plt.clf()
-    plt.subplot(121)
-    plt.plot(pix_thr / 100, tpr_target * 100)
-    plt.plot([pix_thr[idx_max_tpr] / 100,] * 2, [5, tpr_target[idx_max_tpr] * 100], '--C0')
-    plt.scatter([pix_thr[idx_max_tpr] / 100], [tpr_target[idx_max_tpr] * 100],
-                label='Pixel WAT score thr. = %0.2f\nObject WAT FPR = %0.0f%%\nObject WAT TPR = %0.0f%%'
-                      % (pix_thr[idx_max_tpr] / 100, fpr_target * 100, tpr_target[idx_max_tpr] * 100), s=100)
+    plt.plot(fpr, tpr)
+    plt.scatter(fpr_target, tpr_target, color='C0',
+                label='Object score thr. =  %0.2f, FPR = %0.0f%%, TPR = %0.0f%%'
+                      % (obj_thr_target, fpr_target * 100, tpr_target * 100))
     plt.tick_params(labelsize=14)
-    plt.xlabel('Pixel WAT score threshold', fontsize=14)
-    plt.ylabel('Object WAT TPR (%%) for FPR = %0.0f%%' % (fpr_target * 100), fontsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-
-    plt.subplot(122)
-    plt.plot(pix_thr / 100, obj_thr_target * 100, 'C0')
-    plt.plot([pix_thr[idx_max_tpr] / 100,] * 2, [0, obj_thr_target[idx_max_tpr] * 100], '--C0')
-    plt.scatter([pix_thr[idx_max_tpr] / 100], [obj_thr_target[idx_max_tpr] * 100],
-                label='Pixel WAT score thr. = %0.2f\nObject WAT score thr. = %0.1f%%'
-                      % (pix_thr[idx_max_tpr] / 100, obj_thr_target[idx_max_tpr] * 100), s=100)
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Pixel WAT score threshold', fontsize=14)
-    plt.ylabel('Object WAT score threshold (%)', fontsize=14)
-    plt.legend(loc='best', prop={'size': 12})
+    plt.xlabel('Pixel WAT False Positive Rate (FPR)', fontsize=14)
+    plt.ylabel('Pixel WAT True Positive Rate (TPR)', fontsize=14)
+    plt.legend(loc="lower right", prop={'size': 12})
     plt.tight_layout()
 
-if DEBUG:
-    # show problem of the ROC not having data points for low FPR values
-    plt.clf()
-    p = 50
-    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_' + str(p)])
-    plt.plot(fpr, tpr, label='Pixel thr. = 0.50')
-    p = 62
-    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_' + str(p)])
-    plt.plot(fpr, tpr, label='Pixel thr. = 0.62')
-    plt.plot([.1, .1], [0, 1], '--', color='black')
-    plt.tick_params(labelsize=14)
-    plt.xlabel('FPR', fontsize=14)
-    plt.ylabel('TPR', fontsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-if DEBUG:
-    plt.clf()
-    plt.plot(pix_thr / 100, roc_auc)
-
-if DEBUG:
-    # ROC for pixel threshold = 50%
-    plt.clf()
-    fpr, tpr, thr = roc_curve(y_true=y_wat_true, y_score=df_manual_all['wat_prop_50'])
-    plt.plot(fpr[1:], tpr[1:], label='Pixel thr. = 0.50', linewidth=2, color='C0')
-    plt.scatter(fpr[1], tpr[1], color='C0', s=50)
-    plt.text(0.21, 0.82, r'Prop. WAT pixels$\geq$%0.2f'
-                         '\n'
-                         r'FPR=%0.2f, TPR=%0.2f' % (thr[1], fpr[1], tpr[1]), fontsize=14)
-    # plt.xlim(0.0, 1.0)
-    # plt.ylim(0.0, 1.0)
-    plt.tick_params(labelsize=14)
-    plt.xlabel('False Positive Rate (1 - Specificity)', fontsize=14)
-    plt.ylabel('True Positive Rate (Sensitivity)', fontsize=14)
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_roc_object_classification.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_roc_object_classification.svg'))
 
     # classifier confusion matrix
-    idx = np.where(pix_thr == 50)[0][0]
     cytometer.utils.plot_confusion_matrix(y_true=y_wat_true,
-                                          y_pred=df_manual_all['wat_prop_50'] >= obj_thr_target[idx],
+                                          y_pred=df_manual_all['wat_prop_50'] >= obj_thr_target,
                                           normalize=True,
                                           title='Object classifier',
                                           xlabel='Predicted',
