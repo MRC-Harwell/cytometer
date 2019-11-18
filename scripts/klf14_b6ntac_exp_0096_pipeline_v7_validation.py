@@ -393,8 +393,7 @@ t0 = time.time()
 # init
 df_manual_all = pd.DataFrame()
 
-# for i_fold in range(len(idx_test_all)):
-for i_fold in range(8):
+for i_fold in range(len(idx_test_all)):
 
     print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
@@ -557,7 +556,7 @@ for i_fold in range(8):
             wat_scores = aux[cell_seg_contour == 1]
 
             # compute proportions for different thresholds of Otherness
-            prop = np.linspace(0, 100, 101)
+            prop = [50.0]
             for p in prop:
                 # e.g. df_im.loc[j, 'wat_prop_55'] = np.count_nonzero(wat_scores > 0.55) / len(wat_scores)
                 df_common.loc[j, 'wat_prop_' + str(int(p))] = np.count_nonzero(wat_scores > (p / 100)) / len(wat_scores)
