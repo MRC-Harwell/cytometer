@@ -1,21 +1,21 @@
 """
-Processing full slides with Fold 0 of pipeline v6:
+Processing full slides of pipeline v7:
 
  * data generation
    * training images (*0076*)
    * non-overlap training images (*0077*)
    * augmented training images (*0078*)
-   * k-folds (*0079*)
+   * k-folds + extra "other" for classifier (*0094*)
  * segmentation
    * dmap (*0086*)
-   * contour from dmap (0091)
- * classifier (*0088*)
- * segmentation correction (0089) networks"
- * validation (0092)
+   * contour from dmap (*0091*)
+ * classifier (*0095*)
+ * segmentation correction (*0089*) networks"
+ * validation (*0096*)
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0093_full_slide_pipeline_v6'
+experiment_id = 'klf14_b6ntac_exp_0097_full_slide_pipeline_v7'
 
 # cross-platform home directory
 from pathlib import Path
@@ -23,14 +23,15 @@ home = str(Path.home())
 
 import os
 import sys
+import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -69,17 +70,15 @@ annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 
 # k-folds file
-saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # model names
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
 contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
-classifier_model_basename = 'klf14_b6ntac_exp_0088_cnn_tissue_classifier_fcn'
+classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
 # full resolution image window and network expected receptive field parameters
-# fullres_box_size = np.array([1751, 1751])
-# fullres_box_size = np.array([2501, 2501])
 fullres_box_size = np.array([2751, 2751])
 receptive_field = np.array([131, 131])
 
@@ -102,68 +101,72 @@ min_cell_area = 1500
 max_cell_area = 100e3
 min_mask_overlap = 0.8
 phagocytosis = True
-min_class_prop = 1.0
+min_class_prop = 0.5
 correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
 
 # segmentation correction parameters
 
-# process all histology slices in the data directory
-# files_list = glob.glob(os.path.join(data_dir, 'KLF14*.ndpi'))
+# load list of images, and indices for training vs. testing indices
+saved_kfolds_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
+with open(saved_kfolds_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_svg_list = aux['file_list']
+idx_test_all = aux['idx_test']
+idx_train_all = aux['idx_train']
 
-# # process only histology slices that were used for the hand traced dataset
-# files_list = glob.glob(os.path.join(training_augmented_dir, 'im_seed_nan_*.tif'))
-# for i, file in enumerate(files_list):
-#     file_parts = os.path.split(file)
-#     # recover original .ndpi filename (e.g. from
-#     #'im_seed_nan_KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_007372_col_008556.tif'
-#     # to
-#     #
-#     files_list[i] = os.path.join(data_dir, file_parts[1][12:66] + '.ndpi')
+# correct home directory
+file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
+file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
-# HACK: only process four images
-files_list = [
-    os.path.join(data_dir, 'KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33.ndpi'),  # male PAT
-    os.path.join(data_dir, 'KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05.ndpi'),  # male MAT
-    os.path.join(data_dir, 'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi'),   # female PAT
-    os.path.join(data_dir, 'KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi')   # female MAT
-]
-files_list = files_list[::-1]
+# loop the folds to get the ndpi files that correspond to testing of each fold
+ndpi_files_test_list = {}
+for i_fold in range(len(idx_test_all)):
+    # list of .svg files for testing
+    file_svg_test = np.array(file_svg_list)[idx_test_all[i_fold]]
 
-# select the models that correspond to current fold
-fold_i = 0
-contour_model_file = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(fold_i) + '.h5')
-dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(fold_i) + '.h5')
-classifier_model_file = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(fold_i) + '.h5')
-correction_model_file = os.path.join(saved_models_dir, correction_model_basename + '_model_fold_' + str(fold_i) + '.h5')
+    # list of .ndpi files that the .svg windows came from
+    file_ndpi_test = [os.path.basename(x).replace('.svg', '') for x in file_svg_test]
+    file_ndpi_test = np.unique([x.split('_row')[0] for x in file_ndpi_test])
 
-# "KLF14-B6NTAC-MAT-18.2b  58-16 B3 - 2016-02-03 11.01.43.ndpi"
-# file_i = 10; file = files_list[file_i]
-# "KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi"
-# file_i = 331; file = files_list[file_i]
-# "KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.ndpi"
-# file_i = 55; file = files_list[file_i]
-for i_file, file in enumerate(files_list):
+    # add to the dictionary {file: fold}
+    for file in file_ndpi_test:
+        ndpi_files_test_list[file] = i_fold
 
-    print('File ' + str(i_file) + '/' + str(len(files_list)) + ': ' + file)
+for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
+
+    # fold  where the current .ndpi image was not used for training
+    i_fold = ndpi_files_test_list[ndpi_file_kernel]
+
+    # make full path to ndpi file
+    ndpi_file = os.path.join(data_dir, ndpi_file_kernel + '.ndpi')
+
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': ' + ndpi_file)
+
+    contour_model_file = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    classifier_model_file = os.path.join(saved_models_dir,
+                                         classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    correction_model_file = os.path.join(saved_models_dir,
+                                         correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # name of file to save annotations
-    annotations_file = os.path.basename(file)
+    annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0093.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097.json')
 
     # name of file to save areas and contours
-    results_file = os.path.basename(file)
+    results_file = os.path.basename(ndpi_file)
     results_file = os.path.splitext(results_file)[0]
-    results_file = os.path.join(results_dir, results_file + '_exp_0093.npz')
+    results_file = os.path.join(results_dir, results_file + '_exp_0097.npz')
 
     # # delete annotations file, if an older one exists
     # if os.path.isfile(annotations_file):
     #     os.remove(annotations_file)
 
     # rough segmentation of the tissue in the image
-    lores_istissue0, im_downsampled = rough_foreground_mask(file, downsample_factor=downsample_factor,
+    lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
                                                             dilation_size=dilation_size,
                                                             component_size_threshold=component_size_threshold,
                                                             hole_size_treshold=hole_size_treshold,
@@ -180,7 +183,7 @@ for i_file, file in enumerate(files_list):
     lores_istissue = lores_istissue0.copy()
 
     # open full resolution histology slide
-    im = openslide.OpenSlide(file)
+    im = openslide.OpenSlide(ndpi_file)
 
     # pixel size
     assert(im.properties['tiff.ResolutionUnit'] == 'centimeter')
@@ -202,7 +205,7 @@ for i_file, file in enumerate(files_list):
         time_prev = time_curr
         time_curr = time.time()
 
-        print('File ' + str(i_file) + '/' + str(len(files_list)) + ': step ' +
+        print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
               str(step) + ': ' +
               str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
               "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
