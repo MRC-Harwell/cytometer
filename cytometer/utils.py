@@ -914,7 +914,7 @@ def segment_dmap_contour_v3(im, contour_model, dmap_model, classifier_model=None
     return labels_all, labels_borders_all
 
 
-def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None, border_dilation=0):
+def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None, border_dilation=0, batch_size=None):
     """
     Segment cells in histology using the architecture pipeline v6:
       * distance transformation is estimated from histology using CNN.
@@ -929,6 +929,9 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
     :param dmap_model: Keras CNN model. Input is (n, rows, cols, 1).
     :param classifier_model: Keras CNN model. Input is (n, rows, cols, 3).
     :param border_dilation: (def 0) Number of iterations of the border dilation algorithm.
+    :param batch_size: (def None) Scalar batch_size passed to keras correction model. Maximum number of images processed
+    at the same time by the GPUs. A larger number produces faster processing, but it also requires larger GPU memory. If
+    batch_size is None, then batch_size is the number of images for the correction model.
     :return:
       If classifier_model=None:
       * labels: np.array (rows, cols) Labels, one label per cell.
@@ -974,7 +977,7 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         classifier_model = change_input_size(classifier_model, batch_shape=im.shape)
 
     # run histology image through distance transformation model
-    dmap_pred = dmap_model.predict(im)
+    dmap_pred = dmap_model.predict(im, batch_size=batch_size)
 
     if DEBUG:
         i = 0
@@ -990,7 +993,7 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
 
     if classifier_model is not None:
         # compute tissue classification of histology
-        class_pred = classifier_model.predict(im)
+        class_pred = classifier_model.predict(im, batch_size=batch_size)
 
         if DEBUG:
             plt.subplot(231)
@@ -1013,7 +1016,7 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         class_pred = np.logical_not(class_pred)
 
     # estimate contours from the dmap
-    contour_pred = contour_model.predict(dmap_pred)
+    contour_pred = contour_model.predict(dmap_pred, batch_size=batch_size)
 
     if DEBUG:
         plt.subplot(234)
