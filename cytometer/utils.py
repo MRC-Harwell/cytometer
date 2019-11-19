@@ -2659,6 +2659,8 @@ def segmentation_pipeline6(im,
     within the mask. (See clean_segmentation().)
     :param phagocytosis: (def True). Boolean to remove labels that are completely surrounded by another label. (See
     clean_segmentation().)
+    :param min_class_prop: (def 1.0). Only objects with >= min_class_prop pixels of class True are accepted. E.g. if
+    min_class_prop=0.5, only those objects with 50% valid pixels are accepted.
     :param correction_window_len: (def 401) Scalar such that (correction_window_len, correction_window_len) is the final
     size of the croppings after resizing. (See one_image_per_label_v2().)
     :param correction_smoothing: (def 11) Size of the smoothing kernel for each corrected segmentation. (See
