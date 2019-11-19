@@ -936,8 +936,8 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
 
       If classifier_model provided:
       * labels: np.array (n, rows, cols) Labels, one label per cell.
-      * labels_borders: np.array (n, rows, cols) Label edges.
       * class: np.array (n, rows, cols) Pixel-wise tissue classification (0: Other, 1: white adipocyte tissue).
+      * labels_borders: np.array (n, rows, cols) Label edges.
     """
 
     # convert usual im types to float32 [0.0, 1.0]
