@@ -85,12 +85,14 @@ smallest_dice = 0.5
 dice_threshold = 0.9
 
 # segmentation parameters
-min_cell_area = 75
-median_size = 0
-closing_size = 11
-contour_seed_threshold = 0.005
+min_cell_area = 1500
+max_cell_area = 100e3
+min_mask_overlap = 0.8
+phagocytosis = True
+min_class_prop = 0.5
+correction_window_len = 401
+correction_smoothing = 11
 batch_size = 2
-local_threshold_block_size = 41
 
 # rough_foreground_mask() parameters
 downsample_factor = 8.0
@@ -835,7 +837,7 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
-Segmentation validation with pipeline v6.
+Segmentation validation with pipeline v7.
 
 Loop manual contours and find overlaps with automatically segmented contours. Compute cell areas and prop. of WAT
 pixels.
@@ -843,6 +845,7 @@ pixels.
 '''
 
 # correct home directory in file paths
+file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/home/rcasero', home, check_isfile=True)
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
 
 # load data computed in the previous section
@@ -896,7 +899,7 @@ for i_fold in range(len(idx_test_all)):
                                                   dmap_model=dmap_model_filename,
                                                   contour_model=contour_model_filename,
                                                   classifier_model=classifier_model_filename,
-                                                  border_dilation=0)
+                                                  border_dilation=0, batch_size=batch_size)
 
     if DEBUG:
         i = 0
@@ -925,11 +928,11 @@ for i_fold in range(len(idx_test_all)):
 
     # clean segmentation: remove labels that are too small or that don't overlap enough with
     # the rough foreground mask
-    #
-    # Note: In 0093, we set phagocytosis=True, as we changed the method and made it much faster.
-    pred_seg_test \
-        = cytometer.utils.clean_segmentation(pred_seg_test, remove_edge_labels=False, min_cell_area=min_cell_area,
-                                             mask=rough_mask_test, phagocytosis=False)
+    pred_seg_test, _ \
+        = cytometer.utils.clean_segmentation(pred_seg_test, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
+                                             remove_edge_labels=False,
+                                             mask=rough_mask_test, min_mask_overlap=min_mask_overlap,
+                                             phagocytosis=True, labels_class=None)
 
     if DEBUG:
         plt.clf()
@@ -979,7 +982,7 @@ for i_fold in range(len(idx_test_all)):
             plt.imshow(im)
             plt.axis('off')
             plt.tight_layout()
-            plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pipeline_im_fold_%d_i_%d.svg' % (i_fold, i)),
+            plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pipeline_im_fold_%d_i_%d.svg' % (i_fold, i)),
                         bbox_inches='tight', pad_inches=0)
 
             # WAT classifier
@@ -987,7 +990,7 @@ for i_fold in range(len(idx_test_all)):
             plt.imshow(pred_class_test[i, :, :, 0])
             plt.axis('off')
             plt.tight_layout()
-            plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pipeline_pred_class_test_fold_%d_i_%d.svg' % (i_fold, i)),
+            plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pipeline_pred_class_test_fold_%d_i_%d.svg' % (i_fold, i)),
                         bbox_inches='tight', pad_inches=0)
 
         # read pixel size information
@@ -1114,7 +1117,7 @@ for i_fold in range(len(idx_test_all)):
                     plt.axis('off')
                     plt.tight_layout()
                     plt.savefig(os.path.join(saved_figures_dir,
-                                             'exp_0092_pipeline_labels_fold_%d_i_%d_j_%d.svg' % (i_fold, i, j)),
+                                             'exp_0096_pipeline_labels_fold_%d_i_%d_j_%d.svg' % (i_fold, i, j)),
                                 bbox_inches='tight', pad_inches=0)
 
                     # one cell segmentations: manual, auto, corrected
@@ -1134,7 +1137,7 @@ for i_fold in range(len(idx_test_all)):
                     plt.axis('off')
                     plt.tight_layout()
                     plt.savefig(os.path.join(saved_figures_dir,
-                                             'exp_0092_pipeline_window_seg_fold_%d_i_%d_j_%d.svg' % (i_fold, i, j)),
+                                             'exp_0096_pipeline_window_seg_fold_%d_i_%d_j_%d.svg' % (i_fold, i, j)),
                                 bbox_inches='tight', pad_inches=0)
 
                 # double-check that the cropping of the automatic segmentation we get here is the same we got before the
