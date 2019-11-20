@@ -35,6 +35,7 @@ import re
 # from enum import IntEnum
 from PIL import Image, ImageDraw, ImageEnhance
 import numpy as np
+import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from sklearn.metrics import roc_curve, auc
@@ -158,7 +159,7 @@ metainfo = pd.read_csv(metainfo_csv_file)
 Prepare the testing data:
 
   This is computed once, and then saved to 
-  'klf14_b6ntac_exp_0092_pipeline_v6_validation_data.npz'.
+  'klf14_b6ntac_exp_0096_pipeline_v7_validation_data.npz'.
   In subsequent runs, the data is loaded from that file.
 
   Apply classifier trained with each 10 folds to the other fold. 
@@ -1199,7 +1200,7 @@ for i_fold in range(len(idx_test_all)):
     # end of image loop
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
-# save results to avoid having to recompute them every time (15 min on 2 Titan RTX GPUs)
+# save results to avoid having to recompute them every time (1.4 h on 2 Titan RTX GPUs)
 dataframe_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
 df_manual_all.to_pickle(dataframe_manual_filename)
 
@@ -1213,20 +1214,52 @@ data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pip
 df_manual_all = pd.read_pickle(data_manual_filename)
 
 # boolean vectors to select subsets of rows from the dataframe
-idx_manual_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.95)
-idx_manual_not_large = np.array(df_manual_all['area_auto'] < 20e3)
-idx_manual_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
-idx_manual_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
+# idx_manual_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.5)
+# idx_manual_not_large = np.array(df_manual_all['area_auto'] < 20e3)
+# idx_manual_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
+# idx_manual_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
 
-# remove fold/image pairs that contain only "other" tissue or broken cells
-other_broken_fold_im = [(2, 6), (6, 0), (8, 3), (8, 4), (7, 3), (7, 4)]
-idx_manual_slice_with_wat = np.logical_not([x in other_broken_fold_im
-                                            for x in zip(df_manual_all['fold'], df_manual_all['im'])])
+# other_broken_svg_file_list = [
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_010716_col_008924.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_028156_col_018596.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_014628_col_069148.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_019340_col_017348.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_034628_col_040116.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_035948_col_041492.svg'
+# ]
+# plt.imshow(Image.open(other_broken_svg_file_list[4].replace('.svg', '.tif')))
 
-# remove fold/image pairs that contain substantial areas with broken cells or poor segmentations in general
-poor_seg_fold_im = [(4, 5), (5, 0), (3, 1), (6, 3), (4, 2), (3, 5)]
-idx_manual_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im
-                                                       for x in zip(df_manual_all['fold'], df_manual_all['im'])])
+# # remove fold/image pairs that contain only "other" tissue or broken cells
+# other_broken_fold_im = [(2, 6), (6, 0), (8, 3), (8, 4), (7, 3), (7, 4)]
+# idx_manual_slice_with_wat = np.logical_not([x in other_broken_fold_im
+#                                             for x in zip(df_manual_all['fold'], df_manual_all['im'])])
+#
+# # remove fold/image pairs that contain substantial areas with broken cells or poor segmentations in general
+# poor_seg_fold_im = [(4, 5), (5, 0), (3, 1), (6, 3), (4, 2), (3, 5)]
+# idx_manual_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im
+#                                                        for x in zip(df_manual_all['fold'], df_manual_all['im'])])
+
+# cells where there's a manual and automatic segmentation reasonable overlap, even if it's poor
+idx_manual_auto_overlap = df_manual_all['dice_auto'] > 0.5  # this ignores NaNs
+
+# boxplots of manual/auto/corrected areas. This is just a sanity check. Note that this only includes automatic
+# segmentations that already overlap with manual segmentations, so the results should be quite good
+plt.clf()
+bp = plt.boxplot((df_manual_all['area_manual'][idx_manual_auto_overlap],
+                  df_manual_all['area_auto'][idx_manual_auto_overlap],
+                  df_manual_all['area_corrected'][idx_manual_auto_overlap]),
+                 positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
+
+# points of interest from the boxplots
+bp_poi = cytometer.utils.boxplot_poi(bp)
+
+plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual median
+plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
+plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
+plt.tick_params(axis="both", labelsize=14)
+plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
+plt.ylim(-700, 8500)
+plt.tight_layout()
 
 # area vs. WAT proportion
 plt.clf()
@@ -1239,13 +1272,13 @@ plt.tight_layout()
 # histogram of area correction factor
 
 # objects selected for the plot
-idx = idx_manual_wat * idx_manual_not_large * idx_manual_good_segmentation
+idx = idx_manual_auto_overlap
 
 # median and std of ratios
-med_auto = np.median(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx])
-med_corrected = np.median(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx])
 q1_auto = np.quantile(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx], 0.25)
 q1_corrected = np.quantile(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx], 0.25)
+med_auto = np.median(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx])
+med_corrected = np.median(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx])
 q3_auto = np.quantile(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx], 0.75)
 q3_corrected = np.quantile(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx], 0.75)
 
@@ -1259,13 +1292,36 @@ plt.hist(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx
          label='Corrected / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
                % (q1_corrected, med_corrected, q3_corrected))
 plt.plot([1, 1], [0, 3.3], 'k', linewidth=2)
-plt.legend(fontsize=14)
+plt.legend(fontsize=12)
 plt.xlabel('Pipeline / Manual Area', fontsize=14)
 plt.ylabel('Histogram density', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
 plt.tight_layout()
 
-plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_areas_ratio_hist.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_areas_ratio_hist.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_areas_ratio_hist.png'))
+
+# auto area: inspect whether the ratios are more or less constant with the area size
+plt.clf()
+auto_ratio = 10 * np.log10(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx])
+counts, xbins, ybins, image = plt.hist2d(df_manual_all['area_manual'][idx] / 1e3, auto_ratio, bins=51)
+plt.contour(counts.transpose(), extent=[xbins[0],xbins[-1],ybins[0],ybins[-1]], linewidths=1, colors='w')
+plt.plot([0, 20], [0, 0], 'C1', linewidth=2)
+plt.xlabel('Manual area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+plt.ylabel('Automatic segmentation area error (dB)', fontsize=14)
+plt.tick_params(axis="both", labelsize=14)
+plt.tight_layout()
+
+# corrected area: inspect whether the ratios are more or less constant with the area size
+plt.clf()
+auto_ratio = 10 * np.log10(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx])
+counts, xbins, ybins, image = plt.hist2d(df_manual_all['area_manual'][idx] / 1e3, auto_ratio, bins=51)
+plt.contour(counts.transpose(), extent=[xbins[0],xbins[-1],ybins[0],ybins[-1]], linewidths=1, colors='w')
+plt.plot([0, 20], [0, 0], 'C1', linewidth=2)
+plt.xlabel('Manual area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+plt.ylabel('Corrected segmentation area error (dB)', fontsize=14)
+plt.tick_params(axis="both", labelsize=14)
+plt.tight_layout()
 
 # compare automatic and corrected areas to manual areas
 
@@ -1300,6 +1356,8 @@ plt.legend(fontsize=14)
 plt.xlabel('Manual Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.ylabel('Auto/Corrected area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
+
+# TODO: From here on
 
 # compare automatic and corrected areas to manual areas (keeping only segmentations with Dice >= 0.5)
 
@@ -1424,7 +1482,7 @@ plt.text(3.20, bp_perc_25_manual + .1, '%0.1f' % (bp_perc_25_manual), fontsize=1
 plt.text(3.20, bp_perc_50_manual + .2, '%0.1f' % (bp_perc_50_manual), fontsize=12, color='k')
 plt.text(3.20, bp_perc_75_manual + .2, '%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
 
-plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_boxplots.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots.svg'))
 
 ''' 
 ************************************************************************************************************************
@@ -1508,7 +1566,7 @@ if DEBUG:
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_boxplots_by_sex_ko.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots_by_sex_ko.svg'))
 
 # difference in medians
 area_median_m_pat = np.median(df_manual_all['area_manual'][idx_m_pat])
@@ -1577,7 +1635,7 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat.svg'))
 
 # area change from female to male
 area_change_pat_f2m = (area_perc_m_pat - area_perc_f_pat) / area_perc_m_pat
@@ -1633,7 +1691,7 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_f_to_m.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_f_to_m.svg'))
 
 # permutation testing
 quantiles, pval, reject = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
@@ -1726,8 +1784,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation_fdr_by.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation_fdr_by.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation_fdr_by.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation_fdr_by.png'))
 
     plt.clf()
     plt.plot([0, 100], [0, 0], linewidth=3, color='C0')
@@ -1747,8 +1805,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_pat_to_mat_permutation.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation.png'))
 
     plt.clf()
     plt.semilogy(range(1, 100), pval_f_pat2mat, color='C0', linewidth=3, label='Female')
@@ -1760,8 +1818,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pval_pat_to_mat_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pval_pat_to_mat_permutation.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_pat_to_mat_permutation.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_pat_to_mat_permutation.png'))
 
 # area change from female to male
 area_change_pat_f2m = (area_perc_m_pat - area_perc_f_pat) / area_perc_m_pat
@@ -1790,8 +1848,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_hist_by_pat_mat.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_hist_by_pat_mat.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_hist_by_pat_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_hist_by_pat_mat.png'))
 
 
 # permutation testing
@@ -1854,8 +1912,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_f_to_m_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_area_change_f_to_m_permutation.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_f_to_m_permutation.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_f_to_m_permutation.png'))
 
     plt.clf()
     plt.plot(range(1, 100), pval_pat_f2m, color='C0', linewidth=3, label='PAT')
@@ -1867,8 +1925,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pval_f_to_m_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_pval_f_to_m_permutation.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_f_to_m_permutation.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_f_to_m_permutation.png'))
 
 # permutation testing
 quantiles, pval, reject = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
@@ -2061,8 +2119,8 @@ if DEBUG:
     plt.ylim(-0.25, 11)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_pat_female_vs_male.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_pat_female_vs_male.png'))
 
 # MAT
 if DEBUG:
@@ -2076,8 +2134,8 @@ if DEBUG:
     plt.ylim(-0.25, 11)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_mat_female_vs_male.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_mat_female_vs_male.png'))
 
 # Female
 if DEBUG:
@@ -2091,8 +2149,8 @@ if DEBUG:
     plt.ylim(-0.25, 11)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_female_pat_vs_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_female_pat_vs_mat.png'))
 
 # Male
 if DEBUG:
@@ -2106,8 +2164,8 @@ if DEBUG:
     plt.ylim(-0.25, 11)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_male_pat_vs_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_male_pat_vs_mat.png'))
 
 # compute variability of area values for each quantile
 area_interval_f_pat = stats.mstats.hdquantiles(area_perc_f_pat, prob=[0.025, 0.5, 0.975], axis=0)
@@ -2136,8 +2194,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male_bands.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_pat_female_vs_male_bands.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_pat_female_vs_male_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_pat_female_vs_male_bands.png'))
 
 # MAT (females and males)
 if DEBUG:
@@ -2160,8 +2218,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male_bands.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_mat_female_vs_male_bands.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_mat_female_vs_male_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_mat_female_vs_male_bands.png'))
 
 # Female (PAT and MAT)
 if DEBUG:
@@ -2184,8 +2242,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat_bands.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_female_pat_vs_mat_bands.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_female_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_female_pat_vs_mat_bands.png'))
 
 # Male (PAT and MAT)
 if DEBUG:
@@ -2208,8 +2266,8 @@ if DEBUG:
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat_bands.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_male_pat_vs_mat_bands.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_male_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_male_pat_vs_mat_bands.png'))
 
 # test whether the median values are different enough between female vs. male
 func = lambda x, y: np.abs(stats.mstats.hdquantiles(x, prob=0.5, axis=0).data[0]
@@ -2254,8 +2312,8 @@ if DEBUG:
     plt.legend(loc='upper right', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_female_2_male.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_female_2_male.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male.png'))
 
 # test whether the median values are different enough between PAT vs. MAT
 pval_perc_f_pat2mat = np.zeros(shape=(len(quantiles),))
@@ -2298,5 +2356,5 @@ if DEBUG:
     plt.legend(loc='lower right', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_pat_2_mat.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0092_cell_area_change_pat_2_mat.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat.png'))
