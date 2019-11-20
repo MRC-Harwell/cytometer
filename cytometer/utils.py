@@ -3726,3 +3726,34 @@ def plot_confusion_matrix(y_true, y_pred,
                     fontsize=14)
     fig.tight_layout()
     return ax
+
+def boxplot_poi(bp):
+    """
+    Extract points of interest (quartiles and whiskers) from box and whisker plot.
+
+    :param bp: plt.boxplot object. This is returned by matplotlib.pyplot.boxplot(). It is assumed that the boxes are
+    plotted vertically.
+    :return:
+    * poi: (n, 5) np.array. Each row contains the 5 points of interest in one box and whisker plot:
+      [bottom whisker, Q1, median, Q3, top whisker].
+    """
+
+    # number of boxplots
+    n = len(bp['boxes'])
+
+    poi = []
+    for idx in range(n):
+        # bottom whisker
+        bp_w0 = bp['whiskers'][2*idx].get_data()[1][1]
+        # 1st quartile, 25-th percentile
+        bp_q1 = bp['boxes'][idx].get_data()[1][1]
+        # 2nd quartile, median, 50-th percentile
+        bp_q2 = bp['medians'][idx].get_data()[1][0]
+        # 3st quartile, 75-th percentile
+        bp_q3 = bp['boxes'][idx].get_data()[1][5]
+        # top whisker
+        bp_wend = bp['whiskers'][2*idx+1].get_data()[1][1]
+
+        poi.append([bp_w0, bp_q1, bp_q2, bp_q3, bp_wend])
+
+    return np.vstack(poi)
