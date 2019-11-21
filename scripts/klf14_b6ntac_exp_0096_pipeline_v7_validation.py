@@ -1323,6 +1323,8 @@ plt.ylabel('Corrected segmentation area error (dB)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
 plt.tight_layout()
 
+# TODO: From here on
+
 # compare automatic and corrected areas to manual areas
 
 # objects selected for the plot
@@ -1356,8 +1358,6 @@ plt.legend(fontsize=14)
 plt.xlabel('Manual Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.ylabel('Auto/Corrected area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
-
-# TODO: From here on
 
 # compare automatic and corrected areas to manual areas (keeping only segmentations with Dice >= 0.5)
 
