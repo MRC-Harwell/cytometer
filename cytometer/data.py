@@ -568,7 +568,7 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, m
     return paths_out
 
 
-def write_path_to_aida_json_file(fp, x, hue=170):
+def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
     """
     Write single contour to a JSON file in AIDA's annotation format.
 
@@ -577,52 +577,71 @@ def write_path_to_aida_json_file(fp, x, hue=170):
     :param fp: file pointer to text file that is open for writing/appending.
     :param x: numpy.ndarray with two columns, for (x,y)-coordinates of the points of a polygonal contour.
     :param hue: (def 170, which is a greenish blue) The hue of the color as a value in degrees between 0 and 360.
+    :param pretty_print: (def False) Boolean. Whether to save the file with '\n' and whitespaces for pretty formatting.
     :return: None.
     """
-    fp.write('        {\n')
-    fp.write('          "class": "",\n')
-    fp.write('          "type": "path",\n')
-    fp.write('          "color": {\n')
-    fp.write('            "fill": {\n')
-    fp.write('              "hue": ' + str(hue) + ',\n')
-    fp.write('              "saturation": 0.44,\n')
-    fp.write('              "lightness": 0.69,\n')
-    fp.write('              "alpha": 0.7\n')
-    fp.write('            },\n')
-    fp.write('            "stroke": {\n')
-    fp.write('              "hue": ' + str(hue) + ',\n')
-    fp.write('              "saturation": 0.44,\n')
-    fp.write('              "lightness": 0.69,\n')
-    fp.write('              "alpha": 1.0\n')
-    fp.write('            }\n')
-    fp.write('          },\n')
-    fp.write('          "segments": [\n')
-    for i, pt in enumerate(x):
-        fp.write('            {\n')
-        fp.write('              "point": {\n')
-        fp.write('                "x": ' + str(pt[0]) + ',\n')
-        fp.write('                "y": ' + str(pt[1]) + '\n')
-        # fp.write('              },\n')
-        # fp.write('              "handleIn": {\n')
-        # fp.write('                "x": 0.0,\n')
-        # fp.write('                "y": 0.0\n')
-        # fp.write('              },\n')
-        # fp.write('              "handleOut": {\n')
-        # fp.write('                "x": 0.0,\n')
-        # fp.write('                "y": 0.0\n')
-        fp.write('              }\n')
-        if i == len(x) - 1:
-            fp.write('            }\n')  # last point in the contour
-        else:
-            fp.write('            },\n')  # any other point in the contour
-    fp.write('          ],\n')
-    fp.write('          "closed": true\n')
-    fp.write('        }')
+
+    if pretty_print:
+        fp.write('        {\n')
+        fp.write('          "class": "",\n')
+        fp.write('          "type": "path",\n')
+        fp.write('          "color": {\n')
+        fp.write('            "fill": {\n')
+        fp.write('              "hue": ' + str(hue) + ',\n')
+        fp.write('              "saturation": 0.44,\n')
+        fp.write('              "lightness": 0.69,\n')
+        fp.write('              "alpha": 0.7\n')
+        fp.write('            },\n')
+        fp.write('            "stroke": {\n')
+        fp.write('              "hue": ' + str(hue) + ',\n')
+        fp.write('              "saturation": 0.44,\n')
+        fp.write('              "lightness": 0.69,\n')
+        fp.write('              "alpha": 1.0\n')
+        fp.write('            }\n')
+        fp.write('          },\n')
+        fp.write('          "segments": [\n')
+        for i, pt in enumerate(x):
+            fp.write('            [' + '{0:.12f}'.format(pt[0]) + ', ' + '{0:.12f}'.format(pt[1]))
+            if i == len(x) - 1:
+                fp.write(']\n')  # last point in the contour
+            else:
+                fp.write('],\n')  # any other point in the contour
+        fp.write('          ],\n')
+        fp.write('          "closed": true\n')
+        fp.write('        }')
+    else:
+        fp.write('{')
+        fp.write('"class": "",')
+        fp.write('"type": "path",')
+        fp.write('"color": {')
+        fp.write('"fill": {')
+        fp.write('"hue": ' + str(hue) + ',')
+        fp.write('"saturation": 0.44,')
+        fp.write('"lightness": 0.69,')
+        fp.write('"alpha": 0.7')
+        fp.write('},')
+        fp.write('"stroke": {')
+        fp.write('"hue": ' + str(hue) + ',')
+        fp.write('"saturation": 0.44,')
+        fp.write('"lightness": 0.69,')
+        fp.write('"alpha": 1.0')
+        fp.write('}')
+        fp.write('},')
+        fp.write('"segments": [')
+        for i, pt in enumerate(x):
+            fp.write('[' + '{0:.12f}'.format(pt[0]) + ',' + '{0:.12f}'.format(pt[1]))
+            if i == len(x) - 1:
+                fp.write(']')  # last point in the contour
+            else:
+                fp.write('],')  # any other point in the contour
+        fp.write('],')
+        fp.write('"closed": true')
+        fp.write('}')
 
     return
 
 
-def write_paths_to_aida_json_file(fp, xs, hue=170):
+def write_paths_to_aida_json_file(fp, xs, hue=170, pretty_print=False):
     """
     Write a list/tuple of contours to a JSON file in AIDA's annotation format.
 
@@ -630,35 +649,55 @@ def write_paths_to_aida_json_file(fp, xs, hue=170):
     :param xs: List of contours. Each contour is a list of points given as [x,y] or (x,y).
     :param hue: (def 170, a greenish blue). Integer or list of integers with hue value (between 0 and 360 degrees), one
     per contour in xs. If hue is an integer, the same hue is applied to each contour.
+    :param pretty_print: (def False) Boolean. Whether to save the file with '\n' and whitespaces for pretty formatting.
     :return: None.
     """
 
-    if type(hue) != list:
+    if np.isscalar(hue):
         hue = [hue] * len(xs)
 
     # write file header
-    fp.write('{\n')
-    fp.write('  "name": "Cytometer segmentation",\n')
-    fp.write('  "layers": [\n')
-    fp.write('    {\n')
-    fp.write('      "name": "Cell layer",\n')
-    fp.write('      "opacity": 1,\n')
-    fp.write('      "items": [\n')
-    for i, x in enumerate(xs):
-        write_path_to_aida_json_file(fp, x, hue=hue[i])
-        if i == len(xs) - 1:
-            fp.write('\n')  # last path
-        else:
-            fp.write(',\n')  # any other path
-    fp.write('      ]\n')
-    fp.write('    }\n')
-    fp.write('  ]\n')
-    fp.write('}\n')
+    if pretty_print:
+        fp.write('{\n')
+        fp.write('  "name": "Cytometer segmentation",\n')
+        fp.write('  "layers": [\n')
+        fp.write('    {\n')
+        fp.write('      "name": "Cell layer",\n')
+        fp.write('      "opacity": 1,\n')
+        fp.write('      "items": [\n')
+        for i, x in enumerate(xs):
+            write_path_to_aida_json_file(fp, x, hue=hue[i], pretty_print=pretty_print)
+            if i == len(xs) - 1:
+                fp.write('\n')  # last path
+            else:
+                fp.write(',\n')  # any other path
+        fp.write('      ]\n')
+        fp.write('    }\n')
+        fp.write('  ]\n')
+        fp.write('}\n')
+    else:
+        fp.write('{')
+        fp.write('"name": "Cytometer segmentation",')
+        fp.write('"layers": [')
+        fp.write('{')
+        fp.write('"name": "Cell layer",')
+        fp.write('"opacity": 1,')
+        fp.write('"items": [')
+        for i, x in enumerate(xs):
+            write_path_to_aida_json_file(fp, x, hue=hue[i], pretty_print=pretty_print)
+            if i == len(xs) - 1:
+                fp.write('')  # last path
+            else:
+                fp.write(',')  # any other path
+        fp.write(']')
+        fp.write('}')
+        fp.write(']')
+        fp.write('}')
 
     return
 
 
-def append_paths_to_aida_json_file(file, xs, hue=170):
+def append_paths_to_aida_json_file(file, xs, hue=170, pretty_print=False):
     """
     Add contours to AIDA's annotation file in JSON format.
 
@@ -666,6 +705,7 @@ def append_paths_to_aida_json_file(file, xs, hue=170):
     :param xs: List of contours. Each contour is a list of points given as [x,y] or (x,y).
     :param hue: (def 170, a greenish blue). Integer or list of integers with hue value (between 0 and 360 degrees), one
     per contour in xs. If hue is an integer, the same hue is applied to each contour.
+    :param pretty_print: (def False) Boolean. Whether to save the file with '\n' and whitespaces for pretty formatting.
     :return: None.
     """
 
@@ -691,7 +731,7 @@ def append_paths_to_aida_json_file(file, xs, hue=170):
     if len(xs) == 0:
         return
 
-    if type(hue) != list:
+    if np.isscalar(hue):
         hue = [hue] * len(xs)
 
     # truncate the tail of the annotations file:
@@ -717,10 +757,16 @@ def append_paths_to_aida_json_file(file, xs, hue=170):
     # '    }'
     # '  ]'
     # '}'
-    tail = '      ]\n' + \
-           '    }\n' + \
-           '  ]\n' + \
-           '}\n'
+    if pretty_print:
+        tail = '      ]\n' + \
+               '    }\n' + \
+               '  ]\n' + \
+               '}\n'
+    else:
+        tail = ']' + \
+               '}' + \
+               ']' + \
+               '}'
     fp = open(file, 'r')
     if not fp.seekable():
         raise IOError('File does not support random access: ' + file)
@@ -745,15 +791,24 @@ def append_paths_to_aida_json_file(file, xs, hue=170):
     fp.truncate()
 
     # add ',' to '        }', so that we can add a new contour
-    fp.write(',\n')
+    if pretty_print:
+        fp.write(',\n')
+    else:
+        fp.write(',')
 
     # append new contours to JSON file
     for i, x in enumerate(xs):
-        write_path_to_aida_json_file(fp, x, hue=hue[i])
+        write_path_to_aida_json_file(fp, x, hue=hue[i], pretty_print=pretty_print)
         if i == len(xs) - 1:
-            fp.write('\n')  # last path
+            if pretty_print:
+                fp.write('\n')  # last path
+            else:
+                fp.write('')  # last path
         else:
-            fp.write(',\n')  # any other path
+            if pretty_print:
+                fp.write(',\n')  # any other path
+            else:
+                fp.write(',')  # any other path
 
     # append tail
     fp.write(tail)
