@@ -1213,41 +1213,15 @@ df_auto_all.to_pickle(dataframe_auto_filename)
 data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
 df_manual_all = pd.read_pickle(data_manual_filename)
 
-# boolean vectors to select subsets of rows from the dataframe
-# idx_manual_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.5)
-# idx_manual_not_large = np.array(df_manual_all['area_auto'] < 20e3)
-# idx_manual_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
-# idx_manual_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
-
-# other_broken_svg_file_list = [
-#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_010716_col_008924.svg',
-#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_028156_col_018596.svg',
-#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_014628_col_069148.svg',
-#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_019340_col_017348.svg',
-#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_034628_col_040116.svg',
-#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_035948_col_041492.svg'
-# ]
-# plt.imshow(Image.open(other_broken_svg_file_list[4].replace('.svg', '.tif')))
-
-# # remove fold/image pairs that contain only "other" tissue or broken cells
-# other_broken_fold_im = [(2, 6), (6, 0), (8, 3), (8, 4), (7, 3), (7, 4)]
-# idx_manual_slice_with_wat = np.logical_not([x in other_broken_fold_im
-#                                             for x in zip(df_manual_all['fold'], df_manual_all['im'])])
-#
-# # remove fold/image pairs that contain substantial areas with broken cells or poor segmentations in general
-# poor_seg_fold_im = [(4, 5), (5, 0), (3, 1), (6, 3), (4, 2), (3, 5)]
-# idx_manual_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im
-#                                                        for x in zip(df_manual_all['fold'], df_manual_all['im'])])
-
 # cells where there's a manual and automatic segmentation reasonable overlap, even if it's poor
 idx_manual_auto_overlap = df_manual_all['dice_auto'] > 0.5  # this ignores NaNs
 
 # boxplots of manual/auto/corrected areas. This is just a sanity check. Note that this only includes automatic
 # segmentations that already overlap with manual segmentations, so the results should be quite good
 plt.clf()
-bp = plt.boxplot((df_manual_all['area_manual'][idx_manual_auto_overlap],
-                  df_manual_all['area_auto'][idx_manual_auto_overlap],
-                  df_manual_all['area_corrected'][idx_manual_auto_overlap]),
+bp = plt.boxplot((df_manual_all['area_manual'][idx_manual_auto_overlap] / 1e3,
+                  df_manual_all['area_auto'][idx_manual_auto_overlap] / 1e3,
+                  df_manual_all['area_corrected'][idx_manual_auto_overlap] / 1e3),
                  positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
 
 # points of interest from the boxplots
@@ -1257,8 +1231,8 @@ plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual
 plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
 plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
 plt.tick_params(axis="both", labelsize=14)
-plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
-plt.ylim(-700, 8500)
+plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+plt.ylim(-700 / 1e3, 10000 / 1e3)
 plt.tight_layout()
 
 # area vs. WAT proportion
@@ -1323,12 +1297,10 @@ plt.ylabel('Corrected segmentation area error (dB)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
 plt.tight_layout()
 
-# TODO: From here on
-
-# compare automatic and corrected areas to manual areas
+# linear regression
 
 # objects selected for the plot
-idx = idx_manual_wat * idx_manual_not_large
+idx = idx_manual_auto_overlap
 
 # linear regressions
 slope_manual_auto, intercept_manual_auto, \
@@ -1354,71 +1326,32 @@ plt.scatter(df_manual_all['area_manual'][idx] / 1e3,
 plt.plot([0, 20], (np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected) / 1e3, color='C1',
          path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
          label=r'Corrected ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_corrected, intercept_manual_corrected))
-plt.legend(fontsize=14)
+plt.legend(fontsize=12)
 plt.xlabel('Manual Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.ylabel('Auto/Corrected area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
 
-# compare automatic and corrected areas to manual areas (keeping only segmentations with Dice >= 0.5)
-
-# objects selected for the plot
-idx = idx_manual_wat * idx_manual_not_large * idx_manual_good_segmentation * idx_manual_slice_with_wat
-
-# linear regressions
-slope_manual_auto, intercept_manual_auto, \
-r_value_manual_auto, p_value_manual_auto, std_err_manual_auto = \
-    stats.linregress(df_manual_all['area_manual'][idx],
-                     df_manual_all['area_auto'][idx])
-slope_manual_corrected, intercept_manual_corrected, \
-r_value_manual_corrected, p_value_manual_corrected, std_err_manual_corrected = \
-    stats.linregress(df_manual_all['area_manual'][idx],
-                     df_manual_all['area_corrected'][idx])
-
-plt.clf()
-plt.plot([0, 20e3], [0, 20e3], 'g',
-         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
-         label=r'Identity ($\alpha=$ 1.00, $\beta=$0.00)')
-plt.scatter(df_manual_all['area_manual'][idx],
-            df_manual_all['area_auto'][idx], s=4, color='C0')
-plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_auto + intercept_manual_auto, color='C0',
-         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
-         label=r'Auto ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_auto, intercept_manual_auto))
-plt.scatter(df_manual_all['area_manual'][idx],
-            df_manual_all['area_corrected'][idx], s=4, color='C1')
-plt.plot([0, 20e3], np.array([0, 20e3]) * slope_manual_corrected + intercept_manual_corrected, color='C1',
-         path_effects=[pe.Stroke(linewidth=5, foreground='k'), pe.Normal()],
-         label=r'Corrected ($\alpha=$ %0.2f, $\beta=$ %0.2f)' % (slope_manual_corrected, intercept_manual_corrected))
-plt.legend(fontsize=14)
-plt.xlabel('Manual Area ($\mu$m$^2$)', fontsize=14)
-plt.ylabel('Auto/Corrected area ($\mu$m$^2$)', fontsize=14)
-plt.tick_params(axis="both", labelsize=14)
-
-# plot for poster
-
-# objects selected for the plot
-idx = idx_manual_wat * idx_manual_not_large * idx_manual_slice_with_wat * idx_manual_slice_with_acceptable_seg * idx_manual_not_edge * idx_manual_good_segmentation
-
-# boxplots of cell populations
-plt.clf()
-bp = plt.boxplot([df_manual_all['area_manual'][idx], df_manual_all['area_auto'][idx], df_manual_all['area_corrected'][idx]],
-                 positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
-
-# points of interest in the manual contours boxplot
-bp_perc_w0_manual = bp['whiskers'][0].get_data()[1][1]
-bp_perc_25_manual = bp['boxes'][0].get_data()[1][1]
-bp_perc_50_manual = bp['medians'][0].get_data()[1][0]
-bp_perc_75_manual = bp['boxes'][0].get_data()[1][5]
-bp_perc_wend_manual = bp['whiskers'][1].get_data()[1][1]
-
-plt.plot([0.75, 3.25], [bp_perc_50_manual, ] * 2, 'C1', linestyle='dotted')
-plt.plot([0.75, 3.25], [bp_perc_25_manual, ] * 2, 'k', linestyle='dotted')
-plt.plot([0.75, 3.25], [bp_perc_75_manual, ] * 2, 'k', linestyle='dotted')
-plt.tick_params(axis="both", labelsize=14)
-plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
-plt.ylim(-800, 8500)
-
-
 ## Analyse results: Automatic data
+
+# other_broken_svg_file_list = [
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_010716_col_008924.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_028156_col_018596.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_014628_col_069148.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_019340_col_017348.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_034628_col_040116.svg',
+#     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_035948_col_041492.svg'
+# ]
+# plt.imshow(Image.open(other_broken_svg_file_list[4].replace('.svg', '.tif')))
+
+# # remove fold/image pairs that contain only "other" tissue or broken cells
+# other_broken_fold_im = [(2, 6), (6, 0), (8, 3), (8, 4), (7, 3), (7, 4)]
+# idx_manual_slice_with_wat = np.logical_not([x in other_broken_fold_im
+#                                             for x in zip(df_manual_all['fold'], df_manual_all['im'])])
+#
+# # remove fold/image pairs that contain substantial areas with broken cells or poor segmentations in general
+# poor_seg_fold_im = [(4, 5), (5, 0), (3, 1), (6, 3), (4, 2), (3, 5)]
+# idx_manual_slice_with_acceptable_seg = np.logical_not([x in poor_seg_fold_im
+#                                                        for x in zip(df_manual_all['fold'], df_manual_all['im'])])
 
 # load dataframe with all auto segmentations
 data_auto_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_auto.pkl')
@@ -1429,58 +1362,47 @@ data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pip
 df_manual_all = pd.read_pickle(data_manual_filename)
 
 # boolean vectors to select subsets of rows from the dataframe
-idx_manual_wat = np.array(df_manual_all['wat_prop_auto'] >= 0.95)
-idx_manual_not_large = np.array(df_manual_all['area_auto'] < 20e3)
-idx_manual_good_segmentation = np.array(df_manual_all['dice_auto'] >= 0.5)
-idx_manual_not_edge = np.logical_not(df_manual_all['auto_is_edge_cell'])
-
-idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.95)
+idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.50)
 idx_auto_not_large = np.array(df_auto_all['area_auto'] < 20e3)
+idx_corrected_not_large = np.array(df_auto_all['area_corrected'] < 20e3)
 idx_auto_not_edge = np.logical_not(df_auto_all['auto_is_edge_cell'])
 
-# objects selected for the plot
-idx_auto = idx_auto_wat * idx_auto_not_large * idx_auto_not_edge
+# indices of automatic segmentations accepted for analysis
+idx_auto = idx_auto_wat * idx_auto_not_large * idx_corrected_not_large * idx_auto_not_edge
 
-# boxplots of cell populations
+# boxplots of manual/auto/corrected areas. This is just a sanity check. Note that this only includes automatic
+# segmentations that already overlap with manual segmentations, so the results should be quite good
 plt.clf()
-bp = plt.boxplot([df_manual_all['area_manual'] * 1e-3, df_auto_all['area_auto'][idx_auto] * 1e-3,
-                 df_auto_all['area_corrected'][idx_auto] * 1e-3],
+bp = plt.boxplot((df_manual_all['area_manual'] / 1e3,
+                  df_auto_all['area_auto'][idx_auto] / 1e3,
+                  df_auto_all['area_corrected'][idx_auto] / 1e3),
                  positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
 
-# points of interest in the manual contours boxplot
-# bp_perc_w0_manual = bp['whiskers'][0].get_data()[1][1]
-bp_perc_25_manual = bp['boxes'][0].get_data()[1][1]
-bp_perc_50_manual = bp['medians'][0].get_data()[1][0]
-bp_perc_75_manual = bp['boxes'][0].get_data()[1][5]
-# bp_perc_wend_manual = bp['whiskers'][1].get_data()[1][1]
+# points of interest from the boxplots
+bp_poi = cytometer.utils.boxplot_poi(bp)
 
-plt.plot([0.75, 3.25], [bp_perc_50_manual, ] * 2, 'C1', linestyle='dotted')
-plt.plot([0.75, 3.25], [bp_perc_25_manual, ] * 2, 'k', linestyle='dotted')
-plt.plot([0.75, 3.25], [bp_perc_75_manual, ] * 2, 'k', linestyle='dotted')
+plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual median
+plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
+plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
 plt.tick_params(axis="both", labelsize=14)
 plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
-plt.ylim(-800 * 1e-3, 8500 * 1e-3)
+plt.ylim(-700 / 1e3, 10000 / 1e3)
 plt.tight_layout()
 
-plt.text(1.20, bp_perc_25_manual + .1, 'Q1=%0.1f' % (bp_perc_25_manual), fontsize=12, color='k')
-plt.text(1.20, bp_perc_50_manual + .1, 'Q2=%0.1f' % (bp_perc_50_manual), fontsize=12, color='k')
-plt.text(1.20, bp_perc_75_manual + .1, 'Q3=%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
+# manual quartile values
+plt.text(1.20, bp_poi[0, 3] + .1, '%0.1f' % (bp_poi[0, 3]), fontsize=12, color='k')
+plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
 
-bp_perc_25_manual = bp['boxes'][1].get_data()[1][1]
-bp_perc_50_manual = bp['medians'][1].get_data()[1][0]
-bp_perc_75_manual = bp['boxes'][1].get_data()[1][5]
+# auto quartile values
+plt.text(2.20, bp_poi[1, 3] + .1 - .1, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
+plt.text(2.20, bp_poi[1, 2] + .1 - .1, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+plt.text(2.20, bp_poi[1, 1] + .1 - .3, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
 
-plt.text(2.20, bp_perc_25_manual + .1 - 0.25, '%0.1f' % (bp_perc_25_manual), fontsize=12, color='k')
-plt.text(2.20, bp_perc_50_manual + .1 - 0.1, '%0.1f' % (bp_perc_50_manual), fontsize=12, color='k')
-plt.text(2.20, bp_perc_75_manual + .1 - 0.05, '%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
-
-bp_perc_25_manual = bp['boxes'][2].get_data()[1][1]
-bp_perc_50_manual = bp['medians'][2].get_data()[1][0]
-bp_perc_75_manual = bp['boxes'][2].get_data()[1][5]
-
-plt.text(3.20, bp_perc_25_manual + .1, '%0.1f' % (bp_perc_25_manual), fontsize=12, color='k')
-plt.text(3.20, bp_perc_50_manual + .2, '%0.1f' % (bp_perc_50_manual), fontsize=12, color='k')
-plt.text(3.20, bp_perc_75_manual + .2, '%0.1f' % (bp_perc_75_manual), fontsize=12, color='k')
+# corrected quartile values
+plt.text(3.20, bp_poi[2, 3] + .1 - .3, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
+plt.text(3.20, bp_poi[2, 2] + .1 - .4, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
+plt.text(3.20, bp_poi[2, 1] + .1 - .4, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
 
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots.svg'))
 
@@ -1531,428 +1453,6 @@ print(mdf.summary())
 # \alpha_\mathrm{sex} = \begin{cases}0,&\mathrm{female}\\1,&\mathrm{male}\end{cases}
 
 # \beta_\mathrm{ko} = \begin{cases}0,&\mathrm{PAT}\\1,&\mathrm{MAT}\end{cases}
-
-'''
-************************************************************************************************************************
-Statistical analysis of manual data (using bootstrap in comparison of ECDFs)
-************************************************************************************************************************
-'''
-
-## Analyse results: Manual data
-
-# load dataframe with manual segmentations matched to automatic segmentations
-data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
-df_manual_all = pd.read_pickle(data_manual_filename)
-
-## boxplots of PAT vs MAT in male
-
-idx_f_mat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'MAT')
-idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'PAT')
-idx_m_mat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'MAT')
-idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'PAT')
-
-if DEBUG:
-    plt.clf()
-    plt.boxplot([df_manual_all['area_manual'][idx_f_pat] * 1e-3,
-                 df_manual_all['area_manual'][idx_f_mat] * 1e-3,
-                 df_manual_all['area_manual'][idx_m_pat] * 1e-3,
-                 df_manual_all['area_manual'][idx_m_mat] * 1e-3
-                 ],
-                labels=['f/PAT', 'f/MAT', 'm/PAT', 'm/MAT'],
-                positions=[1, 2, 3.5, 4.5],
-                notch=True)
-    plt.ylim(-875/1e3, 11)
-    plt.ylabel('Area ($\cdot 10^{-3} \mu$m$^2$)', fontsize=14)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots_by_sex_ko.svg'))
-
-# difference in medians
-area_median_m_pat = np.median(df_manual_all['area_manual'][idx_m_pat])
-area_median_m_mat = np.median(df_manual_all['area_manual'][idx_m_mat])
-
-print((area_median_m_pat - area_median_m_mat) / area_median_m_pat)
-
-# compute all percentiles
-area_perc_f_pat = np.percentile(df_manual_all['area_manual'][idx_f_pat], range(1, 100))
-area_perc_f_mat = np.percentile(df_manual_all['area_manual'][idx_f_mat], range(1, 100))
-area_perc_m_pat = np.percentile(df_manual_all['area_manual'][idx_m_pat], range(1, 100))
-area_perc_m_mat = np.percentile(df_manual_all['area_manual'][idx_m_mat], range(1, 100))
-
-# area change from PAT to MAT
-area_change_f_pat2mat = (area_perc_f_mat - area_perc_f_pat) / area_perc_f_pat
-area_change_m_pat2mat = (area_perc_m_mat - area_perc_m_pat) / area_perc_m_pat
-
-# permutation testing
-num_perms=int(1e4)
-
-quantiles, pval_f_pat2mat, reject_f_pat2mat \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_f_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method=None,
-                                    rng_seed=0, resampling_method='bootstrap')
-_, pval_f_pat2mat_fdr_by, reject_f_pat2mat_fdr_by \
-    = cytometer.utils.compare_ecdfs(x=df_manual_all['area_manual'][idx_f_pat], y=df_manual_all['area_manual'][idx_f_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='bootstrap')
-_, pval_m_pat2mat, reject_m_pat2mat \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method=None,
-                                    rng_seed=0, resampling_method='bootstrap')
-_, pval_m_pat2mat_fdr_by, reject_m_pat2mat_fdr_by \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='bootstrap')
-
-# remove points for 0% and 100%
-quantiles = quantiles[1:100]
-pval_f_pat2mat = pval_f_pat2mat[1:100]
-reject_f_pat2mat = reject_f_pat2mat[1:100]
-
-pval_f_pat2mat_fdr_by = pval_f_pat2mat_fdr_by[1:100]
-reject_f_pat2mat_fdr_by = reject_f_pat2mat_fdr_by[1:100]
-
-pval_m_pat2mat = pval_m_pat2mat[1:100]
-reject_m_pat2mat = reject_m_pat2mat[1:100]
-
-pval_m_pat2mat_fdr_by = pval_m_pat2mat_fdr_by[1:100]
-reject_m_pat2mat_fdr_by = reject_m_pat2mat_fdr_by[1:100]
-
-if DEBUG:
-    x = np.array(range(1, 100))
-
-    plt.clf()
-    plt.plot(range(1, 100), area_change_f_pat2mat * 100, color='C0', linewidth=3, label='Female, p-val $< 0.05$')
-    plt.scatter(x[~reject_f_pat2mat], area_change_f_pat2mat[~reject_f_pat2mat] * 100,
-                marker='o', color='C0', s=10, linewidths=10, label='Female, p-val $\geq 0.05$')
-    plt.plot(range(1, 100), area_change_m_pat2mat * 100, color='C1', linewidth=3, label='Male, p-val $< 0.05$')
-    plt.scatter(x[~reject_m_pat2mat], area_change_m_pat2mat[~reject_m_pat2mat] * 100,
-                marker='o', color='C1', s=10, linewidths=10, label='Male, p-val $\geq 0.05$')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile (%)', fontsize=14)
-    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    plt.ylim(-30, -5)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat.svg'))
-
-# area change from female to male
-area_change_pat_f2m = (area_perc_m_pat - area_perc_f_pat) / area_perc_m_pat
-area_change_mat_f2m = (area_perc_m_mat - area_perc_f_mat) / area_perc_m_mat
-
-# permutation testing
-quantiles, pval_pat_f2m, reject_pat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_m_pat],
-                                    alpha=0.05, num_perms=10000, multitest_method=None,
-                                    rng_seed=0, resampling_method='bootstrap')
-_, pval_corr_pat_f2m, reject_corr_pat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_m_pat],
-                                    alpha=0.05, num_perms=10000, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='bootstrap')
-_, pval_mat_f2m, reject_mat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=10000, multitest_method=None,
-                                    rng_seed=0, resampling_method='bootstrap')
-_, pval_corr_mat_f2m, reject_corr_mat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=10000, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='bootstrap')
-
-# remove points for 0% and 100%
-quantiles = quantiles[1:100]
-
-pval_pat_f2m = pval_pat_f2m[1:100]
-reject_pat_f2m = reject_pat_f2m[1:100]
-
-pval_corr_pat_f2m = pval_corr_pat_f2m[1:100]
-reject_corr_pat_f2m = reject_corr_pat_f2m[1:100]
-
-pval_mat_f2m = pval_mat_f2m[1:100]
-reject_mat_f2m = reject_mat_f2m[1:100]
-
-pval_corr_mat_f2m = pval_corr_mat_f2m[1:100]
-reject_corr_mat_f2m = reject_corr_mat_f2m[1:100]
-
-if DEBUG:
-    x = np.array(range(1, 100))
-
-    plt.clf()
-    plt.plot(range(1, 100), area_change_pat_f2m * 100, color='C0', linewidth=3, label='PAT, p-val $< 0.05$')
-    plt.scatter(x[~reject_pat_f2m], area_change_pat_f2m[~reject_pat_f2m] * 100,
-                marker='o', color='C0', s=10, linewidths=10, label='PAT, p-val $\geq 0.05$')
-    plt.plot(range(1, 100), area_change_mat_f2m * 100, color='C1', linewidth=3, label='MAT, p-val $< 0.05$')
-    plt.scatter(x[~reject_mat_f2m], area_change_mat_f2m[~reject_mat_f2m] * 100,
-                marker='o', color='C1', s=10, linewidths=10, label='MAT, p-val $\geq 0.05$')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile (%)', fontsize=14)
-    plt.ylabel('Area change (%) from female to male', fontsize=14)
-    plt.ylim(50, 77)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_f_to_m.svg'))
-
-# permutation testing
-quantiles, pval, reject = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
-                                                        num_perms=10000, multitest_method=None,
-                                                        rng_seed=0, resampling_method='bootstrap')
-quantiles_corr, pval_corr, reject_corr = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
-                                                                       num_perms=10000, multitest_method='fdr_by',
-                                                                       rng_seed=0, resampling_method='bootstrap')
-
-if DEBUG:
-    plt.clf()
-    plt.subplot(211)
-    plt.plot(range(0, 101), area_change_m_pat2mat * 100)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile', fontsize=14)
-    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    plt.ylim(-25, 0)
-
-    plt.subplot(212)
-    plt.plot(range(0, 101), pval, label='Uncorrected')
-    plt.plot(range(0, 101), pval_corr, label='Benjamini-Yekutieli')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile', fontsize=14)
-    plt.ylabel('p-value', fontsize=14)
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-
-'''
-************************************************************************************************************************
-Statistical analysis of manual data (using permutation in comparison of ECDFs)
-************************************************************************************************************************
-'''
-
-# in order to run the following, you need to have run the top of the section above up to "permutation testing"
-
-# permutation testing
-num_perms = int(5e5)
-
-quantiles, pval_f_pat2mat, reject_f_pat2mat \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_f_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method=None,
-                                    rng_seed=0, resampling_method='permutation')
-_, pval_f_pat2mat_fdr_by, reject_f_pat2mat_fdr_by \
-    = cytometer.utils.compare_ecdfs(x=df_manual_all['area_manual'][idx_f_pat], y=df_manual_all['area_manual'][idx_f_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='permutation')
-_, pval_m_pat2mat, reject_m_pat2mat \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method=None,
-                                    rng_seed=0, resampling_method='permutation')
-t0 = time.time()
-# 3.4 min for 5e5 perms
-_, pval_m_pat2mat_fdr_by, reject_m_pat2mat_fdr_by \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_m_pat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='permutation')
-print('Time = ' + str(time.time() - t0) + ' s')
-
-# remove points for 0% and 100%
-quantiles = quantiles[1:100]
-
-pval_f_pat2mat = pval_f_pat2mat[1:100]
-reject_f_pat2mat = reject_f_pat2mat[1:100]
-
-pval_f_pat2mat_fdr_by = pval_f_pat2mat_fdr_by[1:100]
-reject_f_pat2mat_fdr_by = reject_f_pat2mat_fdr_by[1:100]
-
-pval_m_pat2mat = pval_m_pat2mat[1:100]
-reject_m_pat2mat = reject_m_pat2mat[1:100]
-
-pval_m_pat2mat_fdr_by = pval_m_pat2mat_fdr_by[1:100]
-reject_m_pat2mat_fdr_by = reject_m_pat2mat_fdr_by[1:100]
-
-if DEBUG:
-    plt.clf()
-    plt.plot([0, 100], [0, 0], linewidth=3, color='C0')
-    plt.plot([0, 100], [-65, -65], linewidth=3, color='C1')
-    plt.stem(quantiles[reject_f_pat2mat_fdr_by] * 100, area_change_f_pat2mat[reject_f_pat2mat_fdr_by] * 100,
-             markerfmt='.', linefmt='C0-', basefmt='C0',
-             label='Female')
-    plt.stem(quantiles[reject_m_pat2mat_fdr_by] * 100, area_change_m_pat2mat[reject_m_pat2mat_fdr_by] * 100,
-             markerfmt='.', linefmt='C1-', basefmt='C1', bottom=-65,
-             label='Male')
-    plt.plot(quantiles * 100, area_change_f_pat2mat * 100, color='C0', linewidth=3)
-    plt.plot(quantiles * 100, area_change_m_pat2mat * 100, color='C1', linewidth=3)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile (%)', fontsize=14)
-    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    # plt.ylim(-30, -4)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation_fdr_by.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation_fdr_by.png'))
-
-    plt.clf()
-    plt.plot([0, 100], [0, 0], linewidth=3, color='C0')
-    plt.plot([0, 100], [-65, -65], linewidth=3, color='C1')
-    plt.stem(quantiles[reject_f_pat2mat] * 100, area_change_f_pat2mat[reject_f_pat2mat] * 100,
-             markerfmt='.', linefmt='C0-', basefmt='C0',
-             label='Female')
-    plt.stem(quantiles[reject_m_pat2mat] * 100, area_change_m_pat2mat[reject_m_pat2mat] * 100,
-             markerfmt='.', linefmt='C1-', basefmt='C1', bottom=-65,
-             label='Male')
-    plt.plot(quantiles * 100, area_change_f_pat2mat * 100, color='C0', linewidth=3)
-    plt.plot(quantiles * 100, area_change_m_pat2mat * 100, color='C1', linewidth=3)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile (%)', fontsize=14)
-    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    # plt.ylim(-30, -4)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_pat_to_mat_permutation.png'))
-
-    plt.clf()
-    plt.semilogy(range(1, 100), pval_f_pat2mat, color='C0', linewidth=3, label='Female')
-    plt.semilogy(range(1, 100), pval_m_pat2mat, color='C1', linewidth=3, label='Male')
-    plt.semilogy([1, 99], [0.05, 0.05], color='k', label='p-val=0.05')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile (%)', fontsize=14)
-    plt.ylabel('P-value from PAT to MAT', fontsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_pat_to_mat_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_pat_to_mat_permutation.png'))
-
-# area change from female to male
-area_change_pat_f2m = (area_perc_m_pat - area_perc_f_pat) / area_perc_m_pat
-area_change_mat_f2m = (area_perc_m_mat - area_perc_f_mat) / area_perc_m_mat
-
-if DEBUG:
-    plt.clf()
-    plt.subplot(211)
-    plt.hist(df_manual_all['area_manual'][idx_f_pat] / 1e3, histtype='step', bins=50, density=True,
-             linewidth=3, color='C0', label='Female PAT')
-    plt.hist(df_manual_all['area_manual'][idx_m_pat] / 1e3, histtype='step', bins=50, density=True,
-             linewidth=3, color='C2', label='Male PAT')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlim(-0.25, 20)
-    plt.ylabel('Density', fontsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.subplot(212)
-    plt.hist(df_manual_all['area_manual'][idx_f_mat] / 1e3, histtype='step', bins=50, density=True,
-             linewidth=3, color='C1', label='Female MAT')
-    plt.hist(df_manual_all['area_manual'][idx_m_mat] / 1e3, histtype='step', bins=50, density=True,
-             linewidth=3, color='C3', label='Male MAT')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlim(-0.25, 20)
-    plt.xlabel('Area ($\cdot 10^{-3} \mu$m$^2$)', fontsize=14)
-    plt.ylabel('Density', fontsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_hist_by_pat_mat.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_hist_by_pat_mat.png'))
-
-
-# permutation testing
-quantiles_pat_f2m, pval_pat_f2m, reject_pat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_m_pat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method=None,
-                                    rng_seed=0, resampling_method='permutation')
-quantiles_corr_pat_f2m, pval_corr_pat_f2m, reject_corr_pat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_pat], df_manual_all['area_manual'][idx_m_pat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='permutation')
-quantiles_mat_f2m, pval_mat_f2m, reject_mat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method=None,
-                                    rng_seed=0, resampling_method='permutation')
-
-quantiles_mat_f2m, pval_mat_f2m, reject_mat_f2m \
-    = cytometer.utils.compare_ecdfs(x=df_manual_all['area_manual'][idx_f_mat],
-                                    y=df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='permutation')
-
-
-quantiles_corr_mat_f2m, pval_corr_mat_f2m, reject_corr_mat_f2m \
-    = cytometer.utils.compare_ecdfs(df_manual_all['area_manual'][idx_f_mat], df_manual_all['area_manual'][idx_m_mat],
-                                    alpha=0.05, num_perms=num_perms, multitest_method='fdr_by',
-                                    rng_seed=0, resampling_method='permutation')
-
-# remove points for 0% and 100%
-quantiles_pat_f2m = quantiles_pat_f2m[1:100]
-pval_pat_f2m = pval_pat_f2m[1:100]
-reject_pat_f2m = reject_pat_f2m[1:100]
-
-quantiles_corr_pat_f2m = quantiles_corr_pat_f2m[1:100]
-pval_corr_pat_f2m = pval_corr_pat_f2m[1:100]
-reject_corr_pat_f2m = reject_corr_pat_f2m[1:100]
-
-quantiles_mat_f2m = quantiles_mat_f2m[1:100]
-pval_mat_f2m = pval_mat_f2m[1:100]
-reject_mat_f2m = reject_mat_f2m[1:100]
-
-quantiles_corr_mat_f2m = quantiles_corr_mat_f2m[1:100]
-pval_corr_mat_f2m = pval_corr_mat_f2m[1:100]
-reject_corr_mat_f2m = reject_corr_mat_f2m[1:100]
-
-if DEBUG:
-    x = np.array(range(1, 100))
-
-    plt.clf()
-    plt.plot(range(1, 100), area_change_pat_f2m * 100, color='C0', linewidth=3, label='PAT, p-val $< 0.05$')
-    plt.scatter(x[~reject_pat_f2m], area_change_pat_f2m[~reject_pat_f2m] * 100,
-                marker='o', color='C0', s=10, linewidths=10, label='PAT, p-val $\geq 0.05$')
-    plt.plot(range(1, 100), area_change_mat_f2m * 100, color='C1', linewidth=3, label='MAT, p-val $< 0.05$')
-    plt.scatter(x[~reject_mat_f2m], area_change_mat_f2m[~reject_mat_f2m] * 100,
-                marker='o', color='C1', s=10, linewidths=10, label='MAT, p-val $\geq 0.05$')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile (%)', fontsize=14)
-    plt.ylabel('Area change (%) from female to male', fontsize=14)
-    plt.ylim(50, 77)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_f_to_m_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_change_f_to_m_permutation.png'))
-
-    plt.clf()
-    plt.plot(range(1, 100), pval_pat_f2m, color='C0', linewidth=3, label='PAT')
-    plt.plot(range(1, 100), pval_mat_f2m, color='C1', linewidth=3, label='MAT')
-    plt.plot([1, 99], [0.05, 0.05], color='k', label='p-val=0.05')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile (%)', fontsize=14)
-    plt.ylabel('P-value from female to male', fontsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_f_to_m_permutation.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pval_f_to_m_permutation.png'))
-
-# permutation testing
-quantiles, pval, reject = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
-                                                        num_perms=10000, multitest_method=None,
-                                                        rng_seed=0, resampling_method='bootstrap')
-quantiles_corr, pval_corr, reject_corr = cytometer.utils.compare_ecdfs(area_perc_m_pat, area_perc_m_mat, alpha=0.05,
-                                                                       num_perms=10000, multitest_method='fdr_by',
-                                                                       rng_seed=0, resampling_method='permutation')
-
-if DEBUG:
-    plt.clf()
-    plt.subplot(211)
-    plt.plot(range(0, 101), area_change_m_pat2mat * 100)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile', fontsize=14)
-    plt.ylabel('Area change (%) from PAT to MAT', fontsize=14)
-    plt.ylim(-25, 0)
-
-    plt.subplot(212)
-    plt.plot(range(0, 101), pval, label='Uncorrected')
-    plt.plot(range(0, 101), pval_corr, label='Benjamini-Yekutieli')
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.xlabel('Population percentile', fontsize=14)
-    plt.ylabel('p-value', fontsize=14)
-    plt.legend(loc='upper right')
-    plt.tight_layout()
 
 '''
 ************************************************************************************************************************
