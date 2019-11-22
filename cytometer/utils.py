@@ -2030,7 +2030,7 @@ def clean_segmentation(labels,
         raise ValueError('If provided, mask must have the same shape as labels')
 
     # if labels_class provided, it must have the same shape as the labels array
-    if labels_class is not None and labels.shape != mask.shape:
+    if labels_class is not None and labels.shape != labels_class.shape:
         raise ValueError('If provided, labels_class must have the same shape as labels')
 
     # convert (row, col) labels to (1, row, col), so that we can use the same code for one or multiple inputs
