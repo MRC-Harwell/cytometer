@@ -1063,11 +1063,11 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         lab_remove = np.isin(labels, lab_remove)
         labels[lab_remove] = 0
 
-        # add the classifier==0 regions as new seeds
-        if classifier_model is not None:
-            other_class_pred = class_pred[i, :, :, 0] == 0
-            _, other_labels, _, _ = cv2.connectedComponentsWithStats(other_class_pred.astype(np.uint8))
-            labels[other_class_pred] = nlabels + other_labels[other_class_pred]
+        # # add the classifier==0 regions as new seeds
+        # if classifier_model is not None:
+        #     other_class_pred = class_pred[i, :, :, 0] == 0
+        #     _, other_labels, _, _ = cv2.connectedComponentsWithStats(other_class_pred.astype(np.uint8))
+        #     labels[other_class_pred] = nlabels + other_labels[other_class_pred]
 
         if DEBUG:
             plt.subplot(235)
@@ -1077,7 +1077,15 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
             plt.axis('off')
 
         # use watershed to expand the seeds
-        labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
+        if classifier_model is not None:
+            # don't label the areas of "other tissue"
+            wat_mask = class_pred[i, :, :, 0] == 1
+            labels_watershed = watershed(-dmap_pred[i, :, :, 0], labels, mask=wat_mask, watershed_line=False)
+            # recover the seed labels that were wiped out by the "other tissue" mask
+            mask = np.logical_not(wat_mask) * (labels != 0)
+            labels_watershed[mask] = labels[mask]
+        else:
+            labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
 
         if DEBUG:
             plt.subplot(236)
@@ -2722,7 +2730,8 @@ def segmentation_pipeline6(im,
     if DEBUG:
         plt.clf()
         plt.imshow(im)
-        plt.contour(mask, colors='k')
+        if mask is not None:
+            plt.contour(mask, colors='k')
         plt.axis('off')
 
     # segment histology
@@ -2737,7 +2746,8 @@ def segmentation_pipeline6(im,
             plt.clf()
             plt.subplot(221)
             plt.imshow(im)
-            plt.contour(mask, colors='k')
+            if mask is not None:
+                plt.contour(mask, colors='k')
             plt.axis('off')
             plt.title('Histology', fontsize=14)
 
@@ -2751,9 +2761,16 @@ def segmentation_pipeline6(im,
             plt.cla()
             plt.imshow(im)
             plt.contour(labels, levels=np.unique(labels), colors='C0')
-            plt.contour(mask, levels=np.unique(labels), colors='k')
+            if mask is not None:
+                plt.contour(mask, levels=np.unique(labels), colors='k')
             plt.axis('off')
             plt.title('Segmentation on histology', fontsize=14)
+
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow(labels_class.astype(np.uint8))
+            plt.axis('off')
+            plt.title('Tissue class', fontsize=14)
 
     # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask,
     # are fully surrounded by another label or are not white adipose tissue
@@ -2763,11 +2780,12 @@ def segmentation_pipeline6(im,
                                            labels_class=labels_class, min_class_prop=min_class_prop)
 
     if DEBUG:
-        plt.subplot(224)
+        plt.subplot(222)
         plt.cla()
         plt.imshow(im)
         plt.contour(labels, levels=np.unique(labels), colors='C0')
-        plt.contour(mask, levels=np.unique(labels), colors='k')
+        if mask is not None:
+            plt.contour(mask, levels=np.unique(labels), colors='k')
         plt.axis('off')
         plt.title('Cleaned segmentation', fontsize=14)
 
@@ -2788,20 +2806,30 @@ def segmentation_pipeline6(im,
     # split image into individual labels
     labels = np.expand_dims(labels, axis=0)
     im = np.expand_dims(im, axis=0)
-    mask = np.expand_dims(mask, axis=0)
+    if mask is not None:
+        mask = np.expand_dims(mask, axis=0)
     labels_class = np.expand_dims(labels_class, axis=0)
-    (window_labels, window_im, window_mask, window_labels_class), index_list, scaling_factor_list \
-        = one_image_per_label_v2((labels, im, mask, labels_class),
-                                 resize_to=(correction_window_len, correction_window_len),
-                                 resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
-                                 only_central_label=True, return_bbox=return_bbox)
+    if mask is None:
+        window_mask = None
+        (window_labels, window_im, window_labels_class), index_list, scaling_factor_list \
+            = one_image_per_label_v2((labels, im, labels_class),
+                                     resize_to=(correction_window_len, correction_window_len),
+                                     resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST),
+                                     only_central_label=True, return_bbox=return_bbox)
+    else:
+        (window_labels, window_im, window_mask, window_labels_class), index_list, scaling_factor_list \
+            = one_image_per_label_v2((labels, im, mask, labels_class),
+                                     resize_to=(correction_window_len, correction_window_len),
+                                     resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
+                                     only_central_label=True, return_bbox=return_bbox)
 
     if DEBUG:
         for j in range(window_im.shape[0]):
             plt.clf()
             plt.imshow(window_im[j, :, :, :])
             plt.contour(window_labels[j, :, :], colors='C0')
-            plt.contour(window_mask[j, :, :], colors='k')
+            if window_mask is not None:
+                plt.contour(window_mask[j, :, :], colors='k')
             plt.title('j = ' + str(j), fontsize=14)
             plt.axis('off')
             plt.pause(1)
@@ -2821,7 +2849,8 @@ def segmentation_pipeline6(im,
             plt.imshow(window_im[j, :, :, :])
             plt.contour(window_labels[j, :, :], colors='C0')
             plt.contour(window_labels_corrected[j, :, :], colors='C1')
-            plt.contour(window_mask[j, :, :], colors='k')
+            if window_mask is not None:
+                plt.contour(window_mask[j, :, :], colors='k')
             plt.title('j = ' + str(j), fontsize=14)
             plt.axis('off')
             plt.pause(1)
