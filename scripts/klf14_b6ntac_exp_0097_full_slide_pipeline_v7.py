@@ -366,10 +366,10 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
         # add segmented contours to annotations file
         if os.path.isfile(annotations_file):
-            append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue, pretty_print=False)
+            append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue, pretty_print=True)
         elif len(contours) > 0:
             fp = open(annotations_file, 'w')
-            write_paths_to_aida_json_file(fp, lores_contours, hue=hue, pretty_print=False)
+            write_paths_to_aida_json_file(fp, lores_contours, hue=hue, pretty_print=True)
             fp.close()
 
         # # add contours to list of all contours for the image
