@@ -164,9 +164,9 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     results_file = os.path.splitext(results_file)[0]
     results_file = os.path.join(results_dir, results_file + '_exp_0097.npz')
 
-    # # delete annotations file, if an older one exists
-    # if os.path.isfile(annotations_file):
-    #     os.remove(annotations_file)
+    # delete annotations file, if an older one exists
+    if os.path.isfile(annotations_file):
+        os.remove(annotations_file)
 
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
@@ -237,7 +237,9 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
         if DEBUG:
             plt.clf()
             plt.imshow(tile)
+            plt.imshow(istissue_tile, alpha=0.5)
             plt.contour(istissue_tile, colors='k')
+            plt.title('Yellow: Tissue. Purple: Background')
             plt.axis('off')
 
         # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
@@ -253,7 +255,8 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
                                                      correction_model=correction_model_file,
                                                      classifier_model=classifier_model_file,
                                                      min_cell_area=min_cell_area,
-                                                     mask=istissue_tile,
+                                                     # mask=istissue_tile,
+                                                     mask=None,
                                                      min_mask_overlap=min_mask_overlap,
                                                      phagocytosis=phagocytosis,
                                                      min_class_prop=min_class_prop,
