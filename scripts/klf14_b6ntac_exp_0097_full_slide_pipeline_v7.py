@@ -255,7 +255,6 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
                                                      correction_model=correction_model_file,
                                                      classifier_model=classifier_model_file,
                                                      min_cell_area=min_cell_area,
-                                                     # mask=istissue_tile,
                                                      mask=None,
                                                      min_mask_overlap=min_mask_overlap,
                                                      phagocytosis=phagocytosis,
