@@ -1063,29 +1063,26 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         lab_remove = np.isin(labels, lab_remove)
         labels[lab_remove] = 0
 
-        # # add the classifier==0 regions as new seeds
-        # if classifier_model is not None:
-        #     other_class_pred = class_pred[i, :, :, 0] == 0
-        #     _, other_labels, _, _ = cv2.connectedComponentsWithStats(other_class_pred.astype(np.uint8))
-        #     labels[other_class_pred] = nlabels + other_labels[other_class_pred]
+        # basis for watershed
+        if classifier_model is None:
+            # the seeds are simply the current connected component labels
+            seeds = labels.copy()
+        else:
+            # we create one seed for all "other" tissue pixels
+            seeds = (class_pred[0, :, :, 0] == 0).astype(labels.dtype) * labels.max()
+            # add current labels as seeds, possibly overlapping the "other" seed
+            aux = labels != 0
+            seeds[aux] = labels[aux]
 
         if DEBUG:
             plt.subplot(235)
             plt.cla()
-            plt.imshow(labels)
-            plt.title('Object labels')
+            plt.imshow(seeds)
+            plt.title('Object seeds')
             plt.axis('off')
 
         # use watershed to expand the seeds
-        if classifier_model is not None:
-            # don't label the areas of "other tissue"
-            wat_mask = class_pred[i, :, :, 0] == 1
-            labels_watershed = watershed(-dmap_pred[i, :, :, 0], labels, mask=wat_mask, watershed_line=False)
-            # recover the seed labels that were wiped out by the "other tissue" mask
-            mask = np.logical_not(wat_mask) * (labels != 0)
-            labels_watershed[mask] = labels[mask]
-        else:
-            labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
+        labels = watershed(-dmap_pred[i, :, :, 0], seeds, watershed_line=False)
 
         if DEBUG:
             plt.subplot(236)
@@ -2058,11 +2055,15 @@ def clean_segmentation(labels,
             plt.subplot(221)
             plt.imshow(labels[i, :, :])
 
-        # remove labels that are too small (this removes small gaps created by removing small labels)
+        # keep copy of labels before removing small objects
+        labels_0 = labels[i, :, :].copy()
+
+        # remove labels that are too small
         labels[i, :, :] = remove_small_objects(labels[i, :, :], min_size=min_cell_area)
 
-        # use watershed to expand the seeds
-        labels[i, :, :] = watershed(labels[i, :, :], labels[i, :, :], watershed_line=False)
+        # use watershed to expand the seeds (this removes small gaps created by removing small labels)
+        mask_0 = (labels_0 != 0).astype(np.uint8)
+        labels[i, :, :] = watershed(np.asarray(mask_0), markers=labels[i, :, :], mask=mask_0, watershed_line=False)
 
         if DEBUG:
             plt.subplot(222)
