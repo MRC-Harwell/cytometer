@@ -2003,13 +2003,13 @@ def clean_segmentation(labels,
                        labels_class=None, min_class_prop=1.0):
     """
     The function packs several methods to remove unwanted labels from a segmentation:
-      * Remove labels that touch the edges of the segmentation.
       * Remove labels that are smaller than a certain size.
-      * Remove labels that are larger than a certain size.
       * Remove labels that don't overlap enough with a binary mask.
-      * Remove labels that are completely surrounded by another label.
       * Remove labels that don't contain enough pixels of class 1.
-    
+      * Remove labels that are completely surrounded by another label.
+      * Remove labels that touch the edges of the segmentation.
+      * Remove labels that are larger than a certain size.
+
     :param labels: (row, col) or (n, row, col) np.ndarray with segmentation labels.
     :param min_cell_area: (def 0) Remove labels with area < min_cell_area. Area is computed as the number of pixels.
     :param max_cell_area: (def np.inf) Remove labels with area > max_cell_area. Area is computed as the number of
@@ -2055,15 +2055,12 @@ def clean_segmentation(labels,
             plt.subplot(221)
             plt.imshow(labels[i, :, :])
 
-        # keep copy of labels before removing small objects
-        labels_0 = labels[i, :, :].copy()
-
         # remove labels that are too small
         labels[i, :, :] = remove_small_objects(labels[i, :, :], min_size=min_cell_area)
 
         # use watershed to expand the seeds (this removes small gaps created by removing small labels)
-        mask_0 = (labels_0 != 0).astype(np.uint8)
-        labels[i, :, :] = watershed(np.asarray(mask_0), markers=labels[i, :, :], mask=mask_0, watershed_line=False)
+        labels[i, :, :] = watershed(np.ones(shape=labels.shape[1:], dtype=np.uint8), markers=labels[i, :, :],
+                                    watershed_line=False)
 
         if DEBUG:
             plt.subplot(222)
@@ -2093,6 +2090,32 @@ def clean_segmentation(labels,
 
         if DEBUG:
             plt.subplot(223)
+            plt.imshow(labels[i, :, :])
+
+        # remove objects that don't contain enough pixels of class 1
+        if labels_class is not None:
+            # list of labels that are not 0
+            lab_list = np.unique(labels[i, :, :])
+            lab_list = lab_list[lab_list != 0]
+
+            # loop labels
+            for lab in lab_list:
+
+                # pixels that belong to the current label
+                aux = labels[i, :, :]
+                idx = aux == lab
+
+                # proportion of class=True pixels
+                aux_class = labels_class[i, :, :]
+                pixel_prop = np.count_nonzero(aux_class[idx]) / np.count_nonzero(idx)
+
+                # delete the label if it doesn't contain enough pixels of class True
+                if pixel_prop < min_class_prop:
+                    aux[idx] = 0
+
+        if DEBUG:
+            plt.subplot(224)
+            plt.cla()
             plt.imshow(labels[i, :, :])
 
         # remove labels that are completely surrounded by another label
@@ -2145,32 +2168,6 @@ def clean_segmentation(labels,
 
         if DEBUG:
             plt.subplot(223)
-            plt.cla()
-            plt.imshow(labels[i, :, :])
-
-        # remove objects that don't contain enough pixels of class 1
-        if labels_class is not None:
-            # list of labels that are not 0
-            lab_list = np.unique(labels[i, :, :])
-            lab_list = lab_list[lab_list != 0]
-
-            # loop labels
-            for lab in lab_list:
-
-                # pixels that belong to the current label
-                aux = labels[i, :, :]
-                idx = aux == lab
-
-                # proportion of class=True pixels
-                aux_class = labels_class[i, :, :]
-                pixel_prop = np.count_nonzero(aux_class[idx]) / np.count_nonzero(idx)
-
-                # delete the label if it doesn't contain enough pixels of class True
-                if pixel_prop < min_class_prop:
-                    aux[idx] = 0
-
-        if DEBUG:
-            plt.subplot(224)
             plt.cla()
             plt.imshow(labels[i, :, :])
 
