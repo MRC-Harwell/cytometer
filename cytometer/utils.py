@@ -2058,10 +2058,6 @@ def clean_segmentation(labels,
         # remove labels that are too small
         labels[i, :, :] = remove_small_objects(labels[i, :, :], min_size=min_cell_area)
 
-        # use watershed to expand the seeds (this removes small gaps created by removing small labels)
-        labels[i, :, :] = watershed(np.ones(shape=labels.shape[1:], dtype=np.uint8), markers=labels[i, :, :],
-                                    watershed_line=False)
-
         if DEBUG:
             plt.subplot(222)
             plt.imshow(labels[i, :, :])
