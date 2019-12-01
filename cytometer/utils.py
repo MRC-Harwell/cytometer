@@ -2237,7 +2237,7 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
 
     # keep only the largest component in each segmentation
     for i in range(seg_out.shape[0]):
-        _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(seg_out[i, :, :])
+        _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(seg_out[i, :, :], connectivity=4)
         stats_aux = stats_aux[1:, :]  # remove 0 label stats
         lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
         seg_out[i, :, :] = (labels_aux == lab).astype(np.uint8)
@@ -3626,7 +3626,7 @@ def compare_ecdfs(x, y, alpha=0.05, num_quantiles=101, num_perms=1000, rng_seed=
     return quantiles, pval.flatten(), reject_h0.flatten()
 
 
-def bspline_resample(xy, factor=1.0, k=1, is_closed=True):
+def bspline_resample(xy, factor=1.0, min_n=0, k=1, is_closed=True):
     """
     Resample a 2D curve using B-spline interpolation.
 
@@ -3634,6 +3634,9 @@ def bspline_resample(xy, factor=1.0, k=1, is_closed=True):
 
     :param xy: (N, 2)-np.ndarray with (x,y)=coordinates
     :param factor: (def 1.0) The number of output points is computed as round(N*factor).
+    :param min_n: (def 0) Minimum number of resampled points. By default, there's no minimum. E.g. if xy has 20 points,
+    factor=0.1 would turn it into a 2-point contour. To avoid this, we can set min_n=5, and then the output contour will
+    have 5 points.
     :param k: (def 1) Degree of the spline, e.g. k=1 (linear), k=2 (quadratic), k=3 (cubic).
     :param is_closed: (def True) Treat xy as a closed curve.
     :return:
@@ -3667,6 +3670,7 @@ def bspline_resample(xy, factor=1.0, k=1, is_closed=True):
 
     # number of output points
     n = int(np.round(xy.shape[0] * factor))
+    n = np.max((n, min_n))
 
     # resample B-spline
     x_out, y_out = splev(np.linspace(u[0], u[-1], n), tck)
