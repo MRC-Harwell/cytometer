@@ -343,7 +343,7 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
         lores_contours = []
         lores_areas = []
         for c in contours:
-            lores_c = bspline_resample(c, factor=contour_downsample_factor, k=bspline_k, is_closed=True)
+            lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
             lores_contours.append(lores_c)
 
             # compute overlap cell areas
