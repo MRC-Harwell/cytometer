@@ -51,11 +51,11 @@ import shutil
 import itertools
 from shapely.geometry import Polygon
 
-# limit GPU memory used
-from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.95
-set_session(tf.Session(config=config))
+# # limit GPU memory used
+# from keras.backend.tensorflow_backend import set_session
+# config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.95
+# set_session(tf.Session(config=config))
 
 DEBUG = False
 SAVE_FIGS = False
