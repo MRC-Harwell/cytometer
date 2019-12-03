@@ -15,6 +15,7 @@ import json
 import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
+from PIL import Image, ImageDraw
 
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -74,7 +75,8 @@ json_annotation_files = [
     'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097.json',
     'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097.json',
     'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097.json'
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097.json'
 ]
 
 for i_file, json_file in enumerate(json_annotation_files):
@@ -122,6 +124,10 @@ for i_file, json_file in enumerate(json_annotation_files):
     # init array for interpolated areas
     areas_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
 
+    # init array for mask where there are segmentations
+    areas_mask = Image.new("1", lores_istissue0.shape[::-1], "black")
+    draw = ImageDraw.Draw(areas_mask)
+
     # init lists for contour centroids and areas
     areas_all = []
     centroids_all = []
@@ -146,8 +152,14 @@ for i_file, json_file in enumerate(json_annotation_files):
         centroid = np.mean(c, axis=0)
         centroids_all.append(centroid)
 
+        # rasterise object described by contour
+        draw.polygon(list(c.flatten()), outline="white", fill="white")
+
+    # convert mask
+    areas_mask = np.array(areas_mask, dtype=np.bool)
+
     # interpolate scattered data to regular grid
-    idx = lores_istissue0 == 1
+    idx = areas_mask
     xi = np.transpose(np.array(np.where(idx)))[:, [1, 0]]
     areas_grid[idx] = scipy.interpolate.griddata(centroids_all, np.sqrt(areas_all), xi, method='linear', fill_value=0)
 
@@ -155,6 +167,8 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.clf()
         plt.subplot(211)
         plt.imshow(im_downsampled)
+        plt.axis('off')
         plt.subplot(212)
         plt.imshow(areas_grid, vmax=np.sqrt(20000e-12))
+        plt.axis('off')
 
