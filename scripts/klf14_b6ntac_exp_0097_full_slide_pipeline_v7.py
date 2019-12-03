@@ -144,6 +144,11 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': ' + ndpi_file_kernel
           + '. Fold = ' + str(i_fold))
 
+    # HACK: To skip already processed images
+    if i_file <= 5:
+        print('Already done, skipping...')
+        continue
+
     # make full path to ndpi file
     ndpi_file = os.path.join(data_dir, ndpi_file_kernel + '.ndpi')
 
