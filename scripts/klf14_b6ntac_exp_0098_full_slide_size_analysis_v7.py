@@ -16,6 +16,7 @@ import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 from PIL import Image, ImageDraw
+from matplotlib import cm
 
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -25,22 +26,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
-import time
 import openslide
 import numpy as np
 import matplotlib.pyplot as plt
-import glob
-from cytometer.utils import rough_foreground_mask, bspline_resample
-from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_json_file
-import PIL
-import tensorflow as tf
-import keras
-from keras import backend as K
-from skimage.measure import regionprops
-import shutil
+from cytometer.utils import rough_foreground_mask
 import itertools
 from shapely.geometry import Polygon
 import scipy
+import scipy.stats as stats
 
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
@@ -114,9 +107,21 @@ for i, file_svg in enumerate(file_svg_list):
                                                        minimum_npoints=3)
 
     # compute cell area
-    manual_areas_all.append([Polygon(c).area * xres * yres for c in contours])  # (m^2)
+    manual_areas_all.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
 
 manual_areas_all = list(itertools.chain.from_iterable(manual_areas_all))
+
+# compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
+# to area quantiles
+quantiles = np.linspace(0.0, 1.0, 11)
+areas_by_quantiles = stats.mstats.hdquantiles(manual_areas_all, prob=quantiles)
+f_area2colour = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False, fill_value=(0.0, 1.0))
+
+if DEBUG:
+    plt.clf()
+    fig = plt.hist(manual_areas_all, bins=50, density=True, histtype='step')
+    for x in areas_by_quantiles.data:
+        plt.plot([x, x], [0, fig[0].max()], 'k')
 
 
 # loop annotations files
@@ -201,10 +206,15 @@ for i_file, json_file in enumerate(json_annotation_files):
     # convert mask
     areas_mask = np.array(areas_mask, dtype=np.bool)
 
+    areas_all = np.array(areas_all) * 1e12
+
+    # convert area values to quantiles
+    q = f_area2colour(areas_all)
+
     # interpolate scattered data to regular grid
     idx = areas_mask
     xi = np.transpose(np.array(np.where(idx)))[:, [1, 0]]
-    areas_grid[idx] = scipy.interpolate.griddata(centroids_all, np.sqrt(areas_all), xi, method='linear', fill_value=0)
+    areas_grid[idx] = scipy.interpolate.griddata(centroids_all, q, xi, method='linear', fill_value=0)
 
     if DEBUG:
         plt.clf()
@@ -212,6 +222,11 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.imshow(im_downsampled)
         plt.axis('off')
         plt.subplot(212)
-        plt.imshow(areas_grid, vmax=np.sqrt(20000e-12))
+        plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
+        plt.colorbar(shrink=0.8)
         plt.axis('off')
+        plt.tight_layout()
 
+    if DEBUG:
+        plt.clf()
+        plt.hist(areas_all, bins=50, density=True, histtype='step')
