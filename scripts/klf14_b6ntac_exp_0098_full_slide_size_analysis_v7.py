@@ -61,6 +61,9 @@ results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 
+# k-folds file
+saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
+
 # rough_foreground_mask() parameters
 downsample_factor = 8.0
 dilation_size = 25
@@ -79,7 +82,47 @@ json_annotation_files = [
     'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097.json'
 ]
 
+# load svg files from manual dataset
+saved_kfolds_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(saved_kfolds_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_svg_list = aux['file_list']# load list of images, and indices for training vs. testing indices
+
+# correct home directory in file paths
+file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home,
+                                                     check_isfile=True)
+
+# loop files with hand traced contours
+manual_areas_all = []
+for i, file_svg in enumerate(file_svg_list):
+
+    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+    # change file extension from .svg to .tif
+    file_tif = file_svg.replace('.svg', '.tif')
+
+    # open histology training image
+    im = Image.open(file_tif)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                       minimum_npoints=3)
+
+    # compute cell area
+    manual_areas_all.append([Polygon(c).area * xres * yres for c in contours])  # (m^2)
+
+manual_areas_all = list(itertools.chain.from_iterable(manual_areas_all))
+
+
+# loop annotations files
 for i_file, json_file in enumerate(json_annotation_files):
+
+    print('JSON annotations file: ' + os.path.basename(json_file))
 
     # name of corresponding .ndpi file
     ndpi_file = json_file.replace('_exp_0097.json', '.ndpi')
@@ -116,10 +159,10 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     # parse the json file
     with open(json_file) as f:
-        json = json.load(f)
+        json_data = json.load(f)
 
     # list of items (there's a contour in each item)
-    items = json['layers'][0]['items']
+    items = json_data['layers'][0]['items']
 
     # init array for interpolated areas
     areas_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
