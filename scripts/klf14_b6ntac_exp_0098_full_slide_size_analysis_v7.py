@@ -223,7 +223,9 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.axis('off')
         plt.subplot(212)
         plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
-        plt.colorbar(shrink=0.8)
+        cbar = plt.colorbar(shrink=0.8)
+        cbar.ax.tick_params(labelsize=14)
+        cbar.ax.set_ylabel('Cell area quantile from\nmanual dataset distribution', rotation=90, fontsize=14)
         plt.axis('off')
         plt.tight_layout()
 
