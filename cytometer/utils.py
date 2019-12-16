@@ -268,12 +268,17 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
 
         (first_row, last_row, first_col, last_col)
 
+    Note that last_row and last_col are 1 pixel larger for easy Python indexing. For example,
+    (first_row=0, last_row=4, first_col=0, last_col=4) means a square with indices 0, 1, 2, 3 in each direction, and
+    thus size 4x4 when they are used for indexing mask[first_row:last_row, first_col:last_col].
+
     The function also allows for the mask to be a downsampled version of a larger image. Coordinates for both
     the low-resolution and high-resolution windows are then returned.
 
     Technical note: In order to find candidates to be the top-left corner of the ROI, we convolve the mask (seg) with
     a horizontal-line kernel (k1) and a vertical-line kernel (k2). We then compute the element-wise product
-    y = conv2d(seg, k1) * conv2d(seg, k2). Pixels with y > 0
+    y = conv2d(seg, k1) * conv2d(seg, k2). Pixels with y > 0 are hits, i.e. candidates as top-left corners of the block
+    (without the border).
 
     :param seg: np.ndarray with downsampled segmentation mask.
     :param downsample_factor: (def 1.0) Scalar factor. seg is assumed to have been downsampled by this factor.
