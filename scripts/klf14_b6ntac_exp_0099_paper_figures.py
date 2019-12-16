@@ -318,6 +318,19 @@ if DEBUG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_i_file_' + str(i_file) + '.png'),
                 bbox_inches='tight')
 
+# convert low resolution indices to high resolution
+first_row = np.int(np.round(lores_first_row * downsample_factor))
+last_row = np.int(np.round(lores_last_row * downsample_factor))
+first_col = np.int(np.round(lores_first_col * downsample_factor))
+last_col = np.int(np.round(lores_last_col * downsample_factor))
+
+# round down indices in downsampled segmentation
+lores_first_row = int(lores_first_row)
+lores_last_row = int(lores_last_row)
+lores_first_col = int(lores_first_col)
+lores_last_col = int(lores_last_col)
+
+if DEBUG:
     plt.clf()
     fig = plt.imshow(seg_left * seg_top > 0)
     plt.contour(seg, colors='w', linewidths=5)
@@ -336,6 +349,79 @@ if DEBUG:
     plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) + '.png'),
                 bbox_inches='tight')
+
+# load window from full resolution slide
+tile = im.read_region(location=(first_col, first_row), level=0,
+                      size=(last_col - first_col, last_row - first_row))
+tile = np.array(tile)
+tile = tile[:, :, 0:3]
+
+# interpolate coarse tissue segmentation to full resolution
+istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
+istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
+                                       resample=PIL.Image.NEAREST)
+
+if DEBUG:
+    plt.clf()
+    plt.imshow(tile)
+    plt.imshow(istissue_tile, alpha=0.5)
+    plt.contour(istissue_tile, colors='k')
+    plt.title('Yellow: Tissue. Purple: Background')
+    plt.axis('off')
+
+# clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
+# reload the models every time
+K.clear_session()
+
+# segment histology, split into individual objects, and apply segmentation correction
+labels, labels_class, todo_edge, \
+window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
+    = cytometer.utils.segmentation_pipeline6(tile,
+                                             dmap_model=dmap_model_file,
+                                             contour_model=contour_model_file,
+                                             correction_model=correction_model_file,
+                                             classifier_model=classifier_model_file,
+                                             min_cell_area=min_cell_area,
+                                             mask=istissue_tile,
+                                             min_mask_overlap=min_mask_overlap,
+                                             phagocytosis=phagocytosis,
+                                             min_class_prop=min_class_prop,
+                                             correction_window_len=correction_window_len,
+                                             correction_smoothing=correction_smoothing,
+                                             return_bbox=True, return_bbox_coordinates='xy',
+                                             batch_size=batch_size)
+
+# downsample "to do" mask so that the rough tissue segmentation can be updated
+lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
+lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
+                                          lores_last_row - lores_first_row),
+                                         resample=PIL.Image.NEAREST)
+lores_todo_edge = np.array(lores_todo_edge)
+
+# update coarse tissue mask
+seg_updated = seg.copy()
+seg_updated[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
+
+if DEBUG:
+    plt.clf()
+    fig = plt.imshow(seg_left * seg_top > 0)
+    plt.contour(seg_updated, colors='w', linewidths=5)
+    rect = Rectangle((lores_first_col, lores_first_row),
+                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
+                     alpha=0.5, facecolor='r', edgecolor='r', zorder=2)
+    fig.axes.add_patch(rect)
+    rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
+                      lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
+                      alpha=1.0, facecolor=None, fill=False, edgecolor='k', lw=3, zorder=3)
+    fig.axes.add_patch(rect2)
+    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=75, zorder=3)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.xlim(int(lores_first_col - 50), int(lores_last_col + 50))
+    plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
+
 
 
 ########################################################################################################################
