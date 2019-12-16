@@ -31,7 +31,9 @@ import time
 import openslide
 import numpy as np
 import matplotlib.pyplot as plt
-import glob
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Rectangle
+from scipy.signal import fftconvolve
 from cytometer.utils import rough_foreground_mask, bspline_resample
 from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_json_file
 import PIL
@@ -56,7 +58,8 @@ root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
 seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
-figures_dir = os.path.join(root_data_dir, 'figures')
+# figures_dir = os.path.join(root_data_dir, 'figures')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
@@ -127,6 +130,213 @@ for i_fold in range(len(idx_test_all)):
     for file in file_ndpi_test:
         ndpi_files_test_list[file] = i_fold
 
+########################################################################################################################
+## Plots of get_next_roi_to_process()
+########################################################################################################################
+
+# File 4/19: KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04. Fold = 2
+i_file = 4
+ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
+
+# for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
+
+# fold  where the current .ndpi image was not used for training
+i_fold = ndpi_files_test_list[ndpi_file_kernel]
+
+print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': ' + ndpi_file_kernel
+      + '. Fold = ' + str(i_fold))
+
+# make full path to ndpi file
+ndpi_file = os.path.join(data_dir, ndpi_file_kernel + '.ndpi')
+
+contour_model_file = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+classifier_model_file = os.path.join(saved_models_dir,
+                                     classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+correction_model_file = os.path.join(saved_models_dir,
+                                     correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+
+# name of file to save annotations
+annotations_file = os.path.basename(ndpi_file)
+annotations_file = os.path.splitext(annotations_file)[0]
+annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097.json')
+
+# name of file to save areas and contours
+results_file = os.path.basename(ndpi_file)
+results_file = os.path.splitext(results_file)[0]
+results_file = os.path.join(results_dir, results_file + '_exp_0097.npz')
+
+# rough segmentation of the tissue in the image
+lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                        dilation_size=dilation_size,
+                                                        component_size_threshold=component_size_threshold,
+                                                        hole_size_treshold=hole_size_treshold,
+                                                        return_im=True)
+
+if DEBUG:
+    plt.clf()
+    plt.imshow(im_downsampled)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_histology_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
+
+    plt.clf()
+    plt.imshow(im_downsampled)
+    plt.contour(lores_istissue0, colors='k')
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
+
+# segmentation copy, to keep track of what's left to do
+lores_istissue = lores_istissue0.copy()
+
+# open full resolution histology slide
+im = openslide.OpenSlide(ndpi_file)
+
+# pixel size
+assert(im.properties['tiff.ResolutionUnit'] == 'centimeter')
+xres = 1e-2 / float(im.properties['tiff.XResolution'])
+yres = 1e-2 / float(im.properties['tiff.YResolution'])
+
+# # init empty list to store area values and contour coordinates
+# areas_all = []
+# contours_all = []
+
+# keep extracting histology windows until we have finished
+step = -1
+time_0 = time_curr = time.time()
+while np.count_nonzero(lores_istissue) > 0:
+
+    # next step (it starts from 0)
+    step += 1
+
+    time_prev = time_curr
+    time_curr = time.time()
+
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
+          str(step) + ': ' +
+          str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
+          "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
+          '% completed: ' +
+          'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
+          ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
+
+# variables for get_next_roi_to_process()
+seg = lores_istissue.copy()
+downsample_factor = downsample_factor
+max_window_size = fullres_box_size
+border = np.round((receptive_field - 1) / 2)
+
+# convert to np.array so that we can use algebraic operators
+max_window_size = np.array(max_window_size)
+border = np.array(border)
+
+# convert segmentation mask to [0, 1]
+seg = (seg != 0).astype('int')
+
+# approximate measures in the downsampled image (we don't round them)
+lores_max_window_size = max_window_size / downsample_factor
+lores_border = border / downsample_factor
+
+# kernels that flipped correspond to top line and left line. They need to be pre-flipped
+# because the convolution operation internally flips them (two flips cancel each other)
+kernel_top = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
+kernel_top[int((kernel_top.shape[0] - 1) / 2), :] = 1
+kernel_left = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
+kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
+
+if DEBUG:
+    plt.clf()
+    plt.imshow(kernel_top)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_kernel_top_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
+
+    plt.imshow(kernel_left)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_kernel_left_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
+
+seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
+seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
+
+# window detections
+detection_idx = np.nonzero(seg_left * seg_top)
+
+# set top-left corner of the box = top-left corner of first box detected
+lores_first_row = detection_idx[0][0]
+lores_first_col = detection_idx[1][0]
+
+# first, we look within a window with the maximum size
+lores_last_row = detection_idx[0][0] + lores_max_window_size[0] - 2 * lores_border[0]
+lores_last_col = detection_idx[1][0] + lores_max_window_size[1] - 2 * lores_border[1]
+
+# second, if the segmentation is smaller than the window, we reduce the window size
+window = seg[lores_first_row:int(np.round(lores_last_row)), lores_first_col:int(np.round(lores_last_col))]
+
+idx = np.any(window, axis=1)  # reduce rows size
+last_segmented_pixel_len = np.max(np.where(idx))
+lores_last_row = detection_idx[0][0] + np.min((lores_max_window_size[0] - 2 * lores_border[0],
+                                               last_segmented_pixel_len))
+
+idx = np.any(window, axis=0)  # reduce cols size
+last_segmented_pixel_len = np.max(np.where(idx))
+lores_last_col = detection_idx[1][0] + np.min((lores_max_window_size[1] - 2 * lores_border[1],
+                                               last_segmented_pixel_len))
+
+if DEBUG:
+    plt.clf()
+    fig = plt.imshow(seg_left * seg_top)
+    rect = Rectangle((lores_first_col, lores_first_row),
+                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
+                     alpha=0.5, facecolor='r', edgecolor='r')
+    fig.axes.add_patch(rect)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
+
+    plt.contour(seg, colors='w')
+    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='r', s=200)
+    plt.xlim(int(lores_first_col - 50), int(lores_last_col + 50))
+    plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
+
+# add a border around the window
+lores_first_row = np.max([0, lores_first_row - lores_border[0]])
+lores_first_col = np.max([0, lores_first_col - lores_border[1]])
+
+lores_last_row = np.min([seg.shape[0], lores_last_row + lores_border[0]])
+lores_last_col = np.min([seg.shape[1], lores_last_col + lores_border[1]])
+
+if DEBUG:
+    rect2 = Rectangle((lores_first_col, lores_first_row),
+                      lores_last_col - lores_first_col, lores_last_row - lores_first_row,
+                      alpha=0.5, facecolor=None, fill=False, edgecolor='r', lw=5)
+    fig.axes.add_patch(rect2)
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
+
+
+# convert low resolution indices to high resolution
+first_row = np.int(np.round(lores_first_row * downsample_factor))
+last_row = np.int(np.round(lores_last_row * downsample_factor))
+first_col = np.int(np.round(lores_first_col * downsample_factor))
+last_col = np.int(np.round(lores_last_col * downsample_factor))
+
+# round down indices in downsampled segmentation
+lores_first_row = int(lores_first_row)
+lores_last_row = int(lores_last_row)
+lores_first_col = int(lores_first_col)
+lores_last_col = int(lores_last_col)
+
+
+########################################################################################################################
+## Whole code
+########################################################################################################################
 
 # File 4/19: KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04. Fold = 2
 i_file = 4
@@ -160,10 +370,6 @@ ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
     results_file = os.path.splitext(results_file)[0]
     results_file = os.path.join(results_dir, results_file + '_exp_0097.npz')
 
-    # delete annotations file, if an older one exists
-    if os.path.isfile(annotations_file):
-        os.remove(annotations_file)
-
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
                                                             dilation_size=dilation_size,
@@ -187,7 +393,7 @@ ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
         plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_i_file_' + str(i_file) + '.png'),
                     bbox_inches='tight')
 
-# segmentation copy, to keep track of what's left to do
+    # segmentation copy, to keep track of what's left to do
     lores_istissue = lores_istissue0.copy()
 
     # open full resolution histology slide
@@ -220,6 +426,14 @@ ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
               '% completed: ' +
               'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
               ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
+
+
+
+
+
+
+
+
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
