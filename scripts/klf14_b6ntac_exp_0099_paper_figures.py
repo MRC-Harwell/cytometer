@@ -204,24 +204,23 @@ yres = 1e-2 / float(im.properties['tiff.YResolution'])
 # areas_all = []
 # contours_all = []
 
-# keep extracting histology windows until we have finished
+# we only do the first step
 step = -1
 time_0 = time_curr = time.time()
-while np.count_nonzero(lores_istissue) > 0:
 
-    # next step (it starts from 0)
-    step += 1
+# next step (it starts from 0)
+step += 1
 
-    time_prev = time_curr
-    time_curr = time.time()
+time_prev = time_curr
+time_curr = time.time()
 
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
-          str(step) + ': ' +
-          str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
-          "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
-          '% completed: ' +
-          'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
-          ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
+print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
+      str(step) + ': ' +
+      str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
+      "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
+      '% completed: ' +
+      'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
+      ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
 
 # variables for get_next_roi_to_process()
 seg = lores_istissue.copy()
@@ -288,22 +287,11 @@ last_segmented_pixel_len = np.max(np.where(idx))
 lores_last_col = detection_idx[1][0] + np.min((lores_max_window_size[1] - 2 * lores_border[1],
                                                last_segmented_pixel_len))
 
-if DEBUG:
-    plt.clf()
-    fig = plt.imshow(seg_left * seg_top)
-    rect = Rectangle((lores_first_col, lores_first_row),
-                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
-                     alpha=0.5, facecolor='r', edgecolor='r')
-    fig.axes.add_patch(rect)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_i_file_' + str(i_file) + '.png'),
-                bbox_inches='tight')
-
-    plt.contour(seg, colors='w')
-    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='r', s=200)
-    plt.xlim(int(lores_first_col - 50), int(lores_last_col + 50))
-    plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
+# save coordinates for later
+lores_first_col_bak = lores_first_col
+lores_first_row_bak = lores_first_row
+lores_last_col_bak = lores_last_col
+lores_last_row_bak = lores_last_row
 
 # add a border around the window
 lores_first_row = np.max([0, lores_first_row - lores_border[0]])
@@ -313,25 +301,41 @@ lores_last_row = np.min([seg.shape[0], lores_last_row + lores_border[0]])
 lores_last_col = np.min([seg.shape[1], lores_last_col + lores_border[1]])
 
 if DEBUG:
-    rect2 = Rectangle((lores_first_col, lores_first_row),
-                      lores_last_col - lores_first_col, lores_last_row - lores_first_row,
-                      alpha=0.5, facecolor=None, fill=False, edgecolor='r', lw=5)
+    plt.clf()
+    fig = plt.imshow(seg_left * seg_top > 0)
+    plt.contour(seg, colors='w')
+    rect = Rectangle((lores_first_col, lores_first_row),
+                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
+                     alpha=0.5, facecolor='r', edgecolor='r', zorder=2)
+    fig.axes.add_patch(rect)
+    rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
+                      lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
+                      alpha=1.0, facecolor=None, fill=False, edgecolor='k', lw=1, zorder=3)
     fig.axes.add_patch(rect2)
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) + '.png'),
+    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=5, zorder=3)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_i_file_' + str(i_file) + '.png'),
                 bbox_inches='tight')
 
-
-# convert low resolution indices to high resolution
-first_row = np.int(np.round(lores_first_row * downsample_factor))
-last_row = np.int(np.round(lores_last_row * downsample_factor))
-first_col = np.int(np.round(lores_first_col * downsample_factor))
-last_col = np.int(np.round(lores_last_col * downsample_factor))
-
-# round down indices in downsampled segmentation
-lores_first_row = int(lores_first_row)
-lores_last_row = int(lores_last_row)
-lores_first_col = int(lores_first_col)
-lores_last_col = int(lores_last_col)
+    plt.clf()
+    fig = plt.imshow(seg_left * seg_top > 0)
+    plt.contour(seg, colors='w', linewidths=5)
+    rect = Rectangle((lores_first_col, lores_first_row),
+                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
+                     alpha=0.5, facecolor='r', edgecolor='r', zorder=2)
+    fig.axes.add_patch(rect)
+    rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
+                      lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
+                      alpha=1.0, facecolor=None, fill=False, edgecolor='k', lw=3, zorder=3)
+    fig.axes.add_patch(rect2)
+    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=75, zorder=3)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.xlim(int(lores_first_col - 50), int(lores_last_col + 50))
+    plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) + '.png'),
+                bbox_inches='tight')
 
 
 ########################################################################################################################
