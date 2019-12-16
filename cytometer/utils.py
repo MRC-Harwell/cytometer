@@ -12,6 +12,7 @@ from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage.morphology import binary_fill_holes, generate_binary_structure
 from scipy.sparse import dok_matrix
 from scipy.interpolate import splprep
+from scipy.signal import fftconvolve
 from skimage import measure
 from skimage.morphology import watershed, remove_small_objects, remove_small_holes, binary_closing, \
     binary_erosion, thin
@@ -308,7 +309,6 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
     kernel_left = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
     kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
 
-    from scipy.signal import fftconvolve
     seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
     seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
 
