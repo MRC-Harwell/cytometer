@@ -136,6 +136,9 @@ for i_fold in range(len(idx_test_all)):
 
 # File 4/19: KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04. Fold = 2
 i_file = 4
+# File 10/19: KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38. Fold = 5
+i_file = 10
+
 ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 
 # for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
@@ -204,225 +207,215 @@ yres = 1e-2 / float(im.properties['tiff.YResolution'])
 # areas_all = []
 # contours_all = []
 
-# we only do the first step
+# keep extracting histology windows until we have finished
 step = -1
 time_0 = time_curr = time.time()
+while np.count_nonzero(lores_istissue) > 0:
 
-# next step (it starts from 0)
-step += 1
+    # next step (it starts from 0)
+    step += 1
 
-time_prev = time_curr
-time_curr = time.time()
+    time_prev = time_curr
+    time_curr = time.time()
 
-print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
-      str(step) + ': ' +
-      str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
-      "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
-      '% completed: ' +
-      'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
-      ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
+          str(step) + ': ' +
+          str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
+          "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
+          '% completed: ' +
+          'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
+          ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
 
-# variables for get_next_roi_to_process()
-seg = lores_istissue.copy()
-downsample_factor = downsample_factor
-max_window_size = fullres_box_size
-border = np.round((receptive_field - 1) / 2)
+    ## Code extracted from:
+    ## get_next_roi_to_process()
 
-# convert to np.array so that we can use algebraic operators
-max_window_size = np.array(max_window_size)
-border = np.array(border)
+    # variables for get_next_roi_to_process()
+    seg = lores_istissue.copy()
+    downsample_factor = downsample_factor
+    max_window_size = fullres_box_size
+    border = np.round((receptive_field - 1) / 2)
 
-# convert segmentation mask to [0, 1]
-seg = (seg != 0).astype('int')
+    # convert to np.array so that we can use algebraic operators
+    max_window_size = np.array(max_window_size)
+    border = np.array(border)
 
-# approximate measures in the downsampled image (we don't round them)
-lores_max_window_size = max_window_size / downsample_factor
-lores_border = border / downsample_factor
+    # convert segmentation mask to [0, 1]
+    seg = (seg != 0).astype('int')
 
-# kernels that flipped correspond to top line and left line. They need to be pre-flipped
-# because the convolution operation internally flips them (two flips cancel each other)
-kernel_top = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
-kernel_top[int((kernel_top.shape[0] - 1) / 2), :] = 1
-kernel_left = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
-kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
+    # approximate measures in the downsampled image (we don't round them)
+    lores_max_window_size = max_window_size / downsample_factor
+    lores_border = border / downsample_factor
 
-if DEBUG:
-    plt.clf()
-    plt.imshow(kernel_top)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_kernel_top_i_file_' + str(i_file) + '.png'),
-                bbox_inches='tight')
+    # kernels that flipped correspond to top line and left line. They need to be pre-flipped
+    # because the convolution operation internally flips them (two flips cancel each other)
+    kernel_top = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
+    kernel_top[int((kernel_top.shape[0] - 1) / 2), :] = 1
+    kernel_left = np.zeros(shape=np.round(lores_max_window_size - 2 * lores_border).astype('int'))
+    kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
 
-    plt.imshow(kernel_left)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_kernel_left_i_file_' + str(i_file) + '.png'),
-                bbox_inches='tight')
+    if DEBUG:
+        plt.clf()
+        plt.imshow(kernel_top)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_kernel_top_i_file_' + str(i_file) + '.png'),
+                    bbox_inches='tight')
 
-seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
-seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
+        plt.imshow(kernel_left)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_kernel_left_i_file_' + str(i_file) + '.png'),
+                    bbox_inches='tight')
 
-# window detections
-detection_idx = np.nonzero(seg_left * seg_top)
+    seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
+    seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
 
-# set top-left corner of the box = top-left corner of first box detected
-lores_first_row = detection_idx[0][0]
-lores_first_col = detection_idx[1][0]
+    # window detections
+    detection_idx = np.nonzero(seg_left * seg_top)
 
-# first, we look within a window with the maximum size
-lores_last_row = detection_idx[0][0] + lores_max_window_size[0] - 2 * lores_border[0]
-lores_last_col = detection_idx[1][0] + lores_max_window_size[1] - 2 * lores_border[1]
+    # set top-left corner of the box = top-left corner of first box detected
+    lores_first_row = detection_idx[0][0]
+    lores_first_col = detection_idx[1][0]
 
-# second, if the segmentation is smaller than the window, we reduce the window size
-window = seg[lores_first_row:int(np.round(lores_last_row)), lores_first_col:int(np.round(lores_last_col))]
+    # first, we look within a window with the maximum size
+    lores_last_row = detection_idx[0][0] + lores_max_window_size[0] - 2 * lores_border[0]
+    lores_last_col = detection_idx[1][0] + lores_max_window_size[1] - 2 * lores_border[1]
 
-idx = np.any(window, axis=1)  # reduce rows size
-last_segmented_pixel_len = np.max(np.where(idx))
-lores_last_row = detection_idx[0][0] + np.min((lores_max_window_size[0] - 2 * lores_border[0],
-                                               last_segmented_pixel_len))
+    # second, if the segmentation is smaller than the window, we reduce the window size
+    window = seg[lores_first_row:int(np.round(lores_last_row)), lores_first_col:int(np.round(lores_last_col))]
 
-idx = np.any(window, axis=0)  # reduce cols size
-last_segmented_pixel_len = np.max(np.where(idx))
-lores_last_col = detection_idx[1][0] + np.min((lores_max_window_size[1] - 2 * lores_border[1],
-                                               last_segmented_pixel_len))
+    idx = np.any(window, axis=1)  # reduce rows size
+    last_segmented_pixel_len = np.max(np.where(idx))
+    lores_last_row = detection_idx[0][0] + np.min((lores_max_window_size[0] - 2 * lores_border[0],
+                                                   last_segmented_pixel_len))
 
-# save coordinates for later
-lores_first_col_bak = lores_first_col
-lores_first_row_bak = lores_first_row
-lores_last_col_bak = lores_last_col
-lores_last_row_bak = lores_last_row
+    idx = np.any(window, axis=0)  # reduce cols size
+    last_segmented_pixel_len = np.max(np.where(idx))
+    lores_last_col = detection_idx[1][0] + np.min((lores_max_window_size[1] - 2 * lores_border[1],
+                                                   last_segmented_pixel_len))
 
-# add a border around the window
-lores_first_row = np.max([0, lores_first_row - lores_border[0]])
-lores_first_col = np.max([0, lores_first_col - lores_border[1]])
+    # save coordinates for plot (this is only for a figure in the paper and doesn't need to be done in the real
+    # implementation)
+    lores_first_col_bak = lores_first_col
+    lores_first_row_bak = lores_first_row
+    lores_last_col_bak = lores_last_col
+    lores_last_row_bak = lores_last_row
 
-lores_last_row = np.min([seg.shape[0], lores_last_row + lores_border[0]])
-lores_last_col = np.min([seg.shape[1], lores_last_col + lores_border[1]])
+    # add a border around the window
+    lores_first_row = np.max([0, lores_first_row - lores_border[0]])
+    lores_first_col = np.max([0, lores_first_col - lores_border[1]])
 
-if DEBUG:
-    plt.clf()
-    fig = plt.imshow(seg_left * seg_top > 0)
-    plt.contour(seg, colors='w')
-    rect = Rectangle((lores_first_col, lores_first_row),
-                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
-                     alpha=0.5, facecolor='r', edgecolor='r', zorder=2)
-    fig.axes.add_patch(rect)
-    rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
-                      lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
-                      alpha=1.0, facecolor=None, fill=False, edgecolor='k', lw=1, zorder=3)
-    fig.axes.add_patch(rect2)
-    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=5, zorder=3)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_i_file_' + str(i_file) + '.png'),
-                bbox_inches='tight')
+    lores_last_row = np.min([seg.shape[0], lores_last_row + lores_border[0]])
+    lores_last_col = np.min([seg.shape[1], lores_last_col + lores_border[1]])
 
-# convert low resolution indices to high resolution
-first_row = np.int(np.round(lores_first_row * downsample_factor))
-last_row = np.int(np.round(lores_last_row * downsample_factor))
-first_col = np.int(np.round(lores_first_col * downsample_factor))
-last_col = np.int(np.round(lores_last_col * downsample_factor))
+    # convert low resolution indices to high resolution
+    first_row = np.int(np.round(lores_first_row * downsample_factor))
+    last_row = np.int(np.round(lores_last_row * downsample_factor))
+    first_col = np.int(np.round(lores_first_col * downsample_factor))
+    last_col = np.int(np.round(lores_last_col * downsample_factor))
 
-# round down indices in downsampled segmentation
-lores_first_row = int(lores_first_row)
-lores_last_row = int(lores_last_row)
-lores_first_col = int(lores_first_col)
-lores_last_col = int(lores_last_col)
+    # round down indices in downsampled segmentation
+    lores_first_row = int(lores_first_row)
+    lores_last_row = int(lores_last_row)
+    lores_first_col = int(lores_first_col)
+    lores_last_col = int(lores_last_col)
 
-if DEBUG:
-    plt.clf()
-    fig = plt.imshow(seg_left * seg_top > 0)
-    plt.contour(seg, colors='w', linewidths=5)
-    rect = Rectangle((lores_first_col, lores_first_row),
-                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
-                     alpha=0.5, facecolor='r', edgecolor='r', zorder=2)
-    fig.axes.add_patch(rect)
-    rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
-                      lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
-                      alpha=1.0, facecolor=None, fill=False, edgecolor='k', lw=3, zorder=3)
-    fig.axes.add_patch(rect2)
-    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=75, zorder=3)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.xlim(int(lores_first_col - 50), int(lores_last_col + 50))
-    plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) + '.png'),
-                bbox_inches='tight')
+    # load window from full resolution slide
+    tile = im.read_region(location=(first_col, first_row), level=0,
+                          size=(last_col - first_col, last_row - first_row))
+    tile = np.array(tile)
+    tile = tile[:, :, 0:3]
 
-# load window from full resolution slide
-tile = im.read_region(location=(first_col, first_row), level=0,
-                      size=(last_col - first_col, last_row - first_row))
-tile = np.array(tile)
-tile = tile[:, :, 0:3]
+    # interpolate coarse tissue segmentation to full resolution
+    istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
+    istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
+                                           resample=PIL.Image.NEAREST)
 
-# interpolate coarse tissue segmentation to full resolution
-istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
-istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
-                                       resample=PIL.Image.NEAREST)
+    if DEBUG:
+        plt.clf()
+        plt.imshow(tile)
+        plt.imshow(istissue_tile, alpha=0.5)
+        plt.contour(istissue_tile, colors='k')
+        plt.title('Yellow: Tissue. Purple: Background')
+        plt.axis('off')
 
-if DEBUG:
-    plt.clf()
-    plt.imshow(tile)
-    plt.imshow(istissue_tile, alpha=0.5)
-    plt.contour(istissue_tile, colors='k')
-    plt.title('Yellow: Tissue. Purple: Background')
-    plt.axis('off')
+    # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
+    # reload the models every time
+    K.clear_session()
 
-# clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
-# reload the models every time
-K.clear_session()
+    # segment histology, split into individual objects, and apply segmentation correction
+    labels, labels_class, todo_edge, \
+    window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
+        = cytometer.utils.segmentation_pipeline6(tile,
+                                                 dmap_model=dmap_model_file,
+                                                 contour_model=contour_model_file,
+                                                 correction_model=correction_model_file,
+                                                 classifier_model=classifier_model_file,
+                                                 min_cell_area=min_cell_area,
+                                                 mask=istissue_tile,
+                                                 min_mask_overlap=min_mask_overlap,
+                                                 phagocytosis=phagocytosis,
+                                                 min_class_prop=min_class_prop,
+                                                 correction_window_len=correction_window_len,
+                                                 correction_smoothing=correction_smoothing,
+                                                 return_bbox=True, return_bbox_coordinates='xy',
+                                                 batch_size=batch_size)
 
-# segment histology, split into individual objects, and apply segmentation correction
-labels, labels_class, todo_edge, \
-window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
-    = cytometer.utils.segmentation_pipeline6(tile,
-                                             dmap_model=dmap_model_file,
-                                             contour_model=contour_model_file,
-                                             correction_model=correction_model_file,
-                                             classifier_model=classifier_model_file,
-                                             min_cell_area=min_cell_area,
-                                             mask=istissue_tile,
-                                             min_mask_overlap=min_mask_overlap,
-                                             phagocytosis=phagocytosis,
-                                             min_class_prop=min_class_prop,
-                                             correction_window_len=correction_window_len,
-                                             correction_smoothing=correction_smoothing,
-                                             return_bbox=True, return_bbox_coordinates='xy',
-                                             batch_size=batch_size)
+    # downsample "to do" mask so that the rough tissue segmentation can be updated
+    lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
+    lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
+                                              lores_last_row - lores_first_row),
+                                             resample=PIL.Image.NEAREST)
+    lores_todo_edge = np.array(lores_todo_edge)
 
-# downsample "to do" mask so that the rough tissue segmentation can be updated
-lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
-lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
-                                          lores_last_row - lores_first_row),
-                                         resample=PIL.Image.NEAREST)
-lores_todo_edge = np.array(lores_todo_edge)
+    # update coarse tissue mask (this is only necessary here to plot figures for the paper. In the actual code,
+    # the coarse mask gets directly updated, without this intermediate step)
+    seg_updated = seg.copy()
+    seg_updated[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
 
-# update coarse tissue mask
-seg_updated = seg.copy()
-seg_updated[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
+    if DEBUG:
+        plt.clf()
+        fig = plt.imshow(seg, cmap='Greys')
+        plt.contour(seg_left * seg_top > 0, colors='r')
+        rect = Rectangle((lores_first_col, lores_first_row),
+                         lores_last_col - lores_first_col, lores_last_row - lores_first_row,
+                         alpha=0.5, facecolor='g', edgecolor='g', zorder=2)
+        fig.axes.add_patch(rect)
+        rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
+                          lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
+                          alpha=1.0, facecolor=None, fill=False, edgecolor='g', lw=1, zorder=3)
+        fig.axes.add_patch(rect2)
+        plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=5, zorder=3)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_i_file_' + str(i_file) +
+                                 '_step_' + str(step) + '.png'),
+                    bbox_inches='tight')
 
-if DEBUG:
-    plt.clf()
-    fig = plt.imshow(seg_left * seg_top > 0)
-    plt.contour(seg_updated, colors='w', linewidths=5)
-    rect = Rectangle((lores_first_col, lores_first_row),
-                     lores_last_col - lores_first_col, lores_last_row - lores_first_row,
-                     alpha=0.5, facecolor='r', edgecolor='r', zorder=2)
-    fig.axes.add_patch(rect)
-    rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
-                      lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
-                      alpha=1.0, facecolor=None, fill=False, edgecolor='k', lw=3, zorder=3)
-    fig.axes.add_patch(rect2)
-    plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=75, zorder=3)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.xlim(int(lores_first_col - 50), int(lores_last_col + 50))
-    plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) + '.png'),
-                bbox_inches='tight')
+    if DEBUG:
+        plt.clf()
+        fig = plt.imshow(seg, cmap='Greys')
+        plt.contour(seg_left * seg_top > 0, colors='r')
+        plt.contour(seg_updated, colors='w', zorder=4)
+        rect = Rectangle((lores_first_col, lores_first_row),
+                         lores_last_col - lores_first_col, lores_last_row - lores_first_row,
+                         alpha=0.5, facecolor='g', edgecolor='g', zorder=2)
+        fig.axes.add_patch(rect)
+        rect2 = Rectangle((lores_first_col_bak, lores_first_row_bak),
+                          lores_last_col_bak - lores_first_col_bak, lores_last_row_bak - lores_first_row_bak,
+                          alpha=1.0, facecolor=None, fill=False, edgecolor='g', lw=3, zorder=3)
+        fig.axes.add_patch(rect2)
+        plt.scatter(detection_idx[1][0], detection_idx[0][0], color='k', s=5, zorder=3)
+        plt.axis('off')
+        plt.tight_layout()
+        plt.xlim(int(lores_first_col - 50), int(lores_last_col + 50))
+        plt.ylim(int(lores_last_row + 50), int(lores_first_row - 50))
+        plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_fftconvolve_detail_i_file_' + str(i_file) +
+                                 '_step_' + str(step) + '.png'),
+                    bbox_inches='tight')
 
-
+        # update coarse tissue mask for next iteration
+        lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
 
 ########################################################################################################################
 ## Whole code
