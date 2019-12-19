@@ -616,7 +616,7 @@ if DEBUG:
 saved_model_filename = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 classifier_model = keras.models.load_model(saved_model_filename)
 if classifier_model.input_shape[1:3] != test_dataset['im'].shape[1:3]:
-    classifier_model = cytometer.utils.change_input_size(contour_model, batch_shape=test_dataset['im'].shape)
+    classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=test_dataset['im'].shape)
 
 # estimate dmaps
 pred_class = classifier_model.predict(test_dataset['im'], batch_size=4)
