@@ -441,6 +441,8 @@ import cytometer.utils
 import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
+from PIL import Image, ImageDraw
+
 LIMIT_GPU_MEMORY = False
 
 # limit GPU memory used
@@ -624,7 +626,220 @@ pred_class = classifier_model.predict(test_dataset['im'], batch_size=4)
 if DEBUG:
     plt.clf()
     plt.imshow(pred_class[i, :, :, 0])
+    plt.contour(pred_class[i, :, :, 0] > 0.5, colors='r', linewidhts=3)
     plt.axis('off')
     plt.tight_layout()
     plt.savefig(os.path.join(figures_dir, 'pred_class_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
+
+## create classifier ground truth
+
+print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
+
+# init output
+im_array_all = []
+out_class_all = []
+out_mask_all = []
+contour_type_all = []
+
+file_tif = os.path.join(klf14_training_dir, os.path.basename(im_test_file_list[i]))
+file_tif = file_tif.replace('im_seed_nan_', '')
+
+# change file extension from .svg to .tif
+file_svg = file_tif.replace('.tif', '.svg')
+
+# open histology training image
+im = Image.open(file_tif)
+
+# make array copy
+im_array = np.array(im)
+
+# read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+# where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                        minimum_npoints=3)
+other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                         minimum_npoints=3)
+brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                         minimum_npoints=3)
+background_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Background',
+                                                              add_offset_from_filename=False,
+                                                              minimum_npoints=3)
+contours = cell_contours + other_contours + brown_contours + background_contours
+
+# make a list with the type of cell each contour is classified as
+contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
+                np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
+                np.ones(shape=(len(brown_contours),), dtype=np.uint8),  # 1: brown cells (treated as "other" tissue)
+                np.zeros(shape=(len(background_contours),), dtype=np.uint8)]  # 0: background
+contour_type = np.concatenate(contour_type)
+contour_type_all.append(contour_type)
+
+print('Cells: ' + str(len(cell_contours)))
+print('Other: ' + str(len(other_contours)))
+print('Brown: ' + str(len(brown_contours)))
+print('Background: ' + str(len(background_contours)))
+
+# initialise arrays for training
+out_class = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+out_mask = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+
+# loop ground truth cell contours
+for j, contour in enumerate(contours):
+
+    plt.plot([p[0] for p in contour], [p[1] for p in contour])
+    plt.text(contour[0][0], contour[0][1], str(j))
+
+    if DEBUG:
+        plt.clf()
+
+        plt.subplot(121)
+        plt.imshow(im_array)
+        plt.plot([p[0] for p in contour], [p[1] for p in contour])
+        xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+        plt.scatter(xy_c[0], xy_c[1])
+
+    # rasterise current ground truth segmentation
+    cell_seg_gtruth = Image.new("1", im_array.shape[0:2][::-1], "black")  # I = 32-bit signed integer pixels
+    draw = ImageDraw.Draw(cell_seg_gtruth)
+    draw.polygon(contour, outline="white", fill="white")
+    cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.bool)
+
+    # we are going to save the ground truth segmentation of the cell that we are going to later use in the figures
+    if j == 106:
+        cell_seg_gtruth_106 = cell_seg_gtruth.copy()
+
+    if DEBUG:
+        plt.subplot(122)
+        plt.cla()
+        plt.imshow(im_array)
+        plt.contour(cell_seg_gtruth.astype(np.uint8))
+
+    # add current object to training output and mask
+    out_mask[cell_seg_gtruth] = 1
+    out_class[cell_seg_gtruth] = contour_type[j]
+
+if DEBUG:
+    plt.clf()
+    aux = (1- out_class).astype(np.float32)
+    aux = np.ma.masked_where(out_mask < 0.5, aux)
+    plt.imshow(aux)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'class_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
+## Segmentation correction CNN
+
+# segmentation parameters
+min_cell_area = 1500
+max_cell_area = 100e3
+min_mask_overlap = 0.8
+phagocytosis = True
+min_class_prop = 0.5
+correction_window_len = 401
+correction_smoothing = 11
+batch_size = 2
+
+# segment histology
+labels, labels_class, _ \
+    = cytometer.utils.segment_dmap_contour_v6(im_array,
+                                              contour_model=contour_model, dmap_model=dmap_model,
+                                              classifier_model=classifier_model,
+                                              border_dilation=0)
+labels = labels[0, :, :]
+labels_class = labels_class[0, :, :, 0]
+
+# remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask,
+# are fully surrounded by another label or are not white adipose tissue
+labels, todo_edge = cytometer.utils.clean_segmentation(
+    labels, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
+    remove_edge_labels=True, mask=None, min_mask_overlap=min_mask_overlap,
+    phagocytosis=phagocytosis,
+    labels_class=labels_class, min_class_prop=min_class_prop)
+
+# split image into individual labels
+im_array = np.expand_dims(im_array, axis=0)
+labels = np.expand_dims(labels, axis=0)
+labels_class = np.expand_dims(labels_class, axis=0)
+cell_seg_gtruth_106 = np.expand_dims(cell_seg_gtruth_106, axis=0)
+window_mask = None
+(window_labels, window_im, window_labels_class, window_cell_seg_gtruth_106), index_list, scaling_factor_list \
+    = cytometer.utils.one_image_per_label_v2((labels, im_array, labels_class, cell_seg_gtruth_106.astype(np.uint8)),
+                                             resize_to=(correction_window_len, correction_window_len),
+                                             resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
+                                             only_central_label=True, return_bbox=False)
+
+# load correction model
+saved_model_filename = os.path.join(saved_models_dir, correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+correction_model = keras.models.load_model(saved_model_filename)
+if correction_model.input_shape[1:3] != window_im.shape[1:3]:
+    correction_model = cytometer.utils.change_input_size(correction_model, batch_shape=window_im.shape)
+
+# multiply image by mask
+window_im_masked = cytometer.utils.quality_model_mask(
+    np.expand_dims(window_labels, axis=-1), im=window_im, quality_model_type='-1_1')
+
+# process (histology * mask) to estimate which pixels are underestimated and which overestimated in the segmentation
+window_im_masked = correction_model.predict(window_im_masked, batch_size=batch_size)
+
+# compute the correction to be applied to the segmentation
+correction = (window_im[:, :, :, 0].copy() * 0).astype(np.float32)
+correction[window_im_masked[:, :, :, 0] >= 0.5] = 1  # the segmentation went too far
+correction[window_im_masked[:, :, :, 0] <= -0.5] = -1  # the segmentation fell short
+
+if DEBUG:
+    j = 0
+
+    plt.clf()
+    plt.imshow(correction[j, :, :])
+    # plt.contour(window_labels[j, ...], colors='r', linewidths=1)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'pred_correction_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
+    plt.clf()
+    plt.imshow(correction[j, :, :])
+    plt.contour(window_labels[j, ...], colors='r', linewidths=1)
+    plt.contour(window_cell_seg_gtruth_106[j, ...], colors='w', linewidths=1)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(
+        os.path.join(figures_dir, 'pred_correction_gtruth_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+        bbox_inches='tight')
+
+# correct segmentation (full operation)
+window_im = window_im.astype(np.float32)
+window_im /= 255.0
+window_labels_corrected = cytometer.utils.correct_segmentation(
+    im=window_im, seg=window_labels,
+    correction_model=correction_model, model_type='-1_1',
+    smoothing=correction_smoothing,
+    batch_size=batch_size)
+
+if DEBUG:
+    j = 0
+
+    plt.clf()
+    plt.imshow(window_im[j, ...])
+    plt.contour(window_labels[j, ...], colors='r', linewidths=3)
+    plt.text(185, 210, '+1', fontsize=30)
+    plt.text(116, 320, '-1', fontsize=30)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'im_for_correction_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
+    plt.clf()
+    plt.imshow(window_im[j, ...])
+    plt.contour(window_labels_corrected[j, ...], colors='g', linewidths=3)
+    plt.text(185, 210, '+1', fontsize=30)
+    plt.text(116, 320, '-1', fontsize=30)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'corrected_seg_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
+    aux = np.array(contours[j])
+    plt.plot(aux[:, 0], aux[:, 1])
