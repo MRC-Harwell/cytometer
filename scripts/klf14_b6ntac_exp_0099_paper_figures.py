@@ -441,6 +441,8 @@ import cytometer.utils
 import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
+from PIL import Image, ImageDraw
+
 LIMIT_GPU_MEMORY = False
 
 # limit GPU memory used
@@ -616,7 +618,7 @@ if DEBUG:
 saved_model_filename = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 classifier_model = keras.models.load_model(saved_model_filename)
 if classifier_model.input_shape[1:3] != test_dataset['im'].shape[1:3]:
-    classifier_model = cytometer.utils.change_input_size(contour_model, batch_shape=test_dataset['im'].shape)
+    classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=test_dataset['im'].shape)
 
 # estimate dmaps
 pred_class = classifier_model.predict(test_dataset['im'], batch_size=4)
@@ -624,7 +626,99 @@ pred_class = classifier_model.predict(test_dataset['im'], batch_size=4)
 if DEBUG:
     plt.clf()
     plt.imshow(pred_class[i, :, :, 0])
+    plt.contour(pred_class[i, :, :, 0] > 0.5, colors='r', linewidhts=3)
     plt.axis('off')
     plt.tight_layout()
     plt.savefig(os.path.join(figures_dir, 'pred_class_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
+## create classifier ground truth
+
+print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
+
+# init output
+im_array_all = []
+out_class_all = []
+out_mask_all = []
+contour_type_all = []
+
+file_tif = os.path.join(klf14_training_dir, os.path.basename(im_test_file_list[i]))
+file_tif = file_tif.replace('im_seed_nan_', '')
+
+# change file extension from .svg to .tif
+file_svg = file_tif.replace('.tif', '.svg')
+
+# open histology training image
+im = Image.open(file_tif)
+
+# make array copy
+im_array = np.array(im)
+
+# read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+# where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                        minimum_npoints=3)
+other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                         minimum_npoints=3)
+brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                         minimum_npoints=3)
+background_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Background',
+                                                              add_offset_from_filename=False,
+                                                              minimum_npoints=3)
+contours = cell_contours + other_contours + brown_contours + background_contours
+
+# make a list with the type of cell each contour is classified as
+contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
+                np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
+                np.ones(shape=(len(brown_contours),), dtype=np.uint8),  # 1: brown cells (treated as "other" tissue)
+                np.zeros(shape=(len(background_contours),), dtype=np.uint8)]  # 0: background
+contour_type = np.concatenate(contour_type)
+contour_type_all.append(contour_type)
+
+print('Cells: ' + str(len(cell_contours)))
+print('Other: ' + str(len(other_contours)))
+print('Brown: ' + str(len(brown_contours)))
+print('Background: ' + str(len(background_contours)))
+
+# initialise arrays for training
+out_class = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+out_mask = np.zeros(shape=im_array.shape[0:2], dtype=np.uint8)
+
+# loop ground truth cell contours
+for j, contour in enumerate(contours):
+
+    if DEBUG:
+        plt.clf()
+
+        plt.subplot(121)
+        plt.imshow(im_array)
+        plt.plot([p[0] for p in contour], [p[1] for p in contour])
+        xy_c = (np.mean([p[0] for p in contour]), np.mean([p[1] for p in contour]))
+        plt.scatter(xy_c[0], xy_c[1])
+
+    # rasterise current ground truth segmentation
+    cell_seg_gtruth = Image.new("1", im_array.shape[0:2][::-1], "black")  # I = 32-bit signed integer pixels
+    draw = ImageDraw.Draw(cell_seg_gtruth)
+    draw.polygon(contour, outline="white", fill="white")
+    cell_seg_gtruth = np.array(cell_seg_gtruth, dtype=np.bool)
+
+    if DEBUG:
+        plt.subplot(122)
+        plt.cla()
+        plt.imshow(im_array)
+        plt.contour(cell_seg_gtruth.astype(np.uint8))
+
+    # add current object to training output and mask
+    out_mask[cell_seg_gtruth] = 1
+    out_class[cell_seg_gtruth] = contour_type[j]
+
+if DEBUG:
+    plt.clf()
+    aux = (1- out_class).astype(np.float32)
+    aux = np.ma.masked_where(out_mask < 0.5, aux)
+    # aux[out_mask == 0] = 0.5
+    plt.imshow(aux)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'class_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
