@@ -1408,7 +1408,7 @@ plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots.svg'))
 
 ''' 
 ************************************************************************************************************************
-Linear Mixed Effects Model analysis (sqrt_area ~ sex + ko + other variables + random(mouse|window))
+Linear Mixed-Effects Model analysis (sqrt_area ~ sex + ko + other variables + random(mouse|window))
 ************************************************************************************************************************
 '''
 
