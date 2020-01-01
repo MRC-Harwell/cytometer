@@ -2011,7 +2011,7 @@ def clean_segmentation(labels,
       * Remove labels that are smaller than a certain size.
       * Remove labels that don't overlap enough with a binary mask.
       * Remove labels that don't contain enough pixels of class 1.
-      * Remove labels that are completely surrounded by another label.
+      * Merge labels that are completely surrounded by another label into the surrounding label.
       * Remove labels that touch the edges of the segmentation.
       * Remove labels that are larger than a certain size.
 
@@ -2083,7 +2083,7 @@ def clean_segmentation(labels,
             for p in prop_masked:
                 area_masked_lut[p.label] = p.area
 
-            # check for each original label whether it is at least min_mask_overlap (def 60%) covered by the mask
+            # check for each original label whether it is at least min_mask_overlap (def 80%) covered by the mask
             for p in prop:
                 if area_masked_lut[p.label] < area_lut[p.label] * min_mask_overlap:
                     aux = labels[i, :, :]
