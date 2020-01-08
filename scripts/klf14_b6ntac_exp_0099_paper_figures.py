@@ -417,7 +417,6 @@ while np.count_nonzero(lores_istissue) > 0:
 ## Show examples of what each deep CNN do (code cannibilised from the "inspect" scripts of the networks)
 ########################################################################################################################
 
-import json
 import pickle
 import warnings
 
@@ -425,12 +424,6 @@ import warnings
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-
-from tensorboard.backend.event_processing import event_accumulator
-import pandas as pd
-
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras
@@ -596,7 +589,7 @@ contour_model = keras.models.load_model(saved_model_filename)
 if contour_model.input_shape[1:3] != pred_dmap.shape[1:3]:
     contour_model = cytometer.utils.change_input_size(contour_model, batch_shape=pred_dmap.shape)
 
-# estimate dmaps
+# estimate contours
 pred_contour = contour_model.predict(pred_dmap, batch_size=4)
 
 if DEBUG:
@@ -614,13 +607,13 @@ if DEBUG:
     plt.savefig(os.path.join(figures_dir, 'pred_contour_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
-# load dmap to contour model, and adjust input size
+# load classifier model, and adjust input size
 saved_model_filename = os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 classifier_model = keras.models.load_model(saved_model_filename)
 if classifier_model.input_shape[1:3] != test_dataset['im'].shape[1:3]:
     classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=test_dataset['im'].shape)
 
-# estimate dmaps
+# estimate pixel-classification
 pred_class = classifier_model.predict(test_dataset['im'], batch_size=4)
 
 if DEBUG:
@@ -632,9 +625,16 @@ if DEBUG:
     plt.savefig(os.path.join(figures_dir, 'pred_class_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
+    plt.clf()
+    plt.imshow(pred_class[i, :, :, 0] > 0.5)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_dir, 'pred_class_thresh_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
 ## create classifier ground truth
 
-print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
+# print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
 
 # init output
 im_array_all = []
@@ -750,6 +750,10 @@ labels, labels_class, _ \
 labels = labels[0, :, :]
 labels_class = labels_class[0, :, :, 0]
 
+if DEBUG:
+    plt.clf()
+    plt.imshow(labels)
+
 # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask,
 # are fully surrounded by another label or are not white adipose tissue
 labels, todo_edge = cytometer.utils.clean_segmentation(
@@ -757,6 +761,7 @@ labels, todo_edge = cytometer.utils.clean_segmentation(
     remove_edge_labels=True, mask=None, min_mask_overlap=min_mask_overlap,
     phagocytosis=phagocytosis,
     labels_class=labels_class, min_class_prop=min_class_prop)
+
 
 # split image into individual labels
 im_array = np.expand_dims(im_array, axis=0)
@@ -843,3 +848,8 @@ if DEBUG:
 
     aux = np.array(contours[j])
     plt.plot(aux[:, 0], aux[:, 1])
+
+########################################################################################################################
+## Images for cytometer_v7.svg schematic (pipeline diagram)
+########################################################################################################################
+
