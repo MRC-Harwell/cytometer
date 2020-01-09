@@ -762,6 +762,11 @@ labels, todo_edge = cytometer.utils.clean_segmentation(
     phagocytosis=phagocytosis,
     labels_class=labels_class, min_class_prop=min_class_prop)
 
+if DEBUG:
+    plt.clf()
+    plt.imshow(im_array)
+    plt.contour(labels, levels=np.unique(labels), colors='k')
+    plt.contourf(labels == 0)
 
 # split image into individual labels
 im_array = np.expand_dims(im_array, axis=0)
