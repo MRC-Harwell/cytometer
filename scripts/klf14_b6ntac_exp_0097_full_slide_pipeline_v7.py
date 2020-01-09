@@ -50,6 +50,8 @@ from skimage.measure import regionprops
 import shutil
 import itertools
 from shapely.geometry import Polygon
+import scipy
+import scipy.stats as stats
 
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
@@ -135,6 +137,46 @@ for i_fold in range(len(idx_test_all)):
     for file in file_ndpi_test:
         ndpi_files_test_list[file] = i_fold
 
+########################################################################################################################
+## Colourmap for AIDA
+########################################################################################################################
+
+# loop files with hand traced contours
+manual_areas_all = []
+for i, file_svg in enumerate(file_svg_list):
+
+    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+    # change file extension from .svg to .tif
+    file_tif = file_svg.replace('.svg', '.tif')
+
+    # open histology training image
+    im = PIL.Image.open(file_tif)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0]  # m
+    yres = 0.0254 / im.info['dpi'][1]  # m
+
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                       minimum_npoints=3)
+
+    # compute cell area
+    manual_areas_all.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
+
+manual_areas_all = list(itertools.chain.from_iterable(manual_areas_all))
+
+# compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
+# to area quantiles
+quantiles = np.linspace(0.0, 1.0, 11)
+areas_by_quantiles = stats.mstats.hdquantiles(manual_areas_all, prob=quantiles)
+f_area2colour = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False, fill_value=(0.0, 1.0))
+
+########################################################################################################################
+## Segmentation loop
+########################################################################################################################
+
 # DEBUG: ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
@@ -143,11 +185,6 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
     print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': ' + ndpi_file_kernel
           + '. Fold = ' + str(i_fold))
-
-    # HACK: To skip already processed images
-    if i_file <= 5:
-        print('Already done, skipping...')
-        continue
 
     # make full path to ndpi file
     ndpi_file = os.path.join(data_dir, ndpi_file_kernel + '.ndpi')
@@ -337,6 +374,7 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
             plt.imshow(tile)
             for j in range(len(contours)):
                 plt.fill(contours[j][:, 0], contours[j][:, 1], edgecolor='C0', fill=False)
+                # plt.text(contours[j][0, 0], contours[j][0, 1], str(j))
 
         # compute non-overlap cell areas
         props = regionprops(labels)
@@ -365,11 +403,14 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
             lores_contours[j][:, 0] += first_col
             lores_contours[j][:, 1] += first_row
 
-        # give a colour that is proportional to the cell area
+        # convert area values to quantiles
+        q = f_area2colour(np.array(lores_areas))
+
+        # give a colour that is proportional to the area quantile
         lores_areas_sqrt = np.sqrt(np.array(lores_areas))
-        hue = np.interp(lores_areas_sqrt,
-                        [0, np.sqrt(20e3 * 1e-12)],
-                        [0, 270])
+        hue = np.interp(q,
+                        [0.0, 1.0],
+                        [np.sqrt(20e3 * 1e-12), 315])
 
         # add segmented contours to annotations file
         if os.path.isfile(annotations_file):
