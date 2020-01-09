@@ -1087,7 +1087,7 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         #     plt.axis('off')
 
         # use watershed to expand the seeds
-        labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
+        labels = watershed(contour_pred[i, :, :, 0], labels, watershed_line=False)
 
         if DEBUG:
             plt.subplot(236)
