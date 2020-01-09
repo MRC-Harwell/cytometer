@@ -557,10 +557,10 @@ if DEBUG:
         plt.imshow(pred_dmap[i, :, :, 0])
         plt.axis('off')
 
-if DEBUG:
+# KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_019228_col_015060.svg
+i = 2
 
-    # KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_019228_col_015060.svg
-    i = 2
+if DEBUG:
 
     plt.clf()
     plt.imshow(test_dataset['im'][i, :, :, :])
