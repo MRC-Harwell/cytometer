@@ -1048,7 +1048,7 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
             plt.subplot(235)
             plt.cla()
             plt.imshow(seg)
-            plt.title('Cell seeds')
+            plt.title('Object seeds')
             plt.axis('off')
 
         # assign different label to each connected components
@@ -1068,26 +1068,26 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         lab_remove = np.isin(labels, lab_remove)
         labels[lab_remove] = 0
 
-        # basis for watershed
-        if classifier_model is None:
-            # the seeds are simply the current connected component labels
-            seeds = labels.copy()
-        else:
-            # we create one seed for all "other" tissue pixels
-            seeds = (class_pred[0, :, :, 0] == 0).astype(labels.dtype) * labels.max()
-            # add current labels as seeds, possibly overlapping the "other" seed
-            aux = labels != 0
-            seeds[aux] = labels[aux]
-
-        if DEBUG:
-            plt.subplot(235)
-            plt.cla()
-            plt.imshow(seeds)
-            plt.title('Object seeds')
-            plt.axis('off')
+        # # basis for watershed
+        # if classifier_model is None:
+        #     # the seeds are simply the current connected component labels
+        #     seeds = labels.copy()
+        # else:
+        #     # we create one seed for all "other" tissue pixels
+        #     seeds = (class_pred[0, :, :, 0] == 0).astype(labels.dtype) * labels.max()
+        #     # add current labels as seeds, possibly overlapping the "other" seed
+        #     aux = labels != 0
+        #     seeds[aux] = labels[aux]
+        #
+        # if DEBUG:
+        #     plt.subplot(235)
+        #     plt.cla()
+        #     plt.imshow(seeds)
+        #     plt.title('Object seeds')
+        #     plt.axis('off')
 
         # use watershed to expand the seeds
-        labels = watershed(-dmap_pred[i, :, :, 0], seeds, watershed_line=False)
+        labels = watershed(-dmap_pred[i, :, :, 0], labels, watershed_line=False)
 
         if DEBUG:
             plt.subplot(236)
