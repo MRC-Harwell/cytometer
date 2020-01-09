@@ -2217,6 +2217,9 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
     if seg_out.ndim == 3:
         seg_out = np.expand_dims(seg_out, axis=3)
 
+    # we assume that black pixels = (0,0,0) belong to outside the image, and we are going to ignore them
+    background_mask = np.all(im == 0, axis=3)
+
     # multiply image by mask
     im = quality_model_mask(seg_out, im=im, quality_model_type=model_type)
 
@@ -2230,6 +2233,9 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
     correction[im[:, :, :, 0] >= 0.5] = 1  # the segmentation went too far
     correction[im[:, :, :, 0] <= -0.5] = -1  # the segmentation fell short
 
+    # ignore background pixels
+    correction[background_mask] = 0
+
     # correct segmentation
     seg_out[correction == 1] = 0
     seg_out[correction == -1] = 1
@@ -2240,17 +2246,35 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
     structure = np.expand_dims(structure, axis=0)  # add dummy dimension
     seg_out = binary_fill_holes(seg_out, structure=structure).astype(np.uint8)
 
-    # keep only the largest component in each segmentation
-    for i in range(seg_out.shape[0]):
-        _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(seg_out[i, :, :], connectivity=4)
-        stats_aux = stats_aux[1:, :]  # remove 0 label stats
-        lab = np.argmax(stats_aux[:, cv2.CC_STAT_AREA]) + 1
-        seg_out[i, :, :] = (labels_aux == lab).astype(np.uint8)
+    # keep only the corrected component with the largest overlap with the input segmentation
+    for j in range(seg_out.shape[0]):
+        # connected components of corrected segmentation
+        _, labels_aux, stats_aux, _ = cv2.connectedComponentsWithStats(seg_out[j, :, :], connectivity=4)
+
+        # connected component labels within the input segmentation
+        lab, counts = np.unique(labels_aux[seg[j, ...] == 1], return_counts=True)
+
+        # remove background label, if present
+        idx = lab != 0
+        lab = lab[idx]
+        counts = counts[idx]
+
+        if len(counts) > 0:
+
+            # connected component label with maximum overlap with input segmentation
+            lab_max = lab[np.argmax(counts)]
+
+            # keep only the connected component with maximum overlap
+            seg_out[j, ...] = labels_aux == lab_max
+
+        else:
+
+            seg_out[j, ...] = seg[j, ...]
 
     # smooth segmentation
     selem = np.ones((smoothing, smoothing))
-    for i in range(seg_out.shape[0]):
-        seg_out[i, :, :] = binary_closing(seg_out[i, :, :], selem=selem)
+    for j in range(seg_out.shape[0]):
+        seg_out[j, :, :] = binary_closing(seg_out[j, :, :], selem=selem)
 
     return seg_out
 
