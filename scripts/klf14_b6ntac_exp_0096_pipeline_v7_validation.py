@@ -1585,7 +1585,7 @@ data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pip
 df_manual_all = pd.read_pickle(data_manual_filename)
 
 # boolean vectors to select subsets of rows from the dataframe
-idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.50)
+idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.59) # this threshold computed above in the Object-wise validation
 idx_auto_not_large = np.array(df_auto_all['area_auto'] < 20e3)
 idx_corrected_not_large = np.array(df_auto_all['area_corrected'] < 20e3)
 idx_auto_not_edge = np.logical_not(df_auto_all['auto_is_edge_cell'])
