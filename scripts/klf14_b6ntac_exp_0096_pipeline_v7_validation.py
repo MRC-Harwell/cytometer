@@ -400,8 +400,9 @@ with np.load(data_filename) as data:
 # start timer
 t0 = time.time()
 
-# init
-df_manual_all = pd.DataFrame()
+# init output vectors
+pixel_gtruth_class = []
+pixel_gtruth_prop = []
 
 for i_fold in range(len(idx_test_all)):
 
@@ -512,21 +513,86 @@ for i_fold in range(len(idx_test_all)):
 
             # plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_manual_contours.svg'))
 
-        # names of contour, dmap and tissue classifier models
-        contour_model_filename = \
-            os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-        dmap_model_filename = \
-            os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-        classifier_model_filename = \
-            os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    # names of contour, dmap and tissue classifier models
+    contour_model_filename = \
+        os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    dmap_model_filename = \
+        os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    classifier_model_filename = \
+        os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
-        # segment histology
-        pred_seg_test, pred_class_test, _ \
-            = cytometer.utils.segment_dmap_contour_v6(im_array_test,
-                                                      dmap_model=dmap_model_filename,
-                                                      contour_model=contour_model_filename,
-                                                      classifier_model=classifier_model_filename,
-                                                      border_dilation=0, batch_size=batch_size)
+    # segment histology and classify pixels
+    pred_seg_test, pred_class_test, _ \
+        = cytometer.utils.segment_dmap_contour_v6(im_array_test,
+                                                  dmap_model=dmap_model_filename,
+                                                  contour_model=contour_model_filename,
+                                                  classifier_model=classifier_model_filename,
+                                                  border_dilation=0, batch_size=batch_size)
+
+    # loop input images
+    for i in range(len(file_svg_list_test)):
+
+        # extract current segmentation and classification, for ease of use
+        aux_seg = pred_seg_test[i, ...]
+        aux_class = pred_class_test[i, :, :, 0]
+        aux_prop = np.zeros(shape=aux_seg.shape, dtype=np.float32)
+
+        # for each label, get the proportion of WAT pixels. Then, assign that value to all pixels in the label
+        for lab in np.unique(pred_seg_test[i, ...]):
+
+            # pixels in the current label
+            idx = aux_seg == lab
+
+            # proportion of WAT pixels in the label
+            prop = np.count_nonzero(aux_class[idx]) / np.count_nonzero(idx)
+
+            # transfer proportion value to all pixels of the label
+            aux_prop[idx] = prop
+
+        # transfer this image's results to output vectors
+        aux_mask = out_mask_test[i, ...] > 0
+        pixel_gtruth_prop.append(aux_prop[aux_mask])
+        aux_gtruth = out_class_test[i, :, :, 0]
+        pixel_gtruth_class.append(aux_gtruth[aux_mask])
+
+        if DEBUG:
+            plt.subplot(121)
+            plt.cla()
+            plt.imshow(aux_prop)
+            plt.colorbar()
+            plt.contour(pred_seg_test[i, ...], levels=np.unique(pred_seg_test[i, ...]), colors='w')
+            plt.axis('off')
+
+# convert output lists to vectors
+pixel_gtruth_class = np.hstack(pixel_gtruth_class)
+pixel_gtruth_prop = np.hstack(pixel_gtruth_prop)
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot((pixel_gtruth_prop[pixel_gtruth_class == 0],
+                 pixel_gtruth_prop[pixel_gtruth_class == 1]))
+
+# pixel score thresholds
+# ROC curve
+fpr, tpr, thr = roc_curve(y_true=pixel_gtruth_class, y_score=pixel_gtruth_prop)
+roc_auc = auc(fpr, tpr)
+
+# we fix the FPR (False Positive Rate) and interpolate the TPR (True Positive Rate) on the ROC curve
+fpr_target = 0.05
+tpr_target = np.interp(fpr_target, fpr, tpr)
+thr_target = np.interp(fpr_target, fpr, thr)
+
+if DEBUG:
+    plt.clf()
+    plt.plot(fpr, tpr)
+    plt.scatter(fpr_target, tpr_target, color='C0', s=100,
+                label='Object score thr. =  %0.2f, FPR = %0.0f%%, TPR = %0.0f%%'
+                      % (thr_target, fpr_target * 100, tpr_target * 100))
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Pixel WAT False Positive Rate (FPR)', fontsize=14)
+    plt.ylabel('Pixel WAT True Positive Rate (TPR)', fontsize=14)
+    plt.legend(loc="lower right", prop={'size': 12})
+    plt.tight_layout()
 
 
 
