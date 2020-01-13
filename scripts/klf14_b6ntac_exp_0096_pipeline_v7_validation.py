@@ -376,7 +376,163 @@ else:  # pre-compute the validation data and save to file
 
 '''
 ************************************************************************************************************************
-Object-wise classification validation
+Object-wise classification validation (new way)
+
+Here we label the pixels of the image as WAT/no-WAT/unlabelled according to ground truth.
+
+Then we apply automatic segmentation. We count the proportion of WAT pixels in each object. That value (e.g. 0.34) gets 
+assigned to each pixel inside. That's then used as scores that are compared to the ground truth labelling to for the
+ROC. 
+************************************************************************************************************************
+'''
+
+# correct home directory in file paths
+file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/home/rcasero', home, check_isfile=True)
+file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
+
+# load data computed in the previous section
+data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
+with np.load(data_filename) as data:
+    im_array_all = data['im_array_all']
+    out_class_all = 1 - data['out_class_all']  # encode as 0: other, 1: WAT
+    out_mask_all = data['out_mask_all']
+
+# start timer
+t0 = time.time()
+
+# init
+df_manual_all = pd.DataFrame()
+
+for i_fold in range(len(idx_test_all)):
+
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+
+    # test image indices. These indices refer to file_list
+    idx_test = idx_test_all[i_fold]
+
+    # list of test files (used later for the dataframe)
+    file_svg_list_test = np.array(file_svg_list)[idx_test]
+
+    print('## len(idx_test) = ' + str(len(idx_test)))
+
+    # extract testing data
+    im_array_test = im_array_all[idx_test, :, :, :]
+    out_class_test = out_class_all[idx_test, :, :, :]
+    out_mask_test = out_mask_all[idx_test, :, :]
+
+    # loop test images
+    for i, file_svg in enumerate(file_svg_list_test):
+
+        print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
+              + str(i) + '/' + str(len(idx_test) - 1))
+
+        ''' Ground truth contours '''
+
+        # change file extension from .svg to .tif
+        file_tif = file_svg.replace('.svg', '.tif')
+
+        # open histology testing image
+        im = Image.open(file_tif)
+
+        # read pixel size information
+        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(im)
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+
+        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell',
+                                                                add_offset_from_filename=False,
+                                                                minimum_npoints=3)
+        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other',
+                                                                 add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown',
+                                                                 add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        contours = cell_contours + other_contours + brown_contours
+
+        # make a list with the type of cell each contour is classified as
+        contour_type_all = ['wat', ] * len(cell_contours) \
+                           + ['other', ] * len(other_contours) \
+                           + ['bat', ] * len(brown_contours)
+
+        print('Cells: ' + str(len(cell_contours)))
+        print('Other: ' + str(len(other_contours)))
+        print('Brown: ' + str(len(brown_contours)))
+        print('')
+
+        # create dataframe for this image
+        im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                              values=im_idx, values_tag='im',
+                                                              tags_to_keep=['id', 'ko', 'sex'])
+        df_common['contour'] = range(len(contours))
+        df_common['type'] = contour_type_all
+
+        '''Label pixels of image as either WAT/non-WAT'''
+
+        if DEBUG:
+
+            plt.clf()
+            plt.subplot(121)
+            plt.imshow(im)
+            # plt.contour(out_mask_test[i, :, :], colors='r')
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+            plt.subplot(122)
+            plt.imshow(im)
+            first_wat = True
+            first_other = True
+            for j, contour in enumerate(contours):
+                # close the contour for the plot
+                contour_aux = contour.copy()
+                contour_aux.append(contour[0])
+                if first_wat and contour_type_all[j] == 'wat':
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2,
+                             label='WAT contour')
+                    first_wat = False
+                elif contour_type_all[j] == 'wat':
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2)
+                elif first_other and contour_type_all[j] != 'wat':
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2,
+                             label='Other contour')
+                    first_other = False
+                else:
+                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2)
+            plt.legend()
+            plt.axis('off')
+            plt.title('Manual contours', fontsize=14)
+            plt.tight_layout()
+
+            # plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_manual_contours.svg'))
+
+        # names of contour, dmap and tissue classifier models
+        contour_model_filename = \
+            os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        dmap_model_filename = \
+            os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        classifier_model_filename = \
+            os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+
+        # segment histology
+        pred_seg_test, pred_class_test, _ \
+            = cytometer.utils.segment_dmap_contour_v6(im_array_test,
+                                                      dmap_model=dmap_model_filename,
+                                                      contour_model=contour_model_filename,
+                                                      classifier_model=classifier_model_filename,
+                                                      border_dilation=0, batch_size=batch_size)
+
+
+
+'''
+************************************************************************************************************************
+Object-wise classification validation (old way)
 ************************************************************************************************************************
 '''
 
@@ -887,7 +1043,7 @@ for i_fold in range(len(idx_test_all)):
 
     ''' Segmentation into non-overlapping objects '''
 
-    # contour, dmap and tissue classifier models
+    # names of contour, dmap and tissue classifier models
     contour_model_filename = \
         os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     dmap_model_filename = \
@@ -1266,7 +1422,7 @@ plt.hist(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx
          density=True,
          label='Corrected / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
                % (q1_corrected, med_corrected, q3_corrected))
-plt.plot([1, 1], [0, 3.3], 'k', linewidth=2)
+plt.plot([1, 1], [0, 3.5], 'k', linewidth=2)
 plt.legend(fontsize=12)
 plt.xlabel('Pipeline / Manual Area', fontsize=14)
 plt.ylabel('Histogram density', fontsize=14)
@@ -1396,14 +1552,14 @@ plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='
 plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
 
 # auto quartile values
-plt.text(2.20, bp_poi[1, 3] + .1 - .1, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
-plt.text(2.20, bp_poi[1, 2] + .1 - .1, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
-plt.text(2.20, bp_poi[1, 1] + .1 - .3, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
+plt.text(2.20, bp_poi[1, 3] + .1 - .3, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
+plt.text(2.20, bp_poi[1, 2] + .1 + .1, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+plt.text(2.20, bp_poi[1, 1] + .1 + .02, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
 
 # corrected quartile values
-plt.text(3.20, bp_poi[2, 3] + .1 - .3, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
-plt.text(3.20, bp_poi[2, 2] + .1 - .4, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
-plt.text(3.20, bp_poi[2, 1] + .1 - .4, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
+plt.text(3.20, bp_poi[2, 3] + .1 - .1, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
+plt.text(3.20, bp_poi[2, 2] + .1 + .0, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
+plt.text(3.20, bp_poi[2, 1] + .1 - .1, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
 
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots.svg'))
 
