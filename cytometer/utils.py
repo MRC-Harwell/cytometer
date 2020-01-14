@@ -2224,8 +2224,6 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
     im = quality_model_mask(seg_out, im=im, quality_model_type=model_type)
 
     # process (histology * mask) to estimate which pixels are underestimated and which overestimated in the segmentation
-    if batch_size is None:
-        batch_size = im.shape[0]
     im = correction_model.predict(im, batch_size=batch_size)
 
     # compute the correction to be applied to the segmentation
