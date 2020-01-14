@@ -2274,6 +2274,9 @@ def correct_segmentation(im, seg, correction_model, model_type='-1_1', smoothing
     for j in range(seg_out.shape[0]):
         seg_out[j, :, :] = binary_closing(seg_out[j, :, :], selem=selem)
 
+    # fill holes, but only image by image
+    seg_out = binary_fill_holes(seg_out, structure=structure).astype(np.uint8)
+
     return seg_out
 
 
