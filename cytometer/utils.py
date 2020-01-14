@@ -217,7 +217,7 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     seg = seg.astype(dtype=np.uint8)
     seg[seg == 1] = 255
 
-    # dilate the segmentation to fill gaps within tissue
+    # closing to fill gaps within tissue
     if dilation_size != 0:
         kernel = np.ones((dilation_size, dilation_size), np.uint8)
         seg = cv2.dilate(seg, kernel, iterations=1)
