@@ -1183,6 +1183,13 @@ for i_fold in range(len(idx_test_all)):
                                                                      model_type='-1_1', batch_size=batch_size,
                                                                      smoothing=11)
 
+    if DEBUG:
+        j = 113
+        plt.clf()
+        plt.imshow(window_im_test[j, ...])
+        plt.contour(window_seg_test[j, ...], colors='r')
+        plt.contour(window_seg_corrected_test[j, ...], colors='g')
+
     # loop test images
     for i in range(len(idx_test)):
 
@@ -1420,7 +1427,11 @@ for i_fold in range(len(idx_test_all)):
             # concatenate current row to general dataframe
             df_manual_all = df_manual_all.append(df_manual, ignore_index=True)
 
-    # end of image loop
+    # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
+    # reload the models every time
+    K.clear_session()
+
+    # end of fold loop
     print('Time so far: ' + str("{:.1f}".format(time.time() - t0)) + ' s')
 
 # save results to avoid having to recompute them every time (1.4 h on 2 Titan RTX GPUs)
@@ -1586,19 +1597,20 @@ df_manual_all = pd.read_pickle(data_manual_filename)
 
 # boolean vectors to select subsets of rows from the dataframe
 idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.59) # this threshold computed above in the Object-wise validation
+idx_corrected_wat = np.array(df_auto_all['wat_prop_corrected'] >= 0.59) # ditto
 idx_auto_not_large = np.array(df_auto_all['area_auto'] < 20e3)
 idx_corrected_not_large = np.array(df_auto_all['area_corrected'] < 20e3)
 idx_auto_not_edge = np.logical_not(df_auto_all['auto_is_edge_cell'])
 
 # indices of automatic segmentations accepted for analysis
-idx_auto = idx_auto_wat * idx_auto_not_large * idx_corrected_not_large * idx_auto_not_edge
+idx_auto = idx_auto_wat * idx_auto_not_large * idx_auto_not_edge
+idx_corrected = idx_corrected_wat * idx_corrected_not_large * idx_auto_not_edge
 
-# boxplots of manual/auto/corrected areas. This is just a sanity check. Note that this only includes automatic
-# segmentations that already overlap with manual segmentations, so the results should be quite good
+# boxplots of manual/auto/corrected areas.
 plt.clf()
 bp = plt.boxplot((df_manual_all['area_manual'] / 1e3,
                   df_auto_all['area_auto'][idx_auto] / 1e3,
-                  df_auto_all['area_corrected'][idx_auto] / 1e3),
+                  df_auto_all['area_corrected'][idx_corrected] / 1e3),
                  positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
 
 # points of interest from the boxplots
