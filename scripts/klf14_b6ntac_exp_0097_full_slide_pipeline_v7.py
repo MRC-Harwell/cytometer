@@ -88,7 +88,7 @@ receptive_field = np.array([131, 131])
 # rough_foreground_mask() parameters
 downsample_factor = 8.0
 dilation_size = 25
-component_size_threshold = 1e6
+component_size_threshold = 50e3
 hole_size_treshold = 8000
 
 # contour parameters
@@ -205,6 +205,9 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     results_file = os.path.basename(ndpi_file)
     results_file = os.path.splitext(results_file)[0]
     results_file = os.path.join(results_dir, results_file + '_exp_0097.npz')
+
+    # # make a backup copy of the current annotations file
+    # shutil.copy2(annotations_file, annotations_file + '.bak')
 
     # delete annotations file, if an older one exists
     if os.path.isfile(annotations_file):
