@@ -30,8 +30,8 @@ import cytometer.utils
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+# limit number of GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -199,7 +199,11 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     # name of file to save annotations
     annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_no_overlap_exp_0097.json')
+
+    annotations_corrected_file = os.path.basename(ndpi_file)
+    annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
+    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_corrected_exp_0097.json')
 
     # name of file to save areas and contours
     results_file = os.path.basename(ndpi_file)
@@ -369,63 +373,82 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
         # convert overlap labels in cropped images to contours (points), and add cropping window offset so that the
         # contours are in the tile-window coordinates
         offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
-        contours = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
-                                                  scaling_factor_xy=scaling_factor_list)
+        contours = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
+                                                   scaling_factor_xy=scaling_factor_list)
+        contours_corrected = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
+                                                             scaling_factor_xy=scaling_factor_list)
 
         if DEBUG:
+            # no overlap
             plt.clf()
             plt.imshow(tile)
             for j in range(len(contours)):
                 plt.fill(contours[j][:, 0], contours[j][:, 1], edgecolor='C0', fill=False)
                 # plt.text(contours[j][0, 0], contours[j][0, 1], str(j))
 
-        # compute non-overlap cell areas
-        props = regionprops(labels)
-        p_label = [p['label'] for p in props]
-        p_area = np.array([p['area'] for p in props])
-        areas = p_area * xres * yres  # (m^2)
+            # overlap
+            plt.clf()
+            plt.imshow(tile)
+            for j in range(len(contours_corrected)):
+                plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C0', fill=False)
+                # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
+
+        # compute cell areas
+        areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
+        areas_corrected = [Polygon(c).area * xres * yres for c in contours_corrected]  # (um^2)
 
         # downsample contours for AIDA annotations file
         lores_contours = []
-        lores_areas = []
         for c in contours:
             lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
             lores_contours.append(lores_c)
 
-            # compute overlap cell areas
-            lores_areas.append(Polygon(lores_c).area * xres * yres)  # (m^2)
+        lores_contours_corrected = []
+        for c in contours_corrected:
+            lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
+            lores_contours_corrected.append(lores_c)
 
         if DEBUG:
+            # no overlap
             plt.clf()
             plt.imshow(tile)
             for j in range(len(contours)):
                 plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C1', fill=False)
+
+            # overlap
+            plt.clf()
+            plt.imshow(tile)
+            for j in range(len(contours_corrected)):
+                plt.fill(lores_contours_corrected[j][:, 0], lores_contours_corrected[j][:, 1], edgecolor='C1', fill=False)
 
         # add tile offset, so that contours are in full slide coordinates
         for j in range(len(contours)):
             lores_contours[j][:, 0] += first_col
             lores_contours[j][:, 1] += first_row
 
+        for j in range(len(contours_corrected)):
+            lores_contours_corrected[j][:, 0] += first_col
+            lores_contours_corrected[j][:, 1] += first_row
+
         # convert area values to quantiles
-        q = f_area2colour(np.array(lores_areas))
+        q = f_area2colour(np.array(areas))
+        q_corrected = f_area2colour(np.array(areas_corrected))
 
         # give a colour that is proportional to the area quantile
-        lores_areas_sqrt = np.sqrt(np.array(lores_areas))
-        hue = np.interp(q,
-                        [0.0, 1.0],
-                        [np.sqrt(20e3 * 1e-12), 315])
+        hue = np.interp(q, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
+        hue_corrected = np.interp(q_corrected, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
 
-        # add segmented contours to annotations file
+        # add segmented contours to annotations files
         if os.path.isfile(annotations_file):
             append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue, pretty_print=True)
+            append_paths_to_aida_json_file(annotations_corrected_file, lores_contours_corrected, hue=hue_corrected, pretty_print=True)
         elif len(contours) > 0:
             fp = open(annotations_file, 'w')
             write_paths_to_aida_json_file(fp, lores_contours, hue=hue, pretty_print=True)
             fp.close()
-
-        # # add contours to list of all contours for the image
-        # contours_all.append(lores_contours)
-        # areas_all.append(areas)
+            fp = open(annotations_corrected_file, 'w')
+            write_paths_to_aida_json_file(fp, lores_contours_corrected, hue=hue_corrected, pretty_print=True)
+            fp.close()
 
         # update the tissue segmentation mask with the current window
         if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
