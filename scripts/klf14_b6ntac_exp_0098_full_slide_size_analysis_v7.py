@@ -16,7 +16,7 @@ import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 from PIL import Image, ImageDraw
-from matplotlib import cm
+from matplotlib.colors import ListedColormap
 
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -48,7 +48,8 @@ root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
 seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
-figures_dir = os.path.join(root_data_dir, 'figures')
+# figures_dir = os.path.join(root_data_dir, 'figures')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
@@ -66,13 +67,17 @@ hole_size_treshold = 8000
 
 # list of annotation files
 json_annotation_files = [
-    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097.json',
     'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097.json',
     'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097.json',
     'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097.json'
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097.json',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097.json'
 ]
 
 # load svg files from manual dataset
@@ -84,6 +89,10 @@ file_svg_list = aux['file_list']# load list of images, and indices for training 
 # correct home directory in file paths
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home,
                                                      check_isfile=True)
+
+########################################################################################################################
+## Colourmap for AIDA
+########################################################################################################################
 
 # loop files with hand traced contours
 manual_areas_all = []
@@ -123,6 +132,17 @@ if DEBUG:
     for x in areas_by_quantiles.data:
         plt.plot([x, x], [0, fig[0].max()], 'k')
 
+# create colourmap that mirrors AIDA's colourmap
+import colorsys
+cm = [colorsys.hls_to_rgb(h, l=0.69, s=0.44) + (1,) for h in np.linspace(np.sqrt(20e3 * 1e-12)/360, 315/360, 100)]
+cm[0] = (1.0, 1.0, 1.0, 1.0)
+# make 0 quantile white for the background of the image
+cm = ListedColormap(cm)
+
+########################################################################################################################
+## Annotation file loop
+########################################################################################################################
+
 
 # loop annotations files
 for i_file, json_file in enumerate(json_annotation_files):
@@ -131,6 +151,7 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     # name of corresponding .ndpi file
     ndpi_file = json_file.replace('_exp_0097.json', '.ndpi')
+    kernel_file = os.path.splitext(ndpi_file)[0]
 
     # add path to file
     json_file = os.path.join(annotations_dir, json_file)
@@ -222,13 +243,35 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.imshow(im_downsampled)
         plt.axis('off')
         plt.subplot(212)
-        plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
+        # plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
+        plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap=cm)
         cbar = plt.colorbar(shrink=0.8)
         cbar.ax.tick_params(labelsize=14)
-        cbar.ax.set_ylabel('Cell area quantile from\nmanual dataset distribution', rotation=90, fontsize=14)
+        cbar.ax.set_ylabel('Cell area quantile\n(w.r.t. manual dataset distribution)', rotation=90, fontsize=14)
         plt.axis('off')
         plt.tight_layout()
 
     if DEBUG:
         plt.clf()
         plt.hist(areas_all, bins=50, density=True, histtype='step')
+
+    # plot cell areas for paper
+    plt.clf()
+    plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap=cm)
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0098_cell_segmentation.png'),
+                bbox_inches='tight')
+
+# colourmap plot
+a = np.array([[0,1]])
+plt.figure(figsize=(9, 1.5))
+img = plt.imshow(a, cmap=cm)
+plt.gca().set_visible(False)
+cax = plt.axes([0.1, 0.2, 0.8, 0.6])
+cbar = plt.colorbar(orientation='horizontal', cax=cax)
+cbar.ax.tick_params(labelsize=14)
+plt.title('Cell area quantile (w.r.t. manual dataset)', rotation=0, fontsize=14)
+plt.tight_layout()
+plt.savefig(os.path.join(figures_dir, 'exp_0098_aida_colourmap.png'), bbox_inches='tight')
