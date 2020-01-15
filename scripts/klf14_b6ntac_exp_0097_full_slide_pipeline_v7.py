@@ -180,6 +180,8 @@ f_area2colour = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, b
 # DEBUG: i_file = 12; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
+    print('    \'' + ndpi_file_kernel + '_exp_0097.json\'')
+
     # fold  where the current .ndpi image was not used for training
     i_fold = ndpi_files_test_list[ndpi_file_kernel]
 
