@@ -22,6 +22,7 @@ import six
 from svgpathtools import svg2paths
 import random
 import colorsys
+import scipy
 
 DEBUG = False
 
@@ -570,13 +571,34 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, m
     return paths_out
 
 
+def area2quantile(areas):
+    """
+    Return function to map from cell areas to quantiles.
+
+    :param areas: List or vector of area values from the reference population. The distribution and quantiles are
+    computed from this area values.
+    :return:
+    * f: scipy.interpolate.interpolate.interp1d interpolation function that maps areas values to [0.0, 1.0]. Area values
+    outside the range are mapped to 0.0 (smaller) or 1.0 (larger).
+    """
+
+    quantiles = np.linspace(0.0, 1.0, 101)
+    areas_by_quantiles = scipy.stats.mstats.hdquantiles(areas, prob=quantiles)
+    f_area2quantile = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False,
+                                               fill_value=(0.0, 1.0))
+    return f_area2quantile
+
+
 def aida_colourmap():
     """
     Create a colourmap that replicates in plt.imshow() the colours that we obtain in AIDA.
 
+    This function can be combined with area2quantile() to map areas to colours.
+
     This colourmap is meant to map area quantiles [0.1, 1.0] to a pastel yellow-green-purple colour scale. It also
     maps 0.0 to white, so that we can use white to represent the background without cells.
-    :return: cm: matplotlib.colors.ListedColormap with 101 colours.
+    :return:
+    * cm: matplotlib.colors.ListedColormap with 101 colours.
     """
 
     # range of colours in HSL format
