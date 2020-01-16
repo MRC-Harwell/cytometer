@@ -124,7 +124,7 @@ manual_areas_all = list(itertools.chain.from_iterable(manual_areas_all))
 # to area quantiles
 quantiles = np.linspace(0.0, 1.0, 11)
 areas_by_quantiles = stats.mstats.hdquantiles(manual_areas_all, prob=quantiles)
-f_area2colour = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False, fill_value=(0.0, 1.0))
+f_area2quantile = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False, fill_value=(0.0, 1.0))
 
 if DEBUG:
     plt.clf()
@@ -230,7 +230,7 @@ for i_file, json_file in enumerate(json_annotation_files):
     areas_all = np.array(areas_all) * 1e12
 
     # convert area values to quantiles
-    q = f_area2colour(areas_all)
+    q = f_area2quantile(areas_all)
 
     # interpolate scattered data to regular grid
     idx = areas_mask
