@@ -9,6 +9,7 @@ import glob
 import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
 import numpy as np
 from scipy import ndimage
@@ -20,6 +21,7 @@ import re
 import six
 from svgpathtools import svg2paths
 import random
+import colorsys
 
 DEBUG = False
 
@@ -568,8 +570,37 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, m
     return paths_out
 
 
+def aida_colourmap():
+    """
+    Create a colourmap that replicates in plt.imshow() the colours that we obtain in AIDA.
+
+    This colourmap is meant to map area quantiles [0.1, 1.0] to a pastel yellow-green-purple colour scale. It also
+    maps 0.0 to white, so that we can use white to represent the background without cells.
+    :return: cm: matplotlib.colors.ListedColormap with 101 colours.
+    """
+
+    # range of colours in HSL format
+    hue = np.linspace(0, 315 / 360, 101)
+    lightness = 0.69
+    saturation = 0.44
+    alpha = 1
+
+    cm = [colorsys.hls_to_rgb(h=h, l=lightness, s=saturation) + (alpha,) for h in hue]
+    cm[0] = (1.0, 1.0, 1.0, 1.0)
+    # make 0 quantile white for the background of the image
+
+    return ListedColormap(cm)
+
+
+def write_aida_annotations(filename, contours, area2colour, mode='append_to_layer'):
+
+    print('hello')
+    # areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
+
+
 def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
     """
+    DEPRECATED: Use write_aida_annotations() instead.
     Write single contour to a JSON file in AIDA's annotation format.
 
     (This function only writes the XML code only for the contour, not a full JSON file).
@@ -643,6 +674,7 @@ def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
 
 def write_paths_to_aida_json_file(fp, xs, hue=170, pretty_print=False):
     """
+    DEPRECATED: Use write_aida_annotations() instead.
     Write a list/tuple of contours to a JSON file in AIDA's annotation format.
 
     :param fp: file pointer to text file that is open for writing/appending.
@@ -699,6 +731,7 @@ def write_paths_to_aida_json_file(fp, xs, hue=170, pretty_print=False):
 
 def append_paths_to_aida_json_file(file, xs, hue=170, pretty_print=False):
     """
+    DEPRECATED: Use write_aida_annotations() instead.
     Add contours to AIDA's annotation file in JSON format.
 
     :param file: Path and filename of .json file with AIDA annotations.

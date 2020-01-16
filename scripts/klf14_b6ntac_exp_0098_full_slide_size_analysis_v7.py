@@ -16,7 +16,6 @@ import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 from PIL import Image, ImageDraw
-from matplotlib.colors import ListedColormap
 
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -30,6 +29,7 @@ import openslide
 import numpy as np
 import matplotlib.pyplot as plt
 from cytometer.utils import rough_foreground_mask
+import cytometer.data
 import itertools
 from shapely.geometry import Polygon
 import scipy
@@ -132,12 +132,8 @@ if DEBUG:
     for x in areas_by_quantiles.data:
         plt.plot([x, x], [0, fig[0].max()], 'k')
 
-# create colourmap that mirrors AIDA's colourmap
-import colorsys
-cm = [colorsys.hls_to_rgb(h, l=0.69, s=0.44) + (1,) for h in np.linspace(np.sqrt(20e3 * 1e-12)/360, 315/360, 100)]
-cm[0] = (1.0, 1.0, 1.0, 1.0)
-# make 0 quantile white for the background of the image
-cm = ListedColormap(cm)
+# load AIDA's colourmap
+cm = cytometer.data.aida_colourmap()
 
 ########################################################################################################################
 ## Annotation file loop
