@@ -122,15 +122,7 @@ manual_areas_all = list(itertools.chain.from_iterable(manual_areas_all))
 
 # compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
 # to area quantiles
-quantiles = np.linspace(0.0, 1.0, 11)
-areas_by_quantiles = stats.mstats.hdquantiles(manual_areas_all, prob=quantiles)
-f_area2quantile = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False, fill_value=(0.0, 1.0))
-
-if DEBUG:
-    plt.clf()
-    fig = plt.hist(manual_areas_all, bins=50, density=True, histtype='step')
-    for x in areas_by_quantiles.data:
-        plt.plot([x, x], [0, fig[0].max()], 'k')
+f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 
 # load AIDA's colourmap
 cm = cytometer.data.aida_colourmap()
@@ -186,8 +178,8 @@ for i_file, json_file in enumerate(json_annotation_files):
     # list of items (there's a contour in each item)
     items = json_data['layers'][0]['items']
 
-    # init array for interpolated areas
-    areas_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
+    # init array for interpolated quantiles
+    quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
 
     # init array for mask where there are segmentations
     areas_mask = Image.new("1", lores_istissue0.shape[::-1], "black")
@@ -217,7 +209,7 @@ for i_file, json_file in enumerate(json_annotation_files):
         centroid = np.mean(c, axis=0)
         centroids_all.append(centroid)
 
-        # rasterise object described by contour
+        # add object described by contour to mask
         draw.polygon(list(c.flatten()), outline="white", fill="white")
 
     # convert mask
@@ -225,13 +217,24 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     areas_all = np.array(areas_all) * 1e12
 
-    # convert area values to quantiles
-    q = f_area2quantile(areas_all)
-
-    # interpolate scattered data to regular grid
+    # interpolate scattered area data to regular grid
     idx = areas_mask
     xi = np.transpose(np.array(np.where(idx)))[:, [1, 0]]
-    areas_grid[idx] = scipy.interpolate.griddata(centroids_all, q, xi, method='linear', fill_value=0)
+    quantiles_grid[idx] = scipy.interpolate.griddata(centroids_all, areas_all, xi, method='linear', fill_value=0)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
+        plt.axis('off')
+        plt.subplot(212)
+        plt.imshow(quantiles_grid)
+
+    # convert area values to quantiles
+    quantiles_grid = f_area2quantile(quantiles_grid)
+
+    # make background white in the plot
+    quantiles_grid[~areas_mask] = np.nan
 
     if DEBUG:
         plt.clf()
@@ -240,10 +243,10 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.axis('off')
         plt.subplot(212)
         # plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
-        plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap=cm)
-        cbar = plt.colorbar(shrink=0.8)
+        plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
+        cbar = plt.colorbar(shrink=1.0)
         cbar.ax.tick_params(labelsize=14)
-        cbar.ax.set_ylabel('Cell area quantile\n(w.r.t. manual dataset distribution)', rotation=90, fontsize=14)
+        cbar.ax.set_ylabel('Cell area quantile', rotation=90, fontsize=14)
         plt.axis('off')
         plt.tight_layout()
 
@@ -253,7 +256,7 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     # plot cell areas for paper
     plt.clf()
-    plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap=cm)
+    plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
     plt.axis('off')
     plt.tight_layout()
 
