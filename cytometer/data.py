@@ -23,6 +23,7 @@ from svgpathtools import svg2paths
 import random
 import colorsys
 import scipy
+from shapely.geometry import Polygon
 
 DEBUG = False
 
@@ -575,8 +576,8 @@ def area2quantile(areas):
     """
     Return function to map from cell areas to quantiles.
 
-    :param areas: List or vector of area values from the reference population. The distribution and quantiles are
-    computed from this area values.
+    :param areas: Vector with random sample that is representative of area values in the population. The probability
+    distribution and quantiles are computed from this random sample.
     :return:
     * f: scipy.interpolate.interpolate.interp1d interpolation function that maps areas values to [0.0, 1.0]. Area values
     outside the range are mapped to 0.0 (smaller) or 1.0 (larger).
@@ -586,17 +587,47 @@ def area2quantile(areas):
     areas_by_quantiles = scipy.stats.mstats.hdquantiles(areas, prob=quantiles)
     f_area2quantile = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False,
                                                fill_value=(0.0, 1.0))
+
+    if DEBUG:
+        plt.clf()
+        fig = plt.hist(areas, bins=50, density=True, histtype='step')
+        for x in areas_by_quantiles.data:
+            plt.plot([x, x], [0, fig[0].max()], 'k')
+
     return f_area2quantile
 
 
 def aida_colourmap():
     """
-    Create a colourmap that replicates in plt.imshow() the colours that we obtain in AIDA.
+    Create a colourmap that replicates in plt.imshow() the colours that we obtain in AIDA. This colormap is called
+    'quantiles_aida'.
 
-    This function can be combined with area2quantile() to map areas to colours.
+    This colourmap is meant to map area quantiles [0.0, 1.0] to a pastel yellow-green-purple colour scale.
 
-    This colourmap is meant to map area quantiles [0.1, 1.0] to a pastel yellow-green-purple colour scale. It also
-    maps 0.0 to white, so that we can use white to represent the background without cells.
+    This function can be combined with area2quantile() to map areas to colours:
+
+        import cytometer
+
+        # variables already assigned
+        manual_areas # vector with a representative random sample of cell areas. The distribution will be computed from these values
+        area_grid  # np.float32 2D array with area values interpolated onto a pixel grid
+        area_mask # bool array of the same size that says where there's tissue and where not
+
+        # compute function to map between cell areas and [0.0, 1.0]
+        f_area2quantile = cytometer.data.area2quantile(manual_areas)
+
+        # convert area values to quantiles
+        quantiles_grid = f_area2quantile(quantiles_grid)
+
+        # make background white in the plot
+        quantiles_grid[~areas_mask] = np.nan
+
+        # load AIDA's colourmap
+        cm = cytometer.data.aida_colourmap()
+
+        # plot
+        plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
+
     :return:
     * cm: matplotlib.colors.ListedColormap with 101 colours.
     """
@@ -607,18 +638,18 @@ def aida_colourmap():
     saturation = 0.44
     alpha = 1
 
+    # the colourmap only changes the hue linearly, while keeping the saturation and lightness constant
     cm = [colorsys.hls_to_rgb(h=h, l=lightness, s=saturation) + (alpha,) for h in hue]
-    cm[0] = (1.0, 1.0, 1.0, 1.0)
-    # make 0 quantile white for the background of the image
 
-    return ListedColormap(cm)
+    return ListedColormap(cm, name='quantiles_aida')
 
 
-def write_aida_annotations(filename, contours, area2colour, mode='append_to_layer'):
+def write_aida_annotations(filename, contours, area2quantile, mode='append_to_layer', xres=1.0, yres=1.0):
 
-    print('hello')
-    # areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
+    # compute area of each contour
+    areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
 
+    # convert to quantiles
 
 def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
     """
