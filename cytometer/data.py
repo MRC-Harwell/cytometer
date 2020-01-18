@@ -7,6 +7,7 @@ Functions to load, save and pre-process data related to the cytometer project.
 import os
 import glob
 import pickle
+import ujson
 from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
@@ -644,12 +645,89 @@ def aida_colourmap():
     return ListedColormap(cm, name='quantiles_aida')
 
 
-def write_aida_annotations(filename, contours, area2quantile, mode='append_to_layer', xres=1.0, yres=1.0):
+# filename=os.path.join(annotations_dir, 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097.json')
+# contours=lores_contours
+def write_aida_annotations(filename, contours, f_area2quantile, cm='quantiles_aida', mode='append_to_layer', xres=1.0, yres=1.0):
+
+    def create_path_item(contour, rgb_colour):
+        """
+        Create an object that describes a closed contour in AIDA. The user provides the coordinates of the contour
+        points and the colour for the contour.
+
+        :param contour: np.array or list of points of a contour: [[x0, y0], [x1, y1], ...]
+        :param rgb_colour: (r, g, b) or (r, g, b, alpha). RGB colour for this contour.
+        :return: item: dictionary with the structure of the contour object.
+        """
+
+        if type(contour) != 'numpy.ndarray':
+            contour = list(contour)
+
+        # convert RGB to HSL
+        hls_colour = colorsys.rgb_to_hls(rgb_colour[0], rgb_colour[1], rgb_colour[2])
+
+        item = {
+            'class': '',
+            'type': 'path',
+            'color': {
+                'fill': {
+                    'hue': hls_colour[0] * 360,
+                    'lightness': hls_colour[1],
+                    'saturation': hls_colour[2],
+                    'alpha': 0.7
+                },
+                'stroke': {
+                    'hue': hls_colour[0] * 360,
+                    'lightness': hls_colour[1],
+                    'saturation': hls_colour[2],
+                    'alpha': 1.0
+                }
+            },
+            'segments': contour,
+            'closed': True
+        }
+
+        return item
+
+    # load colourmap
+    if cm == 'quantiles_aida':
+        cm = aida_colourmap()
+    else:
+        raise ValueError('Only quantiles_aida colourmap is implemented')
 
     # compute area of each contour
     areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
 
     # convert to quantiles
+    q = f_area2quantile(areas)
+
+    # if an annotations file already exists with the filename path, read it so that we can add to it
+    if os.path.isfile(filename):
+
+        with open(filename) as fp:
+            annotations = ujson.load(fp)
+
+        raise NotImplementedError('Modifying existing annotations file is not implemented yet')
+
+    else:  # create an annotations file from scratch
+
+        items = [create_path_item(contour=contours[i], rgb_colour=cm(q[i])) for i in range(len(contours))]
+
+        layer = {
+            'name': 'White adipocyte segmentations 0',
+            'opacity': 1.0,
+            'items': items
+        }
+
+        annotations = {
+            'name': 'DeepCytometer segmentation',
+            'layers': [layer,]
+        }
+
+        with open(filename, 'w') as fp:
+            ujson.dump(annotations, fp)
+
+    return
+
 
 def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
     """
