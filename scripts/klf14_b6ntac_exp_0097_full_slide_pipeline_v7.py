@@ -174,10 +174,8 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ## Segmentation loop
 ########################################################################################################################
 
-# DEBUG: i_file = 12; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
+# DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
-
-    print('    \'' + ndpi_file_kernel + '_exp_0097.json\'')
 
     # fold  where the current .ndpi image was not used for training
     i_fold = ndpi_files_test_list[ndpi_file_kernel]
@@ -204,9 +202,9 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
     annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0097_corrected.json')
 
-    results_file = annotations_file.replace('_exp_0097_no_overlap.json', '_exp_0097_no_overlap_ujson.json')
+    results_file = annotations_file.replace('_exp_0097_no_overlap.json', '_exp_0097_no_overlap_by_window.json')
 
-    results_corrected_file = annotations_corrected_file.replace('_exp_0097_corrected.json', '_exp_0097_corrected_ujson.json')
+    results_corrected_file = annotations_corrected_file.replace('_exp_0097_corrected.json', '_exp_0097_corrected_by_window.json')
 
     # # make a backup copy of the current annotations file
     # shutil.copy2(annotations_file, annotations_file + '.bak')
@@ -388,10 +386,6 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
                 plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C0', fill=False)
                 # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
 
-        # compute cell areas
-        areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
-        areas_corrected = [Polygon(c).area * xres * yres for c in contours_corrected]  # (um^2)
-
         # downsample contours for AIDA annotations file
         lores_contours = []
         for c in contours:
@@ -425,6 +419,10 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
             lores_contours_corrected[j][:, 0] += first_col
             lores_contours_corrected[j][:, 1] += first_row
 
+        # compute cell areas
+        areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
+        areas_corrected = [Polygon(c).area * xres * yres for c in contours_corrected]  # (um^2)
+
         # convert area values to quantiles
         q = f_area2quantile(np.array(areas))
         q_corrected = f_area2quantile(np.array(areas_corrected))
@@ -432,6 +430,10 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
         # give a colour that is proportional to the area quantile
         hue = np.interp(q, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
         hue_corrected = np.interp(q_corrected, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
+
+        # write annotations file
+        cytometer.data.write_aida_annotations(annotations_file, lores_contours, f_area2quantile, mode='append_to_layer',
+                                              xres=xres, yres=yres)
 
         # add segmented contours to annotations files
         if os.path.isfile(annotations_file):
