@@ -419,6 +419,12 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
             lores_contours_corrected[j][:, 0] += first_col
             lores_contours_corrected[j][:, 1] += first_row
 
+        # write annotations file
+        rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
+        cytometer.data.write_aida_annotations(annotations_file, lores_contours, f_area2quantile, mode='append_to_layer',
+                                              xres=xres, yres=yres, add_rectangle=rectangle)
+
+
         # compute cell areas
         areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
         areas_corrected = [Polygon(c).area * xres * yres for c in contours_corrected]  # (um^2)
@@ -430,10 +436,6 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
         # give a colour that is proportional to the area quantile
         hue = np.interp(q, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
         hue_corrected = np.interp(q_corrected, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
-
-        # write annotations file
-        cytometer.data.write_aida_annotations(annotations_file, lores_contours, f_area2quantile, mode='append_to_layer',
-                                              xres=xres, yres=yres)
 
         # add segmented contours to annotations files
         if os.path.isfile(annotations_file):
