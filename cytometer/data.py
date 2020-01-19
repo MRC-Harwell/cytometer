@@ -645,11 +645,23 @@ def aida_colourmap():
     return ListedColormap(cm, name='quantiles_aida')
 
 
-# filename=os.path.join(annotations_dir, 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097.json')
-# contours=lores_contours
-def write_aida_annotations(filename, contours, f_area2quantile, cm='quantiles_aida', mode='append_to_layer', xres=1.0, yres=1.0):
+def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0, yres=1.0):
+    """
+    Create list of contour items for AIDA.
 
-    def create_path_item(contour, rgb_colour):
+    This function computes the area of each contour, it's quantile, and maps it to a colour.
+
+    :param contours: List [contour_0, contour_1...], where contour_i is an (Ni, 2)-np.array with Ni 2D points.
+    :param f_area2quantile: Function to map areas to quantiles. Compute with cytometer.data.area2quantile(manual_areas).
+    :param cm: (def 'quantiles_aida'). String or matplotlib.colors.ListedColormap to map [0.0, 1.0] to RGB colours. If
+    cm is a string, currently only 'quantiles_aida' is accepted.
+    :param xres: (def 1.0) Pixel size in the x-coordinate.
+    :param yres: (def 1.0) Pixel size in the y-coordinate.
+    :return: List of dictionaries, each one with the structure of a contour object.
+    """
+
+
+    def aida_contour_item(contour, rgb_colour):
         """
         Create an object that describes a closed contour in AIDA. The user provides the coordinates of the contour
         points and the colour for the contour.
@@ -688,6 +700,8 @@ def write_aida_annotations(filename, contours, f_area2quantile, cm='quantiles_ai
 
         return item
 
+    ## main function
+
     # load colourmap
     if cm == 'quantiles_aida':
         cm = aida_colourmap()
@@ -700,31 +714,147 @@ def write_aida_annotations(filename, contours, f_area2quantile, cm='quantiles_ai
     # convert to quantiles
     q = f_area2quantile(areas)
 
+    # create the list of contour objects (each item is a contour object)
+    items = [aida_contour_item(contour=contours[i], rgb_colour=cm(q[i])) for i in range(len(contours))]
+
+    return items
+
+
+def aida_rectangle_items(rectangles):
+    """
+    Create list of rectangle items for AIDA.
+
+    :param rectangles: List [rectangle_0, rectangle_1...], where rectangle_i is a tuple (x0, y0, width, height).
+    :return: List of dictionaries, each one with the structure of a rectangle object.
+    """
+
+
+    def aida_rectangle_item(rectangle):
+        """
+        Create an object that describes a rectangle in AIDA.
+
+        :param rectangle: (x0, y0, width, height).
+        :return: item: dictionary with the structure of the rectangle object.
+        """
+
+        # extract rectangle parameters
+        (x0, y0, width, height) = rectangle
+
+        # convert RGB to HSL
+        hls_colour = colorsys.rgb_to_hls(0, 0, 0)
+
+        item = {
+            'type': 'rectangle',
+            'class': '',
+            'color': {
+                'fill': {
+                    'hue': hls_colour[0] * 360,
+                    'saturation': hls_colour[2],
+                    'lightness': hls_colour[1],
+                    'alpha': 0.7000000000000001},
+                'stroke': {
+                    'hue': hls_colour[0] * 360,
+                    'saturation': hls_colour[2],
+                    'lightness': hls_colour[1],
+                    'alpha': 1}},
+            'x': x0,
+            'y': y0,
+            'width': width,
+            'height': height,
+            'locked': False
+        }
+
+        return item
+
+    ## main function
+
+    # create the list of rectangle objects (each item is a rectangle object)
+    items = [aida_rectangle_item(rectangle=rectangles[i]) for i in range(len(rectangles))]
+
+    return items
+
+
+
+
+# filename=annotations_file
+# contours=lores_contours
+# import colorsys
+# from matplotlib.colors import ListedColormap
+# add_rectangle=[]
+def write_aida_annotations(filename, contours, f_area2quantile, cm='quantiles_aida', mode='append_contours_to_layer',
+                           xres=1.0, yres=1.0, pretty_print=False, add_rectangle=None):
+
+
+
+    ## main code
+
+    # pretty-print variable for ujson.dump
+    if pretty_print:
+        indent = 4
+    else:
+        indent = 0
+
+
+
     # if an annotations file already exists with the filename path, read it so that we can add to it
     if os.path.isfile(filename):
 
+        # load existing data
         with open(filename) as fp:
             annotations = ujson.load(fp)
 
-        raise NotImplementedError('Modifying existing annotations file is not implemented yet')
+    else:  # if previous file doesn't exist, create an annotations file from scratch
 
-    else:  # create an annotations file from scratch
+        # layer object. We put all contours in the same one layer
+        layer = {'name': 'White adipocyte segmentations 0', 'opacity': 1.0, 'items': []}
 
-        items = [create_path_item(contour=contours[i], rgb_colour=cm(q[i])) for i in range(len(contours))]
+        # top-most segmentation object. It contains only one layer
+        annotations = {'name': 'DeepCytometer segmentation', 'layers': [layer, ]}
 
-        layer = {
-            'name': 'White adipocyte segmentations 0',
-            'opacity': 1.0,
-            'items': items
-        }
+        if add_rectangle is not None:
+            annotations['layers'] += {'name': 'Blocks', 'opacity': 1.0, 'items': []}
 
-        annotations = {
-            'name': 'DeepCytometer segmentation',
-            'layers': [layer,]
-        }
 
-        with open(filename, 'w') as fp:
-            ujson.dump(annotations, fp)
+
+
+
+    with open(filename, 'w') as fp:
+        ujson.dump(annotations, fp, indent=indent)
+
+        # add contours to existing data
+        if mode == 'append_contours_to_layer':
+
+            # find the last layer called 'White adipocyte segmentations /X/'
+            i_layer = 0
+            for l in range(len(annotations['layers'])):
+                if 'White adipocyte segmentations' in annotations['layers'][l]['name']:
+                    i_layer = l
+
+            # add new contours to the current layer
+            annotations['layers'][i_layer]['items'] += items
+
+        else:
+
+            raise ValueError('Unknown mode')
+
+        # add optional rectangles
+        if add_rectangle is not None:
+
+            # find the last layer called 'Blocks /X/'
+            i_layer = []
+            for l in range(len(annotations['layers'])):
+                if 'Blocks' in annotations['layers'][l]['name']:
+                    i_layer = l
+
+            # create rectangle as a path item
+            item = create_rectangle_item(add_rectangle)
+
+            # add rectangle, either to existing Blocks layer, or new one
+            if i_layer == []:
+                annotations['layers'] += {'name': 'Blocks', 'opacity': 1.0, 'items': [item, ]}
+            else:
+                annotations['layers'][i_layer]['items'] += item
+
 
     return
 
