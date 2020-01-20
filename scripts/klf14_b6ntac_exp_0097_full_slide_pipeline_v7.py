@@ -209,10 +209,6 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     # # make a backup copy of the current annotations file
     # shutil.copy2(annotations_file, annotations_file + '.bak')
 
-    # delete annotations file, if an older one exists
-    if os.path.isfile(annotations_file):
-        os.remove(annotations_file)
-
     # rough segmentation of the tissue in the image
     lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
                                                             dilation_size=dilation_size,
@@ -419,59 +415,31 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
             lores_contours_corrected[j][:, 0] += first_col
             lores_contours_corrected[j][:, 1] += first_row
 
-        # write annotations file
+        # convert non-overlap contours to AIDA items
+        contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile, xres=xres, yres=yres)
         rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
-        cytometer.data.write_aida_annotations(annotations_file, lores_contours, f_area2quantile, mode='append_to_layer',
-                                              xres=xres, yres=yres, add_rectangle=rectangle)
+        rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
 
+        if step == 0:
+            # in the first step, overwrite previous annotations file, or create new one
+            cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='w')
+            cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
+        else:
+            # in next steps, add contours to previous layer
+            cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='append_to_last_layer')
+            cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
 
-        # compute cell areas
-        areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
-        areas_corrected = [Polygon(c).area * xres * yres for c in contours_corrected]  # (um^2)
+        # convert corrected contours to AIDA items
+        contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile, xres=xres, yres=yres)
 
-        # convert area values to quantiles
-        q = f_area2quantile(np.array(areas))
-        q_corrected = f_area2quantile(np.array(areas_corrected))
-
-        # give a colour that is proportional to the area quantile
-        hue = np.interp(q, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
-        hue_corrected = np.interp(q_corrected, [0.0, 1.0], [np.sqrt(20e3 * 1e-12), 315])
-
-        # add segmented contours to annotations files
-        if os.path.isfile(annotations_file):
-            append_paths_to_aida_json_file(annotations_file, lores_contours, hue=hue, pretty_print=True)
-            append_paths_to_aida_json_file(annotations_corrected_file, lores_contours_corrected, hue=hue_corrected, pretty_print=True)
-
-        elif len(contours) > 0:
-            with open(annotations_file, 'w') as fp:
-                write_paths_to_aida_json_file(fp, lores_contours, hue=hue, pretty_print=True)
-            with open(annotations_corrected_file, 'w') as fp:
-                write_paths_to_aida_json_file(fp, lores_contours_corrected, hue=hue_corrected, pretty_print=True)
-
-            aux = {'contours': [lores_contours[0],], 'areas': areas, 'area_units': 'um2', 'resolution': [xres, yres],
-                   'tile_from_xy': [first_col, first_row], 'tile_to_xy': [last_col, last_row],
-                   'total_time': (time.time() - time_0)}
-            with open(results_file, mode='w') as fp:
-                ujson.dump(aux, fp)
-            ujson.dump(aux, results_file, 'a')
-            ujson.dump(lores_contours, results_file, mode='a')
-
-            foo_file = os.path.join(annotations_dir, 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097.json')
-            with open(foo_file) as fp:
-                foo = ujson.load(fp)
-
-            bar_file = os.path.join(annotations_dir,
-                                    'foo.json')
-            with open(bar_file, 'w') as fp:
-                ujson.dump(foo, fp)
-
-            foo['layers'][0]['name'] = 'Cell layer 2'
-            with open(bar_file, 'a') as fp:
-                ujson.dump(foo, fp)
-
-            with open(bar_file) as fp:
-                bar = ujson.load(fp)
-
+        if step == 0:
+            # in the first step, overwrite previous annotations file, or create new one
+            cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='w')
+            cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
+        else:
+            # in next steps, add contours to previous layer
+            cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='append_to_last_layer')
+            cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
 
         # update the tissue segmentation mask with the current window
         if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):

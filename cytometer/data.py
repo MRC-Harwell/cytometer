@@ -683,14 +683,14 @@ def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0,
             'color': {
                 'fill': {
                     'hue': hls_colour[0] * 360,
-                    'lightness': hls_colour[1],
                     'saturation': hls_colour[2],
+                    'lightness': hls_colour[1],
                     'alpha': 0.7
                 },
                 'stroke': {
                     'hue': hls_colour[0] * 360,
-                    'lightness': hls_colour[1],
                     'saturation': hls_colour[2],
+                    'lightness': hls_colour[1],
                     'alpha': 1.0
                 }
             },
@@ -741,21 +741,22 @@ def aida_rectangle_items(rectangles):
         (x0, y0, width, height) = rectangle
 
         # convert RGB to HSL
-        hls_colour = colorsys.rgb_to_hls(0, 0, 0)
+        hls_colour_black = colorsys.rgb_to_hls(0, 0, 0)
+        hls_colour_white = colorsys.rgb_to_hls(1, 1, 1)
 
         item = {
             'type': 'rectangle',
             'class': '',
             'color': {
                 'fill': {
-                    'hue': hls_colour[0] * 360,
-                    'saturation': hls_colour[2],
-                    'lightness': hls_colour[1],
-                    'alpha': 0.7000000000000001},
+                    'hue': hls_colour_black[0] * 360,
+                    'saturation': hls_colour_black[2],
+                    'lightness': hls_colour_black[1],
+                    'alpha': 0.5},
                 'stroke': {
-                    'hue': hls_colour[0] * 360,
-                    'saturation': hls_colour[2],
-                    'lightness': hls_colour[1],
+                    'hue': hls_colour_white[0] * 360,
+                    'saturation': hls_colour_white[2],
+                    'lightness': hls_colour_white[1],
                     'alpha': 1}},
             'x': x0,
             'y': y0,
@@ -768,100 +769,115 @@ def aida_rectangle_items(rectangles):
 
     ## main function
 
+    if type(rectangles) != list:
+        raise TypeError('rectangles must be a list, even if it only has one item')
+
     # create the list of rectangle objects (each item is a rectangle object)
     items = [aida_rectangle_item(rectangle=rectangles[i]) for i in range(len(rectangles))]
 
     return items
 
 
+def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0, ensure_ascii=False,
+                         double_precision=10):
+    """
+    Create a new or update existing AIDA annotations file, adding new items.
+    :param filename: String with path to .json annotations file.
+    :param items: List of items, obtained e.g. with aida_contour_items() or aida_rectangle_items().
+    :param mode:
+        - 'append_to_last_layer': (def) Append items to the last layer with the same item type.
+        - 'append_new_layer': Create new layer for items.
+        - 'w': Overwrite existing file, or create a new one with only these items.
+    :param indent: (def 0) Number of indentation spaces for pretty print format. By default, 0, everything is saved to
+    one line without spaces.
+    :param ensure_ascii: (def False) Limits output to ASCII and escapes all extended characters above 127. Default is
+    true. If your end format supports UTF-8 setting this option to false is highly recommended to save space.
+    :param double_precision: (def 10) Controls how many decimals to encode for double or decimal values.
+    :return:
+    * None
+    """
 
+    if type(items) != list:
+        raise SyntaxError('items must be a list, but is type: ' + type(items))
 
-# filename=annotations_file
-# contours=lores_contours
-# import colorsys
-# from matplotlib.colors import ListedColormap
-# add_rectangle=[]
-def write_aida_annotations(filename, contours, f_area2quantile, cm='quantiles_aida', mode='append_contours_to_layer',
-                           xres=1.0, yres=1.0, pretty_print=False, add_rectangle=None):
+    # get item type
+    item_type = items[0]['type']
 
-
-
-    ## main code
-
-    # pretty-print variable for ujson.dump
-    if pretty_print:
-        indent = 4
+    # layer name that corresponds to this item type
+    if item_type == 'path':
+        layer_name = 'White adipocyte'
+    elif item_type == 'rectangle':
+        layer_name = 'Blocks'
     else:
-        indent = 0
-
-
+        raise NotImplementedError('item_type not implemented: ' + item_type)
 
     # if an annotations file already exists with the filename path, read it so that we can add to it
-    if os.path.isfile(filename):
+    if mode != 'w' and os.path.isfile(filename):
 
         # load existing data
         with open(filename) as fp:
             annotations = ujson.load(fp)
 
+        # check that this file has the expected format
+        if 'name' not in annotations:
+            raise KeyError('Annotations have no \'name\' key')
+        if 'layers' not in annotations:
+            raise KeyError('Annotations have no \'layers\' key')
+
     else:  # if previous file doesn't exist, create an annotations file from scratch
 
-        # layer object. We put all contours in the same one layer
-        layer = {'name': 'White adipocyte segmentations 0', 'opacity': 1.0, 'items': []}
-
         # top-most segmentation object. It contains only one layer
-        annotations = {'name': 'DeepCytometer segmentation', 'layers': [layer, ]}
+        annotations = {'name': 'DeepCytometer annotations', 'layers': []}
 
-        if add_rectangle is not None:
-            annotations['layers'] += {'name': 'Blocks', 'opacity': 1.0, 'items': []}
+    if DEBUG:
+        print('Loaded file: ' + filename)
+        print('Annotations name: ' + annotations['name'])
+        print('Number of layers: ' + str(len(annotations['layers'])))
+        for j in range(len(annotations['layers'])):
+            print('    Layer ' + str(j) + ': ' + annotations['layers'][j]['name'] + '. Number of '
+                  + annotations['layers'][j]['items'][0]['type'] + ' items: '
+                  + str(len(annotations['layers'][j]['items'])))
 
+    # find the last layer for the current item type, if there's any
+    i_layer = layer_number = []  # in case there isn't any layer of this type
+    for l in range(len(annotations['layers'])):
+        if layer_name in annotations['layers'][l]['name']:
+            # index of layer where we are going to append items
+            i_layer = l
+            # number that we are going to add to the layer name. Note that this, in general, will be different from
+            # the layer's index
+            layer_number = int(annotations['layers'][l]['name'].replace(layer_name, ''))
 
+    # if no layer exists, we'll need to add a new layer
+    if i_layer == []:
+        mode = 'append_new_layer'
+        layer_number = -1
 
+    # if we want to append items to a new layer
+    if mode == 'append_new_layer':
 
+        # new layer object
+        layer = {'name': layer_name + ' ' + str(layer_number + 1), 'opacity': 1.0, 'items': items}
 
+        # append layer to current annotations
+        annotations['layers'] += [layer, ]
+
+    elif mode == 'append_to_last_layer':
+
+        # append items to currently selected layer
+        annotations['layers'][i_layer]['items'] += items
+
+    else:
+        raise NotImplementedError('mode not implemented: ' + mode)
+
+    # write annotations to file
     with open(filename, 'w') as fp:
-        ujson.dump(annotations, fp, indent=indent)
-
-        # add contours to existing data
-        if mode == 'append_contours_to_layer':
-
-            # find the last layer called 'White adipocyte segmentations /X/'
-            i_layer = 0
-            for l in range(len(annotations['layers'])):
-                if 'White adipocyte segmentations' in annotations['layers'][l]['name']:
-                    i_layer = l
-
-            # add new contours to the current layer
-            annotations['layers'][i_layer]['items'] += items
-
-        else:
-
-            raise ValueError('Unknown mode')
-
-        # add optional rectangles
-        if add_rectangle is not None:
-
-            # find the last layer called 'Blocks /X/'
-            i_layer = []
-            for l in range(len(annotations['layers'])):
-                if 'Blocks' in annotations['layers'][l]['name']:
-                    i_layer = l
-
-            # create rectangle as a path item
-            item = create_rectangle_item(add_rectangle)
-
-            # add rectangle, either to existing Blocks layer, or new one
-            if i_layer == []:
-                annotations['layers'] += {'name': 'Blocks', 'opacity': 1.0, 'items': [item, ]}
-            else:
-                annotations['layers'][i_layer]['items'] += item
-
-
-    return
+        ujson.dump(annotations, fp, indent=indent, ensure_ascii=ensure_ascii, double_precision=double_precision)
 
 
 def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
     """
-    DEPRECATED: Use write_aida_annotations() instead.
+    DEPRECATED: Use aida_write_new_items() instead.
     Write single contour to a JSON file in AIDA's annotation format.
 
     (This function only writes the XML code only for the contour, not a full JSON file).
@@ -935,7 +951,7 @@ def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
 
 def write_paths_to_aida_json_file(fp, xs, hue=170, pretty_print=False):
     """
-    DEPRECATED: Use write_aida_annotations() instead.
+    DEPRECATED: Use aida_write_new_items() instead.
     Write a list/tuple of contours to a JSON file in AIDA's annotation format.
 
     :param fp: file pointer to text file that is open for writing/appending.
