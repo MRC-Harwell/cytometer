@@ -26,6 +26,7 @@ import pickle
 #
 # # other imports
 import numpy as np
+import pandas as pd
 # import cv2
 # import matplotlib.pyplot as plt
 #
@@ -33,7 +34,8 @@ import numpy as np
 # import keras
 import keras.backend as K
 
-# import cytometer.data
+import cytometer
+import cytometer.data
 # import cytometer.utils
 # import cytometer.model_checkpoint_parallel
 import tensorflow as tf
@@ -69,36 +71,71 @@ saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 
 saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 
-'''klf14_b6ntac_exp_0076_generate_training_images'''
+# original dataset used in pipelines up to v6 + extra "other" tissue images
+kfold_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
+with open(kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_svg_list = aux['file_list']
+idx_test_all = aux['idx_test']
+idx_train_all = aux['idx_train']
 
-# explicit list of files, to avoid differences if the files in the directory change (note that the order of the
-# files is important, because it's used for the random seed when selecting training windows)
-ndpi_files_list = [
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04.ndpi',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57.ndpi',
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52.ndpi',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39.ndpi',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54.ndpi',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.ndpi',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41.ndpi',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52.ndpi',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46.ndpi',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08.ndpi',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33.ndpi',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38.ndpi',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53.ndpi',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45.ndpi',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52.ndpi',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32.ndpi',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11.ndpi',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06.ndpi',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00.ndpi'
-]
-ndpi_files_list = [os.path.join(ndpi_dir, x) for x in ndpi_files_list]
+# correct home directory
+file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
+file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
+# number of images
+n_im = len(file_svg_list)
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# init dataframe to aggregate training numbers of each mouse
+table = pd.DataFrame(columns=['Cell', 'Other', 'Background'])
+
+# loop files with hand traced contours
+for i, file_svg in enumerate(file_svg_list):
+
+    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                            minimum_npoints=3)
+    other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                             minimum_npoints=3)
+    brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                             minimum_npoints=3)
+    background_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Background', add_offset_from_filename=False,
+                                                                  minimum_npoints=3)
+    contours = cell_contours + other_contours + brown_contours + background_contours
+
+    # make a list with the type of cell each contour is classified as
+    contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
+                    np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
+                    np.ones(shape=(len(brown_contours),), dtype=np.uint8),  # 1: brown cells (treated as "other" tissue)
+                    np.zeros(shape=(len(background_contours),), dtype=np.uint8)] # 0: background
+    contour_type = np.concatenate(contour_type)
+
+    print('Cells: ' + str(len(cell_contours)) + '. Other: ' + str(len(other_contours))
+          + '. Brown: ' + str(len(brown_contours)) + '. Background: ' + str(len(background_contours)))
+
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
+                                                          values=[i,], values_tag='i',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+
+    if id in table.index:
+
+    else:
+        table.append(pd.Series(['Cells', len(cell_contours), 'Other', len(other_contours), 'Background', len(background_contours)],
+                               index=[id,]))
 
 
 ########################################################################################################################
