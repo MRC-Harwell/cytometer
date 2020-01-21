@@ -11,7 +11,7 @@ home = str(Path.home())
 
 import os
 import sys
-import json
+import ujson
 import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
@@ -67,17 +67,17 @@ hole_size_treshold = 8000
 
 # list of annotation files
 json_annotation_files = [
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097.json'
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097_corrected.json'
 ]
 
 # load svg files from manual dataset
@@ -138,7 +138,7 @@ for i_file, json_file in enumerate(json_annotation_files):
     print('JSON annotations file: ' + os.path.basename(json_file))
 
     # name of corresponding .ndpi file
-    ndpi_file = json_file.replace('_exp_0097.json', '.ndpi')
+    ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
     kernel_file = os.path.splitext(ndpi_file)[0]
 
     # add path to file
@@ -171,12 +171,8 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.subplot(212)
         plt.imshow(lores_istissue0)
 
-    # parse the json file
-    with open(json_file) as f:
-        json_data = json.load(f)
-
     # list of items (there's a contour in each item)
-    items = json_data['layers'][0]['items']
+    contours = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*')
 
     # init array for interpolated quantiles
     quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
@@ -190,10 +186,7 @@ for i_file, json_file in enumerate(json_annotation_files):
     centroids_all = []
 
     # loop items (one contour per item)
-    for it in items:
-
-        # extract contour
-        c = it['segments']
+    for c in contours:
 
         # convert to downsampled coordinates
         c = np.array(c) / downsample_factor

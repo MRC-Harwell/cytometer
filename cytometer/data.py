@@ -6,6 +6,7 @@ Functions to load, save and pre-process data related to the cytometer project.
 
 import os
 import glob
+import warnings
 import pickle
 import ujson
 from PIL import Image
@@ -873,6 +874,64 @@ def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0,
     # write annotations to file
     with open(filename, 'w') as fp:
         ujson.dump(annotations, fp, indent=indent, ensure_ascii=ensure_ascii, double_precision=double_precision)
+
+
+def aida_get_contours(annotations, layer_name='.*'):
+    """
+    Concatenate items as contours in an AIDA annotations file or dict. Only 'path' and 'rectangle' types implemented.
+
+    :param annotations: filename or dict with AIDA annotations.
+    :param layer_name: (def '.*', which matches any name). Regular expression (see help for re module) that will be used
+    as the pattern to march against the layer names. For example, layer_name='White adipocyte.*' will match any layer
+    name like 'White adipocyte 0', 'White adipocyte 1', etc.
+    :return:
+    * items: list of concatenated contours from selected layers. [contour_0, contour_1, ...] where
+    contour_i = [[x0, y0], [x1, y1], ...].
+    """
+
+    # if filename provided, load annotations
+    if isinstance(annotations, six.string_types):
+
+        # parse the json file
+        with open(annotations) as fp:
+            annotations = ujson.load(fp)
+
+    if type(annotations) != dict:
+        raise TypeError('annotations should be type dict')
+
+    items = []
+    for l in range(len(annotations['layers'])):
+
+        # check whether the regular expression matches the layer name
+        if re.match(layer_name, annotations['layers'][l]['name']) is not None:
+
+            for i in range(len(annotations['layers'][l]['items'])):
+
+                if annotations['layers'][l]['items'][i]['type'] == 'path':
+
+                    # add items to list of output items
+                    items += [annotations['layers'][l]['items'][i]['segments'],]
+
+                elif annotations['layers'][l]['items'][i]['type'] == 'rectangle':
+
+                    # extract rectangle first and last corners
+                    x0 = annotations['layers'][l]['items'][i]['x']
+                    y0 = annotations['layers'][l]['items'][i]['y']
+                    xend = x0 + annotations['layers'][l]['items'][i]['width'] - 1
+                    yend = y0 + annotations['layers'][l]['items'][i]['height'] - 1
+
+                    # 4 corners of the rectangle, with first repeated for closed contour
+                    item = [[x0, y0], [xend, y0], [xend, yend], [x0, yend], [x0, y0]]
+
+                    # add items to list of output items
+                    items += [item,]
+
+                else:
+
+                    warnings.warn('Unknown item type found: layer ' + str(l) + ', item ' + str(i) + ': '
+                                  + annotations['layers'][l]['items'][i]['type'], SyntaxWarning)
+
+    return items
 
 
 def read_keras_training_output(filename, every_step=True):
