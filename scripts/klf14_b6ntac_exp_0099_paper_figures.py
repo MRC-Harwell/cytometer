@@ -93,8 +93,23 @@ n_im = len(file_svg_list)
 metainfo_csv_file = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
+# loop the folds to get the ndpi files that correspond to testing of each fold
+ndpi_files_test_list = {}
+for i_fold in range(len(idx_test_all)):
+    # list of .svg files for testing
+    file_svg_test = np.array(file_svg_list)[idx_test_all[i_fold]]
+
+    # list of .ndpi files that the .svg windows came from
+    file_ndpi_test = [os.path.basename(x).replace('.svg', '') for x in file_svg_test]
+    file_ndpi_test = np.unique([x.split('_row')[0] for x in file_ndpi_test])
+
+    # add to the dictionary {file: fold}
+    for file in file_ndpi_test:
+        ndpi_files_test_list[file] = i_fold
+
+
 # init dataframe to aggregate training numbers of each mouse
-table = pd.DataFrame(columns=['Cell', 'Other', 'Background'])
+table = pd.DataFrame(columns=['Cells', 'Other', 'Background', 'Windows', 'Windows with cells'])
 
 # loop files with hand traced contours
 for i, file_svg in enumerate(file_svg_list):
@@ -130,13 +145,65 @@ for i, file_svg in enumerate(file_svg_list):
 
     # mouse ID as a string
     id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko'].values[0]
+
+    # row to add to the table
+    df = pd.DataFrame(
+        [(sex, ko,
+          len(cell_contours), len(other_contours) + len(brown_contours), len(background_contours), 1, int(len(cell_contours)>0))],
+        columns=['Sex', 'Genotype', 'Cells', 'Other', 'Background', 'Windows', 'Windows with cells'], index=[id])
 
     if id in table.index:
 
-    else:
-        table.append(pd.Series(['Cells', len(cell_contours), 'Other', len(other_contours), 'Background', len(background_contours)],
-                               index=[id,]))
+        num_cols = ['Cells', 'Other', 'Background', 'Windows', 'Windows with cells']
+        table.loc[id, num_cols] = (table.loc[id, num_cols] + df.loc[id, num_cols])
 
+    else:
+
+        table = table.append(df, sort=False, ignore_index=False, verify_integrity=True)
+
+# alphabetical order by mouse IDs
+table = table.sort_index()
+
+# total number of sampled windows
+print('Total number of windows = ' + str(np.sum(table['Windows'])))
+print('Total number of windows with cells = ' + str(np.sum(table['Windows with cells'])))
+
+# total number of "Other" and background areas
+print('Total number of Other areas = ' + str(np.sum(table['Other'])))
+print('Total number of Background areas = ' + str(np.sum(table['Background'])))
+
+# aggregate by sex and genotype
+idx_f = table['Sex'] == 'f'
+idx_m = table['Sex'] == 'm'
+idx_pat = table['Genotype'] == 'PAT'
+idx_mat = table['Genotype'] == 'MAT'
+
+print('f PAT: ' + str(np.sum(table.loc[idx_f * idx_pat, 'Cells'])))
+print('f MAT: ' + str(np.sum(table.loc[idx_f * idx_mat, 'Cells'])))
+print('m PAT: ' + str(np.sum(table.loc[idx_m * idx_pat, 'Cells'])))
+print('m MAT: ' + str(np.sum(table.loc[idx_m * idx_mat, 'Cells'])))
+
+# find folds that test images belong to
+for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
+
+    # fold  where the current .ndpi image was not used for training
+    i_fold = ndpi_files_test_list[ndpi_file_kernel]
+
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': ' + ndpi_file_kernel
+          + '. Fold = ' + str(i_fold))
+
+# mean and std of mouse weight
+weight_f_mat = [22.07, 26.39, 30.65, 24.28, 27.72]
+weight_f_pat = [31.42, 29.25, 27.18, 23.69, 21.20]
+weight_m_mat = [46.19, 40.87, 40.02, 41.98, 34.52, 36.08]
+weight_m_pat = [36.55, 40.77, 36.98, 36.11]
+
+print('f MAT: mean = ' + str(np.mean(weight_f_mat)) + ', std = ' + str(np.std(weight_f_mat)))
+print('f PAT: mean = ' + str(np.mean(weight_f_pat)) + ', std = ' + str(np.std(weight_f_pat)))
+print('m MAT: mean = ' + str(np.mean(weight_m_mat)) + ', std = ' + str(np.std(weight_m_mat)))
+print('m PAT: mean = ' + str(np.mean(weight_m_pat)) + ', std = ' + str(np.std(weight_m_pat)))
 
 ########################################################################################################################
 ## Plots of get_next_roi_to_process()
