@@ -23,8 +23,8 @@ import scipy.stats as stats
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'
+# limit number of GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -87,7 +87,8 @@ json_annotation_files = [
     'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json'
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_exp_0097_corrected.json'
 ]
 
 # load svg files from manual dataset
@@ -318,13 +319,25 @@ plt.savefig(os.path.join(figures_dir, 'exp_0098_aida_colourmap.png'), bbox_inche
 
 # plot area distributions
 plt.clf()
-for a in aq_f:
-    plt.plot([a, a], [0, 0.55], 'k--', linewidth=3)
-plt.hist(np.array(manual_areas_f) * 1e-3, histtype='step', bins=50, density=True, linewidth=4)
 aq_f = stats.mstats.hdquantiles(np.array(manual_areas_f) * 1e-3, prob=np.linspace(0, 1, 11), axis=0)
+for a in aq_f:
+    plt.plot([a, a], [0, 0.55], 'r', linewidth=3)
+plt.hist(np.array(manual_areas_f) * 1e-3, histtype='stepfilled', bins=50, density=True, linewidth=4, zorder=0)
 plt.tick_params(labelsize=14)
 plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 plt.ylabel('Density', fontsize=14)
 plt.yticks([])
 plt.tight_layout()
 plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_manual_f.png'), bbox_inches='tight')
+
+plt.clf()
+aq_m = stats.mstats.hdquantiles(np.array(manual_areas_m) * 1e-3, prob=np.linspace(0, 1, 11), axis=0)
+for a in aq_m:
+    plt.plot([a, a], [0, 0.28], 'r', linewidth=3)
+plt.hist(np.array(manual_areas_m) * 1e-3, histtype='stepfilled', bins=50, density=True, linewidth=4, zorder=0)
+plt.tick_params(labelsize=14)
+plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+plt.ylabel('Density', fontsize=14)
+plt.yticks([])
+plt.tight_layout()
+plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_manual_m.png'), bbox_inches='tight')
