@@ -15,7 +15,10 @@ import ujson
 import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
+import tensorflow as tf
 from PIL import Image, ImageDraw
+import pandas as pd
+import scipy.stats as stats
 
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -33,13 +36,15 @@ import cytometer.data
 import itertools
 from shapely.geometry import Polygon
 import scipy
-import scipy.stats as stats
 
-# # limit GPU memory used
-# from keras.backend.tensorflow_backend import set_session
-# config = tf.ConfigProto()
-# config.gpu_options.per_process_gpu_memory_fraction = 0.95
-# set_session(tf.Session(config=config))
+LIMIT_GPU_MEM = False
+
+# limit GPU memory used
+if LIMIT_GPU_MEM:
+    from keras.backend.tensorflow_backend import set_session
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.95
+    set_session(tf.Session(config=config))
 
 DEBUG = False
 SAVE_FIGS = False
@@ -67,17 +72,22 @@ hole_size_treshold = 8000
 
 # list of annotation files
 json_annotation_files = [
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097_corrected.json'
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json'
 ]
 
 # load svg files from manual dataset
@@ -90,12 +100,17 @@ file_svg_list = aux['file_list']# load list of images, and indices for training 
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home,
                                                      check_isfile=True)
 
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
 ########################################################################################################################
 ## Colourmap for AIDA
 ########################################################################################################################
 
 # loop files with hand traced contours
-manual_areas_all = []
+manual_areas_f = []
+manual_areas_m = []
 for i, file_svg in enumerate(file_svg_list):
 
     print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
@@ -115,14 +130,32 @@ for i, file_svg in enumerate(file_svg_list):
     contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
                                                        minimum_npoints=3)
 
-    # compute cell area
-    manual_areas_all.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
+                                                          values=[i,], values_tag='i',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
 
-manual_areas_all = list(itertools.chain.from_iterable(manual_areas_all))
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko'].values[0]
+
+    # compute cell area
+    if sex == 'f':
+        manual_areas_f.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
+    elif sex == 'm':
+        manual_areas_m.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
+    else:
+        raise ValueError('Wrong sex value')
+
+
+manual_areas_f = list(itertools.chain.from_iterable(manual_areas_f))
+manual_areas_m = list(itertools.chain.from_iterable(manual_areas_m))
 
 # compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
 # to area quantiles
-f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
+f_area2quantile_f = cytometer.data.area2quantile(manual_areas_f)
+f_area2quantile_m = cytometer.data.area2quantile(manual_areas_m)
 
 # load AIDA's colourmap
 cm = cytometer.data.aida_colourmap()
@@ -223,8 +256,23 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.subplot(212)
         plt.imshow(quantiles_grid)
 
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(ndpi_file),
+                                                          values=[i,], values_tag='i',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko'].values[0]
+
     # convert area values to quantiles
-    quantiles_grid = f_area2quantile(quantiles_grid)
+    if sex == 'f':
+        quantiles_grid = f_area2quantile_f(quantiles_grid)
+    elif sex == 'm':
+        quantiles_grid = f_area2quantile_m(quantiles_grid)
+    else:
+        raise ValueError('Wrong sex value')
 
     # make background white in the plot
     quantiles_grid[~areas_mask] = np.nan
@@ -267,3 +315,16 @@ cbar.ax.tick_params(labelsize=14)
 plt.title('Cell area quantile (w.r.t. manual dataset)', rotation=0, fontsize=14)
 plt.tight_layout()
 plt.savefig(os.path.join(figures_dir, 'exp_0098_aida_colourmap.png'), bbox_inches='tight')
+
+# plot area distributions
+plt.clf()
+for a in aq_f:
+    plt.plot([a, a], [0, 0.55], 'k--', linewidth=3)
+plt.hist(np.array(manual_areas_f) * 1e-3, histtype='step', bins=50, density=True, linewidth=4)
+aq_f = stats.mstats.hdquantiles(np.array(manual_areas_f) * 1e-3, prob=np.linspace(0, 1, 11), axis=0)
+plt.tick_params(labelsize=14)
+plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+plt.ylabel('Density', fontsize=14)
+plt.yticks([])
+plt.tight_layout()
+plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_manual_f.png'), bbox_inches='tight')
