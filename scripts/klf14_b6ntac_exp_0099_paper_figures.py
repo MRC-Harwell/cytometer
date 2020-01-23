@@ -22,25 +22,17 @@ sys.path.extend([os.path.join(home, 'Software/cytometer')])
 ########################################################################################################################
 
 import pickle
-# import warnings
-#
-# # other imports
+
 import numpy as np
 import pandas as pd
-# import cv2
-# import matplotlib.pyplot as plt
-#
-# os.environ['KERAS_BACKEND'] = 'tensorflow'
-# import keras
+import matplotlib.pyplot as plt
+
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
 
 import cytometer
 import cytometer.data
-# import cytometer.utils
-# import cytometer.model_checkpoint_parallel
 import tensorflow as tf
-
-# from PIL import Image, ImageDraw
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'
@@ -107,6 +99,11 @@ for i_fold in range(len(idx_test_all)):
     for file in file_ndpi_test:
         ndpi_files_test_list[file] = i_fold
 
+
+if DEBUG:
+    # list of NDPI files
+    for key in ndpi_files_test_list.keys():
+        print(key)
 
 # init dataframe to aggregate training numbers of each mouse
 table = pd.DataFrame(columns=['Cells', 'Other', 'Background', 'Windows', 'Windows with cells'])
