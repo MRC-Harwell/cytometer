@@ -175,6 +175,7 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ########################################################################################################################
 
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
+# for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
     # fold  where the current .ndpi image was not used for training
@@ -193,7 +194,7 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     correction_model_file = os.path.join(saved_models_dir,
                                          correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
-    # name of file to save annotations
+    # name of file to save annotations to
     annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
     annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097_no_overlap.json')
@@ -202,9 +203,9 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
     annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0097_corrected.json')
 
-    results_file = annotations_file.replace('_exp_0097_no_overlap.json', '_exp_0097_no_overlap_by_window.json')
-
-    results_corrected_file = annotations_corrected_file.replace('_exp_0097_corrected.json', '_exp_0097_corrected_by_window.json')
+    if os.path.isfile(annotations_file) and os.path.isfile(annotations_corrected_file):
+        print('File already annotated... skipping')
+        continue
 
     # # make a backup copy of the current annotations file
     # shutil.copy2(annotations_file, annotations_file + '.bak')
