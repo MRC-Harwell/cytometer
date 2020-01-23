@@ -84,18 +84,6 @@ epochs = 37
 # data augmentation factor (e.g. "10" means that we generate 9 augmented images + the original input image)
 augment_factor = 10
 
-# area (pixel**2) of the smallest object we accept as a cell (pi * (16 pixel)**2 = 804.2 pixel**2)
-smallest_cell_area = 804
-
-# training window length
-training_window_len = 401
-
-# remove from training cells that don't have a good enough overlap with a reference label
-smallest_dice = 0.5
-
-# segmentations with Dice >= threshold are accepted
-dice_threshold = 0.9
-
 # batch size for training
 batch_size = 8
 
@@ -197,6 +185,7 @@ idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
 # correct home directory
+file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
 # number of images
