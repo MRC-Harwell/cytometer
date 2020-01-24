@@ -88,7 +88,10 @@ json_annotation_files = [
     'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_exp_0097_corrected.json'
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_exp_0097_corrected.json'
 ]
 
 # load svg files from manual dataset
