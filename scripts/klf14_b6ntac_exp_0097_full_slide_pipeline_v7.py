@@ -211,11 +211,19 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     # shutil.copy2(annotations_file, annotations_file + '.bak')
 
     # rough segmentation of the tissue in the image
-    lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                            dilation_size=dilation_size,
-                                                            component_size_threshold=component_size_threshold,
-                                                            hole_size_treshold=hole_size_treshold,
-                                                            return_im=True)
+    if os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi':
+        # special case for an image that has very low contrast, with strong bright pink and purple areas of other tissue
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold, std_k=0.25,
+                                                                return_im=True)
+    else:  # any other case
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold,
+                                                                return_im=True)
 
     if DEBUG:
         plt.clf()
