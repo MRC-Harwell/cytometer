@@ -13,7 +13,7 @@ module load Anaconda3/5.1.0
 
 source activate cytometer_tensorflow
 
-python klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn.py
+python klf14_b6ntac_exp_0103_cnn_tissue_classifier_fcn.py
 
 echo "Finished at :"`date`
 exit 0
