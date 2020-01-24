@@ -132,7 +132,7 @@ def paint_labels(labels, paint_labs, paint_values):
 
 
 def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
-                          component_size_threshold=1e6, hole_size_treshold=8000,
+                          component_size_threshold=1e6, hole_size_treshold=8000, std_k=1.0,
                           return_im=False):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
@@ -154,6 +154,8 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     kernel.
     :param component_size_threshold: (def 1e5) Minimum number of pixels to consider a connected component as a
     foreground object.
+    :param std_k: (def 1.0) Constant to set the threshold for initial segmentation of foreground pixels.
+    foreground = image < colour_mode - std_k * colour_std
     :param return_im: (def False) Whether to return also the downsampled image in filename.
     :return:
     seg: downsampled segmentation mask.
@@ -213,7 +215,7 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     # threshold segmentation
     seg = np.ones(im_downsampled.shape[0:2], dtype=bool)
     for i in range(3):
-        seg = np.logical_and(seg, im_downsampled[:, :, i] < background_colour[i] - background_colour_std[i])
+        seg = np.logical_and(seg, im_downsampled[:, :, i] < background_colour[i] - std_k * background_colour_std[i])
     seg = seg.astype(dtype=np.uint8)
     seg[seg == 1] = 255
 
