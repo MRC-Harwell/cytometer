@@ -174,6 +174,8 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ## Segmentation loop
 ########################################################################################################################
 
+# TODO: recompute 18.2g
+
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 # for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
