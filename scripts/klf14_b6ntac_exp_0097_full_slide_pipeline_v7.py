@@ -136,6 +136,49 @@ for i_fold in range(len(idx_test_all)):
     for file in file_ndpi_test:
         ndpi_files_test_list[file] = i_fold
 
+# add more slices. E.g. if 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52' is in the list, we want to add the
+# C2 and C3 cuts too
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 C2 - 2016-02-03 11.15.14'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 C3 - 2016-02-03 11.19.28'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 C2 - 2016-02-03 13.19.18'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 C3 - 2016-02-03 13.25.12'] = 0
+ndpi_files_test_list['KLF14-B6NTAC 36.1i PAT 104-16 C2 - 2016-02-12 12.22.20'] = 1
+ndpi_files_test_list['KLF14-B6NTAC 36.1i PAT 104-16 C3 - 2016-02-12 12.29.22'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2c  66-16 C2 - 2016-02-04 11.51.43'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2c  66-16 C3 - 2016-02-04 11.56.51'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1c  46-16 C2 - 2016-02-01 14.08.04'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1c  46-16 C3 - 2016-02-01 14.14.08'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3d  224-16 C2 - 2016-02-26 11.19.06'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3d  224-16 C3 - 2016-02-26 11.24.28'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-37.1c PAT 108-16 C2 - 2016-02-15 13.01.29'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-37.1c PAT 108-16 C3 - 2016-02-15 12.57.56'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2d  214-16 C2 - 2016-02-17 16.05.58'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2d  214-16 C3 - 2016-02-17 16.53.30'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-37.1d PAT 109-16 C2 - 2016-02-15 15.22.53'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-37.1d PAT 109-16 C3 - 2016-02-15 15.26.39'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2g  415-16 C2 - 2016-03-16 11.56.14'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2g  415-16 C3 - 2016-03-16 12.05.08'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-36.1a PAT 96-16 C2 - 2016-02-10 16.05.02'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-36.1a PAT 96-16 C3 - 2016-02-10 15.58.00'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-36.1b PAT 97-16 C2 - 2016-02-10 17.42.35'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-36.1b PAT 97-16 C3 - 2016-02-10 17.47.13'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1a  50-16 C2 - 2016-02-02 09.17.36'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1a  50-16 C3 - 2016-02-02 09.22.47'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3d  416-16 C2 - 2016-03-16 14.51.38'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3d  416-16 C3 - 2016-03-16 14.59.33'] = 6
+ndpi_files_test_list['KLF14-B6NTAC 36.1c PAT 98-16 C2 - 2016-02-11 10.50.59'] = 7
+ndpi_files_test_list['KLF14-B6NTAC 36.1c PAT 98-16 C3 - 2016-02-11 10.57.24'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4a  417-16 C2 - 2016-03-16 16.00.21'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4a  417-16 C3 - 2016-03-16 16.06.30'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1e  54-16 C2 - 2016-02-02 15.32.37'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1e  54-16 C3 - 2016-02-02 15.38.38'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3b  223-16 C1 - 2016-02-26 09.18.44'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3b  223-16 C3 - 2016-02-26 09.29.11'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 C2 - 2016-02-04 15.11.37'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 C3 - 2016-02-04 15.18.41'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C2 - 2016-02-03 17.05.57'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C3 - 2016-02-03 17.12.44'] = 9
+
 ########################################################################################################################
 ## Colourmap for AIDA
 ########################################################################################################################
@@ -179,6 +222,11 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 # for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
+
+    # HACK
+    if i_file < 20:
+        print('Already computed')
+        continue
 
     # fold  where the current .ndpi image was not used for training
     i_fold = ndpi_files_test_list[ndpi_file_kernel]
