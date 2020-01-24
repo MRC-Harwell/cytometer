@@ -1,14 +1,16 @@
 """
-Tissue classifier, using sherrah2016 CNN.
+Tissue classifier, using sherrah2016 CNN. All data, no folds.
 
 Like 0061, but:
-  * Train by image instead of by object.
-  * No scaling.
-  * We just map the histo input to a pixel-wise binary classifier.
+    * Train by image instead of by object.
+    * No scaling.
+    * We just map the histo input to a pixel-wise binary classifier.
 Like 0074, but:
-  * k-folds = 10 instead of 11.
+    * k-folds = 10 instead of 11.
 Like 0088:
-  * add new "other" tissue data samples to training dataset.
+    * add new "other" tissue data samples to training dataset.
+Like 0095:
+    * use all data for training, instead of folds.
 
 Use hand traced areas of white adipocytes and "other" tissues to train classifier to differentiate.
 
@@ -23,7 +25,7 @@ network has not seen neighbour cells to the ones used for training.
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
+experiment_id = 'klf14_b6ntac_exp_0103_cnn_tissue_classifier_fcn'
 print('Experiment ID: ' + experiment_id)
 
 # cross-platform home directory
@@ -172,7 +174,7 @@ def fcn_sherrah2016_classifier(input_shape, for_receptive_field=False):
     return Model(inputs=input, outputs=[classification_output])
 
 
-'''Load folds'''
+'''Load folds (we are not going to use folds, but still want the file list)'''
 
 # load list of images, and indices for training vs. testing indices
 
@@ -181,8 +183,6 @@ kfold_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
 with open(kfold_filename, 'rb') as f:
     aux = pickle.load(f)
 file_svg_list = aux['file_list']
-idx_test_all = aux['idx_test']
-idx_train_all = aux['idx_train']
 
 # correct home directory
 file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
@@ -428,130 +428,94 @@ device_list = K.get_session().list_devices()
 # number of GPUs
 gpu_number = np.count_nonzero([':GPU:' in str(x) for x in device_list])
 
-for i_fold, idx_test in enumerate(idx_test_all):
+# split data into training and testing, and split into blocks
+fp_im_array_all = np.memmap(filename_im_array_all, dtype=np.float32, mode='r', shape=shape_im_array_all)
+im_array_train = fp_im_array_all[:, :, :, :]
+del fp_im_array_all
 
-    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+im_array_train = np.concatenate(np.split(im_array_train, 2, axis=1))
+im_array_train = np.concatenate(np.split(im_array_train, 2, axis=2))
 
-    # test and training image indices
-    idx_test = idx_test_all[i_fold]
-    idx_train = idx_train_all[i_fold]
+fp_out_class_all = np.memmap(filename_out_class_all, dtype=np.float32, mode='r', shape=shape_out_class_all)
+out_class_train = fp_out_class_all[:, :, :, :]
+del fp_out_class_all
 
-    # get cell indices for test and training, based on the image indices
-    idx_test = np.where([x in idx_test for x in i_all])[0]
-    idx_train = np.where([x in idx_train for x in i_all])[0]
+out_class_train = np.concatenate(np.split(out_class_train, 2, axis=1))
+out_class_train = np.concatenate(np.split(out_class_train, 2, axis=2))
 
-    print('## len(idx_train) = ' + str(len(idx_train)))
-    print('## len(idx_test) = ' + str(len(idx_test)))
+fp_out_mask_all = np.memmap(filename_out_mask_all, dtype=np.float32, mode='r', shape=shape_out_mask_all)
+out_mask_train = fp_out_mask_all[:, :, :]
+del fp_out_mask_all
 
-    # split data into training and testing, and split into blocks
-    fp_im_array_all = np.memmap(filename_im_array_all, dtype=np.float32, mode='r', shape=shape_im_array_all)
-    im_array_train = fp_im_array_all[idx_train, :, :, :]
-    im_array_test = fp_im_array_all[idx_test, :, :, :]
-    del fp_im_array_all
+out_mask_train = np.concatenate(np.split(out_mask_train, 2, axis=1))
+out_mask_train = np.concatenate(np.split(out_mask_train, 2, axis=2))
 
-    im_array_train = np.concatenate(np.split(im_array_train, 2, axis=1))
-    im_array_train = np.concatenate(np.split(im_array_train, 2, axis=2))
-    im_array_test = np.concatenate(np.split(im_array_test, 2, axis=1))
-    im_array_test = np.concatenate(np.split(im_array_test, 2, axis=2))
+# encode as 0: other, 1: WAT
+out_class_train = 1 - out_class_train
 
-    fp_out_class_all = np.memmap(filename_out_class_all, dtype=np.float32, mode='r', shape=shape_out_class_all)
-    out_class_train = fp_out_class_all[idx_train, :, :, :]
-    out_class_test = fp_out_class_all[idx_test, :, :, :]
-    del fp_out_class_all
+if DEBUG:
+    i = 10
+    plt.clf()
+    plt.subplot(221)
+    plt.imshow(im_array_train[i, :, :, :])
+    plt.subplot(222)
+    plt.imshow(out_class_train[i, :, :, 0])
+    plt.subplot(223)
+    plt.imshow(out_mask_train[i, :, :])
 
-    out_class_train = np.concatenate(np.split(out_class_train, 2, axis=1))
-    out_class_train = np.concatenate(np.split(out_class_train, 2, axis=2))
-    out_class_test = np.concatenate(np.split(out_class_test, 2, axis=1))
-    out_class_test = np.concatenate(np.split(out_class_test, 2, axis=2))
+if DEBUG:
+    # proportion of WAT pixels
+    n_other = np.count_nonzero(np.logical_and(out_class_train[:, :, :, 0] == 0, out_mask_train))
+    n_wat = np.count_nonzero(np.logical_and(out_class_train[:, :, :, 0] == 1, out_mask_train))
+    alpha_training = n_wat / (n_wat + n_other)
 
-    fp_out_mask_all = np.memmap(filename_out_mask_all, dtype=np.float32, mode='r', shape=shape_out_mask_all)
-    out_mask_train = fp_out_mask_all[idx_train, :, :]
-    out_mask_test = fp_out_mask_all[idx_test, :, :]
-    del fp_out_mask_all
+# instantiate model
+with tf.device('/cpu:0'):
+    model = fcn_sherrah2016_classifier(input_shape=im_array_train.shape[1:])
 
-    out_mask_train = np.concatenate(np.split(out_mask_train, 2, axis=1))
-    out_mask_train = np.concatenate(np.split(out_mask_train, 2, axis=2))
-    out_mask_test = np.concatenate(np.split(out_mask_test, 2, axis=1))
-    out_mask_test = np.concatenate(np.split(out_mask_test, 2, axis=2))
+# output filenames
+saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model.h5')
+saved_logs_dir = os.path.join(saved_models_dir, experiment_id + '_logs')
 
-    # encode as 0: other, 1: WAT
-    out_class_train = 1 - out_class_train
-    out_class_test = 1 - out_class_test
+# checkpoint to save model after each epoch
+checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
+                                                                   verbose=1, save_best_only=False)
 
-    if DEBUG:
-        i = 10
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im_array_train[i, :, :, :])
-        plt.subplot(222)
-        plt.imshow(out_class_train[i, :, :, 0])
-        plt.subplot(223)
-        plt.imshow(out_mask_train[i, :, :])
+# callback to write a log for TensorBoard
+# Note: run this on the server where the training is happening:
+#       tensorboard --logdir=saved_logs_dir
+tensorboard = keras.callbacks.TensorBoard(log_dir=saved_logs_dir)
 
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(im_array_test[i, :, :, :])
-        plt.subplot(222)
-        plt.imshow(out_class_test[i, :, :, 0])
-        plt.subplot(223)
-        plt.imshow(out_mask_test[i, :, :])
+# call for cyclical learning rate
+clr = keras_contrib.callbacks.CyclicLR(
+    mode='triangular2',
+    base_lr=1e-7,
+    max_lr=1e-2,
+    step_size=8 * (im_array_train.shape[0] // batch_size))
 
-    if DEBUG:
-        # proportion of WAT pixels
-        n_other = np.count_nonzero(np.logical_and(out_class_train[:, :, :, 0] == 0, out_mask_train))
-        n_wat = np.count_nonzero(np.logical_and(out_class_train[:, :, :, 0] == 1, out_mask_train))
-        alpha_training = n_wat / (n_wat + n_other)
+# compile model
+parallel_model = multi_gpu_model(model, gpus=gpu_number)
+parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(gamma=2, alpha=.40)},
+                       optimizer='Adadelta',
+                       metrics={'classification_output': 'accuracy'},
+                       sample_weight_mode='element')
 
-    # instantiate model
-    with tf.device('/cpu:0'):
-        model = fcn_sherrah2016_classifier(input_shape=im_array_train.shape[1:])
+# train model
+tic = datetime.datetime.now()
+hist = parallel_model.fit(im_array_train,
+                          {'classification_output': out_class_train},
+                          sample_weight={'classification_output': out_mask_train},
+                          batch_size=batch_size, epochs=epochs, initial_epoch=0, shuffle=True,
+                          callbacks=[checkpointer, tensorboard, clr])
+toc = datetime.datetime.now()
+print('Training duration: ' + str(toc - tic))
 
-    # output filenames
-    saved_model_filename = os.path.join(saved_models_dir, experiment_id + '_model_fold_' + str(i_fold) + '.h5')
-    saved_logs_dir = os.path.join(saved_models_dir, experiment_id + '_logs_fold_' + str(i_fold))
+# cast history values to a type that is JSON serializable
+history = hist.history
+for key in history.keys():
+    history[key] = list(map(float, history[key]))
 
-    # checkpoint to save model after each epoch
-    checkpointer = cytometer.model_checkpoint_parallel.ModelCheckpoint(filepath=saved_model_filename,
-                                                                       verbose=1, save_best_only=False)
-
-    # callback to write a log for TensorBoard
-    # Note: run this on the server where the training is happening:
-    #       tensorboard --logdir=saved_logs_dir
-    tensorboard = keras.callbacks.TensorBoard(log_dir=saved_logs_dir)
-
-    # call for cyclical learning rate
-    clr = keras_contrib.callbacks.CyclicLR(
-        mode='triangular2',
-        base_lr=1e-7,
-        max_lr=1e-2,
-        step_size=8 * (im_array_train.shape[0] // batch_size))
-
-    # compile model
-    parallel_model = multi_gpu_model(model, gpus=gpu_number)
-    parallel_model.compile(loss={'classification_output': cytometer.utils.binary_focal_loss(gamma=2, alpha=.40)},
-                           optimizer='Adadelta',
-                           metrics={'classification_output': 'accuracy'},
-                           sample_weight_mode='element')
-
-    # train model
-    tic = datetime.datetime.now()
-    hist = parallel_model.fit(im_array_train,
-                              {'classification_output': out_class_train},
-                              sample_weight={'classification_output': out_mask_train},
-                              validation_data=(im_array_test,
-                                               {'classification_output': out_class_test},
-                                               {'classification_output': out_mask_test}),
-                              batch_size=batch_size, epochs=epochs, initial_epoch=0, shuffle=True,
-                              callbacks=[checkpointer, tensorboard, clr])
-    toc = datetime.datetime.now()
-    print('Training duration: ' + str(toc - tic))
-
-    # cast history values to a type that is JSON serializable
-    history = hist.history
-    for key in history.keys():
-        history[key] = list(map(float, history[key]))
-
-    # save training history
-    history_filename = os.path.join(saved_models_dir, experiment_id + '_history_fold_' + str(i_fold) + '.json')
-    with open(history_filename, 'w') as f:
-        json.dump(history, f)
+# save training history
+history_filename = os.path.join(saved_models_dir, experiment_id + '_history.json')
+with open(history_filename, 'w') as f:
+    json.dump(history, f)
