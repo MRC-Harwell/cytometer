@@ -24,7 +24,7 @@ import scipy.stats as stats
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -172,7 +172,7 @@ cm = cytometer.data.aida_colourmap()
 # loop annotations files
 for i_file, json_file in enumerate(json_annotation_files):
 
-    print('JSON annotations file: ' + os.path.basename(json_file))
+    print('File: ' + str(i_file) + ': JSON annotations file: ' + os.path.basename(json_file))
 
     # name of corresponding .ndpi file
     ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
@@ -195,11 +195,19 @@ for i_file, json_file in enumerate(json_annotation_files):
     yres *= downsample_factor
 
     # rough segmentation of the tissue in the image
-    lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                            dilation_size=dilation_size,
-                                                            component_size_threshold=component_size_threshold,
-                                                            hole_size_treshold=hole_size_treshold,
-                                                            return_im=True)
+    if os.path.basename(ndpi_file) in ('KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
+        # special case for an image that has very low contrast, with strong bright pink and purple areas of other tissue
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold, std_k=0.25,
+                                                                return_im=True)
+    else:  # any other case
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold,
+                                                                return_im=True)
 
     if DEBUG:
         plt.clf()
