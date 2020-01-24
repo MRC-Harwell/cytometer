@@ -1044,3 +1044,114 @@ if DEBUG:
 ########################################################################################################################
 
 # This is done in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7
+
+########################################################################################################################
+## Plots of distribution curves from automatically segmented images
+########################################################################################################################
+
+import matplotlib.pyplot as plt
+import cytometer.data
+from shapely.geometry import Polygon
+import openslide
+import numpy as np
+import scipy.stats
+import pandas as pd
+
+# directories
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+
+# list of annotation files
+json_annotation_files = [
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_exp_0097_corrected.json'
+]
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+
+plt.clf()
+
+for i_file, json_file in enumerate(json_annotation_files):
+
+    print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
+
+    if not os.path.isfile(os.path.join(annotations_dir, json_file)):
+        print('Missing file')
+        continue
+
+    # ndpi file that corresponds to this .json file
+    ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
+    ndpi_file = os.path.join(ndpi_dir, ndpi_file)
+
+    # open full resolution histology slide
+    im = openslide.OpenSlide(ndpi_file)
+
+    # pixel size
+    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution'])
+    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                          values=[i_file,], values_tag='i_file',
+                                                          tags_to_keep=['id', 'ko', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko'].values[0]
+
+    # read contours from AIDA annotations
+    contours = cytometer.data.aida_get_contours(os.path.join(annotations_dir, json_file), layer_name='White adipocyte.*')
+
+    # compute area of each contour
+    areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
+
+    # compute HD quantiles
+    q = np.linspace(0, 1, 11)
+    q = q[1:-1]
+    area_q = scipy.stats.mstats.hdquantiles(areas, prob=q, axis=0)
+
+    # plot
+    if ko == 'PAT':
+        color = 'g'
+    elif ko == 'MAT':
+        color = 'r'
+    else:
+        raise ValueError('Unknown ko value: ' + ko)
+
+    if sex == 'f':
+        plt.subplot(121)
+        plt.plot(q, area_q, color=color)
+    elif sex == 'm':
+        plt.subplot(122)
+        plt.plot(q, area_q, color=color)
+    else:
+        raise ValueError('Unknown sex value: ' + sex)
+
+plt.subplot(121)
+plt.title('Female', fontsize=14)
+plt.subplot(122)
+plt.title('Male', fontsize=14)
