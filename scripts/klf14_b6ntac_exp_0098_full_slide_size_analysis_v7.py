@@ -24,7 +24,7 @@ import scipy.stats as stats
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -92,6 +92,50 @@ json_annotation_files = [
     'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_exp_0097_corrected.json'
+]
+
+# add more annotation files
+json_annotation_files += [
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C2 - 2016-02-03 11.15.14_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C3 - 2016-02-03 11.19.28_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C2 - 2016-02-03 13.19.18_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C3 - 2016-02-03 13.25.12_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C2 - 2016-02-12 12.22.20_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C3 - 2016-02-12 12.29.22_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C2 - 2016-02-04 11.51.43_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C3 - 2016-02-04 11.56.51_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C2 - 2016-02-01 14.08.04_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C3 - 2016-02-01 14.14.08_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C2 - 2016-02-26 11.19.06_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C3 - 2016-02-26 11.24.28_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C2 - 2016-02-15 13.01.29_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C3 - 2016-02-15 12.57.56_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C2 - 2016-02-17 16.05.58_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C3 - 2016-02-17 16.53.30_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C2 - 2016-02-15 15.22.53_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C3 - 2016-02-15 15.26.39_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C2 - 2016-03-16 11.56.14_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C3 - 2016-03-16 12.05.08_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C2 - 2016-02-10 16.05.02_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C3 - 2016-02-10 15.58.00_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C2 - 2016-02-10 17.42.35_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C3 - 2016-02-10 17.47.13_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C2 - 2016-02-02 09.17.36_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C3 - 2016-02-02 09.22.47_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C2 - 2016-03-16 14.51.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C3 - 2016-03-16 14.59.33_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C2 - 2016-02-11 10.50.59_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C3 - 2016-02-11 10.57.24_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C2 - 2016-03-16 16.00.21_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C3 - 2016-03-16 16.06.30_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C2 - 2016-02-02 15.32.37_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C3 - 2016-02-02 15.38.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C1 - 2016-02-26 09.18.44_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C3 - 2016-02-26 09.29.11_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C2 - 2016-02-04 15.11.37_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C3 - 2016-02-04 15.18.41_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C2 - 2016-02-03 17.05.57_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C3 - 2016-02-03 17.12.44_exp_0097_corrected.json'
 ]
 
 # load svg files from manual dataset
@@ -173,6 +217,10 @@ cm = cytometer.data.aida_colourmap()
 for i_file, json_file in enumerate(json_annotation_files):
 
     print('File: ' + str(i_file) + ': JSON annotations file: ' + os.path.basename(json_file))
+
+    if i_file <= 19:
+        print('Skipping')
+        continue
 
     # name of corresponding .ndpi file
     ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
