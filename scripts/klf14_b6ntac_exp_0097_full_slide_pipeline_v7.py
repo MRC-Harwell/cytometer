@@ -32,7 +32,7 @@ import cytometer.utils
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -179,6 +179,29 @@ ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 C3 - 2016-02-04 15.18.41'] =
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C2 - 2016-02-03 17.05.57'] = 9
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C3 - 2016-02-03 17.12.44'] = 9
 
+# add more slices from the other depots, but only one slice per animal
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49'] = 0
+ndpi_files_test_list['KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37'] = 9
+
+
 ########################################################################################################################
 ## Colourmap for AIDA
 ########################################################################################################################
@@ -217,15 +240,13 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ## Segmentation loop
 ########################################################################################################################
 
-# TODO: recompute 18.2g
-
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 # for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
     # HACK
-    if i_file <= 24:
-        print('Already computed')
+    if i_file <= 59:
+        print('Skipping')
         continue
 
     # fold  where the current .ndpi image was not used for training
