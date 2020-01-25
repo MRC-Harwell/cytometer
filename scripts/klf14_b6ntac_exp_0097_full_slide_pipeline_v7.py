@@ -224,7 +224,7 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
     # HACK
-    if i_file < 20:
+    if i_file <= 24:
         print('Already computed')
         continue
 
