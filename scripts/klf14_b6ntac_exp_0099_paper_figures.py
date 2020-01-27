@@ -34,8 +34,8 @@ import cytometer
 import cytometer.data
 import tensorflow as tf
 
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# limit number of GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 LIMIT_GPU_MEMORY = False
 
@@ -1056,11 +1056,14 @@ import openslide
 import numpy as np
 import scipy.stats
 import pandas as pd
+from mlxtend.evaluate import permutation_test
+from statsmodels.stats.multitest import multipletests
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 
 # list of annotation files
 json_annotation_files = [
@@ -1086,13 +1089,42 @@ json_annotation_files = [
     'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_exp_0097_corrected.json'
 ]
 
+# list of annotation files
+json_annotation_files = [
+    'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37_exp_0097_corrected.json'
+]
+
 # CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
+quantiles = np.linspace(0, 1, 11)
+quantiles = quantiles[1:-1]
 
-plt.clf()
-
+area_q_all = []
+id_all = []
+ko_all = []
+genotype_all = []
+sex_all = []
 for i_file, json_file in enumerate(json_annotation_files):
 
     print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
@@ -1116,12 +1148,13 @@ for i_file, json_file in enumerate(json_annotation_files):
     # create dataframe for this image
     df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
                                                           values=[i_file,], values_tag='i_file',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko', 'genotype', 'sex'])
 
     # mouse ID as a string
     id = df_common['id'].values[0]
-    sex = df_common['sex'].values[0]
     ko = df_common['ko'].values[0]
+    genotype = df_common['genotype'].values[0]
+    sex = df_common['sex'].values[0]
 
     # read contours from AIDA annotations
     contours = cytometer.data.aida_get_contours(os.path.join(annotations_dir, json_file), layer_name='White adipocyte.*')
@@ -1130,28 +1163,172 @@ for i_file, json_file in enumerate(json_annotation_files):
     areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
 
     # compute HD quantiles
-    q = np.linspace(0, 1, 11)
-    q = q[1:-1]
-    area_q = scipy.stats.mstats.hdquantiles(areas, prob=q, axis=0)
+    area_q = scipy.stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
 
-    # plot
-    if ko == 'PAT':
-        color = 'g'
-    elif ko == 'MAT':
-        color = 'r'
-    else:
-        raise ValueError('Unknown ko value: ' + ko)
+    # save totals
+    area_q_all.append(area_q)
+    id_all.append(id)
+    ko_all.append(ko)
+    genotype_all.append(genotype)
+    sex_all.append(sex)
 
-    if sex == 'f':
-        plt.subplot(121)
-        plt.plot(q, area_q, color=color)
-    elif sex == 'm':
-        plt.subplot(122)
-        plt.plot(q, area_q, color=color)
-    else:
-        raise ValueError('Unknown sex value: ' + sex)
+# reorder from largest to smallest final area value
+area_q_all = np.array(area_q_all)
+id_all = np.array(id_all)
+ko_all = np.array(ko_all)
+genotype_all = np.array(genotype_all)
+sex_all = np.array(sex_all)
 
-plt.subplot(121)
-plt.title('Female', fontsize=14)
-plt.subplot(122)
-plt.title('Male', fontsize=14)
+idx = np.argsort(area_q_all[:, -1])
+idx = idx[::-1]  # sort from larger to smaller
+area_q_all = area_q_all[idx, :]
+id_all = id_all[idx]
+ko_all = ko_all[idx]
+genotype_all = genotype_all[idx]
+sex_all = sex_all[idx]
+
+if DEBUG:
+    plt.clf()
+
+    for i in range(len(area_q_all)):
+
+        # plot
+        if ko_all[i] == 'PAT':
+            color = 'g'
+        elif ko_all[i] == 'MAT':
+            color = 'r'
+        else:
+            raise ValueError('Unknown ko value: ' + ko)
+
+        if sex_all[i] == 'f':
+            plt.subplot(121)
+            plt.plot(quantiles, area_q_all[i] * 1e12 * 1e-3, color=color)
+        elif sex_all[i] == 'm':
+            plt.subplot(122)
+            plt.plot(quantiles, area_q_all[i] * 1e12 * 1e-3, color=color)
+        else:
+            raise ValueError('Unknown sex value: ' + sex)
+
+
+    legend_f = [i + ' ' + j.replace('KLF14-KO:', '') for i, j
+                in zip(id_all[sex_all == 'f'], genotype_all[sex_all == 'f'])]
+    legend_m = [i + ' ' + j.replace('KLF14-KO:', '') for i, j
+                in zip(id_all[sex_all == 'm'], genotype_all[sex_all == 'm'])]
+    plt.subplot(121)
+    plt.title('Female', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('Area ($10^{3}\ \mu m^2$)', fontsize=14)
+    plt.legend(legend_f, fontsize=12)
+    plt.subplot(122)
+    plt.title('Male', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.legend(legend_m, fontsize=12)
+
+# compute variability of area values for each quantile
+area_q_f_pat = area_q_all[(sex_all == 'f') * (ko_all == 'PAT'), :]
+area_q_m_pat = area_q_all[(sex_all == 'm') * (ko_all == 'PAT'), :]
+area_q_f_mat = area_q_all[(sex_all == 'f') * (ko_all == 'MAT'), :]
+area_q_m_mat = area_q_all[(sex_all == 'm') * (ko_all == 'MAT'), :]
+area_interval_f_pat = scipy.stats.mstats.hdquantiles(area_q_f_pat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_m_pat = scipy.stats.mstats.hdquantiles(area_q_m_pat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_f_mat = scipy.stats.mstats.hdquantiles(area_q_f_mat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_m_mat = scipy.stats.mstats.hdquantiles(area_q_m_mat, prob=[0.025, 0.5, 0.975], axis=0)
+
+if DEBUG:
+    plt.clf()
+    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e12 * 1e-3, 'C0', linewidth=3, label='Female PAT median')
+    plt.fill_between(quantiles, area_interval_f_pat[0, :] * 1e12 * 1e-3, area_interval_f_pat[2, :] * 1e12 * 1e-3,
+                     facecolor='C0', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e12 * 1e-3, 'C0', linewidth=1, label='Female PAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_pat[2, :] * 1e12 * 1e-3, 'C0', linewidth=1)
+
+    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e12 * 1e-3, 'C2', linewidth=3, label='Female MAT median')
+    plt.fill_between(quantiles, area_interval_f_mat[0, :] * 1e12 * 1e-3, area_interval_f_mat[2, :] * 1e12 * 1e-3,
+                     facecolor='C2', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e12 * 1e-3, 'C2', linewidth=1, label='Female MAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_mat[2, :] * 1e12 * 1e-3, 'C2', linewidth=1)
+
+    # plt.title('Inguinal subcutaneous', fontsize=16)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_female_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_female_pat_vs_mat_bands.png'))
+
+if DEBUG:
+    plt.clf()
+    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e12 * 1e-3, 'C1', linewidth=3, label='Male PAT median')
+    plt.fill_between(quantiles, area_interval_m_pat[0, :] * 1e12 * 1e-3, area_interval_m_pat[2, :] * 1e12 * 1e-3,
+                     facecolor='C1', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e12 * 1e-3, 'C1', linewidth=1, label='Male PAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_pat[2, :] * 1e12 * 1e-3, 'C1', linewidth=1)
+
+    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e12 * 1e-3, 'C3', linewidth=3, label='Male MAT median')
+    plt.fill_between(quantiles, area_interval_m_mat[0, :] * 1e12 * 1e-3, area_interval_m_mat[2, :] * 1e12 * 1e-3,
+                     facecolor='C3', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e12 * 1e-3, 'C3', linewidth=1, label='Male MAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_mat[2, :] * 1e12 * 1e-3, 'C3', linewidth=1)
+
+    # plt.title('Inguinal subcutaneous', fontsize=16)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_male_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_male_pat_vs_mat_bands.png'))
+
+# test whether the median values are different enough between female vs. male
+func = lambda x, y: np.abs(scipy.stats.mstats.hdquantiles(x, prob=0.5, axis=0).data[0]
+                           - scipy.stats.mstats.hdquantiles(y, prob=0.5, axis=0).data[0])
+# func = lambda x, y: np.abs(np.mean(x) - np.mean(y))
+
+# test whether the median values are different enough between PAT vs. MAT
+pval_perc_f_pat2mat = np.zeros(shape=(len(quantiles),))
+for i, q in enumerate(quantiles):
+    pval_perc_f_pat2mat[i] = permutation_test(x=area_q_f_pat[:, i], y=area_q_f_mat[:, i],
+                                              func=func, method='exact', seed=None)
+
+pval_perc_m_pat2mat = np.zeros(shape=(len(quantiles),))
+for i, q in enumerate(quantiles):
+    pval_perc_m_pat2mat[i] = permutation_test(x=area_q_m_pat[:, i], y=area_q_m_mat[:, i],
+                                              func=func, method='exact', seed=None)
+
+# multitest correction using Hochberg a.k.a. Simes-Hochberg method
+_, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+
+# plot the median difference and the population quantiles at which the difference is significant
+if DEBUG:
+    plt.clf()
+    idx = pval_perc_f_pat2mat < 0.05
+    delta_a_f_pat2mat = (area_interval_f_mat[1, :] - area_interval_f_pat[1, :]) / area_interval_f_pat[1, :]
+    if np.any(idx):
+        plt.stem(quantiles[idx], 100 * delta_a_f_pat2mat[idx],
+                 markerfmt='.', linefmt='C6-', basefmt='C6',
+                 label='p-val$_{\mathrm{PAT}}$ < 0.05')
+
+    idx = pval_perc_m_pat2mat < 0.05
+    delta_a_m_pat2mat = (area_interval_m_mat[1, :] - area_interval_m_pat[1, :]) / area_interval_m_pat[1, :]
+    if np.any(idx):
+        plt.stem(quantiles[idx], 100 * delta_a_m_pat2mat[idx],
+                 markerfmt='.', linefmt='C7-', basefmt='C7', bottom=250,
+                 label='p-val$_{\mathrm{MAT}}$ < 0.05')
+
+    plt.plot(quantiles, 100 * delta_a_f_pat2mat, 'C6', linewidth=3, label='Female PAT to MAT')
+    plt.plot(quantiles, 100 * delta_a_m_pat2mat, 'C7', linewidth=3, label='Male PAT to MAT')
+
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area change (%)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='lower right', prop={'size': 12})
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_change_pat_2_mat.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_change_pat_2_mat.png'))
