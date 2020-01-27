@@ -32,7 +32,7 @@ import cytometer.utils
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -122,7 +122,9 @@ idx_train_all = aux['idx_train']
 file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
-# loop the folds to get the ndpi files that correspond to testing of each fold
+# loop the folds to get the ndpi files that correspond to testing of each fold.
+# Training SCWAT slices.
+# i_file = [0, 19]
 ndpi_files_test_list = {}
 for i_fold in range(len(idx_test_all)):
     # list of .svg files for testing
@@ -136,8 +138,9 @@ for i_fold in range(len(idx_test_all)):
     for file in file_ndpi_test:
         ndpi_files_test_list[file] = i_fold
 
-# add more slices. E.g. if 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52' is in the list, we want to add the
-# C2 and C3 cuts too
+# add more SCWAT slices. E.g. if 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52' is in the list, we want to add
+# the C2 and C3 cuts too
+# i_file = [20, 59]
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 C2 - 2016-02-03 11.15.14'] = 0
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 C3 - 2016-02-03 11.19.28'] = 0
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 C2 - 2016-02-03 13.19.18'] = 0
@@ -179,7 +182,8 @@ ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 C3 - 2016-02-04 15.18.41'] =
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C2 - 2016-02-03 17.05.57'] = 9
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C3 - 2016-02-03 17.12.44'] = 9
 
-# add more slices from the other depots, but only one slice per animal
+# add slices from GWAT, but only one slice per animal
+# i_file = [60, 79]
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06'] = 0
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49'] = 0
 ndpi_files_test_list['KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56'] = 1
@@ -201,6 +205,75 @@ ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42'] 
 ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40'] = 9
 ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37'] = 9
 
+# add slices from SCWAT, slices from other animals not from training
+# i_file = [80, 135]
+# males
+ndpi_files_test_list['KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31'] = 3
+ndpi_files_test_list['KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56'] = 7
+ndpi_files_test_list['KLF14-B6NTAC 36.1f PAT 101-16 C1 - 2016-02-11 15.23.06'] = 5
+ndpi_files_test_list['KLF14-B6NTAC 36.1g PAT 102-16 C1 - 2016-02-11 17.20.14'] = 1
+ndpi_files_test_list['KLF14-B6NTAC 36.1h PAT 103-16 C1 - 2016-02-12 10.15.22'] = 4
+ndpi_files_test_list['KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33'] = 1
+# females
+ndpi_files_test_list['KLF14-B6NTAC 37.1a PAT 106-16 C1 - 2016-02-12 16.21.00'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-37.1b PAT 107-16 C1 - 2016-02-15 11.43.31'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-37.1e PAT 110-16 C1 - 2016-02-15 17.33.11'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-37.1g PAT 112-16 C1 - 2016-02-16 13.33.09'] = 9
+# females
+ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3a  409-16 C1 - 2016-03-15 10.18.46'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3b  412-16 C1 - 2016-03-15 14.37.55'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2a  406-16 C1 - 2016-03-14 12.01.56'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2e  408-16 C1 - 2016-03-14 16.23.30'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2f  405-16 C1 - 2016-03-14 10.58.34'] = 1
+# male
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2h  418-16 C1 - 2016-03-16 17.01.17'] = 8
+# female
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3a  413-16 C1 - 2016-03-15 15.54.12'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3c  414-16 C1 - 2016-03-15 17.15.41'] = 7
+# male
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4b  419-16 C1 - 2016-03-17 10.22.54'] = 1
+# female
+ndpi_files_test_list['KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04'] = 6
+# male
+ndpi_files_test_list['KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-37.1h PAT 113-16 C1 - 2016-02-16 15.14.09'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-38.1e PAT 94-16 C1 - 2016-02-10 12.13.10'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-38.1f PAT 95-16 C1 - 2016-02-10 14.41.44'] = 0
+
+# female
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2a  211-16 C1 - 2016-02-17 11.46.42'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1a  44-16 C1 - 2016-02-01 11.14.17'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1d  47-16 C1 - 2016-02-01 15.25.53'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2a  64-16 C1 - 2016-02-04 09.17.52'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2b  65-16 C1 - 2016-02-04 10.24.22'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2d  67-16 C1 - 2016-02-04 12.34.32'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1b  51-16 C1 - 2016-02-02 09.59.16'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1c  52-16 C1 - 2016-02-02 12.26.58'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2a  57-16 C1 - 2016-02-03 09.10.17'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2c  59-16 C1 - 2016-02-03 11.56.52'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2e  61-16 C1 - 2016-02-03 14.19.35'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2b  219-16 C1 - 2016-02-18 15.41.38'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2c  220-16 C1 - 2016-02-18 17.03.38'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2e  221-16 C1 - 2016-02-25 14.00.14'] = 3
+# male
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2b  212-16 C1 - 2016-02-17 12.49.00'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2c  213-16 C1 - 2016-02-17 14.51.18'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2e  215-16 C1 - 2016-02-18 09.19.26'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2f  216-16 C1 - 2016-02-18 10.28.27'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1e  48-16 C1 - 2016-02-01 16.27.05'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1f  49-16 C1 - 2016-02-01 17.51.46'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1d  53-16 C1 - 2016-02-02 14.32.03'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1f  55-16 C1 - 2016-02-02 16.14.30'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2f  62-16 C1 - 2016-02-03 15.46.15'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3c  218-16 C1 - 2016-02-18 13.12.09'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00'] = 8
 
 ########################################################################################################################
 ## Colourmap for AIDA
@@ -241,11 +314,11 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ########################################################################################################################
 
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
-# for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
-for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
+for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
+# for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
     # HACK
-    if i_file <= 59:
+    if i_file <= 79:
         print('Skipping')
         continue
 
