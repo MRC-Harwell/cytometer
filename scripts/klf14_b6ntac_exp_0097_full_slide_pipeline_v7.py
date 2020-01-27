@@ -32,7 +32,7 @@ import cytometer.utils
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -282,26 +282,56 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     # shutil.copy2(annotations_file, annotations_file + '.bak')
 
     # rough segmentation of the tissue in the image
-    if os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi':
-        # special case for an image that has very low contrast, with strong bright pink and purple areas of other tissue
-        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                dilation_size=dilation_size,
-                                                                component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold, std_k=0.25,
-                                                                return_im=True)
-    else:  # any other case
+    if (i_file <= 19) and (os.path.basename(ndpi_file) != 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
+
+        # the original 20 images were thresholded with mode - std, except for one image
         lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
                                                                 dilation_size=dilation_size,
                                                                 component_size_threshold=component_size_threshold,
                                                                 hole_size_treshold=hole_size_treshold,
                                                                 return_im=True)
 
+    elif (i_file <= 19) and (os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
+
+        # special case for an image that has very low contrast, with strong bright pink and purple areas of other
+        # tissue. We threshold with mode - 0.25 std
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold, std_k=0.25,
+                                                                return_im=True)
+
+    elif os.path.basename(ndpi_file) in {
+        'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40.ndpi',
+        'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42.ndpi',
+        'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40.ndpi',
+        'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06.ndpi',
+        'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49.ndpi',
+        'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28.ndpi',
+        'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30.ndpi',
+        'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10.ndpi'}:
+
+        # some of the posterior images also work with mode - std
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold,
+                                                                return_im=True)
+
+    else:  # any other case
+
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold, std_k=0.25,
+                                                                return_im=True)
+
     if DEBUG:
-        plt.clf()
-        plt.subplot(211)
-        plt.imshow(im_downsampled)
-        plt.subplot(212)
-        plt.imshow(lores_istissue0)
+            plt.clf()
+            plt.subplot(211)
+            plt.imshow(im_downsampled)
+            plt.subplot(212)
+            plt.imshow(lores_istissue0)
 
     # segmentation copy, to keep track of what's left to do
     lores_istissue = lores_istissue0.copy()
