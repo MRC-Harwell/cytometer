@@ -275,6 +275,10 @@ ndpi_files_test_list['KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31'] =
 ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16'] = 8
 ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00'] = 8
 
+if DEBUG:
+    for i, key in enumerate(ndpi_files_test_list.keys()):
+        print('File ' + str(i) + ': Fold ' + str(ndpi_files_test_list[key]) + ': ' + key)
+
 ########################################################################################################################
 ## Colourmap for AIDA
 ########################################################################################################################
@@ -314,12 +318,14 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ########################################################################################################################
 
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
-for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
-# for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
+# for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
+for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
     # HACK
-    if i_file <= 79:
-        print('Skipping')
+    # if i_file <= 81 or i_file >= 133:
+    #     print('Skipping')
+    #     continue
+    if not i_file in (83, 85, 103):
         continue
 
     # fold  where the current .ndpi image was not used for training
@@ -346,6 +352,10 @@ for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
     annotations_corrected_file = os.path.basename(ndpi_file)
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
     annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0097_corrected.json')
+
+    # name of file to save rough mask and current mask
+    rough_mask_file = os.path.basename(ndpi_file)
+    rough_mask_file = rough_mask_file.replace('.ndpi', '_rough_mask.tif')
 
     if os.path.isfile(annotations_file) and os.path.isfile(annotations_corrected_file):
         print('File already annotated... skipping')
