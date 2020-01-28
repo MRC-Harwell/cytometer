@@ -55,6 +55,14 @@ ndpi_list=(
 'KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37.ndpi'
 )
 
+ndpi_list=(
+'KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00.ndpi'
+'KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16.ndpi'
+'KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31.ndpi'
+'KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31.ndpi'
+'KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56.ndpi'
+)
+
 for ndpi_file in "${ndpi_list[@]}"
 do
   dzi_file=${ndpi_file%.ndpi}
