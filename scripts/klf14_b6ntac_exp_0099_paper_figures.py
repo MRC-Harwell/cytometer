@@ -1065,53 +1065,58 @@ annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 
-# list of annotation files
+# SQWAT: list of annotation files
 json_annotation_files = [
-    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16_exp_0097_corrected.json',
+    'KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_exp_0097_corrected.json'
 ]
 
-# list of annotation files
-json_annotation_files = [
-    'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37_exp_0097_corrected.json'
-]
+# # GWAT: list of annotation files
+# json_annotation_files = [
+#     'KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40_exp_0097_corrected.json',
+#     'KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45_exp_0097_corrected.json',
+#     'KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38_exp_0097_corrected.json',
+# ]
 
 # CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_meta_info.csv')
