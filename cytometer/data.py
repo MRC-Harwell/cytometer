@@ -1185,7 +1185,7 @@ def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to
     if len(id_in_sid) > 1:
         raise ValueError('s is ambiguous, and more than one ID can be found in it: ' + s)
     elif len(id_in_sid) == 0:  # no ID found in the filename
-        raise ValueError('No ID can be found in s: ' + s)
+        raise ValueError('Either s has no valid ID, or metainfo is missing a row for that ID: ' + s)
 
     # row with all the metainfo for the selected mouse
     metainfo_row = metainfo.loc[id_in_sid, :]
