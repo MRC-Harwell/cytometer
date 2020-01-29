@@ -22,6 +22,7 @@ from pathlib import Path
 home = str(Path.home())
 
 import os
+from pathlib import Path
 import sys
 import pickle
 import ujson
@@ -32,7 +33,7 @@ import cytometer.utils
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -325,7 +326,9 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     # if i_file <= 81 or i_file >= 133:
     #     print('Skipping')
     #     continue
-    if not i_file in (83, 85, 103):
+
+    # specify the files you want to process
+    if not i_file in [85, 103, 105, 126, 89, 125] + list(range(80, 136)):
         continue
 
     # fold  where the current .ndpi image was not used for training
@@ -336,6 +339,16 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
     # make full path to ndpi file
     ndpi_file = os.path.join(data_dir, ndpi_file_kernel + '.ndpi')
+
+    # check whether there's a lock on this file
+    lock_file = os.path.basename(ndpi_file).replace('.ndpi', '.lock')
+    lock_file = os.path.join(annotations_dir, lock_file)
+    if os.path.isfile(lock_file):
+        print('Lock on file, skipping')
+        continue
+    else:
+        # create an empty lock file to prevent other other instances of the script to process the same .ndpi file
+        Path(lock_file).touch()
 
     contour_model_file = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
@@ -353,71 +366,13 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
     annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0097_corrected.json')
 
-    # name of file to save rough mask and current mask
+    # name of file to save rough mask, current mask, and time steps
     rough_mask_file = os.path.basename(ndpi_file)
-    rough_mask_file = rough_mask_file.replace('.ndpi', '_rough_mask.tif')
+    rough_mask_file = rough_mask_file.replace('.ndpi', '_rough_mask.npz')
+    rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
 
-    if os.path.isfile(annotations_file) and os.path.isfile(annotations_corrected_file):
-        print('File already annotated... skipping')
-        continue
-
-    # # make a backup copy of the current annotations file
-    # shutil.copy2(annotations_file, annotations_file + '.bak')
-
-    # rough segmentation of the tissue in the image
-    if (i_file <= 19) and (os.path.basename(ndpi_file) != 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
-
-        # the original 20 images were thresholded with mode - std, except for one image
-        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                dilation_size=dilation_size,
-                                                                component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold,
-                                                                return_im=True)
-
-    elif (i_file <= 19) and (os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
-
-        # special case for an image that has very low contrast, with strong bright pink and purple areas of other
-        # tissue. We threshold with mode - 0.25 std
-        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                dilation_size=dilation_size,
-                                                                component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold, std_k=0.25,
-                                                                return_im=True)
-
-    elif os.path.basename(ndpi_file) in {
-        'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40.ndpi',
-        'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42.ndpi',
-        'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40.ndpi',
-        'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06.ndpi',
-        'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49.ndpi',
-        'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28.ndpi',
-        'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30.ndpi',
-        'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10.ndpi'}:
-
-        # some of the posterior images also work with mode - std
-        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                dilation_size=dilation_size,
-                                                                component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold,
-                                                                return_im=True)
-
-    else:  # any other case
-
-        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                dilation_size=dilation_size,
-                                                                component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold, std_k=0.25,
-                                                                return_im=True)
-
-    if DEBUG:
-            plt.clf()
-            plt.subplot(211)
-            plt.imshow(im_downsampled)
-            plt.subplot(212)
-            plt.imshow(lores_istissue0)
-
-    # segmentation copy, to keep track of what's left to do
-    lores_istissue = lores_istissue0.copy()
+    # check whether we continue previous execution, or we start a new one
+    continue_previous = os.path.isfile(rough_mask_file)
 
     # open full resolution histology slide
     im = openslide.OpenSlide(ndpi_file)
@@ -427,28 +382,108 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     xres = 1e-2 / float(im.properties['tiff.XResolution'])
     yres = 1e-2 / float(im.properties['tiff.YResolution'])
 
-    # # init empty list to store area values and contour coordinates
-    # areas_all = []
-    # contours_all = []
+    # if the rough mask has been pre-computed, just load it
+    if continue_previous:
+
+        aux = np.load(rough_mask_file)
+        lores_istissue = aux['lores_istissue']
+        lores_istissue0 = aux['lores_istissue0']
+        im_downsampled = aux['im_downsampled']
+        step = aux['step']
+        perc_completed_all = list(aux['perc_completed_all'])
+        time_step_all = list(aux['time_step_all'])
+        del aux
+
+    else:
+
+        time_prev = time.time()
+
+        # rough segmentation of the tissue in the image
+        if (i_file <= 19) and (os.path.basename(ndpi_file) != 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
+
+            # the original 20 images were thresholded with mode - std, except for one image
+            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                    dilation_size=dilation_size,
+                                                                    component_size_threshold=component_size_threshold,
+                                                                    hole_size_treshold=hole_size_treshold,
+                                                                    return_im=True)
+
+        elif (i_file <= 19) and (os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
+
+            # special case for an image that has very low contrast, with strong bright pink and purple areas of other
+            # tissue. We threshold with mode - 0.25 std
+            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                    dilation_size=dilation_size,
+                                                                    component_size_threshold=component_size_threshold,
+                                                                    hole_size_treshold=hole_size_treshold, std_k=0.25,
+                                                                    return_im=True)
+
+        elif os.path.basename(ndpi_file) in {
+            'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40.ndpi',
+            'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42.ndpi',
+            'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40.ndpi',
+            'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06.ndpi',
+            'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49.ndpi',
+            'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28.ndpi',
+            'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30.ndpi',
+            'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10.ndpi'}:
+
+            # some of the posterior images also work with mode - std
+            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                    dilation_size=dilation_size,
+                                                                    component_size_threshold=component_size_threshold,
+                                                                    hole_size_treshold=hole_size_treshold,
+                                                                    return_im=True)
+
+        else:  # any other case
+
+            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                    dilation_size=dilation_size,
+                                                                    component_size_threshold=component_size_threshold,
+                                                                    hole_size_treshold=hole_size_treshold, std_k=0.25,
+                                                                    return_im=True)
+
+        # segmentation copy, to keep track of what's left to do
+        lores_istissue = lores_istissue0.copy()
+
+        # initialize block algorithm variables
+        step = 0
+        perc_completed_all = [float(0.0),]
+        time_step = time.time() - time_prev
+        time_step_all = [time_step,]
+
+        # save to the rough mask file
+        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
+                            im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
+                            time_step_all=time_step_all)
+
+
+    # checkpoint: here the rough tissue mask has either been loaded or computed
+    time_step = time_step_all[-1]
+    time_total = np.sum(time_step_all)
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
+          str(step) + ': ' +
+          str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
+          "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
+          '% completed: ' +
+          'time step ' + "{0:.2f}".format(time_step) + ' s' +
+          ', total time ' + "{0:.2f}".format(time_total) + ' s')
+
+    if DEBUG:
+            plt.clf()
+            plt.subplot(211)
+            plt.imshow(im_downsampled)
+            plt.contour(lores_istissue, colors='k')
+            plt.subplot(212)
+            plt.imshow(lores_istissue)
 
     # keep extracting histology windows until we have finished
-    step = -1
-    time_0 = time_curr = time.time()
     while np.count_nonzero(lores_istissue) > 0:
+
+        time_prev = time.time()
 
         # next step (it starts from 0)
         step += 1
-
-        time_prev = time_curr
-        time_curr = time.time()
-
-        print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
-              str(step) + ': ' +
-              str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
-              "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
-              '% completed: ' +
-              'step time ' + "{0:.2f}".format(time_curr - time_prev) + ' s' +
-              ', total time ' + "{0:.2f}".format(time_curr - time_0) + ' s')
 
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
@@ -643,6 +678,25 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
             # if the mask has been updated, use it to update the total tissue segmentation
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
 
+        perc_completed = 100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100
+        perc_completed_all.append(perc_completed)
+        time_step = time.time() - time_prev
+        time_step_all.append(time_step)
+        time_total = np.sum(time_step_all)
+
+        print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
+              str(step) + ': ' +
+              str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
+              "{0:.1f}".format(perc_completed) +
+              '% completed: ' +
+              'time step ' + "{0:.2f}".format(time_step) + ' s' +
+              ', total time ' + "{0:.2f}".format(time_total) + ' s')
+
+        # save to the rough mask file
+        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
+                            im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
+                            time_step_all=time_step_all)
+
 # end of "keep extracting histology windows until we have finished"
 
 # if we run the script with qsub on the cluster, the standard output is in file
@@ -660,4 +714,5 @@ else:
     nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
     if os.path.isfile(nohup_filename):
         shutil.copy2(nohup_filename, log_filename)
+
 
