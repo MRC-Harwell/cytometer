@@ -1087,11 +1087,13 @@ json_annotation_files = [
     'KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31_exp_0097_corrected.json',
     'KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56_exp_0097_corrected.json',
     'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
+    'KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_exp_0097_corrected.json',
     'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
     'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json',
+    'KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38_exp_0097_corrected.json',
 ]
 
 # # GWAT: list of annotation files
@@ -1236,24 +1238,24 @@ area_q_f_pat = area_q_all[(sex_all == 'f') * (ko_all == 'PAT'), :]
 area_q_m_pat = area_q_all[(sex_all == 'm') * (ko_all == 'PAT'), :]
 area_q_f_mat = area_q_all[(sex_all == 'f') * (ko_all == 'MAT'), :]
 area_q_m_mat = area_q_all[(sex_all == 'm') * (ko_all == 'MAT'), :]
-area_interval_f_pat = scipy.stats.mstats.hdquantiles(area_q_f_pat, prob=[0.025, 0.5, 0.975], axis=0)
-area_interval_m_pat = scipy.stats.mstats.hdquantiles(area_q_m_pat, prob=[0.025, 0.5, 0.975], axis=0)
-area_interval_f_mat = scipy.stats.mstats.hdquantiles(area_q_f_mat, prob=[0.025, 0.5, 0.975], axis=0)
-area_interval_m_mat = scipy.stats.mstats.hdquantiles(area_q_m_mat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_f_pat = scipy.stats.mstats.hdquantiles(area_q_f_pat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_m_pat = scipy.stats.mstats.hdquantiles(area_q_m_pat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_f_mat = scipy.stats.mstats.hdquantiles(area_q_f_mat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_m_mat = scipy.stats.mstats.hdquantiles(area_q_m_mat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e12 * 1e-3, 'C0', linewidth=3, label='Female PAT median')
-    plt.fill_between(quantiles, area_interval_f_pat[0, :] * 1e12 * 1e-3, area_interval_f_pat[2, :] * 1e12 * 1e-3,
-                     facecolor='C0', alpha=0.3)
-    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e12 * 1e-3, 'C0', linewidth=1, label='Female PAT 95%-interval')
-    plt.plot(quantiles, area_interval_f_pat[2, :] * 1e12 * 1e-3, 'C0', linewidth=1)
+    plt.plot(quantiles, area_interval_f_pat[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label='Female PAT median')
+    plt.fill_between(quantiles, area_interval_f_pat[1, :] * 1e12 * 1e-3, area_interval_f_pat[3, :] * 1e12 * 1e-3,
+                     facecolor='C0', alpha=0.3, label='Female PAT 50%-interval')
+    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_pat[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
 
-    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e12 * 1e-3, 'C2', linewidth=3, label='Female MAT median')
-    plt.fill_between(quantiles, area_interval_f_mat[0, :] * 1e12 * 1e-3, area_interval_f_mat[2, :] * 1e12 * 1e-3,
-                     facecolor='C2', alpha=0.3)
-    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e12 * 1e-3, 'C2', linewidth=1, label='Female MAT 95%-interval')
-    plt.plot(quantiles, area_interval_f_mat[2, :] * 1e12 * 1e-3, 'C2', linewidth=1)
+    plt.plot(quantiles, area_interval_f_mat[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label='Female MAT median')
+    plt.fill_between(quantiles, area_interval_f_mat[1, :] * 1e12 * 1e-3, area_interval_f_mat[3, :] * 1e12 * 1e-3,
+                     facecolor='C2', alpha=0.3, label='Female MAT 50%-interval')
+    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e12 * 1e-3, 'C2:', linewidth=2, label='Female MAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_mat[4, :] * 1e12 * 1e-3, 'C2:', linewidth=2)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
     plt.xlabel('Cell population quantile', fontsize=14)
@@ -1267,17 +1269,17 @@ if DEBUG:
 
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e12 * 1e-3, 'C1', linewidth=3, label='Male PAT median')
-    plt.fill_between(quantiles, area_interval_m_pat[0, :] * 1e12 * 1e-3, area_interval_m_pat[2, :] * 1e12 * 1e-3,
-                     facecolor='C1', alpha=0.3)
-    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e12 * 1e-3, 'C1', linewidth=1, label='Male PAT 95%-interval')
-    plt.plot(quantiles, area_interval_m_pat[2, :] * 1e12 * 1e-3, 'C1', linewidth=1)
+    plt.plot(quantiles, area_interval_m_pat[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label='Male PAT median')
+    plt.fill_between(quantiles, area_interval_m_pat[1, :] * 1e12 * 1e-3, area_interval_m_pat[3, :] * 1e12 * 1e-3,
+                     facecolor='C1', alpha=0.3, label='Male PAT 50%-interval')
+    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e12 * 1e-3, 'C1:', linewidth=2, label='Male PAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_pat[4, :] * 1e12 * 1e-3, 'C1:', linewidth=2)
 
-    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e12 * 1e-3, 'C3', linewidth=3, label='Male MAT median')
-    plt.fill_between(quantiles, area_interval_m_mat[0, :] * 1e12 * 1e-3, area_interval_m_mat[2, :] * 1e12 * 1e-3,
-                     facecolor='C3', alpha=0.3)
-    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e12 * 1e-3, 'C3', linewidth=1, label='Male MAT 95%-interval')
-    plt.plot(quantiles, area_interval_m_mat[2, :] * 1e12 * 1e-3, 'C3', linewidth=1)
+    plt.plot(quantiles, area_interval_m_mat[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label='Male MAT median')
+    plt.fill_between(quantiles, area_interval_m_mat[1, :] * 1e12 * 1e-3, area_interval_m_mat[3, :] * 1e12 * 1e-3,
+                     facecolor='C3', alpha=0.3, label='Male MAT 50%-interval')
+    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e12 * 1e-3, 'C3:', linewidth=2, label='Male MAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_mat[4, :] * 1e12 * 1e-3, 'C3:', linewidth=2)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
     plt.xlabel('Cell population quantile', fontsize=14)
