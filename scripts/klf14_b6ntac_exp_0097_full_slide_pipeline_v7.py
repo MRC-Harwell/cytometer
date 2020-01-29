@@ -33,7 +33,7 @@ import cytometer.utils
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -320,16 +320,10 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 # for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
-for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
+for i_file in [85, 103, 105, 126, 89, 125] + list(range(80, 136)):
 
-    # HACK
-    # if i_file <= 81 or i_file >= 133:
-    #     print('Skipping')
-    #     continue
-
-    # specify the files you want to process
-    if not i_file in [85, 103, 105, 126, 89, 125] + list(range(80, 136)):
-        continue
+    # name of the slice to analyse
+    ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 
     # fold  where the current .ndpi image was not used for training
     i_fold = ndpi_files_test_list[ndpi_file_kernel]
