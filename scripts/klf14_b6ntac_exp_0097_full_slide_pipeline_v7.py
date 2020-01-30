@@ -378,7 +378,7 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 # for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
-for i_file in [85, 103, 105, 126, 89, 125] + list(range(80, 136)):
+for i_file in list(range(80, 136)) + list(range(60, 79)) + list(range(136, 191)):
 
     # name of the slice to analyse
     ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
