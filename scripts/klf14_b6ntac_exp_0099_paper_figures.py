@@ -1093,6 +1093,7 @@ json_annotation_files = [
     'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json',
+    'KLF14-B6NTAC-38.1e PAT 94-16 C1 - 2016-02-10 12.13.10_exp_0097_corrected.json',
     'KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38_exp_0097_corrected.json',
 ]
 
