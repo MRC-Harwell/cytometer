@@ -115,8 +115,10 @@ ndpi_list=(
 for ndpi_file in "${ndpi_list[@]}"
 do
   dzi_file=${ndpi_file%.ndpi}
-  echo $ndpi_dir/$ndpi_file $dzi_dir/$dzi_file
-  if [ ! -f "$dzi_dir"/"$dzi_file" ]; then
+  if [ ! -f "$dzi_dir"/"$dzi_file".dzi ]; then
+    echo "Processing: " "$ndpi_file"
     vips dzsave "$ndpi_dir"/"$ndpi_file" "$dzi_dir"/"$dzi_file"
+  else
+    echo "Skipping: " "$ndpi_file"
   fi
 done
