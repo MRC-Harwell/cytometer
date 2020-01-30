@@ -275,6 +275,65 @@ ndpi_files_test_list['KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31'] =
 ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16'] = 8
 ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00'] = 8
 
+# add slices from GWAT that haven't been added already
+# i_file = [136, 191]
+ndpi_files_test_list['KLF14-B6NTAC 36.1d PAT 99-16 B1 - 2016-02-11 11.29.55.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC 36.1e PAT 100-16 B1 - 2016-02-11 12.51.11.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC 36.1f PAT 101-16 B1 - 2016-02-11 14.57.03.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC 36.1g PAT 102-16 B1 - 2016-02-11 16.12.01.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC 36.1h PAT 103-16 B1 - 2016-02-12 09.51.08.ndpi'] = 0
+ndpi_files_test_list['KLF14-B6NTAC 36.1j PAT 105-16 B1 - 2016-02-12 14.08.19.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC 37.1a PAT 106-16 B1 - 2016-02-12 15.33.02.ndpi'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-37.1b PAT 107-16 B1 - 2016-02-15 11.25.20.ndpi'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-37.1e PAT 110-16 B1 - 2016-02-15 16.16.06.ndpi'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-37.1g PAT 112-16 B1 - 2016-02-16 12.02.07.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-37.1h PAT 113-16 B1 - 2016-02-16 14.53.02.ndpi'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-38.1e PAT 94-16 B1 - 2016-02-10 11.35.53.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-38.1f PAT 95-16 B1 - 2016-02-10 14.16.55.ndpi'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2a  211-16 B1 - 2016-02-17 11.21.54.ndpi'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2b  212-16 B1 - 2016-02-17 12.33.18.ndpi'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2c  213-16 B1 - 2016-02-17 14.01.06.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2e  215-16 B1 - 2016-02-17 17.14.16.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2f  216-16 B1 - 2016-02-18 10.05.52.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1a  44-16 B1 - 2016-02-01 09.19.20.ndpi'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1b  45-16 B1 - 2016-02-01 12.05.15.ndpi'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1d  47-16 B1 - 2016-02-01 15.11.42.ndpi'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1e  48-16 B1 - 2016-02-01 16.01.09.ndpi'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1f  49-16 B1 - 2016-02-01 17.12.31.ndpi'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2a  64-16 B1 - 2016-02-04 08.57.34.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2b  65-16 B1 - 2016-02-04 10.06.00.ndpi'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2d  67-16 B1 - 2016-02-04 12.20.20.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2g  69-16 B1 - 2016-02-04 15.52.52.ndpi'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1b  51-16 B1 - 2016-02-02 09.46.31.ndpi'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1c  52-16 B1 - 2016-02-02 11.24.31.ndpi'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1d  53-16 B1 - 2016-02-02 14.11.37.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2a  57-16 B1 - 2016-02-03 08.54.27.ndpi'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2c  59-16 B1 - 2016-02-03 11.41.32.ndpi'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2e  61-16 B1 - 2016-02-03 14.02.25.ndpi'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2f  62-16 B1 - 2016-02-03 15.00.17.ndpi'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3c  218-16 B1 - 2016-02-18 12.51.46.ndpi'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.1a  56-16 B1 - 2016-02-02 16.57.46.ndpi'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2b  219-16 B1 - 2016-02-18 14.21.50.ndpi'] = 5
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2c  220-16 B1 - 2016-02-18 16.40.48.ndpi'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2e  221-16 B1 - 2016-02-25 13.15.27.ndpi'] = 2
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2f  217-16 B1 - 2016-02-18 11.23.22.ndpi'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2g  222-16 B1 - 2016-02-25 14.51.57.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3a  409-16 B1 - 2016-03-15 09.24.54.ndpi'] = 8
+ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3b  412-16 B1 - 2016-03-15 14.11.47.ndpi'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2a  406-16 B1 - 2016-03-14 11.46.47.ndpi'] = 4
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2b  410-16 B1 - 2016-03-15 11.12.01.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2c  407-16 B1 - 2016-03-14 12.54.55.ndpi'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2d  411-16 B1 - 2016-03-15 12.01.13.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2e  408-16 B1 - 2016-03-14 16.06.43.ndpi'] = 1
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2f  405-16 B1 - 2016-03-14 09.49.45.ndpi'] = 9
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2h  418-16 B1 - 2016-03-16 16.42.16.ndpi'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3a  413-16 B1 - 2016-03-15 15.31.26.ndpi'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3c  414-16 B1 - 2016-03-15 16.49.22.ndpi'] = 3
+ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4b  419-16 B1 - 2016-03-17 09.10.42.ndpi'] = 7
+ndpi_files_test_list['KLF14-B6NTAC-PAT-38.1a  90-16 B1 - 2016-02-04 17.27.42.ndpi'] = 6
+ndpi_files_test_list['KLF14-B6NTAC-PAT-39.1h  453-16 B1 - 2016-03-17 11.15.50.ndpi'] = 0
+ndpi_files_test_list['KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06.ndpi'] = 7
+
 if DEBUG:
     for i, key in enumerate(ndpi_files_test_list.keys()):
         print('File ' + str(i) + ': Fold ' + str(ndpi_files_test_list[key]) + ': ' + key)
