@@ -43,7 +43,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 from cytometer.utils import rough_foreground_mask, bspline_resample
-from cytometer.data import append_paths_to_aida_json_file, write_paths_to_aida_json_file
 import PIL
 import tensorflow as tf
 import keras
