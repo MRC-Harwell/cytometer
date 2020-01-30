@@ -15,6 +15,7 @@ from matplotlib.colors import ListedColormap
 
 import numpy as np
 from scipy import ndimage
+import scipy.stats
 import pandas as pd
 import ast
 from mahotas import bwperim
