@@ -1223,6 +1223,8 @@ def write_path_to_aida_json_file(fp, x, hue=170, pretty_print=False):
     :return: None.
     """
 
+    warnings.warn('Use aida_write_new_items() instead', DeprecationWarning)
+
     if pretty_print:
         fp.write('        {\n')
         fp.write('          "class": "",\n')
@@ -1296,6 +1298,8 @@ def write_paths_to_aida_json_file(fp, xs, hue=170, pretty_print=False):
     :return: None.
     """
 
+    warnings.warn('Use aida_write_new_items() instead', DeprecationWarning)
+
     if np.isscalar(hue):
         hue = [hue] * len(xs)
 
@@ -1352,6 +1356,8 @@ def append_paths_to_aida_json_file(file, xs, hue=170, pretty_print=False):
     :param pretty_print: (def False) Boolean. Whether to save the file with '\n' and whitespaces for pretty formatting.
     :return: None.
     """
+
+    warnings.warn('Use aida_write_new_items() instead', DeprecationWarning)
 
     def seek_character(fp, target):
         """
