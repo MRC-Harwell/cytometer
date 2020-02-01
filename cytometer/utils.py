@@ -2746,7 +2746,7 @@ def segmentation_pipeline6(im,
     labels, labels_class, _ \
         = segment_dmap_contour_v6(im,
                                   contour_model=contour_model, dmap_model=dmap_model, classifier_model=classifier_model,
-                                  border_dilation=0)
+                                  border_dilation=0, batch_size=batch_size)
     labels = labels[0, :, :]
     labels_class = labels_class[0, :, :, 0]
 
