@@ -82,7 +82,8 @@ classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
 # full resolution image window and network expected receptive field parameters
-fullres_box_size = np.array([2751, 2751])
+# fullres_box_size = np.array([2751, 2751])
+fullres_box_size = np.array([2001, 2001])  # rescomp servers have less GPU memory than titan
 receptive_field = np.array([131, 131])
 
 # rough_foreground_mask() parameters
