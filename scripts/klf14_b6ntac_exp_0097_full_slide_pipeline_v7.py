@@ -28,12 +28,13 @@ import pickle
 import ujson
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
+import cytometer.data
 
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
