@@ -2713,18 +2713,6 @@ def segmentation_pipeline6(im,
       * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
     """
 
-    # load model if filename provided
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # hide "No training configuration found in save file" warning
-        if isinstance(contour_model, six.string_types):
-            contour_model = keras.models.load_model(contour_model)
-        if isinstance(dmap_model, six.string_types):
-            dmap_model = keras.models.load_model(dmap_model)
-        if isinstance(classifier_model, six.string_types):
-            classifier_model = keras.models.load_model(classifier_model)
-        if isinstance(correction_model, six.string_types):
-            correction_model = keras.models.load_model(correction_model)
-
     # format im to what the CNNs expect
     if type(im) != np.ndarray:
         raise TypeError('im expected to be np.ndarray')
@@ -2746,7 +2734,7 @@ def segmentation_pipeline6(im,
     labels, labels_class, _ \
         = segment_dmap_contour_v6(im,
                                   contour_model=contour_model, dmap_model=dmap_model, classifier_model=classifier_model,
-                                  border_dilation=0)
+                                  border_dilation=0, batch_size=batch_size)
     labels = labels[0, :, :]
     labels_class = labels_class[0, :, :, 0]
 
