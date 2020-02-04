@@ -5803,6 +5803,1843 @@ File 67/191: step 312: 9424/16242150: 99.9% completed: time step 72.44 s, total 
 File 67/191: step 313: 702/16242150: 100.0% completed: time step 60.71 s, total time 19638.62 s
 File 67/191: step 314: 0/16242150: 100.0% completed: time step 53.55 s, total time 19692.17 s
 
+File 68/191: KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44. Fold = 4
+File 68/191: step 0: 8911526/8911526: 0.0% completed: time step 110.37 s, total time 110.37 s
+File 68/191: step 1: 8813681/8911526: 1.1% completed: time step 106.66 s, total time 217.02 s
+File 68/191: step 2: 8781730/8911526: 1.5% completed: time step 70.20 s, total time 287.22 s
+File 68/191: step 4: 8670042/8911526: 2.7% completed: time step 106.46 s, total time 393.69 s
+File 68/191: step 5: 8660728/8911526: 2.8% completed: time step 60.91 s, total time 454.60 s
+File 68/191: step 7: 8546976/8911526: 4.1% completed: time step 112.98 s, total time 567.57 s
+File 68/191: step 8: 8545511/8911526: 4.1% completed: time step 58.72 s, total time 626.30 s
+File 68/191: step 10: 8441855/8911526: 5.3% completed: time step 104.67 s, total time 730.97 s
+File 68/191: step 11: 8435728/8911526: 5.3% completed: time step 59.27 s, total time 790.23 s
+File 68/191: step 13: 8339126/8911526: 6.4% completed: time step 98.84 s, total time 889.07 s
+File 68/191: step 14: 8338765/8911526: 6.4% completed: time step 56.53 s, total time 945.60 s
+File 68/191: step 17: 8230987/8911526: 7.6% completed: time step 103.24 s, total time 1048.84 s
+File 68/191: step 18: 8215023/8911526: 7.8% completed: time step 63.20 s, total time 1112.04 s
+File 68/191: step 20: 8103064/8911526: 9.1% completed: time step 110.48 s, total time 1222.52 s
+File 68/191: step 21: 8102648/8911526: 9.1% completed: time step 59.30 s, total time 1281.82 s
+File 68/191: step 23: 8018907/8911526: 10.0% completed: time step 89.02 s, total time 1370.85 s
+File 68/191: step 24: 8017254/8911526: 10.0% completed: time step 55.23 s, total time 1426.08 s
+File 68/191: step 26: 7920967/8911526: 11.1% completed: time step 93.20 s, total time 1519.28 s
+File 68/191: step 27: 7898084/8911526: 11.4% completed: time step 55.17 s, total time 1574.46 s
+File 68/191: step 28: 7808416/8911526: 12.4% completed: time step 100.72 s, total time 1675.17 s
+File 68/191: step 29: 7767258/8911526: 12.8% completed: time step 79.71 s, total time 1754.88 s
+File 68/191: step 30: 7703294/8911526: 13.6% completed: time step 87.80 s, total time 1842.68 s
+File 68/191: step 31: 7633089/8911526: 14.3% completed: time step 88.28 s, total time 1930.96 s
+File 68/191: step 32: 7574312/8911526: 15.0% completed: time step 87.00 s, total time 2017.96 s
+File 68/191: step 33: 7475053/8911526: 16.1% completed: time step 105.61 s, total time 2123.57 s
+File 68/191: step 34: 7368511/8911526: 17.3% completed: time step 110.69 s, total time 2234.26 s
+File 68/191: step 35: 7308906/8911526: 18.0% completed: time step 82.11 s, total time 2316.37 s
+File 68/191: step 36: 7257463/8911526: 18.6% completed: time step 87.81 s, total time 2404.18 s
+File 68/191: step 37: 7173531/8911526: 19.5% completed: time step 96.89 s, total time 2501.07 s
+File 68/191: step 38: 7140008/8911526: 19.9% completed: time step 79.79 s, total time 2580.86 s
+File 68/191: step 39: 7133855/8911526: 19.9% completed: time step 50.02 s, total time 2630.88 s
+File 68/191: step 40: 7028800/8911526: 21.1% completed: time step 105.76 s, total time 2736.64 s
+File 68/191: step 41: 6927537/8911526: 22.3% completed: time step 103.87 s, total time 2840.51 s
+File 68/191: step 42: 6866379/8911526: 22.9% completed: time step 83.81 s, total time 2924.31 s
+File 68/191: step 43: 6815514/8911526: 23.5% completed: time step 83.90 s, total time 3008.22 s
+File 68/191: step 44: 6813517/8911526: 23.5% completed: time step 60.28 s, total time 3068.50 s
+File 68/191: step 45: 6807400/8911526: 23.6% completed: time step 52.53 s, total time 3121.03 s
+File 68/191: step 46: 6746561/8911526: 24.3% completed: time step 81.74 s, total time 3202.77 s
+File 68/191: step 47: 6662249/8911526: 25.2% completed: time step 99.48 s, total time 3302.25 s
+File 68/191: step 48: 6654978/8911526: 25.3% completed: time step 50.97 s, total time 3353.22 s
+File 68/191: step 49: 6579953/8911526: 26.2% completed: time step 88.66 s, total time 3441.88 s
+File 68/191: step 50: 6532349/8911526: 26.7% completed: time step 79.76 s, total time 3521.65 s
+File 68/191: step 51: 6468588/8911526: 27.4% completed: time step 80.54 s, total time 3602.19 s
+File 68/191: step 52: 6395348/8911526: 28.2% completed: time step 91.96 s, total time 3694.15 s
+File 68/191: step 53: 6330555/8911526: 29.0% completed: time step 83.25 s, total time 3777.40 s
+File 68/191: step 54: 6295584/8911526: 29.4% completed: time step 71.22 s, total time 3848.62 s
+File 68/191: step 55: 6251697/8911526: 29.8% completed: time step 77.65 s, total time 3926.26 s
+File 68/191: step 56: 6215074/8911526: 30.3% completed: time step 74.92 s, total time 4001.19 s
+File 68/191: step 57: 6208312/8911526: 30.3% completed: time step 52.01 s, total time 4053.20 s
+File 68/191: step 58: 6134083/8911526: 31.2% completed: time step 92.50 s, total time 4145.70 s
+File 68/191: step 59: 6119313/8911526: 31.3% completed: time step 62.22 s, total time 4207.91 s
+File 68/191: step 60: 6100738/8911526: 31.5% completed: time step 60.45 s, total time 4268.36 s
+File 68/191: step 61: 6078429/8911526: 31.8% completed: time step 61.03 s, total time 4329.39 s
+File 68/191: step 62: 6041514/8911526: 32.2% completed: time step 71.40 s, total time 4400.79 s
+File 68/191: step 63: 6014880/8911526: 32.5% completed: time step 63.27 s, total time 4464.05 s
+File 68/191: step 64: 6014238/8911526: 32.5% completed: time step 58.41 s, total time 4522.46 s
+File 68/191: step 65: 5963518/8911526: 33.1% completed: time step 79.55 s, total time 4602.01 s
+File 68/191: step 66: 5892452/8911526: 33.9% completed: time step 84.96 s, total time 4686.97 s
+File 68/191: step 67: 5846602/8911526: 34.4% completed: time step 75.66 s, total time 4762.63 s
+File 68/191: step 68: 5832206/8911526: 34.6% completed: time step 63.01 s, total time 4825.64 s
+File 68/191: step 69: 5816939/8911526: 34.7% completed: time step 64.14 s, total time 4889.78 s
+File 68/191: step 70: 5784468/8911526: 35.1% completed: time step 69.29 s, total time 4959.06 s
+File 68/191: step 71: 5781732/8911526: 35.1% completed: time step 50.90 s, total time 5009.96 s
+File 68/191: step 72: 5768733/8911526: 35.3% completed: time step 48.57 s, total time 5058.53 s
+File 68/191: step 73: 5671723/8911526: 36.4% completed: time step 115.42 s, total time 5173.95 s
+File 68/191: step 74: 5587472/8911526: 37.3% completed: time step 110.89 s, total time 5284.83 s
+File 68/191: step 75: 5548790/8911526: 37.7% completed: time step 70.26 s, total time 5355.10 s
+File 68/191: step 76: 5454262/8911526: 38.8% completed: time step 124.05 s, total time 5479.14 s
+File 68/191: step 77: 5409912/8911526: 39.3% completed: time step 80.85 s, total time 5559.99 s
+File 68/191: step 78: 5316531/8911526: 40.3% completed: time step 130.79 s, total time 5690.79 s
+File 68/191: step 79: 5303468/8911526: 40.5% completed: time step 57.64 s, total time 5748.42 s
+File 68/191: step 80: 5240355/8911526: 41.2% completed: time step 103.65 s, total time 5852.07 s
+File 68/191: step 81: 5149636/8911526: 42.2% completed: time step 119.02 s, total time 5971.09 s
+File 68/191: step 82: 5085995/8911526: 42.9% completed: time step 96.45 s, total time 6067.54 s
+File 68/191: step 83: 5018505/8911526: 43.7% completed: time step 99.72 s, total time 6167.26 s
+File 68/191: step 84: 4955078/8911526: 44.4% completed: time step 100.22 s, total time 6267.48 s
+File 68/191: step 85: 4889108/8911526: 45.1% completed: time step 91.76 s, total time 6359.24 s
+File 68/191: step 86: 4847692/8911526: 45.6% completed: time step 92.51 s, total time 6451.75 s
+File 68/191: step 87: 4775960/8911526: 46.4% completed: time step 106.17 s, total time 6557.92 s
+File 68/191: step 88: 4731101/8911526: 46.9% completed: time step 93.80 s, total time 6651.72 s
+File 68/191: step 89: 4725615/8911526: 47.0% completed: time step 68.00 s, total time 6719.72 s
+File 68/191: step 90: 4714559/8911526: 47.1% completed: time step 58.93 s, total time 6778.65 s
+File 68/191: step 91: 4619669/8911526: 48.2% completed: time step 105.70 s, total time 6884.35 s
+File 68/191: step 92: 4543870/8911526: 49.0% completed: time step 106.78 s, total time 6991.13 s
+File 68/191: step 94: 4382741/8911526: 50.8% completed: time step 96.26 s, total time 7087.39 s
+File 68/191: step 96: 4205330/8911526: 52.8% completed: time step 112.29 s, total time 7199.68 s
+File 68/191: step 98: 4080460/8911526: 54.2% completed: time step 102.93 s, total time 7302.61 s
+File 68/191: step 99: 4012686/8911526: 55.0% completed: time step 111.30 s, total time 7413.91 s
+File 68/191: step 100: 3955662/8911526: 55.6% completed: time step 99.81 s, total time 7513.72 s
+File 68/191: step 102: 3771998/8911526: 57.7% completed: time step 121.19 s, total time 7634.91 s
+File 68/191: step 103: 3730405/8911526: 58.1% completed: time step 84.67 s, total time 7719.58 s
+File 68/191: step 105: 3651383/8911526: 59.0% completed: time step 82.81 s, total time 7802.38 s
+File 68/191: step 106: 3598497/8911526: 59.6% completed: time step 72.25 s, total time 7874.63 s
+File 68/191: step 107: 3571020/8911526: 59.9% completed: time step 81.02 s, total time 7955.65 s
+File 68/191: step 110: 3406194/8911526: 61.8% completed: time step 90.12 s, total time 8045.77 s
+File 68/191: step 111: 3328895/8911526: 62.6% completed: time step 113.35 s, total time 8159.12 s
+File 68/191: step 112: 3254964/8911526: 63.5% completed: time step 93.89 s, total time 8253.01 s
+File 68/191: step 113: 3150979/8911526: 64.6% completed: time step 114.90 s, total time 8367.91 s
+File 68/191: step 114: 3107112/8911526: 65.1% completed: time step 80.25 s, total time 8448.16 s
+File 68/191: step 115: 3075887/8911526: 65.5% completed: time step 84.37 s, total time 8532.53 s
+File 68/191: step 116: 3016465/8911526: 66.2% completed: time step 98.80 s, total time 8631.33 s
+File 68/191: step 117: 2939092/8911526: 67.0% completed: time step 58.71 s, total time 8690.04 s
+File 68/191: step 119: 2900265/8911526: 67.5% completed: time step 65.28 s, total time 8755.32 s
+File 68/191: step 120: 2822833/8911526: 68.3% completed: time step 104.58 s, total time 8859.90 s
+File 68/191: step 121: 2756539/8911526: 69.1% completed: time step 105.56 s, total time 8965.45 s
+File 68/191: step 122: 2666631/8911526: 70.1% completed: time step 119.35 s, total time 9084.80 s
+File 68/191: step 123: 2586799/8911526: 71.0% completed: time step 118.43 s, total time 9203.23 s
+File 68/191: step 125: 2451694/8911526: 72.5% completed: time step 65.58 s, total time 9268.81 s
+File 68/191: step 126: 2449904/8911526: 72.5% completed: time step 56.88 s, total time 9325.69 s
+File 68/191: step 127: 2426576/8911526: 72.8% completed: time step 73.13 s, total time 9398.82 s
+File 68/191: step 130: 2222649/8911526: 75.1% completed: time step 124.12 s, total time 9522.94 s
+File 68/191: step 131: 2178066/8911526: 75.6% completed: time step 104.53 s, total time 9627.47 s
+File 68/191: step 132: 2077874/8911526: 76.7% completed: time step 116.02 s, total time 9743.50 s
+File 68/191: step 133: 2016012/8911526: 77.4% completed: time step 101.29 s, total time 9844.79 s
+File 68/191: step 134: 1931358/8911526: 78.3% completed: time step 126.71 s, total time 9971.50 s
+File 68/191: step 135: 1840488/8911526: 79.3% completed: time step 117.65 s, total time 10089.16 s
+File 68/191: step 136: 1836187/8911526: 79.4% completed: time step 66.30 s, total time 10155.46 s
+File 68/191: step 137: 1800276/8911526: 79.8% completed: time step 103.93 s, total time 10259.39 s
+File 68/191: step 139: 1745565/8911526: 80.4% completed: time step 101.54 s, total time 10360.93 s
+File 68/191: step 140: 1714429/8911526: 80.8% completed: time step 80.77 s, total time 10441.70 s
+File 68/191: step 141: 1647359/8911526: 81.5% completed: time step 106.71 s, total time 10548.40 s
+File 68/191: step 142: 1605799/8911526: 82.0% completed: time step 83.76 s, total time 10632.16 s
+File 68/191: step 144: 1488160/8911526: 83.3% completed: time step 131.35 s, total time 10763.51 s
+File 68/191: step 145: 1392009/8911526: 84.4% completed: time step 127.05 s, total time 10890.56 s
+File 68/191: step 146: 1331615/8911526: 85.1% completed: time step 105.31 s, total time 10995.87 s
+File 68/191: step 147: 1243721/8911526: 86.0% completed: time step 122.11 s, total time 11117.98 s
+File 68/191: step 148: 1239200/8911526: 86.1% completed: time step 69.42 s, total time 11187.40 s
+File 68/191: step 149: 1197976/8911526: 86.6% completed: time step 88.29 s, total time 11275.70 s
+File 68/191: step 150: 1158862/8911526: 87.0% completed: time step 91.49 s, total time 11367.19 s
+File 68/191: step 151: 1104646/8911526: 87.6% completed: time step 92.65 s, total time 11459.84 s
+File 68/191: step 152: 1036784/8911526: 88.4% completed: time step 108.97 s, total time 11568.81 s
+File 68/191: step 153: 1034913/8911526: 88.4% completed: time step 69.72 s, total time 11638.53 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 68/191: step 155: 949754/8911526: 89.3% completed: time step 125.18 s, total time 11763.71 s
+File 68/191: step 156: 929041/8911526: 89.6% completed: time step 81.60 s, total time 11845.31 s
+File 68/191: step 157: 850767/8911526: 90.5% completed: time step 103.98 s, total time 11949.29 s
+File 68/191: step 158: 787042/8911526: 91.2% completed: time step 104.36 s, total time 12053.65 s
+File 68/191: step 159: 752601/8911526: 91.6% completed: time step 75.53 s, total time 12129.18 s
+File 68/191: step 160: 722809/8911526: 91.9% completed: time step 82.22 s, total time 12211.40 s
+File 68/191: step 161: 688415/8911526: 92.3% completed: time step 81.07 s, total time 12292.47 s
+File 68/191: step 162: 628600/8911526: 92.9% completed: time step 96.30 s, total time 12388.77 s
+File 68/191: step 163: 620417/8911526: 93.0% completed: time step 57.28 s, total time 12446.05 s
+File 68/191: step 164: 590924/8911526: 93.4% completed: time step 78.83 s, total time 12524.87 s
+File 68/191: step 165: 581828/8911526: 93.5% completed: time step 65.93 s, total time 12590.80 s
+File 68/191: step 166: 580040/8911526: 93.5% completed: time step 58.92 s, total time 12649.72 s
+File 68/191: step 167: 570936/8911526: 93.6% completed: time step 64.63 s, total time 12714.35 s
+File 68/191: step 168: 558016/8911526: 93.7% completed: time step 59.67 s, total time 12774.03 s
+File 68/191: step 169: 538208/8911526: 94.0% completed: time step 65.43 s, total time 12839.46 s
+File 68/191: step 170: 506318/8911526: 94.3% completed: time step 74.64 s, total time 12914.10 s
+File 68/191: step 171: 472750/8911526: 94.7% completed: time step 69.86 s, total time 12983.96 s
+File 68/191: step 173: 288690/8911526: 96.8% completed: time step 68.56 s, total time 13052.52 s
+File 68/191: step 174: 273920/8911526: 96.9% completed: time step 62.49 s, total time 13115.02 s
+File 68/191: step 175: 247677/8911526: 97.2% completed: time step 70.05 s, total time 13185.07 s
+File 68/191: step 176: 217233/8911526: 97.6% completed: time step 61.42 s, total time 13246.49 s
+File 68/191: step 178: 171812/8911526: 98.1% completed: time step 60.77 s, total time 13307.26 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 68/191: step 180: 82481/8911526: 99.1% completed: time step 66.50 s, total time 13373.75 s
+File 68/191: step 181: 10143/8911526: 99.9% completed: time step 68.31 s, total time 13442.07 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+
+File 69/191: KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45. Fold = 4
+File 69/191: step 0: 23860881/23860881: 0.0% completed: time step 204.65 s, total time 204.65 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 9: 23301973/23860881: 2.3% completed: time step 56.01 s, total time 260.66 s
+File 69/191: step 10: 23304772/23860881: 2.3% completed: time step 53.74 s, total time 314.40 s
+File 69/191: step 12: 23165050/23860881: 2.9% completed: time step 62.95 s, total time 377.34 s
+File 69/191: step 14: 23074592/23860881: 3.3% completed: time step 65.98 s, total time 443.32 s
+File 69/191: step 15: 23076391/23860881: 3.3% completed: time step 54.75 s, total time 498.07 s
+File 69/191: step 17: 22920651/23860881: 3.9% completed: time step 59.79 s, total time 557.87 s
+File 69/191: step 18: 22832348/23860881: 4.3% completed: time step 62.60 s, total time 620.47 s
+File 69/191: step 19: 22759093/23860881: 4.6% completed: time step 55.38 s, total time 675.85 s
+File 69/191: step 20: 22725354/23860881: 4.8% completed: time step 58.99 s, total time 734.83 s
+File 69/191: step 22: 22573237/23860881: 5.4% completed: time step 51.56 s, total time 786.39 s
+File 69/191: step 23: 22492690/23860881: 5.7% completed: time step 52.13 s, total time 838.52 s
+File 69/191: step 24: 22406295/23860881: 6.1% completed: time step 55.99 s, total time 894.51 s
+File 69/191: step 25: 22345796/23860881: 6.3% completed: time step 53.82 s, total time 948.33 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 35: 21682551/23860881: 9.1% completed: time step 64.16 s, total time 1012.49 s
+File 69/191: step 36: 21654771/23860881: 9.2% completed: time step 60.50 s, total time 1072.99 s
+File 69/191: step 37: 21558240/23860881: 9.7% completed: time step 64.87 s, total time 1137.86 s
+File 69/191: step 38: 21482509/23860881: 10.0% completed: time step 58.67 s, total time 1196.53 s
+File 69/191: step 39: 21430674/23860881: 10.2% completed: time step 61.73 s, total time 1258.26 s
+File 69/191: step 40: 21420628/23860881: 10.2% completed: time step 56.50 s, total time 1314.77 s
+File 69/191: step 43: 21283364/23860881: 10.8% completed: time step 71.67 s, total time 1386.44 s
+File 69/191: step 44: 21208748/23860881: 11.1% completed: time step 56.19 s, total time 1442.63 s
+File 69/191: step 45: 21124945/23860881: 11.5% completed: time step 62.81 s, total time 1505.44 s
+File 69/191: step 46: 21053327/23860881: 11.8% completed: time step 58.76 s, total time 1564.20 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 54: 20465226/23860881: 14.2% completed: time step 55.70 s, total time 1619.89 s
+File 69/191: step 55: 20376007/23860881: 14.6% completed: time step 76.34 s, total time 1696.23 s
+File 69/191: step 56: 20333819/23860881: 14.8% completed: time step 67.31 s, total time 1763.54 s
+File 69/191: step 57: 20242315/23860881: 15.2% completed: time step 79.72 s, total time 1843.26 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 59: 20122395/23860881: 15.7% completed: time step 65.11 s, total time 1908.37 s
+File 69/191: step 60: 20034780/23860881: 16.0% completed: time step 62.47 s, total time 1970.83 s
+File 69/191: step 61: 19962424/23860881: 16.3% completed: time step 57.48 s, total time 2028.32 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 70: 19431576/23860881: 18.6% completed: time step 64.95 s, total time 2093.26 s
+File 69/191: step 71: 19426009/23860881: 18.6% completed: time step 56.11 s, total time 2149.37 s
+File 69/191: step 73: 19290119/23860881: 19.2% completed: time step 53.87 s, total time 2203.24 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 76: 19175427/23860881: 19.6% completed: time step 60.22 s, total time 2263.46 s
+File 69/191: step 77: 19107284/23860881: 19.9% completed: time step 63.26 s, total time 2326.72 s
+File 69/191: step 78: 19030919/23860881: 20.2% completed: time step 65.82 s, total time 2392.54 s
+File 69/191: step 79: 18957016/23860881: 20.6% completed: time step 60.97 s, total time 2453.51 s
+File 69/191: step 80: 18910113/23860881: 20.7% completed: time step 64.70 s, total time 2518.21 s
+File 69/191: step 81: 18816118/23860881: 21.1% completed: time step 62.42 s, total time 2580.64 s
+File 69/191: step 82: 18724536/23860881: 21.5% completed: time step 68.58 s, total time 2649.22 s
+File 69/191: step 83: 18670012/23860881: 21.8% completed: time step 63.91 s, total time 2713.13 s
+File 69/191: step 84: 18645101/23860881: 21.9% completed: time step 56.21 s, total time 2769.34 s
+File 69/191: step 85: 18578892/23860881: 22.1% completed: time step 67.64 s, total time 2836.98 s
+File 69/191: step 86: 18532761/23860881: 22.3% completed: time step 54.02 s, total time 2890.99 s
+File 69/191: step 87: 18496940/23860881: 22.5% completed: time step 67.60 s, total time 2958.60 s
+File 69/191: step 88: 18497998/23860881: 22.5% completed: time step 56.86 s, total time 3015.45 s
+File 69/191: step 89: 18432479/23860881: 22.8% completed: time step 56.15 s, total time 3071.60 s
+File 69/191: step 90: 18398355/23860881: 22.9% completed: time step 53.84 s, total time 3125.44 s
+File 69/191: step 91: 18323801/23860881: 23.2% completed: time step 60.94 s, total time 3186.39 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 97: 18051142/23860881: 24.3% completed: time step 60.41 s, total time 3246.80 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 106: 17714883/23860881: 25.8% completed: time step 60.54 s, total time 3307.34 s
+File 69/191: step 108: 17648048/23860881: 26.0% completed: time step 58.55 s, total time 3365.89 s
+File 69/191: step 109: 17571582/23860881: 26.4% completed: time step 69.16 s, total time 3435.05 s
+File 69/191: step 110: 17513165/23860881: 26.6% completed: time step 54.34 s, total time 3489.39 s
+File 69/191: step 111: 17473884/23860881: 26.8% completed: time step 61.50 s, total time 3550.89 s
+File 69/191: step 112: 17409289/23860881: 27.0% completed: time step 72.26 s, total time 3623.15 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 114: 17319846/23860881: 27.4% completed: time step 60.56 s, total time 3683.71 s
+File 69/191: step 115: 17278442/23860881: 27.6% completed: time step 65.84 s, total time 3749.55 s
+File 69/191: step 116: 17247196/23860881: 27.7% completed: time step 63.61 s, total time 3813.16 s
+File 69/191: step 118: 17139469/23860881: 28.2% completed: time step 64.00 s, total time 3877.16 s
+File 69/191: step 119: 17054296/23860881: 28.5% completed: time step 67.41 s, total time 3944.57 s
+File 69/191: step 121: 16907232/23860881: 29.1% completed: time step 69.89 s, total time 4014.46 s
+File 69/191: step 122: 16859575/23860881: 29.3% completed: time step 61.52 s, total time 4075.98 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 124: 16752269/23860881: 29.8% completed: time step 71.06 s, total time 4147.04 s
+File 69/191: step 125: 16731972/23860881: 29.9% completed: time step 59.30 s, total time 4206.34 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 131: 16547908/23860881: 30.6% completed: time step 53.54 s, total time 4259.88 s
+File 69/191: step 132: 16489585/23860881: 30.9% completed: time step 62.39 s, total time 4322.28 s
+File 69/191: step 133: 16457012/23860881: 31.0% completed: time step 62.60 s, total time 4384.88 s
+File 69/191: step 134: 16378966/23860881: 31.4% completed: time step 71.99 s, total time 4456.87 s
+File 69/191: step 135: 16359337/23860881: 31.4% completed: time step 54.21 s, total time 4511.08 s
+File 69/191: step 136: 16309884/23860881: 31.6% completed: time step 65.92 s, total time 4577.00 s
+File 69/191: step 137: 16255924/23860881: 31.9% completed: time step 65.35 s, total time 4642.35 s
+File 69/191: step 138: 16235304/23860881: 32.0% completed: time step 58.31 s, total time 4700.66 s
+File 69/191: step 139: 16189559/23860881: 32.2% completed: time step 57.74 s, total time 4758.40 s
+File 69/191: step 140: 16137457/23860881: 32.4% completed: time step 60.72 s, total time 4819.12 s
+File 69/191: step 141: 16067905/23860881: 32.7% completed: time step 73.35 s, total time 4892.48 s
+File 69/191: step 142: 16046209/23860881: 32.8% completed: time step 57.90 s, total time 4950.38 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 145: 15911102/23860881: 33.3% completed: time step 61.01 s, total time 5011.39 s
+File 69/191: step 146: 15820299/23860881: 33.7% completed: time step 71.22 s, total time 5082.61 s
+File 69/191: step 147: 15776184/23860881: 33.9% completed: time step 62.79 s, total time 5145.41 s
+File 69/191: step 148: 15722709/23860881: 34.1% completed: time step 60.22 s, total time 5205.63 s
+File 69/191: step 149: 15661107/23860881: 34.4% completed: time step 63.35 s, total time 5268.98 s
+File 69/191: step 150: 15580652/23860881: 34.7% completed: time step 69.62 s, total time 5338.60 s
+File 69/191: step 151: 15516781/23860881: 35.0% completed: time step 62.68 s, total time 5401.28 s
+File 69/191: step 153: 15434547/23860881: 35.3% completed: time step 59.88 s, total time 5461.16 s
+File 69/191: step 154: 15371050/23860881: 35.6% completed: time step 63.57 s, total time 5524.74 s
+File 69/191: step 155: 15308550/23860881: 35.8% completed: time step 64.43 s, total time 5589.17 s
+File 69/191: step 156: 15269779/23860881: 36.0% completed: time step 64.88 s, total time 5654.05 s
+File 69/191: step 157: 15271165/23860881: 36.0% completed: time step 59.40 s, total time 5713.45 s
+File 69/191: step 158: 15271747/23860881: 36.0% completed: time step 58.90 s, total time 5772.35 s
+File 69/191: step 159: 15273255/23860881: 36.0% completed: time step 59.89 s, total time 5832.24 s
+File 69/191: step 160: 15274297/23860881: 36.0% completed: time step 55.84 s, total time 5888.09 s
+File 69/191: step 161: 15276444/23860881: 36.0% completed: time step 59.18 s, total time 5947.27 s
+File 69/191: step 162: 15278358/23860881: 36.0% completed: time step 53.32 s, total time 6000.59 s
+File 69/191: step 164: 15191340/23860881: 36.3% completed: time step 55.79 s, total time 6056.38 s
+File 69/191: step 165: 15113843/23860881: 36.7% completed: time step 67.38 s, total time 6123.76 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 167: 15076333/23860881: 36.8% completed: time step 55.34 s, total time 6179.10 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 169: 14988932/23860881: 37.2% completed: time step 67.17 s, total time 6246.27 s
+File 69/191: step 170: 14978662/23860881: 37.2% completed: time step 57.98 s, total time 6304.25 s
+File 69/191: step 171: 14893002/23860881: 37.6% completed: time step 74.45 s, total time 6378.71 s
+File 69/191: step 172: 14815056/23860881: 37.9% completed: time step 74.19 s, total time 6452.90 s
+File 69/191: step 173: 14751179/23860881: 38.2% completed: time step 64.25 s, total time 6517.15 s
+File 69/191: step 174: 14686624/23860881: 38.4% completed: time step 65.30 s, total time 6582.45 s
+File 69/191: step 175: 14633487/23860881: 38.7% completed: time step 62.05 s, total time 6644.50 s
+File 69/191: step 176: 14585052/23860881: 38.9% completed: time step 59.81 s, total time 6704.31 s
+File 69/191: step 177: 14540031/23860881: 39.1% completed: time step 60.87 s, total time 6765.18 s
+File 69/191: step 178: 14488796/23860881: 39.3% completed: time step 61.68 s, total time 6826.86 s
+File 69/191: step 179: 14451053/23860881: 39.4% completed: time step 67.15 s, total time 6894.00 s
+File 69/191: step 180: 14398408/23860881: 39.7% completed: time step 65.25 s, total time 6959.25 s
+File 69/191: step 181: 14331431/23860881: 39.9% completed: time step 60.62 s, total time 7019.87 s
+File 69/191: step 182: 14282471/23860881: 40.1% completed: time step 61.36 s, total time 7081.22 s
+File 69/191: step 183: 14231744/23860881: 40.4% completed: time step 57.38 s, total time 7138.60 s
+File 69/191: step 184: 14174508/23860881: 40.6% completed: time step 63.12 s, total time 7201.73 s
+File 69/191: step 185: 14126250/23860881: 40.8% completed: time step 60.47 s, total time 7262.20 s
+File 69/191: step 186: 14047494/23860881: 41.1% completed: time step 70.83 s, total time 7333.03 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 188: 13971343/23860881: 41.4% completed: time step 63.94 s, total time 7396.97 s
+File 69/191: step 189: 13910466/23860881: 41.7% completed: time step 65.05 s, total time 7462.02 s
+File 69/191: step 190: 13859665/23860881: 41.9% completed: time step 64.56 s, total time 7526.58 s
+File 69/191: step 191: 13815767/23860881: 42.1% completed: time step 60.69 s, total time 7587.27 s
+File 69/191: step 192: 13747762/23860881: 42.4% completed: time step 69.35 s, total time 7656.62 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 194: 13695270/23860881: 42.6% completed: time step 63.33 s, total time 7719.95 s
+File 69/191: step 195: 13663646/23860881: 42.7% completed: time step 63.53 s, total time 7783.48 s
+File 69/191: step 196: 13661978/23860881: 42.7% completed: time step 60.06 s, total time 7843.54 s
+File 69/191: step 197: 13662250/23860881: 42.7% completed: time step 59.48 s, total time 7903.02 s
+File 69/191: step 198: 13660418/23860881: 42.7% completed: time step 57.81 s, total time 7960.83 s
+File 69/191: step 199: 13661072/23860881: 42.7% completed: time step 56.62 s, total time 8017.44 s
+File 69/191: step 200: 13665791/23860881: 42.7% completed: time step 57.93 s, total time 8075.37 s
+File 69/191: step 202: 13557854/23860881: 43.2% completed: time step 78.34 s, total time 8153.71 s
+File 69/191: step 203: 13466621/23860881: 43.6% completed: time step 70.40 s, total time 8224.11 s
+File 69/191: step 204: 13421347/23860881: 43.8% completed: time step 63.74 s, total time 8287.85 s
+File 69/191: step 206: 13328304/23860881: 44.1% completed: time step 64.13 s, total time 8351.97 s
+File 69/191: step 207: 13246971/23860881: 44.5% completed: time step 72.93 s, total time 8424.91 s
+File 69/191: step 208: 13234102/23860881: 44.5% completed: time step 57.03 s, total time 8481.94 s
+File 69/191: step 209: 13161558/23860881: 44.8% completed: time step 68.54 s, total time 8550.48 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 211: 13134083/23860881: 45.0% completed: time step 61.44 s, total time 8611.92 s
+File 69/191: step 212: 13076325/23860881: 45.2% completed: time step 74.16 s, total time 8686.07 s
+File 69/191: step 214: 13035913/23860881: 45.4% completed: time step 62.01 s, total time 8748.08 s
+File 69/191: step 216: 12909838/23860881: 45.9% completed: time step 65.16 s, total time 8813.24 s
+File 69/191: step 217: 12861637/23860881: 46.1% completed: time step 58.62 s, total time 8871.86 s
+File 69/191: step 218: 12812975/23860881: 46.3% completed: time step 64.23 s, total time 8936.09 s
+File 69/191: step 219: 12788694/23860881: 46.4% completed: time step 56.34 s, total time 8992.43 s
+File 69/191: step 220: 12738422/23860881: 46.6% completed: time step 62.77 s, total time 9055.20 s
+File 69/191: step 222: 12648638/23860881: 47.0% completed: time step 60.20 s, total time 9115.40 s
+File 69/191: step 225: 12496101/23860881: 47.6% completed: time step 67.69 s, total time 9183.09 s
+File 69/191: step 226: 12448812/23860881: 47.8% completed: time step 62.26 s, total time 9245.35 s
+File 69/191: step 227: 12370878/23860881: 48.2% completed: time step 68.74 s, total time 9314.09 s
+File 69/191: step 228: 12327573/23860881: 48.3% completed: time step 62.44 s, total time 9376.52 s
+File 69/191: step 229: 12299915/23860881: 48.5% completed: time step 60.92 s, total time 9437.44 s
+File 69/191: step 230: 12258905/23860881: 48.6% completed: time step 58.72 s, total time 9496.17 s
+File 69/191: step 231: 12202185/23860881: 48.9% completed: time step 57.11 s, total time 9553.28 s
+File 69/191: step 232: 12142854/23860881: 49.1% completed: time step 61.70 s, total time 9614.98 s
+File 69/191: step 233: 12092955/23860881: 49.3% completed: time step 64.87 s, total time 9679.85 s
+File 69/191: step 234: 12024889/23860881: 49.6% completed: time step 70.62 s, total time 9750.47 s
+File 69/191: step 235: 11938322/23860881: 50.0% completed: time step 79.18 s, total time 9829.64 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 237: 11898968/23860881: 50.1% completed: time step 66.08 s, total time 9895.72 s
+File 69/191: step 238: 11838141/23860881: 50.4% completed: time step 64.17 s, total time 9959.89 s
+File 69/191: step 239: 11815605/23860881: 50.5% completed: time step 61.91 s, total time 10021.80 s
+File 69/191: step 240: 11761992/23860881: 50.7% completed: time step 63.92 s, total time 10085.72 s
+File 69/191: step 241: 11698652/23860881: 51.0% completed: time step 69.67 s, total time 10155.39 s
+File 69/191: step 242: 11683576/23860881: 51.0% completed: time step 58.69 s, total time 10214.08 s
+File 69/191: step 243: 11636663/23860881: 51.2% completed: time step 63.08 s, total time 10277.17 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 245: 11575687/23860881: 51.5% completed: time step 74.12 s, total time 10351.28 s
+File 69/191: step 246: 11554747/23860881: 51.6% completed: time step 61.08 s, total time 10412.36 s
+File 69/191: step 247: 11546354/23860881: 51.6% completed: time step 60.64 s, total time 10473.01 s
+File 69/191: step 249: 11454538/23860881: 52.0% completed: time step 62.90 s, total time 10535.90 s
+File 69/191: step 250: 11416243/23860881: 52.2% completed: time step 65.86 s, total time 10601.76 s
+File 69/191: step 251: 11349070/23860881: 52.4% completed: time step 62.74 s, total time 10664.49 s
+File 69/191: step 252: 11316269/23860881: 52.6% completed: time step 60.43 s, total time 10724.92 s
+File 69/191: step 253: 11300110/23860881: 52.6% completed: time step 61.69 s, total time 10786.61 s
+File 69/191: step 255: 11227856/23860881: 52.9% completed: time step 62.90 s, total time 10849.51 s
+File 69/191: step 256: 11172872/23860881: 53.2% completed: time step 60.79 s, total time 10910.30 s
+File 69/191: step 258: 11056745/23860881: 53.7% completed: time step 64.69 s, total time 10974.99 s
+File 69/191: step 259: 10983680/23860881: 54.0% completed: time step 64.18 s, total time 11039.17 s
+File 69/191: step 260: 10977372/23860881: 54.0% completed: time step 58.62 s, total time 11097.79 s
+File 69/191: step 261: 10945898/23860881: 54.1% completed: time step 61.24 s, total time 11159.03 s
+File 69/191: step 262: 10895333/23860881: 54.3% completed: time step 66.39 s, total time 11225.42 s
+File 69/191: step 263: 10848549/23860881: 54.5% completed: time step 65.87 s, total time 11291.29 s
+File 69/191: step 264: 10813355/23860881: 54.7% completed: time step 61.62 s, total time 11352.91 s
+File 69/191: step 265: 10754576/23860881: 54.9% completed: time step 58.21 s, total time 11411.12 s
+File 69/191: step 266: 10692550/23860881: 55.2% completed: time step 73.08 s, total time 11484.20 s
+File 69/191: step 267: 10615799/23860881: 55.5% completed: time step 76.96 s, total time 11561.16 s
+File 69/191: step 268: 10554472/23860881: 55.8% completed: time step 69.47 s, total time 11630.63 s
+File 69/191: step 269: 10491776/23860881: 56.0% completed: time step 76.15 s, total time 11706.79 s
+File 69/191: step 270: 10440440/23860881: 56.2% completed: time step 68.26 s, total time 11775.04 s
+File 69/191: step 271: 10391413/23860881: 56.5% completed: time step 63.95 s, total time 11838.99 s
+File 69/191: step 272: 10366801/23860881: 56.6% completed: time step 57.76 s, total time 11896.75 s
+File 69/191: step 273: 10337565/23860881: 56.7% completed: time step 67.34 s, total time 11964.09 s
+File 69/191: step 275: 10258667/23860881: 57.0% completed: time step 61.37 s, total time 12025.47 s
+File 69/191: step 276: 10202742/23860881: 57.2% completed: time step 63.61 s, total time 12089.08 s
+File 69/191: step 277: 10178638/23860881: 57.3% completed: time step 62.15 s, total time 12151.23 s
+File 69/191: step 278: 10140838/23860881: 57.5% completed: time step 64.65 s, total time 12215.88 s
+File 69/191: step 280: 10072402/23860881: 57.8% completed: time step 67.65 s, total time 12283.52 s
+File 69/191: step 281: 10028202/23860881: 58.0% completed: time step 64.15 s, total time 12347.67 s
+File 69/191: step 282: 9955895/23860881: 58.3% completed: time step 68.83 s, total time 12416.50 s
+File 69/191: step 283: 9899429/23860881: 58.5% completed: time step 66.06 s, total time 12482.57 s
+File 69/191: step 285: 9801251/23860881: 58.9% completed: time step 64.96 s, total time 12547.53 s
+File 69/191: step 286: 9772860/23860881: 59.0% completed: time step 61.85 s, total time 12609.38 s
+File 69/191: step 287: 9729383/23860881: 59.2% completed: time step 63.95 s, total time 12673.32 s
+File 69/191: step 288: 9679355/23860881: 59.4% completed: time step 67.24 s, total time 12740.56 s
+File 69/191: step 289: 9677265/23860881: 59.4% completed: time step 59.39 s, total time 12799.95 s
+File 69/191: step 291: 9582542/23860881: 59.8% completed: time step 60.70 s, total time 12860.65 s
+File 69/191: step 293: 9506607/23860881: 60.2% completed: time step 64.65 s, total time 12925.30 s
+File 69/191: step 295: 9419694/23860881: 60.5% completed: time step 57.39 s, total time 12982.70 s
+File 69/191: step 297: 9366745/23860881: 60.7% completed: time step 67.49 s, total time 13050.19 s
+File 69/191: step 298: 9323193/23860881: 60.9% completed: time step 58.52 s, total time 13108.71 s
+File 69/191: step 299: 9256507/23860881: 61.2% completed: time step 71.74 s, total time 13180.45 s
+File 69/191: step 300: 9250629/23860881: 61.2% completed: time step 61.71 s, total time 13242.16 s
+File 69/191: step 302: 9156630/23860881: 61.6% completed: time step 75.55 s, total time 13317.71 s
+File 69/191: step 303: 9088934/23860881: 61.9% completed: time step 63.01 s, total time 13380.72 s
+File 69/191: step 304: 9082185/23860881: 61.9% completed: time step 60.50 s, total time 13441.22 s
+File 69/191: step 305: 9082460/23860881: 61.9% completed: time step 60.02 s, total time 13501.24 s
+File 69/191: step 306: 9081875/23860881: 61.9% completed: time step 55.49 s, total time 13556.73 s
+File 69/191: step 307: 9073980/23860881: 62.0% completed: time step 55.13 s, total time 13611.86 s
+File 69/191: step 309: 9013819/23860881: 62.2% completed: time step 61.72 s, total time 13673.58 s
+File 69/191: step 310: 8947119/23860881: 62.5% completed: time step 64.70 s, total time 13738.27 s
+File 69/191: step 311: 8944811/23860881: 62.5% completed: time step 56.24 s, total time 13794.51 s
+File 69/191: step 313: 8865719/23860881: 62.8% completed: time step 72.24 s, total time 13866.75 s
+File 69/191: step 314: 8826261/23860881: 63.0% completed: time step 67.56 s, total time 13934.31 s
+File 69/191: step 315: 8780991/23860881: 63.2% completed: time step 71.09 s, total time 14005.39 s
+File 69/191: step 316: 8695628/23860881: 63.6% completed: time step 78.31 s, total time 14083.71 s
+File 69/191: step 317: 8653129/23860881: 63.7% completed: time step 65.06 s, total time 14148.77 s
+File 69/191: step 318: 8600304/23860881: 64.0% completed: time step 67.52 s, total time 14216.29 s
+File 69/191: step 319: 8567803/23860881: 64.1% completed: time step 63.83 s, total time 14280.13 s
+File 69/191: step 320: 8501552/23860881: 64.4% completed: time step 68.67 s, total time 14348.79 s
+File 69/191: step 321: 8441096/23860881: 64.6% completed: time step 67.45 s, total time 14416.25 s
+File 69/191: step 322: 8395222/23860881: 64.8% completed: time step 65.50 s, total time 14481.75 s
+File 69/191: step 323: 8338382/23860881: 65.1% completed: time step 62.94 s, total time 14544.69 s
+File 69/191: step 324: 8297950/23860881: 65.2% completed: time step 63.19 s, total time 14607.88 s
+File 69/191: step 325: 8235924/23860881: 65.5% completed: time step 69.23 s, total time 14677.11 s
+File 69/191: step 326: 8178482/23860881: 65.7% completed: time step 68.52 s, total time 14745.63 s
+File 69/191: step 327: 8112907/23860881: 66.0% completed: time step 65.91 s, total time 14811.54 s
+File 69/191: step 328: 8063352/23860881: 66.2% completed: time step 64.85 s, total time 14876.39 s
+File 69/191: step 330: 7994170/23860881: 66.5% completed: time step 66.69 s, total time 14943.08 s
+File 69/191: step 332: 7905291/23860881: 66.9% completed: time step 67.64 s, total time 15010.72 s
+File 69/191: step 333: 7876405/23860881: 67.0% completed: time step 66.94 s, total time 15077.66 s
+File 69/191: step 334: 7855935/23860881: 67.1% completed: time step 64.52 s, total time 15142.18 s
+File 69/191: step 336: 7751734/23860881: 67.5% completed: time step 67.53 s, total time 15209.71 s
+File 69/191: step 337: 7682661/23860881: 67.8% completed: time step 67.39 s, total time 15277.10 s
+File 69/191: step 338: 7611776/23860881: 68.1% completed: time step 68.33 s, total time 15345.44 s
+File 69/191: step 339: 7573763/23860881: 68.3% completed: time step 66.40 s, total time 15411.84 s
+File 69/191: step 340: 7528348/23860881: 68.4% completed: time step 67.68 s, total time 15479.52 s
+File 69/191: step 341: 7528143/23860881: 68.4% completed: time step 59.92 s, total time 15539.45 s
+File 69/191: step 343: 7472043/23860881: 68.7% completed: time step 63.63 s, total time 15603.07 s
+File 69/191: step 344: 7390737/23860881: 69.0% completed: time step 79.16 s, total time 15682.23 s
+File 69/191: step 345: 7331433/23860881: 69.3% completed: time step 71.46 s, total time 15753.69 s
+File 69/191: step 346: 7272509/23860881: 69.5% completed: time step 71.08 s, total time 15824.78 s
+File 69/191: step 347: 7254508/23860881: 69.6% completed: time step 62.80 s, total time 15887.58 s
+File 69/191: step 348: 7199224/23860881: 69.8% completed: time step 67.37 s, total time 15954.95 s
+File 69/191: step 349: 7115898/23860881: 70.2% completed: time step 78.14 s, total time 16033.09 s
+File 69/191: step 350: 7035475/23860881: 70.5% completed: time step 73.44 s, total time 16106.53 s
+File 69/191: step 351: 6993921/23860881: 70.7% completed: time step 70.98 s, total time 16177.51 s
+File 69/191: step 352: 6960837/23860881: 70.8% completed: time step 69.54 s, total time 16247.05 s
+File 69/191: step 353: 6920202/23860881: 71.0% completed: time step 67.37 s, total time 16314.42 s
+File 69/191: step 354: 6881380/23860881: 71.2% completed: time step 67.96 s, total time 16382.38 s
+File 69/191: step 355: 6821529/23860881: 71.4% completed: time step 66.69 s, total time 16449.07 s
+File 69/191: step 356: 6762307/23860881: 71.7% completed: time step 71.49 s, total time 16520.56 s
+File 69/191: step 357: 6695668/23860881: 71.9% completed: time step 69.05 s, total time 16589.62 s
+File 69/191: step 358: 6631805/23860881: 72.2% completed: time step 73.62 s, total time 16663.23 s
+File 69/191: step 359: 6570311/23860881: 72.5% completed: time step 70.27 s, total time 16733.50 s
+File 69/191: step 360: 6509778/23860881: 72.7% completed: time step 60.91 s, total time 16794.41 s
+File 69/191: step 361: 6461286/23860881: 72.9% completed: time step 68.45 s, total time 16862.86 s
+File 69/191: step 362: 6398578/23860881: 73.2% completed: time step 68.84 s, total time 16931.70 s
+File 69/191: step 363: 6365067/23860881: 73.3% completed: time step 65.85 s, total time 16997.55 s
+File 69/191: step 364: 6308667/23860881: 73.6% completed: time step 73.35 s, total time 17070.90 s
+File 69/191: step 365: 6233402/23860881: 73.9% completed: time step 68.93 s, total time 17139.82 s
+File 69/191: step 366: 6159976/23860881: 74.2% completed: time step 71.89 s, total time 17211.71 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 368: 6086313/23860881: 74.5% completed: time step 75.85 s, total time 17287.56 s
+File 69/191: step 369: 6026084/23860881: 74.7% completed: time step 69.20 s, total time 17356.77 s
+File 69/191: step 370: 5985693/23860881: 74.9% completed: time step 64.37 s, total time 17421.13 s
+File 69/191: step 371: 5922087/23860881: 75.2% completed: time step 77.22 s, total time 17498.36 s
+File 69/191: step 372: 5842785/23860881: 75.5% completed: time step 73.80 s, total time 17572.16 s
+File 69/191: step 373: 5807021/23860881: 75.7% completed: time step 61.12 s, total time 17633.28 s
+File 69/191: step 374: 5770929/23860881: 75.8% completed: time step 69.59 s, total time 17702.87 s
+File 69/191: step 375: 5705341/23860881: 76.1% completed: time step 67.86 s, total time 17770.73 s
+File 69/191: step 376: 5637899/23860881: 76.4% completed: time step 73.37 s, total time 17844.10 s
+File 69/191: step 377: 5599277/23860881: 76.5% completed: time step 70.33 s, total time 17914.42 s
+File 69/191: step 378: 5596954/23860881: 76.5% completed: time step 55.23 s, total time 17969.66 s
+File 69/191: step 380: 5488335/23860881: 77.0% completed: time step 73.69 s, total time 18043.34 s
+File 69/191: step 381: 5451046/23860881: 77.2% completed: time step 66.00 s, total time 18109.34 s
+File 69/191: step 382: 5407722/23860881: 77.3% completed: time step 70.86 s, total time 18180.20 s
+File 69/191: step 383: 5343967/23860881: 77.6% completed: time step 64.42 s, total time 18244.63 s
+File 69/191: step 384: 5282035/23860881: 77.9% completed: time step 74.34 s, total time 18318.96 s
+File 69/191: step 385: 5213691/23860881: 78.1% completed: time step 79.17 s, total time 18398.13 s
+File 69/191: step 386: 5162414/23860881: 78.4% completed: time step 71.58 s, total time 18469.71 s
+File 69/191: step 387: 5102198/23860881: 78.6% completed: time step 79.41 s, total time 18549.12 s
+File 69/191: step 388: 5045034/23860881: 78.9% completed: time step 68.79 s, total time 18617.92 s
+File 69/191: step 389: 5007711/23860881: 79.0% completed: time step 71.53 s, total time 18689.44 s
+File 69/191: step 390: 4949338/23860881: 79.3% completed: time step 71.75 s, total time 18761.19 s
+File 69/191: step 391: 4917001/23860881: 79.4% completed: time step 65.64 s, total time 18826.84 s
+File 69/191: step 392: 4839622/23860881: 79.7% completed: time step 79.61 s, total time 18906.44 s
+File 69/191: step 393: 4803041/23860881: 79.9% completed: time step 67.09 s, total time 18973.54 s
+File 69/191: step 394: 4770412/23860881: 80.0% completed: time step 67.32 s, total time 19040.86 s
+File 69/191: step 395: 4711581/23860881: 80.3% completed: time step 64.99 s, total time 19105.85 s
+File 69/191: step 396: 4686076/23860881: 80.4% completed: time step 62.93 s, total time 19168.78 s
+File 69/191: step 397: 4629124/23860881: 80.6% completed: time step 73.16 s, total time 19241.94 s
+File 69/191: step 398: 4586006/23860881: 80.8% completed: time step 63.95 s, total time 19305.89 s
+File 69/191: step 399: 4507813/23860881: 81.1% completed: time step 71.72 s, total time 19377.61 s
+File 69/191: step 400: 4459375/23860881: 81.3% completed: time step 69.68 s, total time 19447.29 s
+File 69/191: step 401: 4402572/23860881: 81.5% completed: time step 69.51 s, total time 19516.80 s
+File 69/191: step 402: 4358961/23860881: 81.7% completed: time step 58.70 s, total time 19575.50 s
+File 69/191: step 403: 4315036/23860881: 81.9% completed: time step 69.00 s, total time 19644.50 s
+File 69/191: step 404: 4256266/23860881: 82.2% completed: time step 63.87 s, total time 19708.37 s
+File 69/191: step 405: 4213417/23860881: 82.3% completed: time step 60.05 s, total time 19768.42 s
+File 69/191: step 406: 4152694/23860881: 82.6% completed: time step 63.41 s, total time 19831.83 s
+File 69/191: step 407: 4077520/23860881: 82.9% completed: time step 71.66 s, total time 19903.50 s
+File 69/191: step 408: 4006975/23860881: 83.2% completed: time step 74.06 s, total time 19977.55 s
+File 69/191: step 409: 3943989/23860881: 83.5% completed: time step 73.20 s, total time 20050.75 s
+File 69/191: step 410: 3871673/23860881: 83.8% completed: time step 75.93 s, total time 20126.68 s
+File 69/191: step 411: 3866205/23860881: 83.8% completed: time step 57.28 s, total time 20183.97 s
+File 69/191: step 412: 3814495/23860881: 84.0% completed: time step 69.35 s, total time 20253.32 s
+File 69/191: step 413: 3746299/23860881: 84.3% completed: time step 73.35 s, total time 20326.67 s
+File 69/191: step 414: 3708925/23860881: 84.5% completed: time step 68.96 s, total time 20395.63 s
+File 69/191: step 415: 3663889/23860881: 84.6% completed: time step 69.25 s, total time 20464.88 s
+File 69/191: step 416: 3622326/23860881: 84.8% completed: time step 69.76 s, total time 20534.64 s
+File 69/191: step 417: 3568297/23860881: 85.0% completed: time step 73.00 s, total time 20607.64 s
+File 69/191: step 418: 3507570/23860881: 85.3% completed: time step 75.97 s, total time 20683.61 s
+File 69/191: step 419: 3466986/23860881: 85.5% completed: time step 69.99 s, total time 20753.60 s
+File 69/191: step 421: 3400258/23860881: 85.7% completed: time step 70.21 s, total time 20823.81 s
+File 69/191: step 422: 3353622/23860881: 85.9% completed: time step 57.61 s, total time 20881.42 s
+File 69/191: step 423: 3308577/23860881: 86.1% completed: time step 68.74 s, total time 20950.16 s
+File 69/191: step 424: 3246323/23860881: 86.4% completed: time step 66.96 s, total time 21017.12 s
+File 69/191: step 425: 3178173/23860881: 86.7% completed: time step 79.72 s, total time 21096.84 s
+File 69/191: step 426: 3094787/23860881: 87.0% completed: time step 74.31 s, total time 21171.15 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 428: 3021616/23860881: 87.3% completed: time step 76.32 s, total time 21247.48 s
+File 69/191: step 429: 2981354/23860881: 87.5% completed: time step 69.49 s, total time 21316.97 s
+File 69/191: step 430: 2909464/23860881: 87.8% completed: time step 69.37 s, total time 21386.34 s
+File 69/191: step 431: 2834174/23860881: 88.1% completed: time step 76.52 s, total time 21462.85 s
+File 69/191: step 432: 2760327/23860881: 88.4% completed: time step 68.48 s, total time 21531.33 s
+File 69/191: step 433: 2701614/23860881: 88.7% completed: time step 79.54 s, total time 21610.87 s
+File 69/191: step 434: 2696761/23860881: 88.7% completed: time step 65.59 s, total time 21676.46 s
+File 69/191: step 436: 2650190/23860881: 88.9% completed: time step 68.06 s, total time 21744.53 s
+File 69/191: step 437: 2577206/23860881: 89.2% completed: time step 79.19 s, total time 21823.71 s
+File 69/191: step 438: 2500352/23860881: 89.5% completed: time step 76.78 s, total time 21900.49 s
+File 69/191: step 439: 2464743/23860881: 89.7% completed: time step 67.06 s, total time 21967.55 s
+File 69/191: step 440: 2403719/23860881: 89.9% completed: time step 71.47 s, total time 22039.03 s
+File 69/191: step 441: 2394732/23860881: 90.0% completed: time step 64.12 s, total time 22103.15 s
+File 69/191: step 442: 2344353/23860881: 90.2% completed: time step 74.53 s, total time 22177.68 s
+File 69/191: step 443: 2290357/23860881: 90.4% completed: time step 73.13 s, total time 22250.81 s
+File 69/191: step 444: 2235670/23860881: 90.6% completed: time step 66.50 s, total time 22317.31 s
+File 69/191: step 445: 2172193/23860881: 90.9% completed: time step 69.60 s, total time 22386.91 s
+File 69/191: step 446: 2119607/23860881: 91.1% completed: time step 77.78 s, total time 22464.69 s
+File 69/191: step 447: 2047720/23860881: 91.4% completed: time step 69.56 s, total time 22534.24 s
+File 69/191: step 448: 2023016/23860881: 91.5% completed: time step 58.94 s, total time 22593.18 s
+File 69/191: step 449: 2015434/23860881: 91.6% completed: time step 51.31 s, total time 22644.50 s
+File 69/191: step 450: 1963861/23860881: 91.8% completed: time step 68.83 s, total time 22713.33 s
+File 69/191: step 451: 1900411/23860881: 92.0% completed: time step 70.14 s, total time 22783.47 s
+File 69/191: step 452: 1850778/23860881: 92.2% completed: time step 72.76 s, total time 22856.23 s
+File 69/191: step 453: 1765038/23860881: 92.6% completed: time step 70.39 s, total time 22926.62 s
+File 69/191: step 454: 1731660/23860881: 92.7% completed: time step 68.17 s, total time 22994.78 s
+File 69/191: step 455: 1688698/23860881: 92.9% completed: time step 62.40 s, total time 23057.18 s
+File 69/191: step 456: 1622920/23860881: 93.2% completed: time step 85.12 s, total time 23142.31 s
+File 69/191: step 457: 1572951/23860881: 93.4% completed: time step 72.12 s, total time 23214.42 s
+File 69/191: step 458: 1495791/23860881: 93.7% completed: time step 79.17 s, total time 23293.60 s
+File 69/191: step 459: 1456946/23860881: 93.9% completed: time step 70.99 s, total time 23364.59 s
+File 69/191: step 460: 1378812/23860881: 94.2% completed: time step 78.07 s, total time 23442.66 s
+File 69/191: step 462: 1343999/23860881: 94.4% completed: time step 67.78 s, total time 23510.44 s
+File 69/191: step 463: 1310659/23860881: 94.5% completed: time step 68.54 s, total time 23578.98 s
+File 69/191: step 464: 1274237/23860881: 94.7% completed: time step 67.77 s, total time 23646.75 s
+File 69/191: step 465: 1227377/23860881: 94.9% completed: time step 70.71 s, total time 23717.46 s
+File 69/191: step 466: 1170445/23860881: 95.1% completed: time step 73.06 s, total time 23790.53 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 469: 1139339/23860881: 95.2% completed: time step 71.40 s, total time 23861.92 s
+File 69/191: step 470: 1130568/23860881: 95.3% completed: time step 69.03 s, total time 23930.96 s
+File 69/191: step 472: 1021996/23860881: 95.7% completed: time step 78.25 s, total time 24009.20 s
+File 69/191: step 473: 988232/23860881: 95.9% completed: time step 69.07 s, total time 24078.27 s
+File 69/191: step 474: 974436/23860881: 95.9% completed: time step 65.36 s, total time 24143.63 s
+File 69/191: step 475: 968994/23860881: 95.9% completed: time step 54.91 s, total time 24198.54 s
+File 69/191: step 476: 941255/23860881: 96.1% completed: time step 67.71 s, total time 24266.25 s
+File 69/191: step 477: 867120/23860881: 96.4% completed: time step 82.47 s, total time 24348.72 s
+File 69/191: step 478: 837013/23860881: 96.5% completed: time step 69.84 s, total time 24418.56 s
+File 69/191: step 479: 762580/23860881: 96.8% completed: time step 74.75 s, total time 24493.30 s
+File 69/191: step 480: 726231/23860881: 97.0% completed: time step 64.17 s, total time 24557.47 s
+File 69/191: step 481: 708131/23860881: 97.0% completed: time step 56.75 s, total time 24614.22 s
+File 69/191: step 482: 697826/23860881: 97.1% completed: time step 60.65 s, total time 24674.87 s
+File 69/191: step 483: 693827/23860881: 97.1% completed: time step 56.59 s, total time 24731.47 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 485: 686690/23860881: 97.1% completed: time step 61.42 s, total time 24792.89 s
+File 69/191: step 486: 649292/23860881: 97.3% completed: time step 71.82 s, total time 24864.70 s
+File 69/191: step 487: 618849/23860881: 97.4% completed: time step 68.30 s, total time 24933.00 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 69/191: step 489: 616673/23860881: 97.4% completed: time step 47.37 s, total time 24980.38 s
+File 69/191: step 490: 544916/23860881: 97.7% completed: time step 81.74 s, total time 25062.12 s
+File 69/191: step 491: 469535/23860881: 98.0% completed: time step 87.35 s, total time 25149.48 s
+File 69/191: step 492: 443010/23860881: 98.1% completed: time step 65.08 s, total time 25214.56 s
+File 69/191: step 493: 388558/23860881: 98.4% completed: time step 76.82 s, total time 25291.37 s
+File 69/191: step 494: 309063/23860881: 98.7% completed: time step 82.81 s, total time 25374.18 s
+File 69/191: step 495: 248272/23860881: 99.0% completed: time step 73.76 s, total time 25447.94 s
+File 69/191: step 496: 190227/23860881: 99.2% completed: time step 72.17 s, total time 25520.11 s
+File 69/191: step 497: 162662/23860881: 99.3% completed: time step 68.77 s, total time 25588.88 s
+File 69/191: step 498: 77615/23860881: 99.7% completed: time step 80.92 s, total time 25669.80 s
+File 69/191: step 499: 73268/23860881: 99.7% completed: time step 59.18 s, total time 25728.98 s
+File 69/191: step 501: 25054/23860881: 99.9% completed: time step 71.39 s, total time 25800.37 s
+File 69/191: step 502: 19012/23860881: 99.9% completed: time step 59.70 s, total time 25860.07 s
+File 69/191: step 503: 4294/23860881: 100.0% completed: time step 64.49 s, total time 25924.56 s
+File 69/191: step 504: 3477/23860881: 100.0% completed: time step 56.50 s, total time 25981.06 s
+
+File 70/191: KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31. Fold = 5
+File 70/191: step 0: 20581438/20581438: 0.0% completed: time step 196.15 s, total time 196.15 s
+File 70/191: step 1: 20520633/20581438: 0.3% completed: time step 113.13 s, total time 309.29 s
+File 70/191: step 2: 20518662/20581438: 0.3% completed: time step 63.93 s, total time 373.21 s
+File 70/191: step 4: 20410084/20581438: 0.8% completed: time step 170.31 s, total time 543.53 s
+File 70/191: step 5: 20407489/20581438: 0.8% completed: time step 65.21 s, total time 608.74 s
+File 70/191: step 7: 20301062/20581438: 1.4% completed: time step 119.56 s, total time 728.30 s
+File 70/191: step 8: 20298438/20581438: 1.4% completed: time step 62.87 s, total time 791.17 s
+File 70/191: step 10: 20224725/20581438: 1.7% completed: time step 70.93 s, total time 862.10 s
+File 70/191: step 11: 20160298/20581438: 2.0% completed: time step 65.80 s, total time 927.90 s
+File 70/191: step 13: 20163357/20581438: 2.0% completed: time step 62.98 s, total time 990.88 s
+File 70/191: step 15: 20020015/20581438: 2.7% completed: time step 71.48 s, total time 1062.36 s
+File 70/191: step 17: 19902411/20581438: 3.3% completed: time step 72.62 s, total time 1134.98 s
+File 70/191: step 19: 19738690/20581438: 4.1% completed: time step 86.75 s, total time 1221.73 s
+File 70/191: step 20: 19730172/20581438: 4.1% completed: time step 62.87 s, total time 1284.60 s
+File 70/191: step 22: 19617780/20581438: 4.7% completed: time step 94.32 s, total time 1378.92 s
+File 70/191: step 23: 19617702/20581438: 4.7% completed: time step 61.70 s, total time 1440.61 s
+File 70/191: step 24: 19617445/20581438: 4.7% completed: time step 61.45 s, total time 1502.07 s
+File 70/191: step 26: 19506920/20581438: 5.2% completed: time step 123.45 s, total time 1625.51 s
+File 70/191: step 27: 19506802/20581438: 5.2% completed: time step 61.82 s, total time 1687.33 s
+File 70/191: step 29: 19398776/20581438: 5.7% completed: time step 106.96 s, total time 1794.29 s
+File 70/191: step 30: 19396313/20581438: 5.8% completed: time step 64.70 s, total time 1858.99 s
+File 70/191: step 32: 19281226/20581438: 6.3% completed: time step 88.20 s, total time 1947.19 s
+File 70/191: step 34: 19169787/20581438: 6.9% completed: time step 88.84 s, total time 2036.03 s
+File 70/191: step 35: 19159564/20581438: 6.9% completed: time step 63.63 s, total time 2099.66 s
+File 70/191: step 37: 19074487/20581438: 7.3% completed: time step 74.88 s, total time 2174.55 s
+File 70/191: step 38: 19002902/20581438: 7.7% completed: time step 74.35 s, total time 2248.90 s
+File 70/191: step 39: 18917807/20581438: 8.1% completed: time step 87.03 s, total time 2335.92 s
+File 70/191: step 40: 18874790/20581438: 8.3% completed: time step 70.72 s, total time 2406.65 s
+File 70/191: step 42: 18764886/20581438: 8.8% completed: time step 87.82 s, total time 2494.47 s
+File 70/191: step 44: 18653508/20581438: 9.4% completed: time step 84.85 s, total time 2579.31 s
+File 70/191: step 45: 18652544/20581438: 9.4% completed: time step 62.13 s, total time 2641.44 s
+File 70/191: step 47: 18537740/20581438: 9.9% completed: time step 88.20 s, total time 2729.64 s
+File 70/191: step 48: 18537012/20581438: 9.9% completed: time step 61.56 s, total time 2791.20 s
+File 70/191: step 49: 18534362/20581438: 9.9% completed: time step 62.43 s, total time 2853.63 s
+File 70/191: step 51: 18521433/20581438: 10.0% completed: time step 54.27 s, total time 2907.90 s
+File 70/191: step 52: 18466201/20581438: 10.3% completed: time step 71.83 s, total time 2979.73 s
+File 70/191: step 53: 18398009/20581438: 10.6% completed: time step 76.42 s, total time 3056.15 s
+File 70/191: step 54: 18373735/20581438: 10.7% completed: time step 65.46 s, total time 3121.61 s
+File 70/191: step 56: 18310626/20581438: 11.0% completed: time step 76.63 s, total time 3198.24 s
+File 70/191: step 57: 18216935/20581438: 11.5% completed: time step 86.20 s, total time 3284.44 s
+File 70/191: step 58: 18126957/20581438: 11.9% completed: time step 82.35 s, total time 3366.79 s
+File 70/191: step 59: 18035617/20581438: 12.4% completed: time step 85.23 s, total time 3452.02 s
+File 70/191: step 60: 17938682/20581438: 12.8% completed: time step 105.41 s, total time 3557.42 s
+File 70/191: step 61: 17904732/20581438: 13.0% completed: time step 69.74 s, total time 3627.16 s
+File 70/191: step 62: 17812159/20581438: 13.5% completed: time step 84.51 s, total time 3711.67 s
+File 70/191: step 63: 17781618/20581438: 13.6% completed: time step 75.69 s, total time 3787.36 s
+File 70/191: step 64: 17685807/20581438: 14.1% completed: time step 89.93 s, total time 3877.29 s
+File 70/191: step 65: 17588499/20581438: 14.5% completed: time step 85.87 s, total time 3963.16 s
+File 70/191: step 66: 17511430/20581438: 14.9% completed: time step 80.72 s, total time 4043.89 s
+File 70/191: step 67: 17441167/20581438: 15.3% completed: time step 78.60 s, total time 4122.48 s
+File 70/191: step 68: 17415190/20581438: 15.4% completed: time step 72.84 s, total time 4195.32 s
+File 70/191: step 69: 17355112/20581438: 15.7% completed: time step 104.70 s, total time 4300.03 s
+File 70/191: step 70: 17328985/20581438: 15.8% completed: time step 72.85 s, total time 4372.88 s
+File 70/191: step 72: 17230944/20581438: 16.3% completed: time step 82.30 s, total time 4455.18 s
+File 70/191: step 73: 17148867/20581438: 16.7% completed: time step 85.25 s, total time 4540.43 s
+File 70/191: step 74: 17102199/20581438: 16.9% completed: time step 72.26 s, total time 4612.69 s
+File 70/191: step 75: 17005149/20581438: 17.4% completed: time step 112.28 s, total time 4724.97 s
+File 70/191: step 76: 16906166/20581438: 17.9% completed: time step 113.15 s, total time 4838.12 s
+File 70/191: step 77: 16808993/20581438: 18.3% completed: time step 93.26 s, total time 4931.39 s
+File 70/191: step 78: 16717929/20581438: 18.8% completed: time step 83.39 s, total time 5014.77 s
+File 70/191: step 79: 16663285/20581438: 19.0% completed: time step 74.67 s, total time 5089.44 s
+File 70/191: step 80: 16578956/20581438: 19.4% completed: time step 88.70 s, total time 5178.14 s
+File 70/191: step 81: 16564067/20581438: 19.5% completed: time step 67.84 s, total time 5245.98 s
+File 70/191: step 82: 16552926/20581438: 19.6% completed: time step 65.65 s, total time 5311.63 s
+File 70/191: step 83: 16546920/20581438: 19.6% completed: time step 63.64 s, total time 5375.28 s
+File 70/191: step 84: 16544070/20581438: 19.6% completed: time step 63.05 s, total time 5438.33 s
+File 70/191: step 86: 16499707/20581438: 19.8% completed: time step 76.96 s, total time 5515.29 s
+File 70/191: step 87: 16488627/20581438: 19.9% completed: time step 65.98 s, total time 5581.26 s
+File 70/191: step 88: 16423029/20581438: 20.2% completed: time step 74.81 s, total time 5656.07 s
+File 70/191: step 89: 16363270/20581438: 20.5% completed: time step 78.37 s, total time 5734.45 s
+File 70/191: step 90: 16293938/20581438: 20.8% completed: time step 79.34 s, total time 5813.78 s
+File 70/191: step 91: 16239774/20581438: 21.1% completed: time step 72.08 s, total time 5885.87 s
+File 70/191: step 92: 16162260/20581438: 21.5% completed: time step 82.60 s, total time 5968.46 s
+File 70/191: step 93: 16073600/20581438: 21.9% completed: time step 100.51 s, total time 6068.97 s
+File 70/191: step 94: 15988814/20581438: 22.3% completed: time step 92.32 s, total time 6161.30 s
+File 70/191: step 95: 15897396/20581438: 22.8% completed: time step 83.80 s, total time 6245.10 s
+File 70/191: step 96: 15804266/20581438: 23.2% completed: time step 87.69 s, total time 6332.78 s
+File 70/191: step 97: 15804359/20581438: 23.2% completed: time step 53.45 s, total time 6386.23 s
+File 70/191: step 99: 15777393/20581438: 23.3% completed: time step 71.22 s, total time 6457.45 s
+File 70/191: step 100: 15697342/20581438: 23.7% completed: time step 82.80 s, total time 6540.25 s
+File 70/191: step 101: 15647556/20581438: 24.0% completed: time step 76.73 s, total time 6616.98 s
+File 70/191: step 102: 15553556/20581438: 24.4% completed: time step 120.40 s, total time 6737.38 s
+File 70/191: step 103: 15458061/20581438: 24.9% completed: time step 88.08 s, total time 6825.45 s
+File 70/191: step 104: 15366475/20581438: 25.3% completed: time step 110.40 s, total time 6935.85 s
+File 70/191: step 105: 15295832/20581438: 25.7% completed: time step 119.02 s, total time 7054.87 s
+File 70/191: step 106: 15222505/20581438: 26.0% completed: time step 80.94 s, total time 7135.81 s
+File 70/191: step 107: 15144949/20581438: 26.4% completed: time step 76.09 s, total time 7211.90 s
+File 70/191: step 108: 15084976/20581438: 26.7% completed: time step 82.62 s, total time 7294.52 s
+File 70/191: step 109: 15007529/20581438: 27.1% completed: time step 88.61 s, total time 7383.14 s
+File 70/191: step 110: 14984569/20581438: 27.2% completed: time step 71.81 s, total time 7454.94 s
+File 70/191: step 111: 14911156/20581438: 27.6% completed: time step 86.49 s, total time 7541.43 s
+File 70/191: step 113: 14887722/20581438: 27.7% completed: time step 62.56 s, total time 7603.99 s
+File 70/191: step 114: 14872331/20581438: 27.7% completed: time step 69.42 s, total time 7673.41 s
+File 70/191: step 116: 14772238/20581438: 28.2% completed: time step 130.83 s, total time 7804.24 s
+File 70/191: step 117: 14738128/20581438: 28.4% completed: time step 91.11 s, total time 7895.35 s
+File 70/191: step 118: 14735469/20581438: 28.4% completed: time step 70.23 s, total time 7965.58 s
+File 70/191: step 119: 14689324/20581438: 28.6% completed: time step 90.17 s, total time 8055.75 s
+File 70/191: step 120: 14666154/20581438: 28.7% completed: time step 66.23 s, total time 8121.98 s
+File 70/191: step 121: 14618960/20581438: 29.0% completed: time step 76.69 s, total time 8198.66 s
+File 70/191: step 122: 14600231/20581438: 29.1% completed: time step 62.32 s, total time 8260.99 s
+File 70/191: step 123: 14539697/20581438: 29.4% completed: time step 79.44 s, total time 8340.43 s
+File 70/191: step 124: 14480677/20581438: 29.6% completed: time step 75.29 s, total time 8415.71 s
+File 70/191: step 125: 14391238/20581438: 30.1% completed: time step 87.08 s, total time 8502.80 s
+File 70/191: step 126: 14360647/20581438: 30.2% completed: time step 71.02 s, total time 8573.82 s
+File 70/191: step 127: 14268007/20581438: 30.7% completed: time step 87.85 s, total time 8661.67 s
+File 70/191: step 128: 14243991/20581438: 30.8% completed: time step 62.21 s, total time 8723.88 s
+File 70/191: step 129: 14204039/20581438: 31.0% completed: time step 74.82 s, total time 8798.70 s
+File 70/191: step 130: 14117786/20581438: 31.4% completed: time step 83.62 s, total time 8882.33 s
+File 70/191: step 131: 14061483/20581438: 31.7% completed: time step 78.06 s, total time 8960.38 s
+File 70/191: step 132: 13982865/20581438: 32.1% completed: time step 82.25 s, total time 9042.63 s
+File 70/191: step 133: 13897805/20581438: 32.5% completed: time step 69.14 s, total time 9111.77 s
+File 70/191: step 134: 13806567/20581438: 32.9% completed: time step 84.76 s, total time 9196.53 s
+File 70/191: step 135: 13742609/20581438: 33.2% completed: time step 87.04 s, total time 9283.57 s
+File 70/191: step 136: 13735796/20581438: 33.3% completed: time step 65.76 s, total time 9349.33 s
+File 70/191: step 137: 13731734/20581438: 33.3% completed: time step 55.63 s, total time 9404.96 s
+File 70/191: step 138: 13716810/20581438: 33.4% completed: time step 69.97 s, total time 9474.93 s
+File 70/191: step 140: 13647147/20581438: 33.7% completed: time step 68.45 s, total time 9543.38 s
+File 70/191: step 141: 13564433/20581438: 34.1% completed: time step 91.72 s, total time 9635.10 s
+File 70/191: step 142: 13521284/20581438: 34.3% completed: time step 72.50 s, total time 9707.61 s
+File 70/191: step 143: 13477150/20581438: 34.5% completed: time step 65.79 s, total time 9773.40 s
+File 70/191: step 144: 13473514/20581438: 34.5% completed: time step 60.31 s, total time 9833.71 s
+File 70/191: step 145: 13442825/20581438: 34.7% completed: time step 81.62 s, total time 9915.34 s
+File 70/191: step 146: 13407357/20581438: 34.9% completed: time step 70.95 s, total time 9986.28 s
+File 70/191: step 147: 13345672/20581438: 35.2% completed: time step 84.35 s, total time 10070.63 s
+File 70/191: step 148: 13332463/20581438: 35.2% completed: time step 65.52 s, total time 10136.15 s
+File 70/191: step 150: 13236557/20581438: 35.7% completed: time step 87.49 s, total time 10223.64 s
+File 70/191: step 151: 13205162/20581438: 35.8% completed: time step 67.99 s, total time 10291.63 s
+File 70/191: step 152: 13115211/20581438: 36.3% completed: time step 89.66 s, total time 10381.29 s
+File 70/191: step 153: 13051055/20581438: 36.6% completed: time step 80.77 s, total time 10462.06 s
+File 70/191: step 154: 12974103/20581438: 37.0% completed: time step 81.34 s, total time 10543.40 s
+File 70/191: step 155: 12895450/20581438: 37.3% completed: time step 82.52 s, total time 10625.91 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 157: 12826017/20581438: 37.7% completed: time step 85.20 s, total time 10711.11 s
+File 70/191: step 158: 12800838/20581438: 37.8% completed: time step 68.47 s, total time 10779.58 s
+File 70/191: step 159: 12793125/20581438: 37.8% completed: time step 68.39 s, total time 10847.97 s
+File 70/191: step 160: 12773067/20581438: 37.9% completed: time step 66.91 s, total time 10914.88 s
+File 70/191: step 161: 12702438/20581438: 38.3% completed: time step 82.18 s, total time 10997.05 s
+File 70/191: step 162: 12657249/20581438: 38.5% completed: time step 77.05 s, total time 11074.11 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 165: 12654411/20581438: 38.5% completed: time step 58.82 s, total time 11132.93 s
+File 70/191: step 169: 12632353/20581438: 38.6% completed: time step 56.85 s, total time 11189.78 s
+File 70/191: step 170: 12584295/20581438: 38.9% completed: time step 75.82 s, total time 11265.60 s
+File 70/191: step 171: 12500297/20581438: 39.3% completed: time step 88.38 s, total time 11353.98 s
+File 70/191: step 172: 12449208/20581438: 39.5% completed: time step 81.28 s, total time 11435.26 s
+File 70/191: step 173: 12384222/20581438: 39.8% completed: time step 75.70 s, total time 11510.96 s
+File 70/191: step 174: 12310871/20581438: 40.2% completed: time step 84.47 s, total time 11595.43 s
+File 70/191: step 175: 12299959/20581438: 40.2% completed: time step 69.00 s, total time 11664.43 s
+File 70/191: step 176: 12233488/20581438: 40.6% completed: time step 81.49 s, total time 11745.92 s
+File 70/191: step 177: 12179527/20581438: 40.8% completed: time step 77.60 s, total time 11823.52 s
+File 70/191: step 178: 12144366/20581438: 41.0% completed: time step 73.13 s, total time 11896.65 s
+File 70/191: step 179: 12144045/20581438: 41.0% completed: time step 58.78 s, total time 11955.43 s
+File 70/191: step 181: 12046063/20581438: 41.5% completed: time step 87.23 s, total time 12042.66 s
+File 70/191: step 182: 11969256/20581438: 41.8% completed: time step 79.37 s, total time 12122.03 s
+File 70/191: step 183: 11923136/20581438: 42.1% completed: time step 79.06 s, total time 12201.10 s
+File 70/191: step 184: 11854853/20581438: 42.4% completed: time step 83.35 s, total time 12284.45 s
+File 70/191: step 185: 11794188/20581438: 42.7% completed: time step 81.16 s, total time 12365.60 s
+File 70/191: step 186: 11748596/20581438: 42.9% completed: time step 70.04 s, total time 12435.65 s
+File 70/191: step 187: 11746512/20581438: 42.9% completed: time step 66.24 s, total time 12501.88 s
+File 70/191: step 188: 11728197/20581438: 43.0% completed: time step 70.39 s, total time 12572.28 s
+File 70/191: step 189: 11712256/20581438: 43.1% completed: time step 65.70 s, total time 12637.97 s
+File 70/191: step 190: 11620946/20581438: 43.5% completed: time step 91.22 s, total time 12729.19 s
+File 70/191: step 191: 11620228/20581438: 43.5% completed: time step 54.56 s, total time 12783.76 s
+File 70/191: step 193: 11554564/20581438: 43.9% completed: time step 81.48 s, total time 12865.23 s
+File 70/191: step 194: 11497772/20581438: 44.1% completed: time step 75.05 s, total time 12940.28 s
+File 70/191: step 195: 11463277/20581438: 44.3% completed: time step 72.68 s, total time 13012.96 s
+File 70/191: step 196: 11398149/20581438: 44.6% completed: time step 85.51 s, total time 13098.47 s
+File 70/191: step 197: 11317332/20581438: 45.0% completed: time step 84.54 s, total time 13183.01 s
+File 70/191: step 198: 11296322/20581438: 45.1% completed: time step 73.18 s, total time 13256.19 s
+File 70/191: step 199: 11268029/20581438: 45.3% completed: time step 71.07 s, total time 13327.26 s
+File 70/191: step 200: 11245038/20581438: 45.4% completed: time step 68.61 s, total time 13395.88 s
+File 70/191: step 201: 11203447/20581438: 45.6% completed: time step 75.03 s, total time 13470.91 s
+File 70/191: step 202: 11119848/20581438: 46.0% completed: time step 94.82 s, total time 13565.73 s
+File 70/191: step 203: 11040067/20581438: 46.4% completed: time step 89.65 s, total time 13655.38 s
+File 70/191: step 204: 11009129/20581438: 46.5% completed: time step 77.42 s, total time 13732.80 s
+File 70/191: step 205: 11004224/20581438: 46.5% completed: time step 68.88 s, total time 13801.69 s
+File 70/191: step 206: 11001715/20581438: 46.5% completed: time step 55.39 s, total time 13857.07 s
+File 70/191: step 208: 10992182/20581438: 46.6% completed: time step 69.46 s, total time 13926.53 s
+File 70/191: step 210: 10890190/20581438: 47.1% completed: time step 58.28 s, total time 13984.81 s
+File 70/191: step 211: 10863526/20581438: 47.2% completed: time step 69.45 s, total time 14054.26 s
+File 70/191: step 213: 10745392/20581438: 47.8% completed: time step 80.93 s, total time 14135.19 s
+File 70/191: step 214: 10687252/20581438: 48.1% completed: time step 87.63 s, total time 14222.82 s
+File 70/191: step 215: 10655141/20581438: 48.2% completed: time step 64.27 s, total time 14287.09 s
+File 70/191: step 216: 10574970/20581438: 48.6% completed: time step 91.19 s, total time 14378.28 s
+File 70/191: step 217: 10552199/20581438: 48.7% completed: time step 71.48 s, total time 14449.76 s
+File 70/191: step 218: 10537130/20581438: 48.8% completed: time step 66.12 s, total time 14515.88 s
+File 70/191: step 219: 10534680/20581438: 48.8% completed: time step 69.62 s, total time 14585.50 s
+File 70/191: step 220: 10531917/20581438: 48.8% completed: time step 65.48 s, total time 14650.98 s
+File 70/191: step 222: 10338372/20581438: 49.8% completed: time step 94.56 s, total time 14745.54 s
+File 70/191: step 223: 10262119/20581438: 50.1% completed: time step 86.95 s, total time 14832.49 s
+File 70/191: step 224: 10261758/20581438: 50.1% completed: time step 63.32 s, total time 14895.81 s
+File 70/191: step 225: 10263532/20581438: 50.1% completed: time step 64.53 s, total time 14960.34 s
+File 70/191: step 227: 10204930/20581438: 50.4% completed: time step 69.18 s, total time 15029.52 s
+File 70/191: step 228: 10121453/20581438: 50.8% completed: time step 95.72 s, total time 15125.24 s
+File 70/191: step 229: 10103252/20581438: 50.9% completed: time step 61.93 s, total time 15187.17 s
+File 70/191: step 231: 10079200/20581438: 51.0% completed: time step 67.98 s, total time 15255.15 s
+File 70/191: step 232: 10011573/20581438: 51.4% completed: time step 87.45 s, total time 15342.60 s
+File 70/191: step 233: 9986542/20581438: 51.5% completed: time step 73.50 s, total time 15416.10 s
+File 70/191: step 234: 9895343/20581438: 51.9% completed: time step 99.95 s, total time 15516.04 s
+File 70/191: step 235: 9825431/20581438: 52.3% completed: time step 84.10 s, total time 15600.14 s
+File 70/191: step 236: 9777666/20581438: 52.5% completed: time step 79.32 s, total time 15679.46 s
+File 70/191: step 237: 9733504/20581438: 52.7% completed: time step 82.28 s, total time 15761.74 s
+File 70/191: step 238: 9678139/20581438: 53.0% completed: time step 78.76 s, total time 15840.50 s
+File 70/191: step 239: 9620616/20581438: 53.3% completed: time step 86.80 s, total time 15927.30 s
+File 70/191: step 240: 9555275/20581438: 53.6% completed: time step 87.34 s, total time 16014.64 s
+File 70/191: step 241: 9505156/20581438: 53.8% completed: time step 79.79 s, total time 16094.43 s
+File 70/191: step 242: 9443503/20581438: 54.1% completed: time step 91.10 s, total time 16185.53 s
+File 70/191: step 243: 9394632/20581438: 54.4% completed: time step 82.70 s, total time 16268.23 s
+File 70/191: step 244: 9335421/20581438: 54.6% completed: time step 83.41 s, total time 16351.64 s
+File 70/191: step 245: 9295363/20581438: 54.8% completed: time step 76.77 s, total time 16428.41 s
+File 70/191: step 246: 9271700/20581438: 55.0% completed: time step 59.46 s, total time 16487.87 s
+File 70/191: step 247: 9181410/20581438: 55.4% completed: time step 92.66 s, total time 16580.53 s
+File 70/191: step 248: 9103944/20581438: 55.8% completed: time step 89.91 s, total time 16670.44 s
+File 70/191: step 249: 9091450/20581438: 55.8% completed: time step 61.25 s, total time 16731.69 s
+File 70/191: step 250: 9022969/20581438: 56.2% completed: time step 87.61 s, total time 16819.31 s
+File 70/191: step 251: 8998320/20581438: 56.3% completed: time step 72.87 s, total time 16892.18 s
+File 70/191: step 253: 8960835/20581438: 56.5% completed: time step 80.29 s, total time 16972.47 s
+File 70/191: step 254: 8866745/20581438: 56.9% completed: time step 91.52 s, total time 17063.99 s
+File 70/191: step 255: 8820018/20581438: 57.1% completed: time step 79.95 s, total time 17143.93 s
+File 70/191: step 256: 8748561/20581438: 57.5% completed: time step 83.35 s, total time 17227.28 s
+File 70/191: step 257: 8689007/20581438: 57.8% completed: time step 86.85 s, total time 17314.14 s
+File 70/191: step 258: 8624177/20581438: 58.1% completed: time step 84.21 s, total time 17398.34 s
+File 70/191: step 259: 8548704/20581438: 58.5% completed: time step 93.16 s, total time 17491.50 s
+File 70/191: step 260: 8485545/20581438: 58.8% completed: time step 86.29 s, total time 17577.79 s
+File 70/191: step 261: 8392509/20581438: 59.2% completed: time step 85.91 s, total time 17663.70 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 263: 8308832/20581438: 59.6% completed: time step 94.48 s, total time 17758.18 s
+File 70/191: step 264: 8267070/20581438: 59.8% completed: time step 82.07 s, total time 17840.25 s
+File 70/191: step 265: 8207751/20581438: 60.1% completed: time step 88.48 s, total time 17928.73 s
+File 70/191: step 266: 8155202/20581438: 60.4% completed: time step 81.66 s, total time 18010.39 s
+File 70/191: step 267: 8064162/20581438: 60.8% completed: time step 91.48 s, total time 18101.88 s
+File 70/191: step 268: 8046665/20581438: 60.9% completed: time step 70.25 s, total time 18172.13 s
+File 70/191: step 269: 7977622/20581438: 61.2% completed: time step 87.46 s, total time 18259.59 s
+File 70/191: step 270: 7899458/20581438: 61.6% completed: time step 85.55 s, total time 18345.13 s
+File 70/191: step 271: 7825062/20581438: 62.0% completed: time step 87.32 s, total time 18432.45 s
+File 70/191: step 272: 7769442/20581438: 62.3% completed: time step 81.82 s, total time 18514.27 s
+File 70/191: step 273: 7742203/20581438: 62.4% completed: time step 72.41 s, total time 18586.68 s
+File 70/191: step 274: 7648343/20581438: 62.8% completed: time step 94.66 s, total time 18681.34 s
+File 70/191: step 275: 7597012/20581438: 63.1% completed: time step 84.87 s, total time 18766.22 s
+File 70/191: step 276: 7515205/20581438: 63.5% completed: time step 89.26 s, total time 18855.47 s
+File 70/191: step 277: 7446896/20581438: 63.8% completed: time step 90.65 s, total time 18946.12 s
+File 70/191: step 278: 7382984/20581438: 64.1% completed: time step 84.65 s, total time 19030.77 s
+File 70/191: step 279: 7293600/20581438: 64.6% completed: time step 92.62 s, total time 19123.39 s
+File 70/191: step 280: 7205705/20581438: 65.0% completed: time step 93.47 s, total time 19216.85 s
+File 70/191: step 281: 7183223/20581438: 65.1% completed: time step 69.02 s, total time 19285.87 s
+File 70/191: step 283: 7109160/20581438: 65.5% completed: time step 91.15 s, total time 19377.02 s
+File 70/191: step 284: 7030372/20581438: 65.8% completed: time step 92.56 s, total time 19469.58 s
+File 70/191: step 285: 6982226/20581438: 66.1% completed: time step 82.17 s, total time 19551.75 s
+File 70/191: step 286: 6943291/20581438: 66.3% completed: time step 83.56 s, total time 19635.31 s
+File 70/191: step 287: 6862374/20581438: 66.7% completed: time step 98.72 s, total time 19734.03 s
+File 70/191: step 288: 6812517/20581438: 66.9% completed: time step 87.64 s, total time 19821.67 s
+File 70/191: step 289: 6784097/20581438: 67.0% completed: time step 71.67 s, total time 19893.34 s
+File 70/191: step 290: 6766719/20581438: 67.1% completed: time step 68.12 s, total time 19961.46 s
+File 70/191: step 291: 6676966/20581438: 67.6% completed: time step 93.07 s, total time 20054.53 s
+File 70/191: step 292: 6611877/20581438: 67.9% completed: time step 89.21 s, total time 20143.74 s
+File 70/191: step 293: 6539605/20581438: 68.2% completed: time step 86.90 s, total time 20230.63 s
+File 70/191: step 294: 6450576/20581438: 68.7% completed: time step 88.64 s, total time 20319.27 s
+File 70/191: step 295: 6439116/20581438: 68.7% completed: time step 65.31 s, total time 20384.58 s
+File 70/191: step 296: 6407136/20581438: 68.9% completed: time step 81.10 s, total time 20465.68 s
+File 70/191: step 297: 6333717/20581438: 69.2% completed: time step 94.15 s, total time 20559.84 s
+File 70/191: step 298: 6277393/20581438: 69.5% completed: time step 86.01 s, total time 20645.85 s
+File 70/191: step 299: 6241240/20581438: 69.7% completed: time step 76.77 s, total time 20722.61 s
+File 70/191: step 300: 6210021/20581438: 69.8% completed: time step 77.08 s, total time 20799.69 s
+File 70/191: step 301: 6140178/20581438: 70.2% completed: time step 91.22 s, total time 20890.91 s
+File 70/191: step 302: 6050834/20581438: 70.6% completed: time step 87.63 s, total time 20978.54 s
+File 70/191: step 303: 5999460/20581438: 70.9% completed: time step 86.43 s, total time 21064.96 s
+File 70/191: step 304: 5909539/20581438: 71.3% completed: time step 101.82 s, total time 21166.78 s
+File 70/191: step 305: 5838863/20581438: 71.6% completed: time step 89.75 s, total time 21256.54 s
+File 70/191: step 306: 5834480/20581438: 71.7% completed: time step 72.71 s, total time 21329.25 s
+File 70/191: step 307: 5759719/20581438: 72.0% completed: time step 86.36 s, total time 21415.60 s
+File 70/191: step 308: 5700852/20581438: 72.3% completed: time step 86.77 s, total time 21502.37 s
+File 70/191: step 309: 5647737/20581438: 72.6% completed: time step 88.33 s, total time 21590.70 s
+File 70/191: step 310: 5630048/20581438: 72.6% completed: time step 76.06 s, total time 21666.77 s
+File 70/191: step 312: 5539552/20581438: 73.1% completed: time step 78.37 s, total time 21745.14 s
+File 70/191: step 313: 5518253/20581438: 73.2% completed: time step 79.42 s, total time 21824.56 s
+File 70/191: step 314: 5438744/20581438: 73.6% completed: time step 104.30 s, total time 21928.86 s
+File 70/191: step 315: 5374123/20581438: 73.9% completed: time step 90.20 s, total time 22019.06 s
+File 70/191: step 316: 5318878/20581438: 74.2% completed: time step 84.60 s, total time 22103.66 s
+File 70/191: step 317: 5243530/20581438: 74.5% completed: time step 87.21 s, total time 22190.87 s
+File 70/191: step 318: 5197822/20581438: 74.7% completed: time step 81.26 s, total time 22272.13 s
+File 70/191: step 320: 5107298/20581438: 75.2% completed: time step 86.64 s, total time 22358.76 s
+File 70/191: step 321: 5033584/20581438: 75.5% completed: time step 89.04 s, total time 22447.80 s
+File 70/191: step 322: 5005353/20581438: 75.7% completed: time step 71.74 s, total time 22519.55 s
+File 70/191: step 323: 4926013/20581438: 76.1% completed: time step 92.81 s, total time 22612.36 s
+File 70/191: step 324: 4858388/20581438: 76.4% completed: time step 92.69 s, total time 22705.05 s
+File 70/191: step 325: 4806374/20581438: 76.6% completed: time step 83.79 s, total time 22788.84 s
+File 70/191: step 326: 4728959/20581438: 77.0% completed: time step 102.31 s, total time 22891.15 s
+File 70/191: step 327: 4638835/20581438: 77.5% completed: time step 92.46 s, total time 22983.61 s
+File 70/191: step 328: 4557328/20581438: 77.9% completed: time step 85.22 s, total time 23068.83 s
+File 70/191: step 330: 4503905/20581438: 78.1% completed: time step 67.41 s, total time 23136.24 s
+File 70/191: step 331: 4415474/20581438: 78.5% completed: time step 99.21 s, total time 23235.45 s
+File 70/191: step 332: 4359829/20581438: 78.8% completed: time step 85.18 s, total time 23320.64 s
+File 70/191: step 333: 4287631/20581438: 79.2% completed: time step 98.15 s, total time 23418.79 s
+File 70/191: step 334: 4252768/20581438: 79.3% completed: time step 80.08 s, total time 23498.86 s
+File 70/191: step 335: 4177901/20581438: 79.7% completed: time step 89.34 s, total time 23588.20 s
+File 70/191: step 336: 4125220/20581438: 80.0% completed: time step 90.96 s, total time 23679.16 s
+File 70/191: step 337: 4043902/20581438: 80.4% completed: time step 94.62 s, total time 23773.78 s
+File 70/191: step 338: 3986479/20581438: 80.6% completed: time step 83.49 s, total time 23857.27 s
+File 70/191: step 339: 3909640/20581438: 81.0% completed: time step 88.26 s, total time 23945.53 s
+File 70/191: step 341: 3865052/20581438: 81.2% completed: time step 77.63 s, total time 24023.17 s
+File 70/191: step 342: 3819719/20581438: 81.4% completed: time step 85.74 s, total time 24108.90 s
+File 70/191: step 343: 3749083/20581438: 81.8% completed: time step 78.89 s, total time 24187.79 s
+File 70/191: step 344: 3695287/20581438: 82.0% completed: time step 84.63 s, total time 24272.42 s
+File 70/191: step 345: 3622262/20581438: 82.4% completed: time step 72.83 s, total time 24345.25 s
+File 70/191: step 346: 3536165/20581438: 82.8% completed: time step 96.66 s, total time 24441.91 s
+File 70/191: step 347: 3506464/20581438: 83.0% completed: time step 78.08 s, total time 24519.99 s
+File 70/191: step 348: 3493794/20581438: 83.0% completed: time step 72.32 s, total time 24592.31 s
+File 70/191: step 349: 3425799/20581438: 83.4% completed: time step 90.34 s, total time 24682.66 s
+File 70/191: step 350: 3392005/20581438: 83.5% completed: time step 73.47 s, total time 24756.13 s
+File 70/191: step 351: 3311872/20581438: 83.9% completed: time step 91.45 s, total time 24847.58 s
+File 70/191: step 352: 3224749/20581438: 84.3% completed: time step 100.34 s, total time 24947.92 s
+File 70/191: step 353: 3177216/20581438: 84.6% completed: time step 86.98 s, total time 25034.90 s
+File 70/191: step 354: 3134019/20581438: 84.8% completed: time step 87.61 s, total time 25122.51 s
+File 70/191: step 355: 3074509/20581438: 85.1% completed: time step 79.82 s, total time 25202.33 s
+File 70/191: step 356: 2985107/20581438: 85.5% completed: time step 105.05 s, total time 25307.39 s
+File 70/191: step 357: 2956926/20581438: 85.6% completed: time step 77.19 s, total time 25384.57 s
+File 70/191: step 358: 2877483/20581438: 86.0% completed: time step 91.84 s, total time 25476.41 s
+File 70/191: step 359: 2788073/20581438: 86.5% completed: time step 99.64 s, total time 25576.06 s
+File 70/191: step 360: 2770672/20581438: 86.5% completed: time step 77.27 s, total time 25653.33 s
+File 70/191: step 361: 2684101/20581438: 87.0% completed: time step 96.44 s, total time 25749.77 s
+File 70/191: step 362: 2629439/20581438: 87.2% completed: time step 84.44 s, total time 25834.21 s
+File 70/191: step 363: 2554870/20581438: 87.6% completed: time step 95.27 s, total time 25929.48 s
+File 70/191: step 364: 2514395/20581438: 87.8% completed: time step 80.76 s, total time 26010.24 s
+File 70/191: step 365: 2501922/20581438: 87.8% completed: time step 67.98 s, total time 26078.21 s
+File 70/191: step 367: 2429945/20581438: 88.2% completed: time step 76.44 s, total time 26154.65 s
+File 70/191: step 368: 2396453/20581438: 88.4% completed: time step 82.23 s, total time 26236.88 s
+File 70/191: step 369: 2326154/20581438: 88.7% completed: time step 93.73 s, total time 26330.61 s
+File 70/191: step 370: 2299656/20581438: 88.8% completed: time step 79.68 s, total time 26410.29 s
+File 70/191: step 371: 2295257/20581438: 88.8% completed: time step 80.30 s, total time 26490.59 s
+File 70/191: step 372: 2283233/20581438: 88.9% completed: time step 76.55 s, total time 26567.14 s
+File 70/191: step 373: 2215781/20581438: 89.2% completed: time step 91.13 s, total time 26658.27 s
+File 70/191: step 374: 2157029/20581438: 89.5% completed: time step 89.55 s, total time 26747.82 s
+File 70/191: step 375: 2069575/20581438: 89.9% completed: time step 102.16 s, total time 26849.97 s
+File 70/191: step 376: 2058451/20581438: 90.0% completed: time step 67.57 s, total time 26917.54 s
+File 70/191: step 377: 1976789/20581438: 90.4% completed: time step 93.72 s, total time 27011.26 s
+File 70/191: step 378: 1971699/20581438: 90.4% completed: time step 68.60 s, total time 27079.85 s
+File 70/191: step 379: 1907424/20581438: 90.7% completed: time step 88.52 s, total time 27168.37 s
+File 70/191: step 380: 1885384/20581438: 90.8% completed: time step 79.35 s, total time 27247.72 s
+File 70/191: step 381: 1821509/20581438: 91.1% completed: time step 86.30 s, total time 27334.02 s
+File 70/191: step 382: 1781909/20581438: 91.3% completed: time step 82.01 s, total time 27416.04 s
+File 70/191: step 383: 1778400/20581438: 91.4% completed: time step 64.46 s, total time 27480.49 s
+File 70/191: step 384: 1774717/20581438: 91.4% completed: time step 67.61 s, total time 27548.10 s
+File 70/191: step 385: 1733840/20581438: 91.6% completed: time step 82.20 s, total time 27630.30 s
+File 70/191: step 386: 1660297/20581438: 91.9% completed: time step 91.77 s, total time 27722.07 s
+File 70/191: step 388: 1654492/20581438: 92.0% completed: time step 51.04 s, total time 27773.11 s
+File 70/191: step 390: 1634674/20581438: 92.1% completed: time step 76.44 s, total time 27849.55 s
+File 70/191: step 391: 1616029/20581438: 92.1% completed: time step 76.16 s, total time 27925.70 s
+File 70/191: step 392: 1615304/20581438: 92.2% completed: time step 62.85 s, total time 27988.55 s
+File 70/191: step 393: 1542320/20581438: 92.5% completed: time step 90.67 s, total time 28079.22 s
+File 70/191: step 394: 1521858/20581438: 92.6% completed: time step 72.51 s, total time 28151.73 s
+File 70/191: step 395: 1500600/20581438: 92.7% completed: time step 71.23 s, total time 28222.96 s
+File 70/191: step 396: 1496162/20581438: 92.7% completed: time step 65.49 s, total time 28288.45 s
+File 70/191: step 397: 1483650/20581438: 92.8% completed: time step 70.63 s, total time 28359.09 s
+File 70/191: step 398: 1438098/20581438: 93.0% completed: time step 71.84 s, total time 28430.93 s
+File 70/191: step 399: 1415736/20581438: 93.1% completed: time step 71.92 s, total time 28502.85 s
+File 70/191: step 400: 1394062/20581438: 93.2% completed: time step 73.88 s, total time 28576.73 s
+File 70/191: step 401: 1361016/20581438: 93.4% completed: time step 71.80 s, total time 28648.53 s
+File 70/191: step 403: 1324087/20581438: 93.6% completed: time step 73.82 s, total time 28722.35 s
+File 70/191: step 404: 1297448/20581438: 93.7% completed: time step 73.58 s, total time 28795.92 s
+File 70/191: step 408: 1214389/20581438: 94.1% completed: time step 74.14 s, total time 28870.06 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 410: 1155983/20581438: 94.4% completed: time step 76.11 s, total time 28946.17 s
+File 70/191: step 411: 1139470/20581438: 94.5% completed: time step 72.05 s, total time 29018.23 s
+File 70/191: step 412: 1094437/20581438: 94.7% completed: time step 72.32 s, total time 29090.54 s
+File 70/191: step 414: 1050728/20581438: 94.9% completed: time step 74.60 s, total time 29165.14 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 416: 971051/20581438: 95.3% completed: time step 74.53 s, total time 29239.67 s
+File 70/191: step 417: 944591/20581438: 95.4% completed: time step 76.23 s, total time 29315.91 s
+File 70/191: step 418: 933617/20581438: 95.5% completed: time step 68.86 s, total time 29384.76 s
+File 70/191: step 419: 926858/20581438: 95.5% completed: time step 74.78 s, total time 29459.54 s
+File 70/191: step 421: 817821/20581438: 96.0% completed: time step 72.05 s, total time 29531.59 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 424: 645066/20581438: 96.9% completed: time step 76.71 s, total time 29608.30 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 427: 468147/20581438: 97.7% completed: time step 72.34 s, total time 29680.64 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 432: 195789/20581438: 99.0% completed: time step 74.87 s, total time 29755.51 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 435: 86437/20581438: 99.6% completed: time step 72.78 s, total time 29828.28 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 441: 22128/20581438: 99.9% completed: time step 65.85 s, total time 29894.13 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+
+File 70/191: KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31. Fold = 5
+File 70/191: step 0: 20581438/20581438: 0.0% completed: time step 196.15 s, total time 196.15 s
+File 70/191: step 1: 20520633/20581438: 0.3% completed: time step 113.13 s, total time 309.29 s
+File 70/191: step 2: 20518662/20581438: 0.3% completed: time step 63.93 s, total time 373.21 s
+File 70/191: step 4: 20410084/20581438: 0.8% completed: time step 170.31 s, total time 543.53 s
+File 70/191: step 5: 20407489/20581438: 0.8% completed: time step 65.21 s, total time 608.74 s
+File 70/191: step 7: 20301062/20581438: 1.4% completed: time step 119.56 s, total time 728.30 s
+File 70/191: step 8: 20298438/20581438: 1.4% completed: time step 62.87 s, total time 791.17 s
+File 70/191: step 10: 20224725/20581438: 1.7% completed: time step 70.93 s, total time 862.10 s
+File 70/191: step 11: 20160298/20581438: 2.0% completed: time step 65.80 s, total time 927.90 s
+File 70/191: step 13: 20163357/20581438: 2.0% completed: time step 62.98 s, total time 990.88 s
+File 70/191: step 15: 20020015/20581438: 2.7% completed: time step 71.48 s, total time 1062.36 s
+File 70/191: step 17: 19902411/20581438: 3.3% completed: time step 72.62 s, total time 1134.98 s
+File 70/191: step 19: 19738690/20581438: 4.1% completed: time step 86.75 s, total time 1221.73 s
+File 70/191: step 20: 19730172/20581438: 4.1% completed: time step 62.87 s, total time 1284.60 s
+File 70/191: step 22: 19617780/20581438: 4.7% completed: time step 94.32 s, total time 1378.92 s
+File 70/191: step 23: 19617702/20581438: 4.7% completed: time step 61.70 s, total time 1440.61 s
+File 70/191: step 24: 19617445/20581438: 4.7% completed: time step 61.45 s, total time 1502.07 s
+File 70/191: step 26: 19506920/20581438: 5.2% completed: time step 123.45 s, total time 1625.51 s
+File 70/191: step 27: 19506802/20581438: 5.2% completed: time step 61.82 s, total time 1687.33 s
+File 70/191: step 29: 19398776/20581438: 5.7% completed: time step 106.96 s, total time 1794.29 s
+File 70/191: step 30: 19396313/20581438: 5.8% completed: time step 64.70 s, total time 1858.99 s
+File 70/191: step 32: 19281226/20581438: 6.3% completed: time step 88.20 s, total time 1947.19 s
+File 70/191: step 34: 19169787/20581438: 6.9% completed: time step 88.84 s, total time 2036.03 s
+File 70/191: step 35: 19159564/20581438: 6.9% completed: time step 63.63 s, total time 2099.66 s
+File 70/191: step 37: 19074487/20581438: 7.3% completed: time step 74.88 s, total time 2174.55 s
+File 70/191: step 38: 19002902/20581438: 7.7% completed: time step 74.35 s, total time 2248.90 s
+File 70/191: step 39: 18917807/20581438: 8.1% completed: time step 87.03 s, total time 2335.92 s
+File 70/191: step 40: 18874790/20581438: 8.3% completed: time step 70.72 s, total time 2406.65 s
+File 70/191: step 42: 18764886/20581438: 8.8% completed: time step 87.82 s, total time 2494.47 s
+File 70/191: step 44: 18653508/20581438: 9.4% completed: time step 84.85 s, total time 2579.31 s
+File 70/191: step 45: 18652544/20581438: 9.4% completed: time step 62.13 s, total time 2641.44 s
+File 70/191: step 47: 18537740/20581438: 9.9% completed: time step 88.20 s, total time 2729.64 s
+File 70/191: step 48: 18537012/20581438: 9.9% completed: time step 61.56 s, total time 2791.20 s
+File 70/191: step 49: 18534362/20581438: 9.9% completed: time step 62.43 s, total time 2853.63 s
+File 70/191: step 51: 18521433/20581438: 10.0% completed: time step 54.27 s, total time 2907.90 s
+File 70/191: step 52: 18466201/20581438: 10.3% completed: time step 71.83 s, total time 2979.73 s
+File 70/191: step 53: 18398009/20581438: 10.6% completed: time step 76.42 s, total time 3056.15 s
+File 70/191: step 54: 18373735/20581438: 10.7% completed: time step 65.46 s, total time 3121.61 s
+File 70/191: step 56: 18310626/20581438: 11.0% completed: time step 76.63 s, total time 3198.24 s
+File 70/191: step 57: 18216935/20581438: 11.5% completed: time step 86.20 s, total time 3284.44 s
+File 70/191: step 58: 18126957/20581438: 11.9% completed: time step 82.35 s, total time 3366.79 s
+File 70/191: step 59: 18035617/20581438: 12.4% completed: time step 85.23 s, total time 3452.02 s
+File 70/191: step 60: 17938682/20581438: 12.8% completed: time step 105.41 s, total time 3557.42 s
+File 70/191: step 61: 17904732/20581438: 13.0% completed: time step 69.74 s, total time 3627.16 s
+File 70/191: step 62: 17812159/20581438: 13.5% completed: time step 84.51 s, total time 3711.67 s
+File 70/191: step 63: 17781618/20581438: 13.6% completed: time step 75.69 s, total time 3787.36 s
+File 70/191: step 64: 17685807/20581438: 14.1% completed: time step 89.93 s, total time 3877.29 s
+File 70/191: step 65: 17588499/20581438: 14.5% completed: time step 85.87 s, total time 3963.16 s
+File 70/191: step 66: 17511430/20581438: 14.9% completed: time step 80.72 s, total time 4043.89 s
+File 70/191: step 67: 17441167/20581438: 15.3% completed: time step 78.60 s, total time 4122.48 s
+File 70/191: step 68: 17415190/20581438: 15.4% completed: time step 72.84 s, total time 4195.32 s
+File 70/191: step 69: 17355112/20581438: 15.7% completed: time step 104.70 s, total time 4300.03 s
+File 70/191: step 70: 17328985/20581438: 15.8% completed: time step 72.85 s, total time 4372.88 s
+File 70/191: step 72: 17230944/20581438: 16.3% completed: time step 82.30 s, total time 4455.18 s
+File 70/191: step 73: 17148867/20581438: 16.7% completed: time step 85.25 s, total time 4540.43 s
+File 70/191: step 74: 17102199/20581438: 16.9% completed: time step 72.26 s, total time 4612.69 s
+File 70/191: step 75: 17005149/20581438: 17.4% completed: time step 112.28 s, total time 4724.97 s
+File 70/191: step 76: 16906166/20581438: 17.9% completed: time step 113.15 s, total time 4838.12 s
+File 70/191: step 77: 16808993/20581438: 18.3% completed: time step 93.26 s, total time 4931.39 s
+File 70/191: step 78: 16717929/20581438: 18.8% completed: time step 83.39 s, total time 5014.77 s
+File 70/191: step 79: 16663285/20581438: 19.0% completed: time step 74.67 s, total time 5089.44 s
+File 70/191: step 80: 16578956/20581438: 19.4% completed: time step 88.70 s, total time 5178.14 s
+File 70/191: step 81: 16564067/20581438: 19.5% completed: time step 67.84 s, total time 5245.98 s
+File 70/191: step 82: 16552926/20581438: 19.6% completed: time step 65.65 s, total time 5311.63 s
+File 70/191: step 83: 16546920/20581438: 19.6% completed: time step 63.64 s, total time 5375.28 s
+File 70/191: step 84: 16544070/20581438: 19.6% completed: time step 63.05 s, total time 5438.33 s
+File 70/191: step 86: 16499707/20581438: 19.8% completed: time step 76.96 s, total time 5515.29 s
+File 70/191: step 87: 16488627/20581438: 19.9% completed: time step 65.98 s, total time 5581.26 s
+File 70/191: step 88: 16423029/20581438: 20.2% completed: time step 74.81 s, total time 5656.07 s
+File 70/191: step 89: 16363270/20581438: 20.5% completed: time step 78.37 s, total time 5734.45 s
+File 70/191: step 90: 16293938/20581438: 20.8% completed: time step 79.34 s, total time 5813.78 s
+File 70/191: step 91: 16239774/20581438: 21.1% completed: time step 72.08 s, total time 5885.87 s
+File 70/191: step 92: 16162260/20581438: 21.5% completed: time step 82.60 s, total time 5968.46 s
+File 70/191: step 93: 16073600/20581438: 21.9% completed: time step 100.51 s, total time 6068.97 s
+File 70/191: step 94: 15988814/20581438: 22.3% completed: time step 92.32 s, total time 6161.30 s
+File 70/191: step 95: 15897396/20581438: 22.8% completed: time step 83.80 s, total time 6245.10 s
+File 70/191: step 96: 15804266/20581438: 23.2% completed: time step 87.69 s, total time 6332.78 s
+File 70/191: step 97: 15804359/20581438: 23.2% completed: time step 53.45 s, total time 6386.23 s
+File 70/191: step 99: 15777393/20581438: 23.3% completed: time step 71.22 s, total time 6457.45 s
+File 70/191: step 100: 15697342/20581438: 23.7% completed: time step 82.80 s, total time 6540.25 s
+File 70/191: step 101: 15647556/20581438: 24.0% completed: time step 76.73 s, total time 6616.98 s
+File 70/191: step 102: 15553556/20581438: 24.4% completed: time step 120.40 s, total time 6737.38 s
+File 70/191: step 103: 15458061/20581438: 24.9% completed: time step 88.08 s, total time 6825.45 s
+File 70/191: step 104: 15366475/20581438: 25.3% completed: time step 110.40 s, total time 6935.85 s
+File 70/191: step 105: 15295832/20581438: 25.7% completed: time step 119.02 s, total time 7054.87 s
+File 70/191: step 106: 15222505/20581438: 26.0% completed: time step 80.94 s, total time 7135.81 s
+File 70/191: step 107: 15144949/20581438: 26.4% completed: time step 76.09 s, total time 7211.90 s
+File 70/191: step 108: 15084976/20581438: 26.7% completed: time step 82.62 s, total time 7294.52 s
+File 70/191: step 109: 15007529/20581438: 27.1% completed: time step 88.61 s, total time 7383.14 s
+File 70/191: step 110: 14984569/20581438: 27.2% completed: time step 71.81 s, total time 7454.94 s
+File 70/191: step 111: 14911156/20581438: 27.6% completed: time step 86.49 s, total time 7541.43 s
+File 70/191: step 113: 14887722/20581438: 27.7% completed: time step 62.56 s, total time 7603.99 s
+File 70/191: step 114: 14872331/20581438: 27.7% completed: time step 69.42 s, total time 7673.41 s
+File 70/191: step 116: 14772238/20581438: 28.2% completed: time step 130.83 s, total time 7804.24 s
+File 70/191: step 117: 14738128/20581438: 28.4% completed: time step 91.11 s, total time 7895.35 s
+File 70/191: step 118: 14735469/20581438: 28.4% completed: time step 70.23 s, total time 7965.58 s
+File 70/191: step 119: 14689324/20581438: 28.6% completed: time step 90.17 s, total time 8055.75 s
+File 70/191: step 120: 14666154/20581438: 28.7% completed: time step 66.23 s, total time 8121.98 s
+File 70/191: step 121: 14618960/20581438: 29.0% completed: time step 76.69 s, total time 8198.66 s
+File 70/191: step 122: 14600231/20581438: 29.1% completed: time step 62.32 s, total time 8260.99 s
+File 70/191: step 123: 14539697/20581438: 29.4% completed: time step 79.44 s, total time 8340.43 s
+File 70/191: step 124: 14480677/20581438: 29.6% completed: time step 75.29 s, total time 8415.71 s
+File 70/191: step 125: 14391238/20581438: 30.1% completed: time step 87.08 s, total time 8502.80 s
+File 70/191: step 126: 14360647/20581438: 30.2% completed: time step 71.02 s, total time 8573.82 s
+File 70/191: step 127: 14268007/20581438: 30.7% completed: time step 87.85 s, total time 8661.67 s
+File 70/191: step 128: 14243991/20581438: 30.8% completed: time step 62.21 s, total time 8723.88 s
+File 70/191: step 129: 14204039/20581438: 31.0% completed: time step 74.82 s, total time 8798.70 s
+File 70/191: step 130: 14117786/20581438: 31.4% completed: time step 83.62 s, total time 8882.33 s
+File 70/191: step 131: 14061483/20581438: 31.7% completed: time step 78.06 s, total time 8960.38 s
+File 70/191: step 132: 13982865/20581438: 32.1% completed: time step 82.25 s, total time 9042.63 s
+File 70/191: step 133: 13897805/20581438: 32.5% completed: time step 69.14 s, total time 9111.77 s
+File 70/191: step 134: 13806567/20581438: 32.9% completed: time step 84.76 s, total time 9196.53 s
+File 70/191: step 135: 13742609/20581438: 33.2% completed: time step 87.04 s, total time 9283.57 s
+File 70/191: step 136: 13735796/20581438: 33.3% completed: time step 65.76 s, total time 9349.33 s
+File 70/191: step 137: 13731734/20581438: 33.3% completed: time step 55.63 s, total time 9404.96 s
+File 70/191: step 138: 13716810/20581438: 33.4% completed: time step 69.97 s, total time 9474.93 s
+File 70/191: step 140: 13647147/20581438: 33.7% completed: time step 68.45 s, total time 9543.38 s
+File 70/191: step 141: 13564433/20581438: 34.1% completed: time step 91.72 s, total time 9635.10 s
+File 70/191: step 142: 13521284/20581438: 34.3% completed: time step 72.50 s, total time 9707.61 s
+File 70/191: step 143: 13477150/20581438: 34.5% completed: time step 65.79 s, total time 9773.40 s
+File 70/191: step 144: 13473514/20581438: 34.5% completed: time step 60.31 s, total time 9833.71 s
+File 70/191: step 145: 13442825/20581438: 34.7% completed: time step 81.62 s, total time 9915.34 s
+File 70/191: step 146: 13407357/20581438: 34.9% completed: time step 70.95 s, total time 9986.28 s
+File 70/191: step 147: 13345672/20581438: 35.2% completed: time step 84.35 s, total time 10070.63 s
+File 70/191: step 148: 13332463/20581438: 35.2% completed: time step 65.52 s, total time 10136.15 s
+File 70/191: step 150: 13236557/20581438: 35.7% completed: time step 87.49 s, total time 10223.64 s
+File 70/191: step 151: 13205162/20581438: 35.8% completed: time step 67.99 s, total time 10291.63 s
+File 70/191: step 152: 13115211/20581438: 36.3% completed: time step 89.66 s, total time 10381.29 s
+File 70/191: step 153: 13051055/20581438: 36.6% completed: time step 80.77 s, total time 10462.06 s
+File 70/191: step 154: 12974103/20581438: 37.0% completed: time step 81.34 s, total time 10543.40 s
+File 70/191: step 155: 12895450/20581438: 37.3% completed: time step 82.52 s, total time 10625.91 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 157: 12826017/20581438: 37.7% completed: time step 85.20 s, total time 10711.11 s
+File 70/191: step 158: 12800838/20581438: 37.8% completed: time step 68.47 s, total time 10779.58 s
+File 70/191: step 159: 12793125/20581438: 37.8% completed: time step 68.39 s, total time 10847.97 s
+File 70/191: step 160: 12773067/20581438: 37.9% completed: time step 66.91 s, total time 10914.88 s
+File 70/191: step 161: 12702438/20581438: 38.3% completed: time step 82.18 s, total time 10997.05 s
+File 70/191: step 162: 12657249/20581438: 38.5% completed: time step 77.05 s, total time 11074.11 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 165: 12654411/20581438: 38.5% completed: time step 58.82 s, total time 11132.93 s
+File 70/191: step 169: 12632353/20581438: 38.6% completed: time step 56.85 s, total time 11189.78 s
+File 70/191: step 170: 12584295/20581438: 38.9% completed: time step 75.82 s, total time 11265.60 s
+File 70/191: step 171: 12500297/20581438: 39.3% completed: time step 88.38 s, total time 11353.98 s
+File 70/191: step 172: 12449208/20581438: 39.5% completed: time step 81.28 s, total time 11435.26 s
+File 70/191: step 173: 12384222/20581438: 39.8% completed: time step 75.70 s, total time 11510.96 s
+File 70/191: step 174: 12310871/20581438: 40.2% completed: time step 84.47 s, total time 11595.43 s
+File 70/191: step 175: 12299959/20581438: 40.2% completed: time step 69.00 s, total time 11664.43 s
+File 70/191: step 176: 12233488/20581438: 40.6% completed: time step 81.49 s, total time 11745.92 s
+File 70/191: step 177: 12179527/20581438: 40.8% completed: time step 77.60 s, total time 11823.52 s
+File 70/191: step 178: 12144366/20581438: 41.0% completed: time step 73.13 s, total time 11896.65 s
+File 70/191: step 179: 12144045/20581438: 41.0% completed: time step 58.78 s, total time 11955.43 s
+File 70/191: step 181: 12046063/20581438: 41.5% completed: time step 87.23 s, total time 12042.66 s
+File 70/191: step 182: 11969256/20581438: 41.8% completed: time step 79.37 s, total time 12122.03 s
+File 70/191: step 183: 11923136/20581438: 42.1% completed: time step 79.06 s, total time 12201.10 s
+File 70/191: step 184: 11854853/20581438: 42.4% completed: time step 83.35 s, total time 12284.45 s
+File 70/191: step 185: 11794188/20581438: 42.7% completed: time step 81.16 s, total time 12365.60 s
+File 70/191: step 186: 11748596/20581438: 42.9% completed: time step 70.04 s, total time 12435.65 s
+File 70/191: step 187: 11746512/20581438: 42.9% completed: time step 66.24 s, total time 12501.88 s
+File 70/191: step 188: 11728197/20581438: 43.0% completed: time step 70.39 s, total time 12572.28 s
+File 70/191: step 189: 11712256/20581438: 43.1% completed: time step 65.70 s, total time 12637.97 s
+File 70/191: step 190: 11620946/20581438: 43.5% completed: time step 91.22 s, total time 12729.19 s
+File 70/191: step 191: 11620228/20581438: 43.5% completed: time step 54.56 s, total time 12783.76 s
+File 70/191: step 193: 11554564/20581438: 43.9% completed: time step 81.48 s, total time 12865.23 s
+File 70/191: step 194: 11497772/20581438: 44.1% completed: time step 75.05 s, total time 12940.28 s
+File 70/191: step 195: 11463277/20581438: 44.3% completed: time step 72.68 s, total time 13012.96 s
+File 70/191: step 196: 11398149/20581438: 44.6% completed: time step 85.51 s, total time 13098.47 s
+File 70/191: step 197: 11317332/20581438: 45.0% completed: time step 84.54 s, total time 13183.01 s
+File 70/191: step 198: 11296322/20581438: 45.1% completed: time step 73.18 s, total time 13256.19 s
+File 70/191: step 199: 11268029/20581438: 45.3% completed: time step 71.07 s, total time 13327.26 s
+File 70/191: step 200: 11245038/20581438: 45.4% completed: time step 68.61 s, total time 13395.88 s
+File 70/191: step 201: 11203447/20581438: 45.6% completed: time step 75.03 s, total time 13470.91 s
+File 70/191: step 202: 11119848/20581438: 46.0% completed: time step 94.82 s, total time 13565.73 s
+File 70/191: step 203: 11040067/20581438: 46.4% completed: time step 89.65 s, total time 13655.38 s
+File 70/191: step 204: 11009129/20581438: 46.5% completed: time step 77.42 s, total time 13732.80 s
+File 70/191: step 205: 11004224/20581438: 46.5% completed: time step 68.88 s, total time 13801.69 s
+File 70/191: step 206: 11001715/20581438: 46.5% completed: time step 55.39 s, total time 13857.07 s
+File 70/191: step 208: 10992182/20581438: 46.6% completed: time step 69.46 s, total time 13926.53 s
+File 70/191: step 210: 10890190/20581438: 47.1% completed: time step 58.28 s, total time 13984.81 s
+File 70/191: step 211: 10863526/20581438: 47.2% completed: time step 69.45 s, total time 14054.26 s
+File 70/191: step 213: 10745392/20581438: 47.8% completed: time step 80.93 s, total time 14135.19 s
+File 70/191: step 214: 10687252/20581438: 48.1% completed: time step 87.63 s, total time 14222.82 s
+File 70/191: step 215: 10655141/20581438: 48.2% completed: time step 64.27 s, total time 14287.09 s
+File 70/191: step 216: 10574970/20581438: 48.6% completed: time step 91.19 s, total time 14378.28 s
+File 70/191: step 217: 10552199/20581438: 48.7% completed: time step 71.48 s, total time 14449.76 s
+File 70/191: step 218: 10537130/20581438: 48.8% completed: time step 66.12 s, total time 14515.88 s
+File 70/191: step 219: 10534680/20581438: 48.8% completed: time step 69.62 s, total time 14585.50 s
+File 70/191: step 220: 10531917/20581438: 48.8% completed: time step 65.48 s, total time 14650.98 s
+File 70/191: step 222: 10338372/20581438: 49.8% completed: time step 94.56 s, total time 14745.54 s
+File 70/191: step 223: 10262119/20581438: 50.1% completed: time step 86.95 s, total time 14832.49 s
+File 70/191: step 224: 10261758/20581438: 50.1% completed: time step 63.32 s, total time 14895.81 s
+File 70/191: step 225: 10263532/20581438: 50.1% completed: time step 64.53 s, total time 14960.34 s
+File 70/191: step 227: 10204930/20581438: 50.4% completed: time step 69.18 s, total time 15029.52 s
+File 70/191: step 228: 10121453/20581438: 50.8% completed: time step 95.72 s, total time 15125.24 s
+File 70/191: step 229: 10103252/20581438: 50.9% completed: time step 61.93 s, total time 15187.17 s
+File 70/191: step 231: 10079200/20581438: 51.0% completed: time step 67.98 s, total time 15255.15 s
+File 70/191: step 232: 10011573/20581438: 51.4% completed: time step 87.45 s, total time 15342.60 s
+File 70/191: step 233: 9986542/20581438: 51.5% completed: time step 73.50 s, total time 15416.10 s
+File 70/191: step 234: 9895343/20581438: 51.9% completed: time step 99.95 s, total time 15516.04 s
+File 70/191: step 235: 9825431/20581438: 52.3% completed: time step 84.10 s, total time 15600.14 s
+File 70/191: step 236: 9777666/20581438: 52.5% completed: time step 79.32 s, total time 15679.46 s
+File 70/191: step 237: 9733504/20581438: 52.7% completed: time step 82.28 s, total time 15761.74 s
+File 70/191: step 238: 9678139/20581438: 53.0% completed: time step 78.76 s, total time 15840.50 s
+File 70/191: step 239: 9620616/20581438: 53.3% completed: time step 86.80 s, total time 15927.30 s
+File 70/191: step 240: 9555275/20581438: 53.6% completed: time step 87.34 s, total time 16014.64 s
+File 70/191: step 241: 9505156/20581438: 53.8% completed: time step 79.79 s, total time 16094.43 s
+File 70/191: step 242: 9443503/20581438: 54.1% completed: time step 91.10 s, total time 16185.53 s
+File 70/191: step 243: 9394632/20581438: 54.4% completed: time step 82.70 s, total time 16268.23 s
+File 70/191: step 244: 9335421/20581438: 54.6% completed: time step 83.41 s, total time 16351.64 s
+File 70/191: step 245: 9295363/20581438: 54.8% completed: time step 76.77 s, total time 16428.41 s
+File 70/191: step 246: 9271700/20581438: 55.0% completed: time step 59.46 s, total time 16487.87 s
+File 70/191: step 247: 9181410/20581438: 55.4% completed: time step 92.66 s, total time 16580.53 s
+File 70/191: step 248: 9103944/20581438: 55.8% completed: time step 89.91 s, total time 16670.44 s
+File 70/191: step 249: 9091450/20581438: 55.8% completed: time step 61.25 s, total time 16731.69 s
+File 70/191: step 250: 9022969/20581438: 56.2% completed: time step 87.61 s, total time 16819.31 s
+File 70/191: step 251: 8998320/20581438: 56.3% completed: time step 72.87 s, total time 16892.18 s
+File 70/191: step 253: 8960835/20581438: 56.5% completed: time step 80.29 s, total time 16972.47 s
+File 70/191: step 254: 8866745/20581438: 56.9% completed: time step 91.52 s, total time 17063.99 s
+File 70/191: step 255: 8820018/20581438: 57.1% completed: time step 79.95 s, total time 17143.93 s
+File 70/191: step 256: 8748561/20581438: 57.5% completed: time step 83.35 s, total time 17227.28 s
+File 70/191: step 257: 8689007/20581438: 57.8% completed: time step 86.85 s, total time 17314.14 s
+File 70/191: step 258: 8624177/20581438: 58.1% completed: time step 84.21 s, total time 17398.34 s
+File 70/191: step 259: 8548704/20581438: 58.5% completed: time step 93.16 s, total time 17491.50 s
+File 70/191: step 260: 8485545/20581438: 58.8% completed: time step 86.29 s, total time 17577.79 s
+File 70/191: step 261: 8392509/20581438: 59.2% completed: time step 85.91 s, total time 17663.70 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 263: 8308832/20581438: 59.6% completed: time step 94.48 s, total time 17758.18 s
+File 70/191: step 264: 8267070/20581438: 59.8% completed: time step 82.07 s, total time 17840.25 s
+File 70/191: step 265: 8207751/20581438: 60.1% completed: time step 88.48 s, total time 17928.73 s
+File 70/191: step 266: 8155202/20581438: 60.4% completed: time step 81.66 s, total time 18010.39 s
+File 70/191: step 267: 8064162/20581438: 60.8% completed: time step 91.48 s, total time 18101.88 s
+File 70/191: step 268: 8046665/20581438: 60.9% completed: time step 70.25 s, total time 18172.13 s
+File 70/191: step 269: 7977622/20581438: 61.2% completed: time step 87.46 s, total time 18259.59 s
+File 70/191: step 270: 7899458/20581438: 61.6% completed: time step 85.55 s, total time 18345.13 s
+File 70/191: step 271: 7825062/20581438: 62.0% completed: time step 87.32 s, total time 18432.45 s
+File 70/191: step 272: 7769442/20581438: 62.3% completed: time step 81.82 s, total time 18514.27 s
+File 70/191: step 273: 7742203/20581438: 62.4% completed: time step 72.41 s, total time 18586.68 s
+File 70/191: step 274: 7648343/20581438: 62.8% completed: time step 94.66 s, total time 18681.34 s
+File 70/191: step 275: 7597012/20581438: 63.1% completed: time step 84.87 s, total time 18766.22 s
+File 70/191: step 276: 7515205/20581438: 63.5% completed: time step 89.26 s, total time 18855.47 s
+File 70/191: step 277: 7446896/20581438: 63.8% completed: time step 90.65 s, total time 18946.12 s
+File 70/191: step 278: 7382984/20581438: 64.1% completed: time step 84.65 s, total time 19030.77 s
+File 70/191: step 279: 7293600/20581438: 64.6% completed: time step 92.62 s, total time 19123.39 s
+File 70/191: step 280: 7205705/20581438: 65.0% completed: time step 93.47 s, total time 19216.85 s
+File 70/191: step 281: 7183223/20581438: 65.1% completed: time step 69.02 s, total time 19285.87 s
+File 70/191: step 283: 7109160/20581438: 65.5% completed: time step 91.15 s, total time 19377.02 s
+File 70/191: step 284: 7030372/20581438: 65.8% completed: time step 92.56 s, total time 19469.58 s
+File 70/191: step 285: 6982226/20581438: 66.1% completed: time step 82.17 s, total time 19551.75 s
+File 70/191: step 286: 6943291/20581438: 66.3% completed: time step 83.56 s, total time 19635.31 s
+File 70/191: step 287: 6862374/20581438: 66.7% completed: time step 98.72 s, total time 19734.03 s
+File 70/191: step 288: 6812517/20581438: 66.9% completed: time step 87.64 s, total time 19821.67 s
+File 70/191: step 289: 6784097/20581438: 67.0% completed: time step 71.67 s, total time 19893.34 s
+File 70/191: step 290: 6766719/20581438: 67.1% completed: time step 68.12 s, total time 19961.46 s
+File 70/191: step 291: 6676966/20581438: 67.6% completed: time step 93.07 s, total time 20054.53 s
+File 70/191: step 292: 6611877/20581438: 67.9% completed: time step 89.21 s, total time 20143.74 s
+File 70/191: step 293: 6539605/20581438: 68.2% completed: time step 86.90 s, total time 20230.63 s
+File 70/191: step 294: 6450576/20581438: 68.7% completed: time step 88.64 s, total time 20319.27 s
+File 70/191: step 295: 6439116/20581438: 68.7% completed: time step 65.31 s, total time 20384.58 s
+File 70/191: step 296: 6407136/20581438: 68.9% completed: time step 81.10 s, total time 20465.68 s
+File 70/191: step 297: 6333717/20581438: 69.2% completed: time step 94.15 s, total time 20559.84 s
+File 70/191: step 298: 6277393/20581438: 69.5% completed: time step 86.01 s, total time 20645.85 s
+File 70/191: step 299: 6241240/20581438: 69.7% completed: time step 76.77 s, total time 20722.61 s
+File 70/191: step 300: 6210021/20581438: 69.8% completed: time step 77.08 s, total time 20799.69 s
+File 70/191: step 301: 6140178/20581438: 70.2% completed: time step 91.22 s, total time 20890.91 s
+File 70/191: step 302: 6050834/20581438: 70.6% completed: time step 87.63 s, total time 20978.54 s
+File 70/191: step 303: 5999460/20581438: 70.9% completed: time step 86.43 s, total time 21064.96 s
+File 70/191: step 304: 5909539/20581438: 71.3% completed: time step 101.82 s, total time 21166.78 s
+File 70/191: step 305: 5838863/20581438: 71.6% completed: time step 89.75 s, total time 21256.54 s
+File 70/191: step 306: 5834480/20581438: 71.7% completed: time step 72.71 s, total time 21329.25 s
+File 70/191: step 307: 5759719/20581438: 72.0% completed: time step 86.36 s, total time 21415.60 s
+File 70/191: step 308: 5700852/20581438: 72.3% completed: time step 86.77 s, total time 21502.37 s
+File 70/191: step 309: 5647737/20581438: 72.6% completed: time step 88.33 s, total time 21590.70 s
+File 70/191: step 310: 5630048/20581438: 72.6% completed: time step 76.06 s, total time 21666.77 s
+File 70/191: step 312: 5539552/20581438: 73.1% completed: time step 78.37 s, total time 21745.14 s
+File 70/191: step 313: 5518253/20581438: 73.2% completed: time step 79.42 s, total time 21824.56 s
+File 70/191: step 314: 5438744/20581438: 73.6% completed: time step 104.30 s, total time 21928.86 s
+File 70/191: step 315: 5374123/20581438: 73.9% completed: time step 90.20 s, total time 22019.06 s
+File 70/191: step 316: 5318878/20581438: 74.2% completed: time step 84.60 s, total time 22103.66 s
+File 70/191: step 317: 5243530/20581438: 74.5% completed: time step 87.21 s, total time 22190.87 s
+File 70/191: step 318: 5197822/20581438: 74.7% completed: time step 81.26 s, total time 22272.13 s
+File 70/191: step 320: 5107298/20581438: 75.2% completed: time step 86.64 s, total time 22358.76 s
+File 70/191: step 321: 5033584/20581438: 75.5% completed: time step 89.04 s, total time 22447.80 s
+File 70/191: step 322: 5005353/20581438: 75.7% completed: time step 71.74 s, total time 22519.55 s
+File 70/191: step 323: 4926013/20581438: 76.1% completed: time step 92.81 s, total time 22612.36 s
+File 70/191: step 324: 4858388/20581438: 76.4% completed: time step 92.69 s, total time 22705.05 s
+File 70/191: step 325: 4806374/20581438: 76.6% completed: time step 83.79 s, total time 22788.84 s
+File 70/191: step 326: 4728959/20581438: 77.0% completed: time step 102.31 s, total time 22891.15 s
+File 70/191: step 327: 4638835/20581438: 77.5% completed: time step 92.46 s, total time 22983.61 s
+File 70/191: step 328: 4557328/20581438: 77.9% completed: time step 85.22 s, total time 23068.83 s
+File 70/191: step 330: 4503905/20581438: 78.1% completed: time step 67.41 s, total time 23136.24 s
+File 70/191: step 331: 4415474/20581438: 78.5% completed: time step 99.21 s, total time 23235.45 s
+File 70/191: step 332: 4359829/20581438: 78.8% completed: time step 85.18 s, total time 23320.64 s
+File 70/191: step 333: 4287631/20581438: 79.2% completed: time step 98.15 s, total time 23418.79 s
+File 70/191: step 334: 4252768/20581438: 79.3% completed: time step 80.08 s, total time 23498.86 s
+File 70/191: step 335: 4177901/20581438: 79.7% completed: time step 89.34 s, total time 23588.20 s
+File 70/191: step 336: 4125220/20581438: 80.0% completed: time step 90.96 s, total time 23679.16 s
+File 70/191: step 337: 4043902/20581438: 80.4% completed: time step 94.62 s, total time 23773.78 s
+File 70/191: step 338: 3986479/20581438: 80.6% completed: time step 83.49 s, total time 23857.27 s
+File 70/191: step 339: 3909640/20581438: 81.0% completed: time step 88.26 s, total time 23945.53 s
+File 70/191: step 341: 3865052/20581438: 81.2% completed: time step 77.63 s, total time 24023.17 s
+File 70/191: step 342: 3819719/20581438: 81.4% completed: time step 85.74 s, total time 24108.90 s
+File 70/191: step 343: 3749083/20581438: 81.8% completed: time step 78.89 s, total time 24187.79 s
+File 70/191: step 344: 3695287/20581438: 82.0% completed: time step 84.63 s, total time 24272.42 s
+File 70/191: step 345: 3622262/20581438: 82.4% completed: time step 72.83 s, total time 24345.25 s
+File 70/191: step 346: 3536165/20581438: 82.8% completed: time step 96.66 s, total time 24441.91 s
+File 70/191: step 347: 3506464/20581438: 83.0% completed: time step 78.08 s, total time 24519.99 s
+File 70/191: step 348: 3493794/20581438: 83.0% completed: time step 72.32 s, total time 24592.31 s
+File 70/191: step 349: 3425799/20581438: 83.4% completed: time step 90.34 s, total time 24682.66 s
+File 70/191: step 350: 3392005/20581438: 83.5% completed: time step 73.47 s, total time 24756.13 s
+File 70/191: step 351: 3311872/20581438: 83.9% completed: time step 91.45 s, total time 24847.58 s
+File 70/191: step 352: 3224749/20581438: 84.3% completed: time step 100.34 s, total time 24947.92 s
+File 70/191: step 353: 3177216/20581438: 84.6% completed: time step 86.98 s, total time 25034.90 s
+File 70/191: step 354: 3134019/20581438: 84.8% completed: time step 87.61 s, total time 25122.51 s
+File 70/191: step 355: 3074509/20581438: 85.1% completed: time step 79.82 s, total time 25202.33 s
+File 70/191: step 356: 2985107/20581438: 85.5% completed: time step 105.05 s, total time 25307.39 s
+File 70/191: step 357: 2956926/20581438: 85.6% completed: time step 77.19 s, total time 25384.57 s
+File 70/191: step 358: 2877483/20581438: 86.0% completed: time step 91.84 s, total time 25476.41 s
+File 70/191: step 359: 2788073/20581438: 86.5% completed: time step 99.64 s, total time 25576.06 s
+File 70/191: step 360: 2770672/20581438: 86.5% completed: time step 77.27 s, total time 25653.33 s
+File 70/191: step 361: 2684101/20581438: 87.0% completed: time step 96.44 s, total time 25749.77 s
+File 70/191: step 362: 2629439/20581438: 87.2% completed: time step 84.44 s, total time 25834.21 s
+File 70/191: step 363: 2554870/20581438: 87.6% completed: time step 95.27 s, total time 25929.48 s
+File 70/191: step 364: 2514395/20581438: 87.8% completed: time step 80.76 s, total time 26010.24 s
+File 70/191: step 365: 2501922/20581438: 87.8% completed: time step 67.98 s, total time 26078.21 s
+File 70/191: step 367: 2429945/20581438: 88.2% completed: time step 76.44 s, total time 26154.65 s
+File 70/191: step 368: 2396453/20581438: 88.4% completed: time step 82.23 s, total time 26236.88 s
+File 70/191: step 369: 2326154/20581438: 88.7% completed: time step 93.73 s, total time 26330.61 s
+File 70/191: step 370: 2299656/20581438: 88.8% completed: time step 79.68 s, total time 26410.29 s
+File 70/191: step 371: 2295257/20581438: 88.8% completed: time step 80.30 s, total time 26490.59 s
+File 70/191: step 372: 2283233/20581438: 88.9% completed: time step 76.55 s, total time 26567.14 s
+File 70/191: step 373: 2215781/20581438: 89.2% completed: time step 91.13 s, total time 26658.27 s
+File 70/191: step 374: 2157029/20581438: 89.5% completed: time step 89.55 s, total time 26747.82 s
+File 70/191: step 375: 2069575/20581438: 89.9% completed: time step 102.16 s, total time 26849.97 s
+File 70/191: step 376: 2058451/20581438: 90.0% completed: time step 67.57 s, total time 26917.54 s
+File 70/191: step 377: 1976789/20581438: 90.4% completed: time step 93.72 s, total time 27011.26 s
+File 70/191: step 378: 1971699/20581438: 90.4% completed: time step 68.60 s, total time 27079.85 s
+File 70/191: step 379: 1907424/20581438: 90.7% completed: time step 88.52 s, total time 27168.37 s
+File 70/191: step 380: 1885384/20581438: 90.8% completed: time step 79.35 s, total time 27247.72 s
+File 70/191: step 381: 1821509/20581438: 91.1% completed: time step 86.30 s, total time 27334.02 s
+File 70/191: step 382: 1781909/20581438: 91.3% completed: time step 82.01 s, total time 27416.04 s
+File 70/191: step 383: 1778400/20581438: 91.4% completed: time step 64.46 s, total time 27480.49 s
+File 70/191: step 384: 1774717/20581438: 91.4% completed: time step 67.61 s, total time 27548.10 s
+File 70/191: step 385: 1733840/20581438: 91.6% completed: time step 82.20 s, total time 27630.30 s
+File 70/191: step 386: 1660297/20581438: 91.9% completed: time step 91.77 s, total time 27722.07 s
+File 70/191: step 388: 1654492/20581438: 92.0% completed: time step 51.04 s, total time 27773.11 s
+File 70/191: step 390: 1634674/20581438: 92.1% completed: time step 76.44 s, total time 27849.55 s
+File 70/191: step 391: 1616029/20581438: 92.1% completed: time step 76.16 s, total time 27925.70 s
+File 70/191: step 392: 1615304/20581438: 92.2% completed: time step 62.85 s, total time 27988.55 s
+File 70/191: step 393: 1542320/20581438: 92.5% completed: time step 90.67 s, total time 28079.22 s
+File 70/191: step 394: 1521858/20581438: 92.6% completed: time step 72.51 s, total time 28151.73 s
+File 70/191: step 395: 1500600/20581438: 92.7% completed: time step 71.23 s, total time 28222.96 s
+File 70/191: step 396: 1496162/20581438: 92.7% completed: time step 65.49 s, total time 28288.45 s
+File 70/191: step 397: 1483650/20581438: 92.8% completed: time step 70.63 s, total time 28359.09 s
+File 70/191: step 398: 1438098/20581438: 93.0% completed: time step 71.84 s, total time 28430.93 s
+File 70/191: step 399: 1415736/20581438: 93.1% completed: time step 71.92 s, total time 28502.85 s
+File 70/191: step 400: 1394062/20581438: 93.2% completed: time step 73.88 s, total time 28576.73 s
+File 70/191: step 401: 1361016/20581438: 93.4% completed: time step 71.80 s, total time 28648.53 s
+File 70/191: step 403: 1324087/20581438: 93.6% completed: time step 73.82 s, total time 28722.35 s
+File 70/191: step 404: 1297448/20581438: 93.7% completed: time step 73.58 s, total time 28795.92 s
+File 70/191: step 408: 1214389/20581438: 94.1% completed: time step 74.14 s, total time 28870.06 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 410: 1155983/20581438: 94.4% completed: time step 76.11 s, total time 28946.17 s
+File 70/191: step 411: 1139470/20581438: 94.5% completed: time step 72.05 s, total time 29018.23 s
+File 70/191: step 412: 1094437/20581438: 94.7% completed: time step 72.32 s, total time 29090.54 s
+File 70/191: step 414: 1050728/20581438: 94.9% completed: time step 74.60 s, total time 29165.14 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 416: 971051/20581438: 95.3% completed: time step 74.53 s, total time 29239.67 s
+File 70/191: step 417: 944591/20581438: 95.4% completed: time step 76.23 s, total time 29315.91 s
+File 70/191: step 418: 933617/20581438: 95.5% completed: time step 68.86 s, total time 29384.76 s
+File 70/191: step 419: 926858/20581438: 95.5% completed: time step 74.78 s, total time 29459.54 s
+File 70/191: step 421: 817821/20581438: 96.0% completed: time step 72.05 s, total time 29531.59 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 424: 645066/20581438: 96.9% completed: time step 76.71 s, total time 29608.30 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 427: 468147/20581438: 97.7% completed: time step 72.34 s, total time 29680.64 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 432: 195789/20581438: 99.0% completed: time step 74.87 s, total time 29755.51 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 435: 86437/20581438: 99.6% completed: time step 72.78 s, total time 29828.28 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+File 70/191: step 441: 22128/20581438: 99.9% completed: time step 65.85 s, total time 29894.13 s
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+/home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/skimage/morphology/misc.py:132: UserWarning: Only one label was provided to `remove_small_objects`. Did you mean to use a boolean array?
+  warn("Only one label was provided to `remove_small_objects`. "
+
+File 72/191: KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06. Fold = 6
+File 72/191: step 0: 16990532/16990532: 0.0% completed: time step 189.54 s, total time 189.54 s
+File 72/191: step 1: 16896912/16990532: 0.6% completed: time step 84.74 s, total time 274.29 s
+File 72/191: step 2: 16849292/16990532: 0.8% completed: time step 72.05 s, total time 346.34 s
+File 72/191: step 3: 16797145/16990532: 1.1% completed: time step 80.60 s, total time 426.94 s
+File 72/191: step 4: 16706137/16990532: 1.7% completed: time step 86.95 s, total time 513.89 s
+File 72/191: step 5: 16643070/16990532: 2.0% completed: time step 73.12 s, total time 587.01 s
+File 72/191: step 6: 16582801/16990532: 2.4% completed: time step 84.45 s, total time 671.46 s
+File 72/191: step 7: 16534374/16990532: 2.7% completed: time step 72.10 s, total time 743.56 s
+File 72/191: step 8: 16450701/16990532: 3.2% completed: time step 90.46 s, total time 834.02 s
+File 72/191: step 9: 16397080/16990532: 3.5% completed: time step 78.97 s, total time 912.99 s
+File 72/191: step 10: 16304968/16990532: 4.0% completed: time step 88.75 s, total time 1001.75 s
+File 72/191: step 11: 16237854/16990532: 4.4% completed: time step 83.46 s, total time 1085.21 s
+File 72/191: step 12: 16219884/16990532: 4.5% completed: time step 64.00 s, total time 1149.21 s
+File 72/191: step 13: 16151971/16990532: 4.9% completed: time step 87.80 s, total time 1237.01 s
+File 72/191: step 14: 16096423/16990532: 5.3% completed: time step 83.74 s, total time 1320.75 s
+File 72/191: step 15: 16049500/16990532: 5.5% completed: time step 69.30 s, total time 1390.05 s
+File 72/191: step 16: 15993160/16990532: 5.9% completed: time step 80.96 s, total time 1471.02 s
+File 72/191: step 17: 15985136/16990532: 5.9% completed: time step 54.45 s, total time 1525.47 s
+File 72/191: step 18: 15920261/16990532: 6.3% completed: time step 91.73 s, total time 1617.20 s
+File 72/191: step 19: 15859911/16990532: 6.7% completed: time step 84.77 s, total time 1701.97 s
+File 72/191: step 20: 15793383/16990532: 7.0% completed: time step 74.83 s, total time 1776.80 s
+File 72/191: step 21: 15724480/16990532: 7.5% completed: time step 83.01 s, total time 1859.81 s
+File 72/191: step 22: 15638640/16990532: 8.0% completed: time step 81.92 s, total time 1941.73 s
+File 72/191: step 23: 15585705/16990532: 8.3% completed: time step 76.11 s, total time 2017.84 s
+File 72/191: step 24: 15500626/16990532: 8.8% completed: time step 88.83 s, total time 2106.67 s
+File 72/191: step 25: 15452478/16990532: 9.1% completed: time step 73.52 s, total time 2180.19 s
+File 72/191: step 26: 15367901/16990532: 9.6% completed: time step 89.29 s, total time 2269.48 s
+File 72/191: step 27: 15305194/16990532: 9.9% completed: time step 85.88 s, total time 2355.35 s
+File 72/191: step 28: 15283107/16990532: 10.0% completed: time step 68.08 s, total time 2423.44 s
+File 72/191: step 29: 15216551/16990532: 10.4% completed: time step 93.59 s, total time 2517.03 s
+File 72/191: step 30: 15131424/16990532: 10.9% completed: time step 99.95 s, total time 2616.98 s
+File 72/191: step 31: 15086129/16990532: 11.2% completed: time step 73.97 s, total time 2690.95 s
+File 72/191: step 32: 15044469/16990532: 11.5% completed: time step 81.31 s, total time 2772.26 s
+File 72/191: step 33: 14999742/16990532: 11.7% completed: time step 75.38 s, total time 2847.65 s
+File 72/191: step 34: 14936167/16990532: 12.1% completed: time step 87.41 s, total time 2935.06 s
+File 72/191: step 35: 14872648/16990532: 12.5% completed: time step 82.37 s, total time 3017.42 s
+File 72/191: step 36: 14859772/16990532: 12.5% completed: time step 63.32 s, total time 3080.74 s
+File 72/191: step 37: 14800770/16990532: 12.9% completed: time step 77.51 s, total time 3158.25 s
+File 72/191: step 38: 14727308/16990532: 13.3% completed: time step 85.67 s, total time 3243.92 s
+File 72/191: step 39: 14709523/16990532: 13.4% completed: time step 61.28 s, total time 3305.20 s
+File 72/191: step 40: 14650097/16990532: 13.8% completed: time step 85.81 s, total time 3391.01 s
+File 72/191: step 41: 14594444/16990532: 14.1% completed: time step 76.44 s, total time 3467.45 s
+File 72/191: step 42: 14527307/16990532: 14.5% completed: time step 89.37 s, total time 3556.82 s
+File 72/191: step 43: 14451987/16990532: 14.9% completed: time step 97.62 s, total time 3654.44 s
+File 72/191: step 44: 14383944/16990532: 15.3% completed: time step 86.31 s, total time 3740.75 s
+File 72/191: step 45: 14354651/16990532: 15.5% completed: time step 65.11 s, total time 3805.86 s
+File 72/191: step 46: 14294863/16990532: 15.9% completed: time step 90.20 s, total time 3896.06 s
+File 72/191: step 47: 14228620/16990532: 16.3% completed: time step 90.53 s, total time 3986.59 s
+File 72/191: step 48: 14134958/16990532: 16.8% completed: time step 103.96 s, total time 4090.55 s
+File 72/191: step 49: 14090751/16990532: 17.1% completed: time step 79.06 s, total time 4169.61 s
+File 72/191: step 50: 14014954/16990532: 17.5% completed: time step 93.39 s, total time 4263.00 s
+File 72/191: step 51: 13956224/16990532: 17.9% completed: time step 85.08 s, total time 4348.07 s
+File 72/191: step 52: 13899235/16990532: 18.2% completed: time step 82.08 s, total time 4430.16 s
+File 72/191: step 53: 13874662/16990532: 18.3% completed: time step 75.09 s, total time 4505.25 s
+File 72/191: step 54: 13829140/16990532: 18.6% completed: time step 73.49 s, total time 4578.74 s
+File 72/191: step 55: 13747846/16990532: 19.1% completed: time step 87.49 s, total time 4666.23 s
+File 72/191: step 56: 13672466/16990532: 19.5% completed: time step 88.53 s, total time 4754.77 s
+File 72/191: step 57: 13640161/16990532: 19.7% completed: time step 78.30 s, total time 4833.07 s
+File 72/191: step 58: 13551235/16990532: 20.2% completed: time step 88.94 s, total time 4922.01 s
+File 72/191: step 59: 13497516/16990532: 20.6% completed: time step 73.68 s, total time 4995.69 s
+File 72/191: step 60: 13431012/16990532: 21.0% completed: time step 82.08 s, total time 5077.76 s
+File 72/191: step 61: 13361064/16990532: 21.4% completed: time step 89.02 s, total time 5166.78 s
+File 72/191: step 62: 13295216/16990532: 21.7% completed: time step 87.18 s, total time 5253.96 s
+File 72/191: step 63: 13254802/16990532: 22.0% completed: time step 78.71 s, total time 5332.67 s
+File 72/191: step 64: 13192639/16990532: 22.4% completed: time step 86.76 s, total time 5419.43 s
+File 72/191: step 65: 13115164/16990532: 22.8% completed: time step 92.08 s, total time 5511.51 s
+File 72/191: step 66: 13068746/16990532: 23.1% completed: time step 77.05 s, total time 5588.55 s
+File 72/191: step 67: 13022115/16990532: 23.4% completed: time step 75.11 s, total time 5663.66 s
+File 72/191: step 68: 12944385/16990532: 23.8% completed: time step 92.77 s, total time 5756.43 s
+File 72/191: step 69: 12869368/16990532: 24.3% completed: time step 86.20 s, total time 5842.63 s
+File 72/191: step 70: 12780781/16990532: 24.8% completed: time step 102.00 s, total time 5944.62 s
+File 72/191: step 71: 12701765/16990532: 25.2% completed: time step 92.08 s, total time 6036.70 s
+File 72/191: step 72: 12642757/16990532: 25.6% completed: time step 90.10 s, total time 6126.80 s
+File 72/191: step 73: 12609336/16990532: 25.8% completed: time step 76.65 s, total time 6203.45 s
+File 72/191: step 74: 12549776/16990532: 26.1% completed: time step 83.34 s, total time 6286.79 s
+File 72/191: step 75: 12508577/16990532: 26.4% completed: time step 69.88 s, total time 6356.67 s
+File 72/191: step 76: 12424457/16990532: 26.9% completed: time step 91.31 s, total time 6447.98 s
+File 72/191: step 77: 12347674/16990532: 27.3% completed: time step 92.38 s, total time 6540.36 s
+File 72/191: step 78: 12302002/16990532: 27.6% completed: time step 81.72 s, total time 6622.08 s
+File 72/191: step 79: 12261890/16990532: 27.8% completed: time step 79.47 s, total time 6701.55 s
+File 72/191: step 80: 12206897/16990532: 28.2% completed: time step 83.56 s, total time 6785.11 s
+File 72/191: step 81: 12153954/16990532: 28.5% completed: time step 81.19 s, total time 6866.31 s
+File 72/191: step 82: 12126666/16990532: 28.6% completed: time step 66.13 s, total time 6932.44 s
+File 72/191: step 83: 12075032/16990532: 28.9% completed: time step 88.55 s, total time 7020.99 s
+File 72/191: step 84: 12013189/16990532: 29.3% completed: time step 82.70 s, total time 7103.70 s
+File 72/191: step 85: 11938217/16990532: 29.7% completed: time step 86.95 s, total time 7190.65 s
+File 72/191: step 86: 11882368/16990532: 30.1% completed: time step 85.62 s, total time 7276.27 s
+File 72/191: step 87: 11838057/16990532: 30.3% completed: time step 78.87 s, total time 7355.14 s
+File 72/191: step 88: 11792015/16990532: 30.6% completed: time step 76.00 s, total time 7431.13 s
+File 72/191: step 89: 11730795/16990532: 31.0% completed: time step 93.62 s, total time 7524.76 s
+File 72/191: step 90: 11664853/16990532: 31.3% completed: time step 93.30 s, total time 7618.05 s
+File 72/191: step 91: 11605231/16990532: 31.7% completed: time step 78.25 s, total time 7696.31 s
+File 72/191: step 92: 11544553/16990532: 32.1% completed: time step 91.06 s, total time 7787.37 s
+File 72/191: step 93: 11503675/16990532: 32.3% completed: time step 73.43 s, total time 7860.80 s
+File 72/191: step 94: 11440847/16990532: 32.7% completed: time step 87.32 s, total time 7948.12 s
+File 72/191: step 95: 11377255/16990532: 33.0% completed: time step 78.71 s, total time 8026.83 s
+File 72/191: step 96: 11325897/16990532: 33.3% completed: time step 85.17 s, total time 8112.00 s
+File 72/191: step 97: 11252559/16990532: 33.8% completed: time step 92.06 s, total time 8204.06 s
+File 72/191: step 98: 11204517/16990532: 34.1% completed: time step 82.07 s, total time 8286.13 s
+File 72/191: step 99: 11144460/16990532: 34.4% completed: time step 83.33 s, total time 8369.46 s
+File 72/191: step 100: 11077391/16990532: 34.8% completed: time step 82.40 s, total time 8451.86 s
+File 72/191: step 101: 10999010/16990532: 35.3% completed: time step 97.53 s, total time 8549.39 s
+File 72/191: step 102: 10966516/16990532: 35.5% completed: time step 75.48 s, total time 8624.87 s
+File 72/191: step 103: 10937372/16990532: 35.6% completed: time step 77.15 s, total time 8702.02 s
+File 72/191: step 104: 10928386/16990532: 35.7% completed: time step 60.58 s, total time 8762.60 s
+File 72/191: step 105: 10861690/16990532: 36.1% completed: time step 88.36 s, total time 8850.95 s
+File 72/191: step 106: 10808463/16990532: 36.4% completed: time step 89.66 s, total time 8940.62 s
+File 72/191: step 107: 10758724/16990532: 36.7% completed: time step 80.66 s, total time 9021.28 s
+File 72/191: step 108: 10690669/16990532: 37.1% completed: time step 87.37 s, total time 9108.65 s
+File 72/191: step 109: 10613341/16990532: 37.5% completed: time step 79.86 s, total time 9188.51 s
+File 72/191: step 110: 10546485/16990532: 37.9% completed: time step 87.30 s, total time 9275.81 s
+File 72/191: step 111: 10476551/16990532: 38.3% completed: time step 92.07 s, total time 9367.88 s
+File 72/191: step 112: 10418143/16990532: 38.7% completed: time step 81.23 s, total time 9449.11 s
+File 72/191: step 113: 10367175/16990532: 39.0% completed: time step 83.95 s, total time 9533.05 s
+File 72/191: step 114: 10364747/16990532: 39.0% completed: time step 57.87 s, total time 9590.92 s
+File 72/191: step 115: 10303207/16990532: 39.4% completed: time step 80.50 s, total time 9671.42 s
+File 72/191: step 116: 10227406/16990532: 39.8% completed: time step 91.58 s, total time 9763.00 s
+File 72/191: step 117: 10203156/16990532: 39.9% completed: time step 72.39 s, total time 9835.39 s
+File 72/191: step 118: 10138104/16990532: 40.3% completed: time step 93.56 s, total time 9928.95 s
+File 72/191: step 119: 10080892/16990532: 40.7% completed: time step 83.74 s, total time 10012.69 s
+File 72/191: step 120: 10012632/16990532: 41.1% completed: time step 78.89 s, total time 10091.58 s
+File 72/191: step 121: 10008797/16990532: 41.1% completed: time step 58.82 s, total time 10150.40 s
+File 72/191: step 122: 9952180/16990532: 41.4% completed: time step 80.27 s, total time 10230.67 s
+File 72/191: step 123: 9858701/16990532: 42.0% completed: time step 101.28 s, total time 10331.96 s
+File 72/191: step 124: 9796664/16990532: 42.3% completed: time step 87.44 s, total time 10419.39 s
+File 72/191: step 125: 9757439/16990532: 42.6% completed: time step 81.57 s, total time 10500.96 s
+File 72/191: step 126: 9726514/16990532: 42.8% completed: time step 80.04 s, total time 10581.00 s
+File 72/191: step 127: 9657077/16990532: 43.2% completed: time step 88.52 s, total time 10669.51 s
+File 72/191: step 128: 9619158/16990532: 43.4% completed: time step 74.22 s, total time 10743.73 s
+File 72/191: step 129: 9594839/16990532: 43.5% completed: time step 69.74 s, total time 10813.48 s
+File 72/191: step 130: 9547596/16990532: 43.8% completed: time step 79.35 s, total time 10892.83 s
+File 72/191: step 131: 9492115/16990532: 44.1% completed: time step 83.94 s, total time 10976.76 s
+File 72/191: step 132: 9421959/16990532: 44.5% completed: time step 86.80 s, total time 11063.56 s
+File 72/191: step 133: 9332822/16990532: 45.1% completed: time step 96.66 s, total time 11160.22 s
+File 72/191: step 134: 9297882/16990532: 45.3% completed: time step 78.56 s, total time 11238.78 s
+File 72/191: step 135: 9251792/16990532: 45.5% completed: time step 80.68 s, total time 11319.46 s
+File 72/191: step 136: 9188764/16990532: 45.9% completed: time step 87.28 s, total time 11406.74 s
+File 72/191: step 137: 9100458/16990532: 46.4% completed: time step 97.76 s, total time 11504.49 s
+File 72/191: step 138: 9077406/16990532: 46.6% completed: time step 77.61 s, total time 11582.11 s
+File 72/191: step 139: 9069274/16990532: 46.6% completed: time step 67.51 s, total time 11649.61 s
+File 72/191: step 140: 9003693/16990532: 47.0% completed: time step 90.59 s, total time 11740.21 s
+File 72/191: step 141: 8951316/16990532: 47.3% completed: time step 85.91 s, total time 11826.12 s
+File 72/191: step 142: 8929048/16990532: 47.4% completed: time step 67.54 s, total time 11893.66 s
+File 72/191: step 143: 8879664/16990532: 47.7% completed: time step 82.77 s, total time 11976.43 s
+File 72/191: step 144: 8827906/16990532: 48.0% completed: time step 81.93 s, total time 12058.36 s
+File 72/191: step 145: 8772458/16990532: 48.4% completed: time step 88.39 s, total time 12146.74 s
+File 72/191: step 146: 8723572/16990532: 48.7% completed: time step 84.49 s, total time 12231.23 s
+File 72/191: step 147: 8702211/16990532: 48.8% completed: time step 73.03 s, total time 12304.26 s
+File 72/191: step 148: 8621816/16990532: 49.3% completed: time step 104.27 s, total time 12408.54 s
+File 72/191: step 149: 8613043/16990532: 49.3% completed: time step 66.34 s, total time 12474.88 s
+File 72/191: step 151: 8515155/16990532: 49.9% completed: time step 99.80 s, total time 12574.68 s
+File 72/191: step 152: 8497731/16990532: 50.0% completed: time step 76.87 s, total time 12651.54 s
+File 72/191: step 153: 8444617/16990532: 50.3% completed: time step 85.30 s, total time 12736.84 s
+File 72/191: step 154: 8413393/16990532: 50.5% completed: time step 76.90 s, total time 12813.75 s
+File 72/191: step 155: 8353036/16990532: 50.8% completed: time step 91.24 s, total time 12904.99 s
+File 72/191: step 156: 8343909/16990532: 50.9% completed: time step 61.43 s, total time 12966.42 s
+File 72/191: step 158: 8302080/16990532: 51.1% completed: time step 81.10 s, total time 13047.52 s
+File 72/191: step 159: 8214861/16990532: 51.7% completed: time step 100.40 s, total time 13147.92 s
+File 72/191: step 160: 8123274/16990532: 52.2% completed: time step 103.58 s, total time 13251.51 s
+File 72/191: step 162: 8076936/16990532: 52.5% completed: time step 87.60 s, total time 13339.11 s
+File 72/191: step 163: 8044996/16990532: 52.7% completed: time step 79.47 s, total time 13418.57 s
+File 72/191: step 164: 8032364/16990532: 52.7% completed: time step 71.78 s, total time 13490.36 s
+File 72/191: step 165: 7947905/16990532: 53.2% completed: time step 98.39 s, total time 13588.75 s
+File 72/191: step 166: 7919636/16990532: 53.4% completed: time step 74.41 s, total time 13663.16 s
+File 72/191: step 167: 7900464/16990532: 53.5% completed: time step 69.20 s, total time 13732.36 s
+File 72/191: step 168: 7875479/16990532: 53.6% completed: time step 77.34 s, total time 13809.70 s
+File 72/191: step 169: 7831840/16990532: 53.9% completed: time step 83.24 s, total time 13892.94 s
+File 72/191: step 170: 7757455/16990532: 54.3% completed: time step 103.42 s, total time 13996.36 s
+File 72/191: step 171: 7726221/16990532: 54.5% completed: time step 77.21 s, total time 14073.57 s
+File 72/191: step 172: 7634877/16990532: 55.1% completed: time step 101.38 s, total time 14174.95 s
+File 72/191: step 173: 7578659/16990532: 55.4% completed: time step 98.28 s, total time 14273.23 s
+File 72/191: step 174: 7538428/16990532: 55.6% completed: time step 79.03 s, total time 14352.26 s
+File 72/191: step 175: 7491931/16990532: 55.9% completed: time step 87.17 s, total time 14439.43 s
+File 72/191: step 176: 7454847/16990532: 56.1% completed: time step 76.41 s, total time 14515.84 s
+File 72/191: step 177: 7415977/16990532: 56.4% completed: time step 78.40 s, total time 14594.23 s
+File 72/191: step 178: 7378636/16990532: 56.6% completed: time step 83.24 s, total time 14677.47 s
+File 72/191: step 179: 7300702/16990532: 57.0% completed: time step 92.98 s, total time 14770.45 s
+File 72/191: step 180: 7243909/16990532: 57.4% completed: time step 94.31 s, total time 14864.76 s
+File 72/191: step 181: 7174324/16990532: 57.8% completed: time step 92.75 s, total time 14957.51 s
+File 72/191: step 182: 7116689/16990532: 58.1% completed: time step 89.56 s, total time 15047.07 s
+File 72/191: step 183: 7042089/16990532: 58.6% completed: time step 111.01 s, total time 15158.07 s
+File 72/191: step 184: 7032321/16990532: 58.6% completed: time step 69.92 s, total time 15227.99 s
+File 72/191: step 185: 6967827/16990532: 59.0% completed: time step 96.03 s, total time 15324.02 s
+File 72/191: step 186: 6889002/16990532: 59.5% completed: time step 101.86 s, total time 15425.88 s
+File 72/191: step 187: 6811154/16990532: 59.9% completed: time step 100.70 s, total time 15526.58 s
+File 72/191: step 188: 6758455/16990532: 60.2% completed: time step 87.61 s, total time 15614.19 s
+File 72/191: step 189: 6711312/16990532: 60.5% completed: time step 84.03 s, total time 15698.22 s
+File 72/191: step 190: 6622533/16990532: 61.0% completed: time step 113.82 s, total time 15812.04 s
+File 72/191: step 191: 6554781/16990532: 61.4% completed: time step 89.06 s, total time 15901.10 s
+File 72/191: step 192: 6486177/16990532: 61.8% completed: time step 98.82 s, total time 15999.92 s
+File 72/191: step 193: 6478622/16990532: 61.9% completed: time step 67.72 s, total time 16067.65 s
+File 72/191: step 194: 6406018/16990532: 62.3% completed: time step 93.13 s, total time 16160.77 s
+File 72/191: step 195: 6350020/16990532: 62.6% completed: time step 92.35 s, total time 16253.12 s
+File 72/191: step 196: 6285627/16990532: 63.0% completed: time step 94.81 s, total time 16347.93 s
+File 72/191: step 197: 6249146/16990532: 63.2% completed: time step 81.65 s, total time 16429.58 s
+File 72/191: step 198: 6182103/16990532: 63.6% completed: time step 90.75 s, total time 16520.33 s
+File 72/191: step 199: 6123343/16990532: 64.0% completed: time step 100.29 s, total time 16620.62 s
+File 72/191: step 200: 6026135/16990532: 64.5% completed: time step 110.12 s, total time 16730.74 s
+File 72/191: step 201: 5961806/16990532: 64.9% completed: time step 94.72 s, total time 16825.46 s
+File 72/191: step 202: 5895949/16990532: 65.3% completed: time step 92.49 s, total time 16917.95 s
+File 72/191: step 203: 5872659/16990532: 65.4% completed: time step 78.50 s, total time 16996.45 s
+File 72/191: step 204: 5821542/16990532: 65.7% completed: time step 88.89 s, total time 17085.34 s
+File 72/191: step 205: 5760929/16990532: 66.1% completed: time step 95.67 s, total time 17181.01 s
+File 72/191: step 206: 5711691/16990532: 66.4% completed: time step 85.64 s, total time 17266.65 s
+File 72/191: step 207: 5632733/16990532: 66.8% completed: time step 105.75 s, total time 17372.40 s
+File 72/191: step 208: 5589846/16990532: 67.1% completed: time step 82.08 s, total time 17454.48 s
+File 72/191: step 209: 5517730/16990532: 67.5% completed: time step 96.20 s, total time 17550.68 s
+File 72/191: step 210: 5453240/16990532: 67.9% completed: time step 89.28 s, total time 17639.95 s
+File 72/191: step 211: 5399347/16990532: 68.2% completed: time step 97.65 s, total time 17737.60 s
+File 72/191: step 212: 5339604/16990532: 68.6% completed: time step 95.55 s, total time 17833.15 s
+File 72/191: step 213: 5259953/16990532: 69.0% completed: time step 98.19 s, total time 17931.34 s
+File 72/191: step 214: 5205460/16990532: 69.4% completed: time step 90.70 s, total time 18022.04 s
+File 72/191: step 215: 5134763/16990532: 69.8% completed: time step 88.28 s, total time 18110.32 s
+File 72/191: step 216: 5087763/16990532: 70.1% completed: time step 81.91 s, total time 18192.22 s
+File 72/191: step 217: 5002301/16990532: 70.6% completed: time step 98.03 s, total time 18290.25 s
+File 72/191: step 218: 4990746/16990532: 70.6% completed: time step 70.47 s, total time 18360.72 s
+File 72/191: step 219: 4976694/16990532: 70.7% completed: time step 71.15 s, total time 18431.87 s
+File 72/191: step 220: 4953327/16990532: 70.8% completed: time step 75.34 s, total time 18507.21 s
+File 72/191: step 221: 4898807/16990532: 71.2% completed: time step 89.46 s, total time 18596.67 s
+File 72/191: step 222: 4853812/16990532: 71.4% completed: time step 97.94 s, total time 18694.61 s
+File 72/191: step 223: 4814508/16990532: 71.7% completed: time step 87.45 s, total time 18782.07 s
+File 72/191: step 224: 4789897/16990532: 71.8% completed: time step 78.65 s, total time 18860.71 s
+File 72/191: step 225: 4736554/16990532: 72.1% completed: time step 93.77 s, total time 18954.48 s
+File 72/191: step 226: 4682868/16990532: 72.4% completed: time step 87.49 s, total time 19041.97 s
+File 72/191: step 227: 4652453/16990532: 72.6% completed: time step 79.08 s, total time 19121.04 s
+File 72/191: step 228: 4623419/16990532: 72.8% completed: time step 82.35 s, total time 19203.39 s
+File 72/191: step 230: 4545872/16990532: 73.2% completed: time step 97.54 s, total time 19300.93 s
+File 72/191: step 231: 4519348/16990532: 73.4% completed: time step 75.35 s, total time 19376.28 s
+File 72/191: step 232: 4448730/16990532: 73.8% completed: time step 71.79 s, total time 19448.07 s
+File 72/191: step 233: 4408149/16990532: 74.1% completed: time step 76.93 s, total time 19525.00 s
+File 72/191: step 234: 4345957/16990532: 74.4% completed: time step 88.58 s, total time 19613.58 s
+File 72/191: step 235: 4276700/16990532: 74.8% completed: time step 100.59 s, total time 19714.17 s
+File 72/191: step 236: 4235376/16990532: 75.1% completed: time step 76.48 s, total time 19790.65 s
+File 72/191: step 237: 4234364/16990532: 75.1% completed: time step 63.59 s, total time 19854.24 s
+File 72/191: step 238: 4194282/16990532: 75.3% completed: time step 82.37 s, total time 19936.61 s
+File 72/191: step 239: 4152869/16990532: 75.6% completed: time step 88.49 s, total time 20025.09 s
+File 72/191: step 240: 4132459/16990532: 75.7% completed: time step 71.95 s, total time 20097.04 s
+File 72/191: step 241: 4098660/16990532: 75.9% completed: time step 83.26 s, total time 20180.31 s
+File 72/191: step 242: 4038470/16990532: 76.2% completed: time step 95.25 s, total time 20275.56 s
+File 72/191: step 243: 4030030/16990532: 76.3% completed: time step 63.85 s, total time 20339.41 s
+File 72/191: step 244: 4019806/16990532: 76.3% completed: time step 67.41 s, total time 20406.82 s
+File 72/191: step 245: 3987742/16990532: 76.5% completed: time step 66.40 s, total time 20473.22 s
+File 72/191: step 246: 3919790/16990532: 76.9% completed: time step 88.15 s, total time 20561.37 s
+File 72/191: step 247: 3887128/16990532: 77.1% completed: time step 82.31 s, total time 20643.68 s
+File 72/191: step 248: 3836621/16990532: 77.4% completed: time step 69.84 s, total time 20713.51 s
+File 72/191: step 249: 3835946/16990532: 77.4% completed: time step 64.02 s, total time 20777.54 s
+File 72/191: step 251: 3762746/16990532: 77.9% completed: time step 107.65 s, total time 20885.18 s
+File 72/191: step 252: 3736014/16990532: 78.0% completed: time step 78.74 s, total time 20963.93 s
+File 72/191: step 253: 3667550/16990532: 78.4% completed: time step 97.28 s, total time 21061.20 s
+File 72/191: step 254: 3617925/16990532: 78.7% completed: time step 87.47 s, total time 21148.68 s
+File 72/191: step 255: 3574405/16990532: 79.0% completed: time step 83.92 s, total time 21232.59 s
+File 72/191: step 256: 3573485/16990532: 79.0% completed: time step 62.09 s, total time 21294.69 s
+File 72/191: step 257: 3534670/16990532: 79.2% completed: time step 82.13 s, total time 21376.82 s
+File 72/191: step 258: 3474783/16990532: 79.5% completed: time step 83.72 s, total time 21460.54 s
+File 72/191: step 259: 3381718/16990532: 80.1% completed: time step 106.14 s, total time 21566.68 s
+File 72/191: step 260: 3360700/16990532: 80.2% completed: time step 76.65 s, total time 21643.33 s
+File 72/191: step 261: 3294764/16990532: 80.6% completed: time step 95.06 s, total time 21738.39 s
+File 72/191: step 262: 3262721/16990532: 80.8% completed: time step 76.45 s, total time 21814.84 s
+File 72/191: step 263: 3261700/16990532: 80.8% completed: time step 62.23 s, total time 21877.07 s
+File 72/191: step 264: 3225109/16990532: 81.0% completed: time step 77.01 s, total time 21954.09 s
+File 72/191: step 265: 3149029/16990532: 81.5% completed: time step 69.47 s, total time 22023.55 s
+File 72/191: step 266: 3084308/16990532: 81.8% completed: time step 96.19 s, total time 22119.74 s
+File 72/191: step 267: 3053969/16990532: 82.0% completed: time step 75.53 s, total time 22195.27 s
+File 72/191: step 268: 2999665/16990532: 82.3% completed: time step 90.24 s, total time 22285.51 s
+File 72/191: step 269: 2957359/16990532: 82.6% completed: time step 79.55 s, total time 22365.06 s
+File 72/191: step 270: 2935725/16990532: 82.7% completed: time step 78.38 s, total time 22443.44 s
+File 72/191: step 271: 2888923/16990532: 83.0% completed: time step 84.12 s, total time 22527.56 s
+File 72/191: step 272: 2848002/16990532: 83.2% completed: time step 84.33 s, total time 22611.89 s
+File 72/191: step 273: 2847226/16990532: 83.2% completed: time step 62.44 s, total time 22674.33 s
+File 72/191: step 274: 2809682/16990532: 83.5% completed: time step 84.38 s, total time 22758.71 s
+File 72/191: step 275: 2723419/16990532: 84.0% completed: time step 72.38 s, total time 22831.09 s
+File 72/191: step 277: 2655270/16990532: 84.4% completed: time step 65.96 s, total time 22897.05 s
+File 72/191: step 278: 2599269/16990532: 84.7% completed: time step 90.19 s, total time 22987.25 s
+File 72/191: step 279: 2541179/16990532: 85.0% completed: time step 86.29 s, total time 23073.53 s
+File 72/191: step 280: 2532167/16990532: 85.1% completed: time step 69.68 s, total time 23143.22 s
+File 72/191: step 281: 2524593/16990532: 85.1% completed: time step 64.51 s, total time 23207.73 s
+File 72/191: step 282: 2461910/16990532: 85.5% completed: time step 92.51 s, total time 23300.24 s
+File 72/191: step 283: 2392511/16990532: 85.9% completed: time step 71.98 s, total time 23372.22 s
+File 72/191: step 284: 2307046/16990532: 86.4% completed: time step 72.13 s, total time 23444.35 s
+File 72/191: step 286: 2276694/16990532: 86.6% completed: time step 64.69 s, total time 23509.04 s
+File 72/191: step 287: 2241771/16990532: 86.8% completed: time step 81.91 s, total time 23590.96 s
+File 72/191: step 288: 2202647/16990532: 87.0% completed: time step 84.26 s, total time 23675.22 s
+File 72/191: step 289: 2121510/16990532: 87.5% completed: time step 71.12 s, total time 23746.34 s
+File 72/191: step 290: 2034818/16990532: 88.0% completed: time step 103.58 s, total time 23849.92 s
+File 72/191: step 291: 1965028/16990532: 88.4% completed: time step 91.13 s, total time 23941.05 s
+File 72/191: step 292: 1899154/16990532: 88.8% completed: time step 69.16 s, total time 24010.21 s
+File 72/191: step 293: 1877395/16990532: 89.0% completed: time step 82.68 s, total time 24092.88 s
+File 72/191: step 294: 1818483/16990532: 89.3% completed: time step 71.99 s, total time 24164.87 s
+File 72/191: step 295: 1749244/16990532: 89.7% completed: time step 71.20 s, total time 24236.08 s
+File 72/191: step 296: 1701255/16990532: 90.0% completed: time step 86.34 s, total time 24322.42 s
+File 72/191: step 297: 1659992/16990532: 90.2% completed: time step 76.11 s, total time 24398.53 s
+File 72/191: step 298: 1599818/16990532: 90.6% completed: time step 91.79 s, total time 24490.32 s
+File 72/191: step 300: 1504592/16990532: 91.1% completed: time step 74.80 s, total time 24565.12 s
+File 72/191: step 301: 1462944/16990532: 91.4% completed: time step 82.34 s, total time 24647.46 s
+File 72/191: step 302: 1419888/16990532: 91.6% completed: time step 86.73 s, total time 24734.18 s
+File 72/191: step 303: 1373335/16990532: 91.9% completed: time step 83.29 s, total time 24817.48 s
+File 72/191: step 304: 1313092/16990532: 92.3% completed: time step 88.57 s, total time 24906.05 s
+File 72/191: step 306: 1192759/16990532: 93.0% completed: time step 91.85 s, total time 24997.90 s
+File 72/191: step 307: 1139338/16990532: 93.3% completed: time step 88.11 s, total time 25086.01 s
+File 72/191: step 308: 1108108/16990532: 93.5% completed: time step 79.16 s, total time 25165.16 s
+File 72/191: step 309: 1010574/16990532: 94.1% completed: time step 74.42 s, total time 25239.59 s
+File 72/191: step 310: 971469/16990532: 94.3% completed: time step 70.04 s, total time 25309.62 s
+File 72/191: step 312: 892112/16990532: 94.7% completed: time step 98.44 s, total time 25408.06 s
+File 72/191: step 313: 840738/16990532: 95.1% completed: time step 80.09 s, total time 25488.15 s
+File 72/191: step 314: 784213/16990532: 95.4% completed: time step 90.30 s, total time 25578.45 s
+File 72/191: step 317: 616027/16990532: 96.4% completed: time step 93.69 s, total time 25672.14 s
+File 72/191: step 318: 577414/16990532: 96.6% completed: time step 80.23 s, total time 25752.37 s
+File 72/191: step 319: 568080/16990532: 96.7% completed: time step 74.08 s, total time 25826.44 s
+File 72/191: step 320: 482382/16990532: 97.2% completed: time step 101.81 s, total time 25928.25 s
+File 72/191: step 321: 471434/16990532: 97.2% completed: time step 78.45 s, total time 26006.70 s
+File 72/191: step 322: 403551/16990532: 97.6% completed: time step 93.08 s, total time 26099.78 s
+File 72/191: step 323: 348909/16990532: 97.9% completed: time step 92.54 s, total time 26192.32 s
+File 72/191: step 324: 272308/16990532: 98.4% completed: time step 78.50 s, total time 26270.82 s
+File 72/191: step 325: 210530/16990532: 98.8% completed: time step 73.46 s, total time 26344.28 s
+File 72/191: step 326: 160105/16990532: 99.1% completed: time step 86.29 s, total time 26430.56 s
+File 72/191: step 327: 149988/16990532: 99.1% completed: time step 73.28 s, total time 26503.84 s
+File 72/191: step 329: 114577/16990532: 99.3% completed: time step 65.72 s, total time 26569.56 s
+File 72/191: step 330: 94686/16990532: 99.4% completed: time step 77.00 s, total time 26646.56 s
+File 72/191: step 332: 71304/16990532: 99.6% completed: time step 73.69 s, total time 26720.25 s
+File 72/191: step 334: 43600/16990532: 99.7% completed: time step 64.36 s, total time 26784.60 s
+File 72/191: step 336: 27208/16990532: 99.8% completed: time step 69.60 s, total time 26854.21 s
+
+
 File 74/79: KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40. Fold = 7
 File 74/79: step 0: 18623331/18623331: 0.0% completed: step time 0.11 s, total time 0.11 s
 File 74/79: step 1: 18599306/18623331: 0.1% completed: step time 64.45 s, total time 64.56 s
