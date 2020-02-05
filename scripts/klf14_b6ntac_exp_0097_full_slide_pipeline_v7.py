@@ -529,6 +529,13 @@ for i_file in list(range(0, 20)) + [192,] + list(range(80, 136)) + list(range(60
             plt.clf()
             plt.subplot(211)
             plt.imshow(im_downsampled)
+            plt.contour(lores_istissue0, colors='k')
+            plt.subplot(212)
+            plt.imshow(lores_istissue0)
+
+            plt.clf()
+            plt.subplot(211)
+            plt.imshow(im_downsampled)
             plt.contour(lores_istissue, colors='k')
             plt.subplot(212)
             plt.imshow(lores_istissue)
