@@ -335,6 +335,9 @@ ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4b  419-16 B1 - 2016-03-17 09.10.42'] 
 ndpi_files_test_list['KLF14-B6NTAC-PAT-38.1a  90-16 B1 - 2016-02-04 17.27.42'] = 6
 ndpi_files_test_list['KLF14-B6NTAC-PAT-39.1h  453-16 B1 - 2016-03-17 11.15.50'] = 0
 ndpi_files_test_list['KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06'] = 7
+# add missing slices
+# i_file = [192]
+ndpi_files_test_list['KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1)'] = 5
 
 if DEBUG:
     for i, key in enumerate(ndpi_files_test_list.keys()):
@@ -380,7 +383,7 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 # for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
-for i_file in reversed(list(range(60, 79)) + list(range(136, 191)) + list(range(80, 136))):
+for i_file in reversed(list(range(0, 20)) + [192,] + list(range(80, 136)) + list(range(60, 80)) + list(range(136, 192))):
 
     # name of the slice to analyse
     ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
