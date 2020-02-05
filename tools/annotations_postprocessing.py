@@ -31,7 +31,7 @@ annotation_files_list = os.path.join(annotations_dir, '*_exp_0097_corrected.json
 annotation_files_list = glob.glob(annotation_files_list)
 
 # variables
-delete_existing_refined_files = True
+delete_existing_refined_files = False
 
 ########################################################################################################################
 ## Colourmap for AIDA
@@ -83,23 +83,23 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ## Process files linking to overlap segmentations
 ########################################################################################################################
 
-for annotation_file in annotation_files_list:
-
-    print('File: ' + os.path.basename(annotation_file))
-
-    # name of the soft link that will be read by AIDA
-    main_json_file = annotation_file.replace('_exp_0097_corrected.json', '.json')
-
-    # check that the target file is a softlink and not a file
-    if os.path.isfile(main_json_file) and not os.path.islink(main_json_file):
-        raise FileExistsError('The main .json file is a file and not a soft link')
-
-    # delete existing soft link
-    if os.path.islink(main_json_file):
-        os.remove(main_json_file)
-
-    # link to annotations file
-    os.symlink(os.path.basename(annotation_file), main_json_file)
+# for annotation_file in annotation_files_list:
+#
+#     print('File: ' + os.path.basename(annotation_file))
+#
+#     # name of the soft link that will be read by AIDA
+#     main_json_file = annotation_file.replace('_exp_0097_corrected.json', '.json')
+#
+#     # check that the target file is a softlink and not a file
+#     if os.path.isfile(main_json_file) and not os.path.islink(main_json_file):
+#         raise FileExistsError('The main .json file is a file and not a soft link')
+#
+#     # delete existing soft link
+#     if os.path.islink(main_json_file):
+#         os.remove(main_json_file)
+#
+#     # link to annotations file
+#     os.symlink(os.path.basename(annotation_file), main_json_file)
 
 ########################################################################################################################
 ## Process files for segmentation refinement
