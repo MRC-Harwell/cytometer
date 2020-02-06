@@ -10,12 +10,14 @@ home = str(Path.home())
 
 import os
 import glob
+import shutil
 import cytometer.data
 import pickle
 import itertools
 from shapely.geometry import Polygon
 import PIL
 import openslide
+import numpy as np
 
 # directories
 root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -31,7 +33,7 @@ annotation_files_list = os.path.join(annotations_dir, '*_exp_0097_corrected.json
 annotation_files_list = glob.glob(annotation_files_list)
 
 # variables
-delete_existing_refined_files = False
+overwrite_existing_refined_files = False
 
 ########################################################################################################################
 ## Colourmap for AIDA
@@ -112,8 +114,15 @@ for annotation_file in annotation_files_list:
     # name of the soft link that will be read by AIDA
     main_json_file = annotation_file.replace('_exp_0097_corrected.json', '.json')
 
+    # name of the file were we are going to have the corrected cells in one layer
+    corrected_monolayer_file_left = \
+        annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_corrected_monolayer_left.json')
+    corrected_monolayer_file_right = \
+        annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_corrected_monolayer_right.json')
+
     # name of the file were we are going to make the manual refinement
-    refined_file = annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_refined.json')
+    refined_file_left = annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_refined_left.json')
+    refined_file_right = annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_refined_right.json')
 
     # name of the original .ndpi file
     ndpi_file = os.path.basename(annotation_file).replace('_exp_0097_corrected.json', '.ndpi')
@@ -123,22 +132,65 @@ for annotation_file in annotation_files_list:
     xres = 1e-2 / float(im.properties['tiff.XResolution'])
     yres = 1e-2 / float(im.properties['tiff.YResolution'])
 
-    # delete existing refined file if we want to wipe out previous refined files
-    if delete_existing_refined_files and os.path.isfile(refined_file):
-        os.remove(refined_file)
-
-    # check that refinement file doesn't exist already, because we don't want to overwrite
-    # a segmentation that we have refined by hand
-    if not os.path.isfile(refined_file):
+    # to save time, we don't overwrite the monolayer file if it exists already
+    if not os.path.isfile(corrected_monolayer_file_left) or not os.path.isfile(corrected_monolayer_file_right):
 
         # load contours from annotation file
         cells = cytometer.data.aida_get_contours(annotation_file, layer_name='White adipocyte.*')
 
-        # create AIDA items to contain contours
-        items = cytometer.data.aida_contour_items(cells, f_area2quantile, cm='quantiles_aida', xres=xres, yres=yres)
+        # bounding box for all cells
+        cells_array = np.vstack(cells)
+        box_min = np.min(cells_array, axis=0)
+        box_max = np.max(cells_array, axis=0)
+        box_mid = (box_min + box_max) / 2.0
+        del cells_array
 
-        # write contours to single layer AIDA file
-        cytometer.data.aida_write_new_items(refined_file, items, mode='w', indent=0)
+        # splits cells into cells to the left and to the right of the middle of the bounding box
+        cells_left = []
+        cells_right = []
+        for contour in cells:
+            # the contour is assigned to the left side if all its cells are within the left side
+            contour_on_left = np.all(np.array(contour)[:, 0] < box_mid[0])
+            if contour_on_left:
+                cells_left.append(contour)
+            else:
+                cells_right.append(contour)
+
+        # create AIDA items to contain contours
+        items_left = cytometer.data.aida_contour_items(cells_left, f_area2quantile, cm='quantiles_aida', xres=xres, yres=yres)
+        items_right = cytometer.data.aida_contour_items(cells_right, f_area2quantile, cm='quantiles_aida', xres=xres, yres=yres)
+
+        # write contours to single layer AIDA file (one to visualise, one to correct manually)
+        cytometer.data.aida_write_new_items(corrected_monolayer_file_left, items_left, mode='w', indent=0)
+        cytometer.data.aida_write_new_items(corrected_monolayer_file_right, items_right, mode='w', indent=0)
+
+    # check that refinement file doesn't exist already, because we don't want to overwrite
+    # a segmentation that we have refined by hand
+    if overwrite_existing_refined_files or not os.path.isfile(refined_file_left):
+        shutil.copy2(corrected_monolayer_file_left, refined_file_left)
+    if overwrite_existing_refined_files or not os.path.isfile(refined_file_right):
+        shutil.copy2(corrected_monolayer_file_right, refined_file_right)
+
+########################################################################################################################
+## Choose an annotations file for each image
+########################################################################################################################
+
+for annotation_file in annotation_files_list:
+
+    print('File: ' + os.path.basename(annotation_file))
+
+    # name of the soft link that will be read by AIDA
+    main_json_file = annotation_file.replace('_exp_0097_corrected.json', '.json')
+
+    # name of the file were we are going to have the corrected cells in one layer
+    corrected_monolayer_file_left = \
+        annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_corrected_monolayer_left.json')
+    corrected_monolayer_file_right = \
+        annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_corrected_monolayer_right.json')
+
+    # name of the file were we are going to make the manual refinement
+    refined_file_left = annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_refined_left.json')
+    refined_file_right = annotation_file.replace('_exp_0097_corrected.json', '_exp_0097_refined_right.json')
 
     # create the softlink
     if os.path.isfile(main_json_file) and not os.path.islink(main_json_file):
@@ -149,4 +201,4 @@ for annotation_file in annotation_files_list:
         os.remove(main_json_file)
 
     # link to copied file
-    os.symlink(refined_file, main_json_file)
+    os.symlink(refined_file_left, main_json_file)
