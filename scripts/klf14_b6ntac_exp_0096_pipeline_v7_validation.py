@@ -121,6 +121,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 # saved_figures_dir = os.path.join(root_data_dir, 'figures')
 saved_figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 
 # k-folds file
 saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
@@ -152,7 +153,7 @@ n_im = len(file_svg_list)
 n_folds = len(idx_test_all)
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 '''

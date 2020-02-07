@@ -59,6 +59,7 @@ saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 
 # k-folds file
 saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
@@ -149,7 +150,7 @@ file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/user
                                                      check_isfile=True)
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 ########################################################################################################################
