@@ -48,6 +48,7 @@ figures_dir = os.path.join(root_data_dir, 'figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'
@@ -81,7 +82,7 @@ Hand segmented cells (ground truth), no-overlap approximation
 '''
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 # list of all non-overlap original files
@@ -190,7 +191,7 @@ saved_quality_model_basename = 'klf14_b6ntac_exp_0042_cnn_qualitynet_thresholded
 quality_model_name = saved_quality_model_basename + '*.h5'
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 # list of images, and indices for training vs. testing indices
@@ -389,7 +390,7 @@ saved_quality_model_basename = 'klf14_b6ntac_exp_0045_cnn_qualitynet_thresholded
 quality_model_name = saved_quality_model_basename + '*.h5'
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 # list of images, and indices for training vs. testing indices
@@ -588,7 +589,7 @@ saved_quality_model_basename = 'klf14_b6ntac_exp_0046_cnn_qualitynet_thresholded
 quality_model_name = saved_quality_model_basename + '*.h5'
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 # list of images, and indices for training vs. testing indices
@@ -929,7 +930,7 @@ saved_quality_model_basename = 'klf14_b6ntac_exp_0048_cnn_qualitynet_prop_band_f
 quality_model_name = saved_quality_model_basename + '*.h5'
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 # list of images, and indices for training vs. testing indices
@@ -1278,7 +1279,7 @@ saved_quality_model_basename = 'klf14_b6ntac_exp_0049_cnn_qualitynet_pm_1_prop_b
 quality_model_name = saved_quality_model_basename + '*.h5'
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 # list of images, and indices for training vs. testing indices

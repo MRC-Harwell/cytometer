@@ -83,6 +83,7 @@ training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0064_pipeline_validation'
@@ -106,7 +107,7 @@ n_folds = len(idx_test_all)
 n_im = len(file_list)
 
 # CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 '''Process the test data of each fold with the corresponding trained networks
