@@ -166,6 +166,10 @@ ndpi_list=(
 'KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06.ndpi'
 #
 'KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1).ndpi'
+#
+'KLF14-B6NTAC-PAT-37.2b  410-16 C3 - 2016-03-15 11.34.14.ndpi'
+'KLF14-B6NTAC-PAT-37.2c  407-16 C3 - 2016-03-14 14.22.59.ndpi'
+'KLF14-B6NTAC-PAT-37.2d  411-16 C3 - 2016-03-15 12.49.31.ndpi'
 )
 
 for ndpi_file in "${ndpi_list[@]}"
