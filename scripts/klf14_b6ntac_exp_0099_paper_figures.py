@@ -1080,7 +1080,7 @@ json_annotation_files = [
     'KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05.json',
     'KLF14-B6NTAC 37.1a PAT 106-16 C1 - 2016-02-12 16.21.00.json',
     'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06.json',
-    'KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26.json',
+    # 'KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26.json',
     'KLF14-B6NTAC-MAT-17.2a  64-16 C1 - 2016-02-04 09.17.52.json',
     'KLF14-B6NTAC-MAT-16.2f  216-16 C1 - 2016-02-18 10.28.27.json',
     'KLF14-B6NTAC-MAT-17.1d  47-16 C1 - 2016-02-01 15.25.53.json',
@@ -1120,7 +1120,7 @@ json_annotation_files = [
     'KLF14-B6NTAC-37.1e PAT 110-16 C1 - 2016-02-15 17.33.11.json',
     'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54.json',
     'KLF14-B6NTAC 36.1h PAT 103-16 C1 - 2016-02-12 10.15.22.json',
-    'KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04.json',
+    # 'KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04.json',  # borderline usable
     'KLF14-B6NTAC-MAT-16.2b  212-16 C1 - 2016-02-17 12.49.00.json',
     'KLF14-B6NTAC-MAT-17.1f  49-16 C1 - 2016-02-01 17.51.46.json',
     'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11.json',
@@ -1136,8 +1136,8 @@ json_annotation_files = [
     'KLF14-B6NTAC-PAT-37.2f  405-16 C1 - 2016-03-14 10.58.34.json',
     'KLF14-B6NTAC-PAT-37.2e  408-16 C1 - 2016-03-14 16.23.30.json',
     'KLF14-B6NTAC-MAT-19.2e  221-16 C1 - 2016-02-25 14.00.14.json',
-    'KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54.json',
-    'KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20.json',
+    # 'KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54.json',
+    # 'KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20.json',
     'KLF14-B6NTAC-PAT-37.4b  419-16 C1 - 2016-03-17 10.22.54.json',
     'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45.json',
     'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41.json',
@@ -1290,34 +1290,78 @@ if DEBUG:
     plt.legend(legend_m, fontsize=12)
 
 # compute variability of area values for each quantile
-area_q_f_pat = area_q_all[(sex_all == 'f') * (ko_all == 'PAT'), :]
-area_q_m_pat = area_q_all[(sex_all == 'm') * (ko_all == 'PAT'), :]
-area_q_f_mat = area_q_all[(sex_all == 'f') * (ko_all == 'MAT'), :]
-area_q_m_mat = area_q_all[(sex_all == 'm') * (ko_all == 'MAT'), :]
+area_q_f_pat = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (id_all != '39.1h'), :]
+area_q_m_pat = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (id_all != '39.1h'), :]
+area_q_f_mat = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (id_all != '39.1h'), :]
+area_q_m_mat = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (id_all != '39.1h'), :]
 area_interval_f_pat = scipy.stats.mstats.hdquantiles(area_q_f_pat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_m_pat = scipy.stats.mstats.hdquantiles(area_q_m_pat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_f_mat = scipy.stats.mstats.hdquantiles(area_q_f_mat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_m_mat = scipy.stats.mstats.hdquantiles(area_q_m_mat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 
+area_q_f_pat_wt = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
+area_q_m_pat_wt = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
+area_q_f_mat_wt = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
+area_q_m_mat_wt = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
+area_interval_f_pat_wt = scipy.stats.mstats.hdquantiles(area_q_f_pat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_m_pat_wt = scipy.stats.mstats.hdquantiles(area_q_m_pat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_f_mat_wt = scipy.stats.mstats.hdquantiles(area_q_f_mat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_m_mat_wt = scipy.stats.mstats.hdquantiles(area_q_m_mat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+
+area_q_f_pat_het = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
+area_q_m_pat_het = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
+area_q_f_mat_het = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
+area_q_m_mat_het = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
+area_interval_f_pat_het = scipy.stats.mstats.hdquantiles(area_q_f_pat_het, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_m_pat_het = scipy.stats.mstats.hdquantiles(area_q_m_pat_het, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_f_mat_het = scipy.stats.mstats.hdquantiles(area_q_f_mat_het, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+area_interval_m_mat_het = scipy.stats.mstats.hdquantiles(area_q_m_mat_het, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
+
+n_f_pat_wt = area_q_f_pat_wt.shape[0]
+n_m_pat_wt = area_q_m_pat_wt.shape[0]
+n_f_mat_wt = area_q_f_mat_wt.shape[0]
+n_m_mat_wt = area_q_m_mat_wt.shape[0]
+n_f_pat_het = area_q_f_pat_het.shape[0]
+n_m_pat_het = area_q_m_pat_het.shape[0]
+n_f_mat_het = area_q_f_mat_het.shape[0]
+n_m_mat_het = area_q_m_mat_het.shape[0]
+
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_f_pat[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label='Female PAT median')
-    plt.fill_between(quantiles, area_interval_f_pat[1, :] * 1e12 * 1e-3, area_interval_f_pat[3, :] * 1e12 * 1e-3,
-                     facecolor='C0', alpha=0.3, label='Female PAT 50%-interval')
-    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT 95%-interval')
-    plt.plot(quantiles, area_interval_f_pat[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
 
-    plt.plot(quantiles, area_interval_f_mat[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label='Female MAT median')
-    plt.fill_between(quantiles, area_interval_f_mat[1, :] * 1e12 * 1e-3, area_interval_f_mat[3, :] * 1e12 * 1e-3,
-                     facecolor='C2', alpha=0.3, label='Female MAT 50%-interval')
-    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e12 * 1e-3, 'C2:', linewidth=2, label='Female MAT 95%-interval')
-    plt.plot(quantiles, area_interval_f_mat[4, :] * 1e12 * 1e-3, 'C2:', linewidth=2)
+    plt.subplot(121)
+    plt.plot(quantiles, area_interval_f_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_f_pat_wt) + ' Female PAT WT')
+    plt.fill_between(quantiles, area_interval_f_pat_wt[1, :] * 1e12 * 1e-3, area_interval_f_pat_wt[3, :] * 1e12 * 1e-3,
+                     facecolor='C0', alpha=0.3)
+    # plt.plot(quantiles, area_interval_f_pat_wt[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT WT 95%-interval')
+    # plt.plot(quantiles, area_interval_f_pat_wt[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
+
+    plt.plot(quantiles, area_interval_f_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_f_pat_het) + ' Female PAT Het')
+    plt.fill_between(quantiles, area_interval_f_pat_het[1, :] * 1e12 * 1e-3, area_interval_f_pat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='C1', alpha=0.3)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
     plt.xlabel('Cell population quantile', fontsize=14)
     plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
+    plt.ylim(0, 12)
+    plt.tight_layout()
+
+    plt.subplot(122)
+    plt.plot(quantiles, area_interval_f_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_f_mat_wt) + ' Female MAT WT')
+    plt.fill_between(quantiles, area_interval_f_mat_wt[1, :] * 1e12 * 1e-3, area_interval_f_mat_wt[3, :] * 1e12 * 1e-3,
+                     facecolor='C2', alpha=0.3)
+
+    plt.plot(quantiles, area_interval_f_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_f_mat_het) + ' Female MAT Het')
+    plt.fill_between(quantiles, area_interval_f_mat_het[1, :] * 1e12 * 1e-3, area_interval_f_mat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='C3', alpha=0.3)
+
+    # plt.title('Inguinal subcutaneous', fontsize=16)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.ylim(0, 12)
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_female_pat_vs_mat_bands.svg'))
@@ -1325,29 +1369,46 @@ if DEBUG:
 
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_m_pat[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label='Male PAT median')
-    plt.fill_between(quantiles, area_interval_m_pat[1, :] * 1e12 * 1e-3, area_interval_m_pat[3, :] * 1e12 * 1e-3,
-                     facecolor='C1', alpha=0.3, label='Male PAT 50%-interval')
-    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e12 * 1e-3, 'C1:', linewidth=2, label='Male PAT 95%-interval')
-    plt.plot(quantiles, area_interval_m_pat[4, :] * 1e12 * 1e-3, 'C1:', linewidth=2)
 
-    plt.plot(quantiles, area_interval_m_mat[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label='Male MAT median')
-    plt.fill_between(quantiles, area_interval_m_mat[1, :] * 1e12 * 1e-3, area_interval_m_mat[3, :] * 1e12 * 1e-3,
-                     facecolor='C3', alpha=0.3, label='Male MAT 50%-interval')
-    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e12 * 1e-3, 'C3:', linewidth=2, label='Male MAT 95%-interval')
-    plt.plot(quantiles, area_interval_m_mat[4, :] * 1e12 * 1e-3, 'C3:', linewidth=2)
+    plt.subplot(121)
+    plt.plot(quantiles, area_interval_m_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_pat_wt) + ' Male PAT WT')
+    plt.fill_between(quantiles, area_interval_m_pat_wt[1, :] * 1e12 * 1e-3, area_interval_m_pat_wt[3, :] * 1e12 * 1e-3,
+                     facecolor='C0', alpha=0.3)
+    # plt.plot(quantiles, area_interval_f_pat_wt[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT WT 95%-interval')
+    # plt.plot(quantiles, area_interval_f_pat_wt[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
+
+    plt.plot(quantiles, area_interval_m_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_m_pat_het) + ' Male PAT Het')
+    plt.fill_between(quantiles, area_interval_m_pat_het[1, :] * 1e12 * 1e-3, area_interval_m_pat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='C1', alpha=0.3)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
     plt.xlabel('Cell population quantile', fontsize=14)
     plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
+    plt.ylim(0, 12)
+    plt.tight_layout()
+
+    plt.subplot(122)
+    plt.plot(quantiles, area_interval_m_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_m_mat_wt) + ' Male MAT WT')
+    plt.fill_between(quantiles, area_interval_m_mat_wt[1, :] * 1e12 * 1e-3, area_interval_m_mat_wt[3, :] * 1e12 * 1e-3,
+                     facecolor='C2', alpha=0.3)
+
+    plt.plot(quantiles, area_interval_m_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_m_mat_het) + ' Male MAT Het')
+    plt.fill_between(quantiles, area_interval_m_mat_het[1, :] * 1e12 * 1e-3, area_interval_m_mat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='C3', alpha=0.3)
+
+    # plt.title('Inguinal subcutaneous', fontsize=16)
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.ylim(0, 12)
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_male_pat_vs_mat_bands.svg'))
     plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_male_pat_vs_mat_bands.png'))
 
-# test whether the median values are different enough between female vs. male
+# test whether the median values are different enough between two groups
 func = lambda x, y: np.abs(scipy.stats.mstats.hdquantiles(x, prob=0.5, axis=0).data[0]
                            - scipy.stats.mstats.hdquantiles(y, prob=0.5, axis=0).data[0])
 # func = lambda x, y: np.abs(np.mean(x) - np.mean(y))
