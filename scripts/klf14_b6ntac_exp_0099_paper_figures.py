@@ -621,6 +621,7 @@ import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
 from PIL import Image, ImageDraw
+import math
 
 LIMIT_GPU_MEMORY = False
 
@@ -1047,7 +1048,7 @@ if DEBUG:
 # This is done in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7
 
 ########################################################################################################################
-## Plots of distribution curves from automatically segmented images
+## Plots of distribution curves from automatically segmented images: SQWAT
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
@@ -1067,110 +1068,174 @@ ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 
-# SQWAT: list of annotation files
-json_annotation_files = [
-    'KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46.json',
-    'KLF14-B6NTAC-MAT-17.1a  44-16 C1 - 2016-02-01 11.14.17.json',
-    'KLF14-B6NTAC-MAT-17.1e  48-16 C1 - 2016-02-01 16.27.05.json',
-    'KLF14-B6NTAC-MAT-18.2a  57-16 C1 - 2016-02-03 09.10.17.json',
-    'KLF14-B6NTAC-PAT-37.3c  414-16 C1 - 2016-03-15 17.15.41.json',
-    'KLF14-B6NTAC-MAT-18.1d  53-16 C1 - 2016-02-02 14.32.03.json',
-    'KLF14-B6NTAC-MAT-17.2b  65-16 C1 - 2016-02-04 10.24.22.json',
-    'KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05.json',
-    'KLF14-B6NTAC 37.1a PAT 106-16 C1 - 2016-02-12 16.21.00.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06.json',
-    # 'KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26.json',
-    'KLF14-B6NTAC-MAT-17.2a  64-16 C1 - 2016-02-04 09.17.52.json',
-    'KLF14-B6NTAC-MAT-16.2f  216-16 C1 - 2016-02-18 10.28.27.json',
-    'KLF14-B6NTAC-MAT-17.1d  47-16 C1 - 2016-02-01 15.25.53.json',
-    'KLF14-B6NTAC-MAT-16.2e  215-16 C1 - 2016-02-18 09.19.26.json',
-    'KLF14-B6NTAC 36.1g PAT 102-16 C1 - 2016-02-11 17.20.14.json',
-    'KLF14-B6NTAC-37.1g PAT 112-16 C1 - 2016-02-16 13.33.09.json',
-    'KLF14-B6NTAC-38.1e PAT 94-16 C1 - 2016-02-10 12.13.10.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52.json',
-    'KLF14-B6NTAC-MAT-18.2f  62-16 C1 - 2016-02-03 15.46.15.json',
-    'KLF14-B6NTAC-MAT-18.1b  51-16 C1 - 2016-02-02 09.59.16.json',
-    'KLF14-B6NTAC-MAT-19.2c  220-16 C1 - 2016-02-18 17.03.38.json',
-    'KLF14-B6NTAC-MAT-18.1f  55-16 C1 - 2016-02-02 16.14.30.json',
-    'KLF14-B6NTAC-PAT-36.3b  412-16 C1 - 2016-03-15 14.37.55.json',
-    'KLF14-B6NTAC-MAT-16.2c  213-16 C1 - 2016-02-17 14.51.18.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32.json',
-    'KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56.json',
-    'KLF14-B6NTAC-MAT-18.1c  52-16 C1 - 2016-02-02 12.26.58.json',
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.json',
-    'KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38.json',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00.json',
-    'KLF14-B6NTAC-MAT-18.2e  61-16 C1 - 2016-02-03 14.19.35.json',
-    'KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00.json',
-    'KLF14-B6NTAC-PAT-37.2a  406-16 C1 - 2016-03-14 12.01.56.json',
-    'KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33.json',
-    'KLF14-B6NTAC-37.1b PAT 107-16 C1 - 2016-02-15 11.43.31.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04.json',
-    'KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16.json',
-    'KLF14-B6NTAC-MAT-17.2d  67-16 C1 - 2016-02-04 12.34.32.json',
-    'KLF14-B6NTAC-MAT-18.3c  218-16 C1 - 2016-02-18 13.12.09.json',
-    'KLF14-B6NTAC-PAT-37.3a  413-16 C1 - 2016-03-15 15.54.12.json',
-    'KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31.json',
-    'KLF14-B6NTAC-37.1h PAT 113-16 C1 - 2016-02-16 15.14.09.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.json',
-    'KLF14-B6NTAC-37.1e PAT 110-16 C1 - 2016-02-15 17.33.11.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54.json',
-    'KLF14-B6NTAC 36.1h PAT 103-16 C1 - 2016-02-12 10.15.22.json',
-    # 'KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04.json',  # borderline usable
-    'KLF14-B6NTAC-MAT-16.2b  212-16 C1 - 2016-02-17 12.49.00.json',
-    'KLF14-B6NTAC-MAT-17.1f  49-16 C1 - 2016-02-01 17.51.46.json',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11.json',
-    'KLF14-B6NTAC-MAT-16.2a  211-16 C1 - 2016-02-17 11.46.42.json',
-    'KLF14-B6NTAC-38.1f PAT 95-16 C1 - 2016-02-10 14.41.44.json',
-    'KLF14-B6NTAC-PAT-36.3a  409-16 C1 - 2016-03-15 10.18.46.json',
-    'KLF14-B6NTAC-MAT-19.2b  219-16 C1 - 2016-02-18 15.41.38.json',
-    'KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.json',
-    'KLF14-B6NTAC 36.1f PAT 101-16 C1 - 2016-02-11 15.23.06.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08.json',
-    'KLF14-B6NTAC-MAT-18.2c  59-16 C1 - 2016-02-03 11.56.52.json',
-    'KLF14-B6NTAC-PAT-37.2f  405-16 C1 - 2016-03-14 10.58.34.json',
-    'KLF14-B6NTAC-PAT-37.2e  408-16 C1 - 2016-03-14 16.23.30.json',
-    'KLF14-B6NTAC-MAT-19.2e  221-16 C1 - 2016-02-25 14.00.14.json',
-    # 'KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54.json',
-    # 'KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20.json',
-    'KLF14-B6NTAC-PAT-37.4b  419-16 C1 - 2016-03-17 10.22.54.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45.json',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38.json',
-    'KLF14-B6NTAC-PAT-37.2h  418-16 C1 - 2016-03-16 17.01.17.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52.json',
-    'KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1).json'
-]
+DEBUG = False
 
-# # GWAT: list of annotation files
-# json_annotation_files = [
-#     'KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40_exp_0097_corrected.json',
-#     'KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45_exp_0097_corrected.json',
-#     'KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38_exp_0097_corrected.json',
-# ]
+# depot = 'sqwat'
+depot = 'gwat'
+
+permutation_sample_size = 9  # the factorial of this number is the number of repetitions in the permutation tests
+
+if depot == 'sqwat':
+    # SQWAT: list of annotation files
+    json_annotation_files = [
+        'KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31.json',
+        'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46.json',
+        'KLF14-B6NTAC-MAT-17.1a  44-16 C1 - 2016-02-01 11.14.17.json',
+        'KLF14-B6NTAC-MAT-17.1e  48-16 C1 - 2016-02-01 16.27.05.json',
+        'KLF14-B6NTAC-MAT-18.2a  57-16 C1 - 2016-02-03 09.10.17.json',
+        'KLF14-B6NTAC-PAT-37.3c  414-16 C1 - 2016-03-15 17.15.41.json',
+        'KLF14-B6NTAC-MAT-18.1d  53-16 C1 - 2016-02-02 14.32.03.json',
+        'KLF14-B6NTAC-MAT-17.2b  65-16 C1 - 2016-02-04 10.24.22.json',
+        'KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05.json',
+        'KLF14-B6NTAC 37.1a PAT 106-16 C1 - 2016-02-12 16.21.00.json',
+        'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06.json',
+        # 'KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26.json',
+        'KLF14-B6NTAC-MAT-17.2a  64-16 C1 - 2016-02-04 09.17.52.json',
+        'KLF14-B6NTAC-MAT-16.2f  216-16 C1 - 2016-02-18 10.28.27.json',
+        'KLF14-B6NTAC-MAT-17.1d  47-16 C1 - 2016-02-01 15.25.53.json',
+        'KLF14-B6NTAC-MAT-16.2e  215-16 C1 - 2016-02-18 09.19.26.json',
+        'KLF14-B6NTAC 36.1g PAT 102-16 C1 - 2016-02-11 17.20.14.json',
+        'KLF14-B6NTAC-37.1g PAT 112-16 C1 - 2016-02-16 13.33.09.json',
+        'KLF14-B6NTAC-38.1e PAT 94-16 C1 - 2016-02-10 12.13.10.json',
+        'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57.json',
+        'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52.json',
+        'KLF14-B6NTAC-MAT-18.2f  62-16 C1 - 2016-02-03 15.46.15.json',
+        'KLF14-B6NTAC-MAT-18.1b  51-16 C1 - 2016-02-02 09.59.16.json',
+        'KLF14-B6NTAC-MAT-19.2c  220-16 C1 - 2016-02-18 17.03.38.json',
+        'KLF14-B6NTAC-MAT-18.1f  55-16 C1 - 2016-02-02 16.14.30.json',
+        'KLF14-B6NTAC-PAT-36.3b  412-16 C1 - 2016-03-15 14.37.55.json',
+        'KLF14-B6NTAC-MAT-16.2c  213-16 C1 - 2016-02-17 14.51.18.json',
+        'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32.json',
+        'KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56.json',
+        'KLF14-B6NTAC-MAT-18.1c  52-16 C1 - 2016-02-02 12.26.58.json',
+        'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52.json',
+        'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.json',
+        'KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38.json',
+        'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00.json',
+        'KLF14-B6NTAC-MAT-18.2e  61-16 C1 - 2016-02-03 14.19.35.json',
+        'KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00.json',
+        'KLF14-B6NTAC-PAT-37.2a  406-16 C1 - 2016-03-14 12.01.56.json',
+        'KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33.json',
+        'KLF14-B6NTAC-37.1b PAT 107-16 C1 - 2016-02-15 11.43.31.json',
+        'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04.json',
+        'KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16.json',
+        'KLF14-B6NTAC-MAT-17.2d  67-16 C1 - 2016-02-04 12.34.32.json',
+        'KLF14-B6NTAC-MAT-18.3c  218-16 C1 - 2016-02-18 13.12.09.json',
+        'KLF14-B6NTAC-PAT-37.3a  413-16 C1 - 2016-03-15 15.54.12.json',
+        'KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31.json',
+        'KLF14-B6NTAC-37.1h PAT 113-16 C1 - 2016-02-16 15.14.09.json',
+        'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53.json',
+        'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.json',
+        'KLF14-B6NTAC-37.1e PAT 110-16 C1 - 2016-02-15 17.33.11.json',
+        'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54.json',
+        'KLF14-B6NTAC 36.1h PAT 103-16 C1 - 2016-02-12 10.15.22.json',
+        # 'KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04.json',
+        'KLF14-B6NTAC-MAT-16.2b  212-16 C1 - 2016-02-17 12.49.00.json',
+        'KLF14-B6NTAC-MAT-17.1f  49-16 C1 - 2016-02-01 17.51.46.json',
+        'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11.json',
+        'KLF14-B6NTAC-MAT-16.2a  211-16 C1 - 2016-02-17 11.46.42.json',
+        'KLF14-B6NTAC-38.1f PAT 95-16 C1 - 2016-02-10 14.41.44.json',
+        'KLF14-B6NTAC-PAT-36.3a  409-16 C1 - 2016-03-15 10.18.46.json',
+        'KLF14-B6NTAC-MAT-19.2b  219-16 C1 - 2016-02-18 15.41.38.json',
+        'KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.json',
+        'KLF14-B6NTAC 36.1f PAT 101-16 C1 - 2016-02-11 15.23.06.json',
+        'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33.json',
+        'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08.json',
+        'KLF14-B6NTAC-MAT-18.2c  59-16 C1 - 2016-02-03 11.56.52.json',
+        'KLF14-B6NTAC-PAT-37.2f  405-16 C1 - 2016-03-14 10.58.34.json',
+        'KLF14-B6NTAC-PAT-37.2e  408-16 C1 - 2016-03-14 16.23.30.json',
+        'KLF14-B6NTAC-MAT-19.2e  221-16 C1 - 2016-02-25 14.00.14.json',
+        # 'KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54.json',
+        # 'KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20.json',
+        'KLF14-B6NTAC-PAT-37.4b  419-16 C1 - 2016-03-17 10.22.54.json',
+        'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45.json',
+        'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41.json',
+        'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38.json',
+        'KLF14-B6NTAC-PAT-37.2h  418-16 C1 - 2016-03-16 17.01.17.json',
+        'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39.json',
+        'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52.json',
+        'KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1).json'
+    ]
+elif depot == 'gwat':
+    # GWAT: list of annotation files
+    json_annotation_files = [
+        'KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31.json',
+        'KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16.json',
+        'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40.json',
+        'KLF14-B6NTAC 36.1d PAT 99-16 B1 - 2016-02-11 11.29.55.json',
+        'KLF14-B6NTAC 36.1e PAT 100-16 B1 - 2016-02-11 12.51.11.json',
+        'KLF14-B6NTAC 36.1f PAT 101-16 B1 - 2016-02-11 14.57.03.json',
+        'KLF14-B6NTAC 36.1g PAT 102-16 B1 - 2016-02-11 16.12.01.json',
+        'KLF14-B6NTAC 36.1h PAT 103-16 B1 - 2016-02-12 09.51.08.json',
+        # 'KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56.json',
+        'KLF14-B6NTAC 36.1j PAT 105-16 B1 - 2016-02-12 14.08.19.json',
+        'KLF14-B6NTAC 37.1a PAT 106-16 B1 - 2016-02-12 15.33.02.json',
+        'KLF14-B6NTAC-37.1b PAT 107-16 B1 - 2016-02-15 11.25.20.json',
+        'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10.json',
+        'KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44.json',
+        'KLF14-B6NTAC-37.1e PAT 110-16 B1 - 2016-02-15 16.16.06.json',
+        'KLF14-B6NTAC-37.1g PAT 112-16 B1 - 2016-02-16 12.02.07.json',
+        'KLF14-B6NTAC-37.1h PAT 113-16 B1 - 2016-02-16 14.53.02.json',
+        'KLF14-B6NTAC-38.1e PAT 94-16 B1 - 2016-02-10 11.35.53.json',
+        'KLF14-B6NTAC-38.1f PAT 95-16 B1 - 2016-02-10 14.16.55.json',
+        'KLF14-B6NTAC-MAT-16.2a  211-16 B1 - 2016-02-17 11.21.54.json',
+        'KLF14-B6NTAC-MAT-16.2b  212-16 B1 - 2016-02-17 12.33.18.json',
+        'KLF14-B6NTAC-MAT-16.2c  213-16 B1 - 2016-02-17 14.01.06.json',
+        'KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57.json',
+        'KLF14-B6NTAC-MAT-16.2e  215-16 B1 - 2016-02-17 17.14.16.json',
+        'KLF14-B6NTAC-MAT-16.2f  216-16 B1 - 2016-02-18 10.05.52.json',
+        # 'KLF14-B6NTAC-MAT-17.1a  44-16 B1 - 2016-02-01 09.19.20.json',
+        'KLF14-B6NTAC-MAT-17.1b  45-16 B1 - 2016-02-01 12.05.15.json',
+        'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30.json',
+        'KLF14-B6NTAC-MAT-17.1d  47-16 B1 - 2016-02-01 15.11.42.json',
+        'KLF14-B6NTAC-MAT-17.1e  48-16 B1 - 2016-02-01 16.01.09.json',
+        'KLF14-B6NTAC-MAT-17.1f  49-16 B1 - 2016-02-01 17.12.31.json',
+        'KLF14-B6NTAC-MAT-17.2a  64-16 B1 - 2016-02-04 08.57.34.json',
+        'KLF14-B6NTAC-MAT-17.2b  65-16 B1 - 2016-02-04 10.06.00.json',
+        'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28.json',
+        'KLF14-B6NTAC-MAT-17.2d  67-16 B1 - 2016-02-04 12.20.20.json',
+        'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40.json',
+        'KLF14-B6NTAC-MAT-17.2g  69-16 B1 - 2016-02-04 15.52.52.json',
+        'KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06.json',
+        'KLF14-B6NTAC-MAT-18.1b  51-16 B1 - 2016-02-02 09.46.31.json',
+        'KLF14-B6NTAC-MAT-18.1c  52-16 B1 - 2016-02-02 11.24.31.json',
+        'KLF14-B6NTAC-MAT-18.1d  53-16 B1 - 2016-02-02 14.11.37.json',
+        # 'KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05.json',
+        'KLF14-B6NTAC-MAT-18.2a  57-16 B1 - 2016-02-03 08.54.27.json',
+        'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06.json',
+        'KLF14-B6NTAC-MAT-18.2c  59-16 B1 - 2016-02-03 11.41.32.json',
+        'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49.json',
+        'KLF14-B6NTAC-MAT-18.2e  61-16 B1 - 2016-02-03 14.02.25.json',
+        'KLF14-B6NTAC-MAT-18.2f  62-16 B1 - 2016-02-03 15.00.17.json',
+        'KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37.json',
+        'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42.json',
+        'KLF14-B6NTAC-MAT-18.3c  218-16 B1 - 2016-02-18 12.51.46.json',
+        'KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56.json',
+        'KLF14-B6NTAC-MAT-19.1a  56-16 B1 - 2016-02-02 16.57.46.json',
+        'KLF14-B6NTAC-MAT-19.2b  219-16 B1 - 2016-02-18 14.21.50.json',
+        'KLF14-B6NTAC-MAT-19.2c  220-16 B1 - 2016-02-18 16.40.48.json',
+        'KLF14-B6NTAC-MAT-19.2e  221-16 B1 - 2016-02-25 13.15.27.json',
+        'KLF14-B6NTAC-MAT-19.2f  217-16 B1 - 2016-02-18 11.23.22.json',
+        'KLF14-B6NTAC-MAT-19.2g  222-16 B1 - 2016-02-25 14.51.57.json',
+        'KLF14-B6NTAC-PAT-36.3a  409-16 B1 - 2016-03-15 09.24.54.json',
+        'KLF14-B6NTAC-PAT-36.3b  412-16 B1 - 2016-03-15 14.11.47.json',
+        'KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04.json',
+        # 'KLF14-B6NTAC-PAT-37.2a  406-16 B1 - 2016-03-14 11.46.47.json',
+        'KLF14-B6NTAC-PAT-37.2b  410-16 B1 - 2016-03-15 11.12.01.json',
+        'KLF14-B6NTAC-PAT-37.2c  407-16 B1 - 2016-03-14 12.54.55.json',
+        'KLF14-B6NTAC-PAT-37.2d  411-16 B1 - 2016-03-15 12.01.13.json',
+        'KLF14-B6NTAC-PAT-37.2e  408-16 B1 - 2016-03-14 16.06.43.json',
+        'KLF14-B6NTAC-PAT-37.2f  405-16 B1 - 2016-03-14 09.49.45.json',
+        'KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45.json',
+        'KLF14-B6NTAC-PAT-37.2h  418-16 B1 - 2016-03-16 16.42.16.json',
+        'KLF14-B6NTAC-PAT-37.3a  413-16 B1 - 2016-03-15 15.31.26.json',
+        'KLF14-B6NTAC-PAT-37.3c  414-16 B1 - 2016-03-15 16.49.22.json',
+        'KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38.json',
+        'KLF14-B6NTAC-PAT-37.4b  419-16 B1 - 2016-03-17 09.10.42.json',
+        'KLF14-B6NTAC-PAT-38.1a  90-16 B1 - 2016-02-04 17.27.42.json',
+        'KLF14-B6NTAC-PAT-39.1h  453-16 B1 - 2016-03-17 11.15.50.json',
+        'KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06.json'
+    ]
 
 # modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
 json_annotation_files = [x.replace('.json', '_exp_0097_corrected.json') for x in json_annotation_files]
@@ -1183,72 +1248,88 @@ metainfo = pd.read_csv(metainfo_csv_file)
 quantiles = np.linspace(0, 1, 11)
 quantiles = quantiles[1:-1]
 
-area_q_all = []
-id_all = []
-ko_all = []
-genotype_all = []
-sex_all = []
-for i_file, json_file in enumerate(json_annotation_files):
+# load or compute area quantiles
+filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
+if os.path.isfile(filename_quantiles):
 
-    print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
+    aux = np.load(filename_quantiles)
+    area_q_all = aux['area_q_all']
+    id_all = aux['id_all']
+    ko_all = aux['ko_all']
+    genotype_all = aux['genotype_all']
+    sex_all = aux['sex_all']
 
-    if not os.path.isfile(json_file):
-        print('Missing file')
-        continue
+else:
 
-    # ndpi file that corresponds to this .json file
-    ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
-    ndpi_file = ndpi_file.replace(annotations_dir, ndpi_dir)
+    area_q_all = []
+    id_all = []
+    ko_all = []
+    genotype_all = []
+    sex_all = []
+    for i_file, json_file in enumerate(json_annotation_files):
 
-    # open full resolution histology slide
-    im = openslide.OpenSlide(ndpi_file)
+        print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
 
-    # pixel size
-    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-    xres = 1e-2 / float(im.properties['tiff.XResolution'])
-    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+        if not os.path.isfile(json_file):
+            print('Missing file')
+            continue
 
-    # create dataframe for this image
-    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
-                                                          values=[i_file,], values_tag='i_file',
-                                                          tags_to_keep=['id', 'ko', 'genotype', 'sex'])
+        # ndpi file that corresponds to this .json file
+        ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
+        ndpi_file = ndpi_file.replace(annotations_dir, ndpi_dir)
 
-    # mouse ID as a string
-    id = df_common['id'].values[0]
-    ko = df_common['ko'].values[0]
-    genotype = df_common['genotype'].values[0]
-    sex = df_common['sex'].values[0]
+        # open full resolution histology slide
+        im = openslide.OpenSlide(ndpi_file)
 
-    # read contours from AIDA annotations
-    contours = cytometer.data.aida_get_contours(os.path.join(annotations_dir, json_file), layer_name='White adipocyte.*')
+        # pixel size
+        assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+        xres = 1e-2 / float(im.properties['tiff.XResolution'])
+        yres = 1e-2 / float(im.properties['tiff.YResolution'])
 
-    # compute area of each contour
-    areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
+        # create dataframe for this image
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                              values=[i_file,], values_tag='i_file',
+                                                              tags_to_keep=['id', 'ko', 'genotype', 'sex'])
 
-    # compute HD quantiles
-    area_q = scipy.stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
+        # mouse ID as a string
+        id = df_common['id'].values[0]
+        ko = df_common['ko'].values[0]
+        genotype = df_common['genotype'].values[0]
+        sex = df_common['sex'].values[0]
 
-    # append to totals
-    area_q_all.append(area_q)
-    id_all.append(id)
-    ko_all.append(ko)
-    genotype_all.append(genotype)
-    sex_all.append(sex)
+        # read contours from AIDA annotations
+        contours = cytometer.data.aida_get_contours(os.path.join(annotations_dir, json_file), layer_name='White adipocyte.*')
 
-# reorder from largest to smallest final area value
-area_q_all = np.array(area_q_all)
-id_all = np.array(id_all)
-ko_all = np.array(ko_all)
-genotype_all = np.array(genotype_all)
-sex_all = np.array(sex_all)
+        # compute area of each contour
+        areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
 
-idx = np.argsort(area_q_all[:, -1])
-idx = idx[::-1]  # sort from larger to smaller
-area_q_all = area_q_all[idx, :]
-id_all = id_all[idx]
-ko_all = ko_all[idx]
-genotype_all = genotype_all[idx]
-sex_all = sex_all[idx]
+        # compute HD quantiles
+        area_q = scipy.stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
+
+        # append to totals
+        area_q_all.append(area_q)
+        id_all.append(id)
+        ko_all.append(ko)
+        genotype_all.append(genotype)
+        sex_all.append(sex)
+
+    # reorder from largest to smallest final area value
+    area_q_all = np.array(area_q_all)
+    id_all = np.array(id_all)
+    ko_all = np.array(ko_all)
+    genotype_all = np.array(genotype_all)
+    sex_all = np.array(sex_all)
+
+    idx = np.argsort(area_q_all[:, -1])
+    idx = idx[::-1]  # sort from larger to smaller
+    area_q_all = area_q_all[idx, :]
+    id_all = id_all[idx]
+    ko_all = ko_all[idx]
+    genotype_all = genotype_all[idx]
+    sex_all = sex_all[idx]
+
+    np.savez_compressed(filename_quantiles, area_q_all=area_q_all, id_all=id_all, ko_all=ko_all, genotype_all=genotype_all,
+                        sex_all=sex_all)
 
 if DEBUG:
     plt.clf()
@@ -1289,29 +1370,36 @@ if DEBUG:
     plt.xlabel('Quantile', fontsize=14)
     plt.legend(legend_m, fontsize=12)
 
+# DEBUG:
+# area_q_all = np.vstack((area_q_all, area_q_all))
+# id_all = np.hstack((id_all, id_all))
+# ko_all = np.hstack((ko_all, ko_all))
+# genotype_all = np.hstack((genotype_all, genotype_all))
+# sex_all = np.hstack((sex_all, sex_all))
+
 # compute variability of area values for each quantile
-area_q_f_pat = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (id_all != '39.1h'), :]
-area_q_m_pat = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (id_all != '39.1h'), :]
-area_q_f_mat = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (id_all != '39.1h'), :]
-area_q_m_mat = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (id_all != '39.1h'), :]
+area_q_f_pat = area_q_all[(sex_all == 'f') * (ko_all == 'PAT'), :]
+area_q_m_pat = area_q_all[(sex_all == 'm') * (ko_all == 'PAT'), :]
+area_q_f_mat = area_q_all[(sex_all == 'f') * (ko_all == 'MAT'), :]
+area_q_m_mat = area_q_all[(sex_all == 'm') * (ko_all == 'MAT'), :]
 area_interval_f_pat = scipy.stats.mstats.hdquantiles(area_q_f_pat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_m_pat = scipy.stats.mstats.hdquantiles(area_q_m_pat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_f_mat = scipy.stats.mstats.hdquantiles(area_q_f_mat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_m_mat = scipy.stats.mstats.hdquantiles(area_q_m_mat, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 
-area_q_f_pat_wt = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
-area_q_m_pat_wt = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
-area_q_f_mat_wt = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
-area_q_m_mat_wt = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:WT') * (id_all != '39.1h'), :]
+area_q_f_pat_wt = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:WT'), :]
+area_q_m_pat_wt = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:WT'), :]
+area_q_f_mat_wt = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:WT'), :]
+area_q_m_mat_wt = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:WT'), :]
 area_interval_f_pat_wt = scipy.stats.mstats.hdquantiles(area_q_f_pat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_m_pat_wt = scipy.stats.mstats.hdquantiles(area_q_m_pat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_f_mat_wt = scipy.stats.mstats.hdquantiles(area_q_f_mat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_m_mat_wt = scipy.stats.mstats.hdquantiles(area_q_m_mat_wt, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 
-area_q_f_pat_het = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
-area_q_m_pat_het = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
-area_q_f_mat_het = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
-area_q_m_mat_het = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:Het') * (id_all != '39.1h'), :]
+area_q_f_pat_het = area_q_all[(sex_all == 'f') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:Het'), :]
+area_q_m_pat_het = area_q_all[(sex_all == 'm') * (ko_all == 'PAT') * (genotype_all == 'KLF14-KO:Het'), :]
+area_q_f_mat_het = area_q_all[(sex_all == 'f') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:Het'), :]
+area_q_m_mat_het = area_q_all[(sex_all == 'm') * (ko_all == 'MAT') * (genotype_all == 'KLF14-KO:Het'), :]
 area_interval_f_pat_het = scipy.stats.mstats.hdquantiles(area_q_f_pat_het, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_m_pat_het = scipy.stats.mstats.hdquantiles(area_q_m_pat_het, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
 area_interval_f_mat_het = scipy.stats.mstats.hdquantiles(area_q_f_mat_het, prob=[0.025, 0.25, 0.5, 0.75, 0.975], axis=0)
@@ -1330,103 +1418,196 @@ if DEBUG:
     plt.clf()
 
     plt.subplot(121)
-    plt.plot(quantiles, area_interval_f_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_f_pat_wt) + ' Female PAT WT')
-    plt.fill_between(quantiles, area_interval_f_pat_wt[1, :] * 1e12 * 1e-3, area_interval_f_pat_wt[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_f_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_f_pat_wt) + ' Female PAT WT')
+    plt.fill_between(quantiles * 100, area_interval_f_pat_wt[1, :] * 1e12 * 1e-3, area_interval_f_pat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C0', alpha=0.3)
     # plt.plot(quantiles, area_interval_f_pat_wt[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT WT 95%-interval')
     # plt.plot(quantiles, area_interval_f_pat_wt[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
 
-    plt.plot(quantiles, area_interval_f_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_f_pat_het) + ' Female PAT Het')
-    plt.fill_between(quantiles, area_interval_f_pat_het[1, :] * 1e12 * 1e-3, area_interval_f_pat_het[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_f_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_f_pat_het) + ' Female PAT Het')
+    plt.fill_between(quantiles * 100, area_interval_f_pat_het[1, :] * 1e12 * 1e-3, area_interval_f_pat_het[3, :] * 1e12 * 1e-3,
                      facecolor='C1', alpha=0.3)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.xlabel('Cell population quantile (%)', fontsize=14)
     plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.ylim(0, 12)
+    plt.legend(loc='upper left', prop={'size': 12})
+    plt.ylim(0, 15)
     plt.tight_layout()
 
     plt.subplot(122)
-    plt.plot(quantiles, area_interval_f_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_f_mat_wt) + ' Female MAT WT')
-    plt.fill_between(quantiles, area_interval_f_mat_wt[1, :] * 1e12 * 1e-3, area_interval_f_mat_wt[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_f_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_f_mat_wt) + ' Female MAT WT')
+    plt.fill_between(quantiles * 100, area_interval_f_mat_wt[1, :] * 1e12 * 1e-3, area_interval_f_mat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C2', alpha=0.3)
 
-    plt.plot(quantiles, area_interval_f_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_f_mat_het) + ' Female MAT Het')
-    plt.fill_between(quantiles, area_interval_f_mat_het[1, :] * 1e12 * 1e-3, area_interval_f_mat_het[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_f_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_f_mat_het) + ' Female MAT Het')
+    plt.fill_between(quantiles * 100, area_interval_f_mat_het[1, :] * 1e12 * 1e-3, area_interval_f_mat_het[3, :] * 1e12 * 1e-3,
                      facecolor='C3', alpha=0.3)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.xlabel('Cell population quantile (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.ylim(0, 12)
+    plt.legend(loc='upper left', prop={'size': 12})
+    plt.ylim(0, 15)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_female_pat_vs_mat_bands.svg'))
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_female_pat_vs_mat_bands.png'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_female_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_female_pat_vs_mat_bands.png'))
 
 if DEBUG:
     plt.clf()
 
     plt.subplot(121)
-    plt.plot(quantiles, area_interval_m_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_pat_wt) + ' Male PAT WT')
-    plt.fill_between(quantiles, area_interval_m_pat_wt[1, :] * 1e12 * 1e-3, area_interval_m_pat_wt[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_m_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_pat_wt) + ' Male PAT WT')
+    plt.fill_between(quantiles * 100, area_interval_m_pat_wt[1, :] * 1e12 * 1e-3, area_interval_m_pat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C0', alpha=0.3)
     # plt.plot(quantiles, area_interval_f_pat_wt[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT WT 95%-interval')
     # plt.plot(quantiles, area_interval_f_pat_wt[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
 
-    plt.plot(quantiles, area_interval_m_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_m_pat_het) + ' Male PAT Het')
-    plt.fill_between(quantiles, area_interval_m_pat_het[1, :] * 1e12 * 1e-3, area_interval_m_pat_het[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_m_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_m_pat_het) + ' Male PAT Het')
+    plt.fill_between(quantiles * 100, area_interval_m_pat_het[1, :] * 1e12 * 1e-3, area_interval_m_pat_het[3, :] * 1e12 * 1e-3,
                      facecolor='C1', alpha=0.3)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.xlabel('Cell population quantile (%)', fontsize=14)
     plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.ylim(0, 12)
+    plt.legend(loc='upper left', prop={'size': 12})
+    plt.ylim(0, 16)
     plt.tight_layout()
 
     plt.subplot(122)
-    plt.plot(quantiles, area_interval_m_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_m_mat_wt) + ' Male MAT WT')
-    plt.fill_between(quantiles, area_interval_m_mat_wt[1, :] * 1e12 * 1e-3, area_interval_m_mat_wt[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_m_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_m_mat_wt) + ' Male MAT WT')
+    plt.fill_between(quantiles * 100, area_interval_m_mat_wt[1, :] * 1e12 * 1e-3, area_interval_m_mat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C2', alpha=0.3)
 
-    plt.plot(quantiles, area_interval_m_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_m_mat_het) + ' Male MAT Het')
-    plt.fill_between(quantiles, area_interval_m_mat_het[1, :] * 1e12 * 1e-3, area_interval_m_mat_het[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles * 100, area_interval_m_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_m_mat_het) + ' Male MAT Het')
+    plt.fill_between(quantiles * 100, area_interval_m_mat_het[1, :] * 1e12 * 1e-3, area_interval_m_mat_het[3, :] * 1e12 * 1e-3,
                      facecolor='C3', alpha=0.3)
 
     # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.xlabel('Cell population quantile (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.legend(loc='best', prop={'size': 12})
-    plt.ylim(0, 12)
+    plt.legend(loc='upper left', prop={'size': 12})
+    plt.ylim(0, 16)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_male_pat_vs_mat_bands.svg'))
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_male_pat_vs_mat_bands.png'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_male_pat_vs_mat_bands.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_male_pat_vs_mat_bands.png'))
 
-# test whether the median values are different enough between two groups
-func = lambda x, y: np.abs(scipy.stats.mstats.hdquantiles(x, prob=0.5, axis=0).data[0]
-                           - scipy.stats.mstats.hdquantiles(y, prob=0.5, axis=0).data[0])
-# func = lambda x, y: np.abs(np.mean(x) - np.mean(y))
+filename_pvals = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_pvals_' + depot + '.npz')
+if os.path.isfile(filename_pvals):
 
-# test whether the median values are different enough between PAT vs. MAT
-pval_perc_f_pat2mat = np.zeros(shape=(len(quantiles),))
-for i, q in enumerate(quantiles):
-    pval_perc_f_pat2mat[i] = permutation_test(x=area_q_f_pat[:, i], y=area_q_f_mat[:, i],
-                                              func=func, method='exact', seed=None)
+    aux = np.load(filename_pvals)
+    pval_perc_f_pat2mat = aux['pval_perc_f_pat2mat']
+    pval_perc_m_pat2mat = aux['pval_perc_m_pat2mat']
+    pval_perc_f_pat_wt2het = aux['pval_perc_f_pat_wt2het']
+    pval_perc_f_mat_wt2het = aux['pval_perc_f_mat_wt2het']
+    pval_perc_m_pat_wt2het = aux['pval_perc_m_pat_wt2het']
+    pval_perc_m_mat_wt2het = aux['pval_perc_m_mat_wt2het']
 
-pval_perc_m_pat2mat = np.zeros(shape=(len(quantiles),))
-for i, q in enumerate(quantiles):
-    pval_perc_m_pat2mat[i] = permutation_test(x=area_q_m_pat[:, i], y=area_q_m_mat[:, i],
-                                              func=func, method='exact', seed=None)
+else:
+
+    # test whether the median values are different enough between two groups
+    func = lambda x, y: np.abs(scipy.stats.mstats.hdquantiles(x, prob=0.5, axis=0).data[0]
+                               - scipy.stats.mstats.hdquantiles(y, prob=0.5, axis=0).data[0])
+    # func = lambda x, y: np.abs(np.mean(x) - np.mean(y))
+
+    ## PAT vs. MAT
+
+    # test whether the median values are different enough between PAT vs. MAT
+    pval_perc_f_pat2mat = np.zeros(shape=(len(quantiles),))
+    for i, q in enumerate(quantiles):
+        pval_perc_f_pat2mat[i] = permutation_test(x=area_q_f_pat[:, i], y=area_q_f_mat[:, i],
+                                                  func=func, seed=None,
+                                                  method='approximate', num_rounds=math.factorial(permutation_sample_size))
+
+    pval_perc_m_pat2mat = np.zeros(shape=(len(quantiles),))
+    for i, q in enumerate(quantiles):
+        pval_perc_m_pat2mat[i] = permutation_test(x=area_q_m_pat[:, i], y=area_q_m_mat[:, i],
+                                                  func=func, seed=None,
+                                                  method='approximate', num_rounds=math.factorial(permutation_sample_size))
+
+    ## WT vs. Het
+
+    # PAT Females
+    pval_perc_f_pat_wt2het = np.zeros(shape=(len(quantiles),))
+    for i, q in enumerate(quantiles):
+        pval_perc_f_pat_wt2het[i] = permutation_test(x=area_q_f_pat_wt[:, i], y=area_q_f_pat_het[:, i],
+                                                     func=func, seed=None,
+                                                     method='approximate',
+                                                     num_rounds=math.factorial(permutation_sample_size))
+
+    # MAT Females
+    pval_perc_f_mat_wt2het = np.zeros(shape=(len(quantiles),))
+    for i, q in enumerate(quantiles):
+        pval_perc_f_mat_wt2het[i] = permutation_test(x=area_q_f_mat_wt[:, i], y=area_q_f_mat_het[:, i],
+                                                     func=func, seed=None,
+                                                     method='approximate',
+                                                     num_rounds=math.factorial(permutation_sample_size))
+
+    # PAT Males
+    pval_perc_m_pat_wt2het = np.zeros(shape=(len(quantiles),))
+    for i, q in enumerate(quantiles):
+        pval_perc_m_pat_wt2het[i] = permutation_test(x=area_q_m_pat_wt[:, i], y=area_q_m_pat_het[:, i],
+                                                     func=func, seed=None,
+                                                     method='approximate',
+                                                     num_rounds=math.factorial(permutation_sample_size))
+
+    # MAT Males
+    pval_perc_m_mat_wt2het = np.zeros(shape=(len(quantiles),))
+    for i, q in enumerate(quantiles):
+        pval_perc_m_mat_wt2het[i] = permutation_test(x=area_q_m_mat_wt[:, i], y=area_q_m_mat_het[:, i],
+                                                     func=func, seed=None,
+                                                     method='approximate',
+                                                     num_rounds=math.factorial(permutation_sample_size))
+
+    np.savez_compressed(filename_pvals, permutation_sample_size=permutation_sample_size,
+                        pval_perc_f_pat2mat=pval_perc_f_pat2mat, pval_perc_m_pat2mat=pval_perc_m_pat2mat,
+                        pval_perc_f_pat_wt2het=pval_perc_f_pat_wt2het, pval_perc_f_mat_wt2het=pval_perc_f_mat_wt2het,
+                        pval_perc_m_pat_wt2het=pval_perc_m_pat_wt2het, pval_perc_m_mat_wt2het=pval_perc_m_mat_wt2het)
+
+
+# data has been loaded or computed
+
+np.set_printoptions(precision=2)
+print('PAT vs. MAT')
+print(pval_perc_f_pat2mat)
+print(pval_perc_m_pat2mat)
+np.set_printoptions(precision=8)
 
 # multitest correction using Hochberg a.k.a. Simes-Hochberg method
 _, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
 _, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+
+np.set_printoptions(precision=2)
+print('PAT vs. MAT')
+print(pval_perc_f_pat2mat)
+print(pval_perc_m_pat2mat)
+np.set_printoptions(precision=8)
+
+np.set_printoptions(precision=2)
+print('WT vs. Het')
+print(pval_perc_f_pat_wt2het)
+print(pval_perc_f_mat_wt2het)
+print(pval_perc_m_pat_wt2het)
+print(pval_perc_m_mat_wt2het)
+np.set_printoptions(precision=8)
+
+# multitest correction using Hochberg a.k.a. Simes-Hochberg method
+_, pval_perc_f_pat_wt2het, _, _ = multipletests(pval_perc_f_pat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_f_mat_wt2het, _, _ = multipletests(pval_perc_f_mat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_m_pat_wt2het, _, _ = multipletests(pval_perc_m_pat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_m_mat_wt2het, _, _ = multipletests(pval_perc_m_mat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
+
+np.set_printoptions(precision=2)
+print('WT vs. Het')
+print(pval_perc_f_pat_wt2het)
+print(pval_perc_f_mat_wt2het)
+print(pval_perc_m_pat_wt2het)
+print(pval_perc_m_mat_wt2het)
+np.set_printoptions(precision=8)
 
 # plot the median difference and the population quantiles at which the difference is significant
 if DEBUG:
@@ -1454,5 +1635,8 @@ if DEBUG:
     plt.legend(loc='lower right', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_change_pat_2_mat.svg'))
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_sqwat_cell_area_change_pat_2_mat.png'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.png'))
+
+
+
