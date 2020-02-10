@@ -97,7 +97,7 @@ training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augm
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 
 saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
-dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
+dmap_model_basename = 'klf14_b6ntac_exp_0101_cnn_dmap'
 
 '''CNN Model
 '''
