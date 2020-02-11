@@ -1048,7 +1048,13 @@ if DEBUG:
 # This is done in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7
 
 ########################################################################################################################
-## Plots of distribution curves from automatically segmented images: SQWAT
+## Segmentation validation
+########################################################################################################################
+
+# This is done in klf14_b6ntac_exp_0096_pipeline_v7_validation.py
+
+########################################################################################################################
+## Plots of cell populations from automatically segmented images: SQWAT and GWAT
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
