@@ -398,190 +398,208 @@ with np.load(data_filename) as data:
     out_class_all = 1 - data['out_class_all']  # encode as 0: other, 1: WAT
     out_mask_all = data['out_mask_all']
 
-# start timer
-t0 = time.time()
+filename_pixel_gtruth = os.path.join(saved_figures_dir, 'klf14_b6ntac_exp_0096_pixel_gtruth.npz')
+if os.path.isfile(filename_pixel_gtruth):
 
-# init output vectors
-pixel_gtruth_class = []
-pixel_gtruth_prop = []
+    aux = np.load(filename_pixel_gtruth)
+    pixel_gtruth_class = aux['pixel_gtruth_class']
+    pixel_gtruth_prop = aux['pixel_gtruth_prop']
 
-for i_fold in range(len(idx_test_all)):
+else:
 
-    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+    # start timer
+    t0 = time.time()
 
-    # test image indices. These indices refer to file_list
-    idx_test = idx_test_all[i_fold]
+    # init output vectors
+    pixel_gtruth_class = []
+    pixel_gtruth_prop = []
 
-    # list of test files (used later for the dataframe)
-    file_svg_list_test = np.array(file_svg_list)[idx_test]
+    for i_fold in range(len(idx_test_all)):
 
-    print('## len(idx_test) = ' + str(len(idx_test)))
+        print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
 
-    # extract testing data
-    im_array_test = im_array_all[idx_test, :, :, :]
-    out_class_test = out_class_all[idx_test, :, :, :]
-    out_mask_test = out_mask_all[idx_test, :, :]
+        # test image indices. These indices refer to file_list
+        idx_test = idx_test_all[i_fold]
 
-    # loop test images
-    for i, file_svg in enumerate(file_svg_list_test):
+        # list of test files (used later for the dataframe)
+        file_svg_list_test = np.array(file_svg_list)[idx_test]
 
-        print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
-              + str(i) + '/' + str(len(idx_test) - 1))
+        print('## len(idx_test) = ' + str(len(idx_test)))
 
-        ''' Ground truth contours '''
+        # extract testing data
+        im_array_test = im_array_all[idx_test, :, :, :]
+        out_class_test = out_class_all[idx_test, :, :, :]
+        out_mask_test = out_mask_all[idx_test, :, :]
 
-        # change file extension from .svg to .tif
-        file_tif = file_svg.replace('.svg', '.tif')
+        # loop test images
+        for i, file_svg in enumerate(file_svg_list_test):
 
-        # open histology testing image
-        im = Image.open(file_tif)
+            print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1) + ', i = '
+                  + str(i) + '/' + str(len(idx_test) - 1))
 
-        # read pixel size information
-        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
-        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+            ''' Ground truth contours '''
 
-        if DEBUG:
-            plt.clf()
-            plt.imshow(im)
-            plt.axis('off')
-            plt.title('Histology', fontsize=14)
+            # change file extension from .svg to .tif
+            file_tif = file_svg.replace('.svg', '.tif')
 
-        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
-        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
-        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell',
-                                                                add_offset_from_filename=False,
-                                                                minimum_npoints=3)
-        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other',
-                                                                 add_offset_from_filename=False,
-                                                                 minimum_npoints=3)
-        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown',
-                                                                 add_offset_from_filename=False,
-                                                                 minimum_npoints=3)
-        contours = cell_contours + other_contours + brown_contours
+            # open histology testing image
+            im = Image.open(file_tif)
 
-        # make a list with the type of cell each contour is classified as
-        contour_type_all = ['wat', ] * len(cell_contours) \
-                           + ['other', ] * len(other_contours) \
-                           + ['bat', ] * len(brown_contours)
+            # read pixel size information
+            xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+            yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
-        print('Cells: ' + str(len(cell_contours)))
-        print('Other: ' + str(len(other_contours)))
-        print('Brown: ' + str(len(brown_contours)))
-        print('')
+            if DEBUG:
+                plt.clf()
+                plt.imshow(im)
+                plt.axis('off')
+                plt.title('Histology', fontsize=14)
 
-        # create dataframe for this image
-        im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
-        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
-                                                              values=im_idx, values_tag='im',
-                                                              tags_to_keep=['id', 'ko', 'sex'])
-        df_common['contour'] = range(len(contours))
-        df_common['type'] = contour_type_all
+            # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+            # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+            cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell',
+                                                                    add_offset_from_filename=False,
+                                                                    minimum_npoints=3)
+            other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other',
+                                                                     add_offset_from_filename=False,
+                                                                     minimum_npoints=3)
+            brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown',
+                                                                     add_offset_from_filename=False,
+                                                                     minimum_npoints=3)
+            contours = cell_contours + other_contours + brown_contours
 
-        '''Label pixels of image as either WAT/non-WAT'''
+            # make a list with the type of cell each contour is classified as
+            contour_type_all = ['wat', ] * len(cell_contours) \
+                               + ['other', ] * len(other_contours) \
+                               + ['bat', ] * len(brown_contours)
 
-        if DEBUG:
+            print('Cells: ' + str(len(cell_contours)))
+            print('Other: ' + str(len(other_contours)))
+            print('Brown: ' + str(len(brown_contours)))
+            print('')
 
-            plt.clf()
-            plt.subplot(121)
-            plt.imshow(im)
-            # plt.contour(out_mask_test[i, :, :], colors='r')
-            plt.axis('off')
-            plt.title('Histology', fontsize=14)
-            plt.subplot(122)
-            plt.imshow(im)
-            first_wat = True
-            first_other = True
-            for j, contour in enumerate(contours):
-                # close the contour for the plot
-                contour_aux = contour.copy()
-                contour_aux.append(contour[0])
-                if first_wat and contour_type_all[j] == 'wat':
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2,
-                             label='WAT contour')
-                    first_wat = False
-                elif contour_type_all[j] == 'wat':
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2)
-                elif first_other and contour_type_all[j] != 'wat':
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2,
-                             label='Other contour')
-                    first_other = False
-                else:
-                    plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2)
-            plt.legend()
-            plt.axis('off')
-            plt.title('Manual contours', fontsize=14)
-            plt.tight_layout()
+            # create dataframe for this image
+            im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
+            df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
+                                                                  values=im_idx, values_tag='im',
+                                                                  tags_to_keep=['id', 'ko', 'sex'])
+            df_common['contour'] = range(len(contours))
+            df_common['type'] = contour_type_all
 
-            # plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_manual_contours.svg'))
+            '''Label pixels of image as either WAT/non-WAT'''
 
-    # names of contour, dmap and tissue classifier models
-    contour_model_filename = \
-        os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-    dmap_model_filename = \
-        os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-    classifier_model_filename = \
-        os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+            if DEBUG:
 
-    # segment histology and classify pixels
-    pred_seg_test, pred_class_test, _ \
-        = cytometer.utils.segment_dmap_contour_v6(im_array_test,
-                                                  dmap_model=dmap_model_filename,
-                                                  contour_model=contour_model_filename,
-                                                  classifier_model=classifier_model_filename,
-                                                  border_dilation=0, batch_size=batch_size)
+                plt.clf()
+                plt.subplot(121)
+                plt.imshow(im)
+                # plt.contour(out_mask_test[i, :, :], colors='r')
+                plt.axis('off')
+                plt.title('Histology', fontsize=14)
+                plt.subplot(122)
+                plt.imshow(im)
+                first_wat = True
+                first_other = True
+                for j, contour in enumerate(contours):
+                    # close the contour for the plot
+                    contour_aux = contour.copy()
+                    contour_aux.append(contour[0])
+                    if first_wat and contour_type_all[j] == 'wat':
+                        plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2,
+                                 label='WAT contour')
+                        first_wat = False
+                    elif contour_type_all[j] == 'wat':
+                        plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C0', linewidth=2)
+                    elif first_other and contour_type_all[j] != 'wat':
+                        plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2,
+                                 label='Other contour')
+                        first_other = False
+                    else:
+                        plt.plot([p[0] for p in contour_aux], [p[1] for p in contour_aux], color='C1', linewidth=2)
+                plt.legend()
+                plt.axis('off')
+                plt.title('Manual contours', fontsize=14)
+                plt.tight_layout()
 
-    # loop input images
-    for i in range(len(file_svg_list_test)):
+                # plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_manual_contours.svg'))
 
-        # extract current segmentation and classification, for ease of use
-        aux_seg = pred_seg_test[i, ...]
-        aux_class = pred_class_test[i, :, :, 0]
-        aux_prop = np.zeros(shape=aux_seg.shape, dtype=np.float32)
+        # names of contour, dmap and tissue classifier models
+        contour_model_filename = \
+            os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        dmap_model_filename = \
+            os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        classifier_model_filename = \
+            os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
-        # for each label, get the proportion of WAT pixels. Then, assign that value to all pixels in the label
-        for lab in np.unique(pred_seg_test[i, ...]):
+        # segment histology and classify pixels
+        pred_seg_test, pred_class_test, _ \
+            = cytometer.utils.segment_dmap_contour_v6(im_array_test,
+                                                      dmap_model=dmap_model_filename,
+                                                      contour_model=contour_model_filename,
+                                                      classifier_model=classifier_model_filename,
+                                                      border_dilation=0, batch_size=batch_size)
 
-            # pixels in the current label
-            idx = aux_seg == lab
+        # loop input images
+        for i in range(len(file_svg_list_test)):
 
-            # proportion of WAT pixels in the label
-            prop = np.count_nonzero(aux_class[idx]) / np.count_nonzero(idx)
+            # extract current segmentation and classification, for ease of use
+            aux_seg = pred_seg_test[i, ...]
+            aux_class = pred_class_test[i, :, :, 0]
+            aux_prop = np.zeros(shape=aux_seg.shape, dtype=np.float32)
 
-            # transfer proportion value to all pixels of the label
-            aux_prop[idx] = prop
+            # for each label, get the proportion of WAT pixels. Then, assign that value to all pixels in the label
+            for lab in np.unique(pred_seg_test[i, ...]):
 
-        # transfer this image's results to output vectors
-        aux_mask = out_mask_test[i, ...] > 0
-        pixel_gtruth_prop.append(aux_prop[aux_mask])
-        aux_gtruth = out_class_test[i, :, :, 0]
-        pixel_gtruth_class.append(aux_gtruth[aux_mask])
+                # pixels in the current label
+                idx = aux_seg == lab
 
-        if DEBUG:
-            plt.subplot(121)
-            plt.cla()
-            plt.imshow(aux_prop)
-            plt.colorbar()
-            plt.contour(pred_seg_test[i, ...], levels=np.unique(pred_seg_test[i, ...]), colors='w')
-            plt.axis('off')
+                # proportion of WAT pixels in the label
+                prop = np.count_nonzero(aux_class[idx]) / np.count_nonzero(idx)
 
-# convert output lists to vectors
-pixel_gtruth_class = np.hstack(pixel_gtruth_class)
-pixel_gtruth_prop = np.hstack(pixel_gtruth_prop)
+                # transfer proportion value to all pixels of the label
+                aux_prop[idx] = prop
 
-if DEBUG:
-    plt.clf()
-    plt.boxplot((pixel_gtruth_prop[pixel_gtruth_class == 0],
-                 pixel_gtruth_prop[pixel_gtruth_class == 1]))
+            # transfer this image's results to output vectors
+            aux_mask = out_mask_test[i, ...] > 0
+            pixel_gtruth_prop.append(aux_prop[aux_mask])
+            aux_gtruth = out_class_test[i, :, :, 0]
+            pixel_gtruth_class.append(aux_gtruth[aux_mask])
+
+            if DEBUG:
+                plt.subplot(121)
+                plt.cla()
+                plt.imshow(aux_prop)
+                plt.colorbar()
+                plt.contour(pred_seg_test[i, ...], levels=np.unique(pred_seg_test[i, ...]), colors='w')
+                plt.axis('off')
+
+    # convert output lists to vectors
+    pixel_gtruth_class = np.hstack(pixel_gtruth_class)
+    pixel_gtruth_prop = np.hstack(pixel_gtruth_prop)
+
+    if DEBUG:
+        plt.clf()
+        plt.boxplot((pixel_gtruth_prop[pixel_gtruth_class == 0],
+                     pixel_gtruth_prop[pixel_gtruth_class == 1]))
+
+    # save data for later
+    np.savez_compressed(filename_pixel_gtruth,
+                        pixel_gtruth_class=pixel_gtruth_class, pixel_gtruth_prop=pixel_gtruth_prop)
 
 # pixel score thresholds
 # ROC curve
 fpr, tpr, thr = roc_curve(y_true=pixel_gtruth_class, y_score=pixel_gtruth_prop)
 roc_auc = auc(fpr, tpr)
 
-# we fix the FPR (False Positive Rate) and interpolate the TPR (True Positive Rate) on the ROC curve
-fpr_target = 0.05
-tpr_target = np.interp(fpr_target, fpr, tpr)
-thr_target = np.interp(fpr_target, fpr, thr)
+# we fix the min_class_prop threshold to what is used in the pipeline
+thr_target = 0.5
+tpr_target = np.interp(thr_target, thr[::-1], tpr[::-1])
+fpr_target = np.interp(thr_target, thr[::-1], fpr[::-1])
+
+# # we fix the FPR (False Positive Rate) and interpolate the TPR (True Positive Rate) on the ROC curve
+# fpr_target = 0.05
+# tpr_target = np.interp(fpr_target, fpr, tpr)
+# thr_target = np.interp(fpr_target, fpr, thr)
 
 if DEBUG:
     plt.clf()
@@ -599,7 +617,7 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
-Object-wise classification validation (old way)
+DEPRECATED: Object-wise classification validation (old way)
 ************************************************************************************************************************
 '''
 
@@ -928,7 +946,7 @@ if DEBUG:
 
 '''
 ************************************************************************************************************************
-Pixel-wise classification validation
+DEPRECATED: Pixel-wise classification validation
 ************************************************************************************************************************
 '''
 
