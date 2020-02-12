@@ -1274,7 +1274,7 @@ for i_fold in range(len(idx_test_all)):
 
         ''' All automatic labels loop '''
         lab_no_edge_unique = np.unique(pred_seg_test[i, :, :])
-        lab_no_edge_unique = set(lab_no_edge_unique) - set([0])  # remove background label
+        lab_no_edge_unique = set(lab_no_edge_unique) - {0}  # remove background label
         lab_no_edge_unique = list(np.sort(list(lab_no_edge_unique - set(labels_edge))))
         for lab in lab_no_edge_unique:
 
@@ -1488,6 +1488,13 @@ plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.ylim(-700 / 1e3, 10000 / 1e3)
 plt.tight_layout()
 
+# TODO plot
+plt.clf()
+plt.scatter(df_manual_all['area_manual'][idx_manual_auto_overlap],
+            df_manual_all['area_auto'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap])
+plt.scatter(df_manual_all['area_manual'][idx_manual_auto_overlap],
+            df_manual_all['area_corrected'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap])
+
 # area vs. WAT proportion
 plt.clf()
 plt.scatter(df_manual_all['wat_prop_auto'], df_manual_all['area_auto'], s=4)
@@ -1512,11 +1519,11 @@ q3_corrected = np.quantile(df_manual_all['area_corrected'][idx] / df_manual_all[
 plt.clf()
 plt.hist(df_manual_all['area_auto'][idx] / df_manual_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
          density=True,
-         label='Auto / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
+         label='Auto / Hand traced area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
                % (q1_auto, med_auto, q3_auto))
 plt.hist(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx], bins=51, histtype='step', linewidth=3,
          density=True,
-         label='Corrected / Manual area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
+         label='Corrected / Hand traced area\nQ1, Q2, Q3 = %0.2f, %0.2f, %0.2f'
                % (q1_corrected, med_corrected, q3_corrected))
 plt.plot([1, 1], [0, 3.5], 'k', linewidth=2)
 plt.legend(fontsize=12)
