@@ -1066,6 +1066,7 @@ import scipy.stats
 import pandas as pd
 from mlxtend.evaluate import permutation_test
 from statsmodels.stats.multitest import multipletests
+import math
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -1578,8 +1579,10 @@ else:
 # data has been loaded or computed
 
 np.set_printoptions(precision=2)
-print('PAT vs. MAT')
+print('PAT vs. MAT before multitest correction')
+print('Female:')
 print(pval_perc_f_pat2mat)
+print('Male:')
 print(pval_perc_m_pat2mat)
 np.set_printoptions(precision=8)
 
@@ -1588,15 +1591,19 @@ _, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='simes-
 _, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
 
 np.set_printoptions(precision=2)
-print('PAT vs. MAT')
+print('PAT vs. MAT with multitest correction')
+print('Female:')
 print(pval_perc_f_pat2mat)
+print('Male:')
 print(pval_perc_m_pat2mat)
 np.set_printoptions(precision=8)
 
 np.set_printoptions(precision=2)
-print('WT vs. Het')
+print('WT vs. Het before multitest correction')
+print('Female:')
 print(pval_perc_f_pat_wt2het)
 print(pval_perc_f_mat_wt2het)
+print('Male:')
 print(pval_perc_m_pat_wt2het)
 print(pval_perc_m_mat_wt2het)
 np.set_printoptions(precision=8)
@@ -1608,9 +1615,11 @@ _, pval_perc_m_pat_wt2het, _, _ = multipletests(pval_perc_m_pat_wt2het, method='
 _, pval_perc_m_mat_wt2het, _, _ = multipletests(pval_perc_m_mat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
 
 np.set_printoptions(precision=2)
-print('WT vs. Het')
+print('WT vs. Het with multitest correction')
+print('Female:')
 print(pval_perc_f_pat_wt2het)
 print(pval_perc_f_mat_wt2het)
+print('Male:')
 print(pval_perc_m_pat_wt2het)
 print(pval_perc_m_mat_wt2het)
 np.set_printoptions(precision=8)
