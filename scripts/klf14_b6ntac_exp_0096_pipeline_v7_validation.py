@@ -38,6 +38,7 @@ import numpy as np
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+import seaborn as sns
 from sklearn.metrics import roc_curve, auc
 import scipy.stats as stats
 from mlxtend.evaluate import permutation_test
@@ -1488,12 +1489,15 @@ plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.ylim(-700 / 1e3, 10000 / 1e3)
 plt.tight_layout()
 
-# TODO plot
+# 2D density plot
 plt.clf()
-plt.scatter(df_manual_all['area_manual'][idx_manual_auto_overlap],
-            df_manual_all['area_auto'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap])
-plt.scatter(df_manual_all['area_manual'][idx_manual_auto_overlap],
-            df_manual_all['area_corrected'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap])
+sns.kdeplot(df_manual_all['area_manual'][idx_manual_auto_overlap],
+            df_manual_all['area_auto'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap],
+            cmap="Reds", shade=True)
+sns.kdeplot(df_manual_all['area_manual'][idx_manual_auto_overlap],
+            df_manual_all['area_corrected'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap],
+            cmap="Blues", shade=True)
+
 
 # area vs. WAT proportion
 plt.clf()
@@ -1527,7 +1531,7 @@ plt.hist(df_manual_all['area_corrected'][idx] / df_manual_all['area_manual'][idx
                % (q1_corrected, med_corrected, q3_corrected))
 plt.plot([1, 1], [0, 3.5], 'k', linewidth=2)
 plt.legend(fontsize=12)
-plt.xlabel('Pipeline / Manual Area', fontsize=14)
+plt.xlabel('Pipeline / Hand traced area', fontsize=14)
 plt.ylabel('Histogram density', fontsize=14)
 plt.tick_params(axis="both", labelsize=14)
 plt.tight_layout()
