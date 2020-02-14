@@ -1054,12 +1054,13 @@ if DEBUG:
 # This is done in klf14_b6ntac_exp_0096_pipeline_v7_validation.py
 
 ########################################################################################################################
-## Mouse and depot sizes and their comparison between PAT/MAT, f/m, WT/Het
+## Linear model of body weight and depot weights
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -1102,21 +1103,43 @@ sq_m_pat_het = metainfo.SC[idx_m_pat_het]
 sq_m_mat_wt = metainfo.SC[idx_m_mat_wt]
 sq_m_mat_het = metainfo.SC[idx_m_mat_het]
 
+# GWAT depot weight
+g_f_pat_wt = metainfo.gWAT[idx_f_pat_wt]
+g_f_pat_het = metainfo.gWAT[idx_f_pat_het]
+g_f_mat_wt = metainfo.gWAT[idx_f_mat_wt]
+g_f_mat_het = metainfo.gWAT[idx_f_mat_het]
+g_m_pat_wt = metainfo.gWAT[idx_m_pat_wt]
+g_m_pat_het = metainfo.gWAT[idx_m_pat_het]
+g_m_mat_wt = metainfo.gWAT[idx_m_mat_wt]
+g_m_mat_het = metainfo.gWAT[idx_m_mat_het]
+
 if DEBUG:
     plt.clf()
-    plt.subplot(311)
+    plt.subplot(131)
     plt.boxplot(
         (bw_f_pat_wt, bw_f_pat_het, bw_f_mat_wt, bw_f_mat_het, bw_m_pat_wt, bw_m_pat_het, bw_m_mat_wt, bw_m_mat_het),
-        labels=('',) * 8,
-        notch=True
+        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
+        notch=False
     )
-    plt.subplot(312)
+    plt.xticks(rotation=45)
+    plt.title('Body')
+    plt.ylabel('Weight (g)', fontsize=14)
+    plt.subplot(132)
     plt.boxplot(
         (sq_f_pat_wt, sq_f_pat_het, sq_f_mat_wt, sq_f_mat_het, sq_m_pat_wt, sq_m_pat_het, sq_m_mat_wt, sq_m_mat_het),
         labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
-        notch=True
+        notch=False
     )
     plt.xticks(rotation=45)
+    plt.title('SQWAT')
+    plt.subplot(133)
+    plt.boxplot(
+        (g_f_pat_wt, g_f_pat_het, g_f_mat_wt, g_f_mat_het, g_m_pat_wt, g_m_pat_het, g_m_mat_wt, g_m_mat_het),
+        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
+        notch=False
+    )
+    plt.xticks(rotation=45)
+    plt.title('GWAT')
     plt.tight_layout()
 
 if DEBUG:
@@ -1124,6 +1147,104 @@ if DEBUG:
     plt.scatter(np.concatenate((bw_f_pat_wt, bw_m_pat_wt)), np.concatenate((sq_f_pat_wt, sq_m_pat_wt)))
     plt.scatter(np.concatenate((bw_f_mat_wt, bw_m_mat_wt)), np.concatenate((sq_f_mat_wt, sq_m_mat_wt)))
     plt.tight_layout()
+
+# linear model
+# Mixed-effects linear model
+bw_model = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + SC * gWAT', data=metainfo).fit()
+print(bw_model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.740
+# Model:                            OLS   Adj. R-squared:                  0.718
+# Method:                 Least Squares   F-statistic:                     32.76
+# Date:                Fri, 14 Feb 2020   Prob (F-statistic):           2.32e-18
+# Time:                        16:33:46   Log-Likelihood:                -210.84
+# No. Observations:                  76   AIC:                             435.7
+# Df Residuals:                      69   BIC:                             452.0
+# Df Model:                           6
+# Covariance Type:            nonrobust
+# ==============================================================================================
+#                                  coef    std err          t      P>|t|      [0.025      0.975]
+# ----------------------------------------------------------------------------------------------
+# Intercept                     20.4994      2.170      9.449      0.000      16.171      24.827
+# C(sex)[T.m]                   10.3729      1.017     10.198      0.000       8.344      12.402
+# C(ko)[T.PAT]                  -2.6057      1.023     -2.548      0.013      -4.646      -0.565
+# C(genotype)[T.KLF14-KO:WT]     1.1439      0.941      1.216      0.228      -0.733       3.021
+# SC                             6.2866      4.062      1.548      0.126      -1.817      14.391
+# gWAT                           9.4847      2.434      3.897      0.000       4.630      14.340
+# SC:gWAT                       -6.8830      3.465     -1.986      0.051     -13.796       0.030
+# ==============================================================================
+# Omnibus:                        2.321   Durbin-Watson:                   1.296
+# Prob(Omnibus):                  0.313   Jarque-Bera (JB):                1.921
+# Skew:                           0.389   Prob(JB):                        0.383
+# Kurtosis:                       3.047   Cond. No.                         23.3
+# ==============================================================================
+
+# partial regression plots
+sm.graphics.plot_partregress_grid(bw_model)
+
+sm.graphics.influence_plot(bw_model, criterion="cooks")
+
+# list of point with high influence (large residuals and leverage)
+idx_influence = [65, 52, 64, 32, 72, 75, 0]
+idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
+print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
+
+#        id   ko sex      genotype     BW    SC  gWAT
+# 65  37.2e  PAT   f  KLF14-KO:Het  21.18  1.62  0.72
+# 52  36.3d  PAT   m  KLF14-KO:Het  40.77  1.38  1.78
+# 64  37.2d  PAT   f   KLF14-KO:WT  20.02  0.72  0.12
+# 32  18.3c  MAT   m   KLF14-KO:WT  37.83  1.24  1.68
+# 72  37.4b  PAT   m   KLF14-KO:WT  50.54  0.87  1.11
+# 75  38.1f  PAT   m   KLF14-KO:WT  38.98  0.49  0.98
+# 0   16.2a  MAT   f   KLF14-KO:WT  40.80  0.38  1.10
+
+# linear model removing the high influence points
+# Mixed-effects linear model
+bw_model_no_influence = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + SC * gWAT', data=metainfo, subset=idx_no_influence).fit()
+print(bw_model_no_influence.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.797
+# Model:                            OLS   Adj. R-squared:                  0.777
+# Method:                 Least Squares   F-statistic:                     40.51
+# Date:                Fri, 14 Feb 2020   Prob (F-statistic):           1.20e-19
+# Time:                        17:07:13   Log-Likelihood:                -179.50
+# No. Observations:                  69   AIC:                             373.0
+# Df Residuals:                      62   BIC:                             388.6
+# Df Model:                           6
+# Covariance Type:            nonrobust
+# ==============================================================================================
+#                                  coef    std err          t      P>|t|      [0.025      0.975]
+# ----------------------------------------------------------------------------------------------
+# Intercept                     17.6196      2.188      8.051      0.000      13.245      21.994
+# C(sex)[T.m]                    9.2063      0.946      9.728      0.000       7.315      11.098
+# C(ko)[T.PAT]                  -3.5029      0.911     -3.845      0.000      -5.324      -1.682
+# C(genotype)[T.KLF14-KO:WT]     0.7111      0.833      0.853      0.397      -0.955       2.377
+# SC                            23.8520      6.429      3.710      0.000      11.000      36.704
+# gWAT                          11.6718      2.399      4.865      0.000       6.875      16.468
+# SC:gWAT                      -20.0493      5.320     -3.769      0.000     -30.683      -9.415
+# ==============================================================================
+# Omnibus:                        2.530   Durbin-Watson:                   1.505
+# Prob(Omnibus):                  0.282   Jarque-Bera (JB):                1.543
+# Skew:                           0.041   Prob(JB):                        0.462
+# Kurtosis:                       2.272   Cond. No.                         38.3
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+# range of weight values
+print(np.min(metainfo.BW))
+print(np.max(metainfo.BW))
+
+print(np.min(metainfo.SC))
+print(np.max(metainfo.SC))
+
+print(np.min(metainfo.gWAT))
+print(np.max(metainfo.gWAT))
+
 
 ########################################################################################################################
 ## Plots of cell populations from automatically segmented images: SQWAT and GWAT
@@ -1149,8 +1270,8 @@ metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper
 
 DEBUG = False
 
-# depot = 'sqwat'
-depot = 'gwat'
+depot = 'sqwat'
+# depot = 'gwat'
 
 permutation_sample_size = 9  # the factorial of this number is the number of repetitions in the permutation tests
 
@@ -1233,7 +1354,10 @@ if depot == 'sqwat':
         'KLF14-B6NTAC-PAT-37.2h  418-16 C1 - 2016-03-16 17.01.17.json',
         'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39.json',
         'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52.json',
-        'KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1).json'
+        'KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1).json',
+        'KLF14-B6NTAC-PAT 37.2b 410-16 C4 - 2020-02-14 10.27.23.json',
+        'KLF14-B6NTAC-PAT 37.2c 407-16 C4 - 2020-02-14 10.15.57.json',
+        'KLF14-B6NTAC-PAT 37.2d 411-16 C4 - 2020-02-14 10.34.10.json'
     ]
 elif depot == 'gwat':
     # GWAT: list of annotation files
