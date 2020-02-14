@@ -1054,6 +1054,78 @@ if DEBUG:
 # This is done in klf14_b6ntac_exp_0096_pipeline_v7_validation.py
 
 ########################################################################################################################
+## Mouse and depot sizes and their comparison between PAT/MAT, f/m, WT/Het
+########################################################################################################################
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+# directories
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+
+# load metainfo file
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# subgroups
+idx_f_pat_wt = (metainfo.sex == 'f') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_f_pat_het = (metainfo.sex == 'f') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+idx_f_mat_wt = (metainfo.sex == 'f') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_f_mat_het = (metainfo.sex == 'f') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+idx_m_pat_wt = (metainfo.sex == 'm') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_m_pat_het = (metainfo.sex == 'm') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+idx_m_mat_wt = (metainfo.sex == 'm') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_m_mat_het = (metainfo.sex == 'm') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+
+# body weight
+bw_f_pat_wt = metainfo.BW[idx_f_pat_wt]
+bw_f_pat_het = metainfo.BW[idx_f_pat_het]
+bw_f_mat_wt = metainfo.BW[idx_f_mat_wt]
+bw_f_mat_het = metainfo.BW[idx_f_mat_het]
+bw_m_pat_wt = metainfo.BW[idx_m_pat_wt]
+bw_m_pat_het = metainfo.BW[idx_m_pat_het]
+bw_m_mat_wt = metainfo.BW[idx_m_mat_wt]
+bw_m_mat_het = metainfo.BW[idx_m_mat_het]
+
+# SQWAT depot weight
+sq_f_pat_wt = metainfo.SC[idx_f_pat_wt]
+sq_f_pat_het = metainfo.SC[idx_f_pat_het]
+sq_f_mat_wt = metainfo.SC[idx_f_mat_wt]
+sq_f_mat_het = metainfo.SC[idx_f_mat_het]
+sq_m_pat_wt = metainfo.SC[idx_m_pat_wt]
+sq_m_pat_het = metainfo.SC[idx_m_pat_het]
+sq_m_mat_wt = metainfo.SC[idx_m_mat_wt]
+sq_m_mat_het = metainfo.SC[idx_m_mat_het]
+
+if DEBUG:
+    plt.clf()
+    plt.subplot(311)
+    plt.boxplot(
+        (bw_f_pat_wt, bw_f_pat_het, bw_f_mat_wt, bw_f_mat_het, bw_m_pat_wt, bw_m_pat_het, bw_m_mat_wt, bw_m_mat_het),
+        labels=('',) * 8,
+        notch=True
+    )
+    plt.subplot(312)
+    plt.boxplot(
+        (sq_f_pat_wt, sq_f_pat_het, sq_f_mat_wt, sq_f_mat_het, sq_m_pat_wt, sq_m_pat_het, sq_m_mat_wt, sq_m_mat_het),
+        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
+        notch=True
+    )
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+if DEBUG:
+    plt.clf()
+    plt.scatter(np.concatenate((bw_f_pat_wt, bw_m_pat_wt)), np.concatenate((sq_f_pat_wt, sq_m_pat_wt)))
+    plt.scatter(np.concatenate((bw_f_mat_wt, bw_m_mat_wt)), np.concatenate((sq_f_mat_wt, sq_m_mat_wt)))
+    plt.tight_layout()
+
+########################################################################################################################
 ## Plots of cell populations from automatically segmented images: SQWAT and GWAT
 ########################################################################################################################
 
