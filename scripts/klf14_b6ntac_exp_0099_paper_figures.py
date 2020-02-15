@@ -1709,6 +1709,7 @@ if os.path.isfile(filename_pvals):
     pval_perc_f_mat_wt2het = aux['pval_perc_f_mat_wt2het']
     pval_perc_m_pat_wt2het = aux['pval_perc_m_pat_wt2het']
     pval_perc_m_mat_wt2het = aux['pval_perc_m_mat_wt2het']
+    permutation_sample_size = aux['permutation_sample_size']
 
 else:
 
