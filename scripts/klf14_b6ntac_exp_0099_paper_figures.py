@@ -1149,7 +1149,7 @@ if DEBUG:
     plt.tight_layout()
 
 # linear model
-# Mixed-effects linear model
+# Ordinary least squares linear model
 bw_model = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + SC * gWAT', data=metainfo).fit()
 print(bw_model.summary())
 
@@ -1201,7 +1201,7 @@ print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'g
 # 0   16.2a  MAT   f   KLF14-KO:WT  40.80  0.38  1.10
 
 # linear model removing the high influence points
-# Mixed-effects linear model
+# Ordinary least squares linear model
 bw_model_no_influence = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + SC * gWAT', data=metainfo, subset=idx_no_influence).fit()
 print(bw_model_no_influence.summary())
 
@@ -1469,6 +1469,9 @@ else:
     ko_all = []
     genotype_all = []
     sex_all = []
+    bw_all = []
+    gwat_all = []
+    sc_all = []
     for i_file, json_file in enumerate(json_annotation_files):
 
         print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
@@ -1492,13 +1495,17 @@ else:
         # create dataframe for this image
         df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
                                                               values=[i_file,], values_tag='i_file',
-                                                              tags_to_keep=['id', 'ko', 'genotype', 'sex'])
+                                                              tags_to_keep=['id', 'ko', 'genotype', 'sex',
+                                                                            'BW', 'gWAT', 'SC'])
 
         # mouse ID as a string
         id = df_common['id'].values[0]
         ko = df_common['ko'].values[0]
         genotype = df_common['genotype'].values[0]
         sex = df_common['sex'].values[0]
+        bw = df_common['BW'].values[0]
+        gwat = df_common['gWAT'].values[0]
+        sc = df_common['SC'].values[0]
 
         # read contours from AIDA annotations
         contours = cytometer.data.aida_get_contours(os.path.join(annotations_dir, json_file), layer_name='White adipocyte.*')
@@ -1515,6 +1522,9 @@ else:
         ko_all.append(ko)
         genotype_all.append(genotype)
         sex_all.append(sex)
+        bw_all.append(bw)
+        gwat_all.append(gwat)
+        sc_all.append(sc)
 
     # reorder from largest to smallest final area value
     area_q_all = np.array(area_q_all)
@@ -1522,6 +1532,9 @@ else:
     ko_all = np.array(ko_all)
     genotype_all = np.array(genotype_all)
     sex_all = np.array(sex_all)
+    bw_all = np.array(bw_all)
+    gwat_all = np.array(gwat_all)
+    sc_all = np.array(sc_all)
 
     idx = np.argsort(area_q_all[:, -1])
     idx = idx[::-1]  # sort from larger to smaller
@@ -1530,9 +1543,12 @@ else:
     ko_all = ko_all[idx]
     genotype_all = genotype_all[idx]
     sex_all = sex_all[idx]
+    bw_all = bw_all[idx]
+    gwat_all = gwat_all[idx]
+    sc_all = sc_all[idx]
 
     np.savez_compressed(filename_quantiles, area_q_all=area_q_all, id_all=id_all, ko_all=ko_all, genotype_all=genotype_all,
-                        sex_all=sex_all)
+                        sex_all=sex_all, bw_all=bw_all, gwat_all=gwat_all, sc_all=sc_all)
 
 if DEBUG:
     plt.clf()
@@ -1821,34 +1837,105 @@ print(pval_perc_m_pat_wt2het)
 print(pval_perc_m_mat_wt2het)
 np.set_printoptions(precision=8)
 
-# plot the median difference and the population quantiles at which the difference is significant
+# # plot the median difference and the population quantiles at which the difference is significant
+# if DEBUG:
+#     plt.clf()
+#     idx = pval_perc_f_pat2mat < 0.05
+#     delta_a_f_pat2mat = (area_interval_f_mat[1, :] - area_interval_f_pat[1, :]) / area_interval_f_pat[1, :]
+#     if np.any(idx):
+#         plt.stem(quantiles[idx], 100 * delta_a_f_pat2mat[idx],
+#                  markerfmt='.', linefmt='C6-', basefmt='C6',
+#                  label='p-val$_{\mathrm{PAT}}$ < 0.05')
+#
+#     idx = pval_perc_m_pat2mat < 0.05
+#     delta_a_m_pat2mat = (area_interval_m_mat[1, :] - area_interval_m_pat[1, :]) / area_interval_m_pat[1, :]
+#     if np.any(idx):
+#         plt.stem(quantiles[idx], 100 * delta_a_m_pat2mat[idx],
+#                  markerfmt='.', linefmt='C7-', basefmt='C7', bottom=250,
+#                  label='p-val$_{\mathrm{MAT}}$ < 0.05')
+#
+#     plt.plot(quantiles, 100 * delta_a_f_pat2mat, 'C6', linewidth=3, label='Female PAT to MAT')
+#     plt.plot(quantiles, 100 * delta_a_m_pat2mat, 'C7', linewidth=3, label='Male PAT to MAT')
+#
+#     plt.xlabel('Cell population quantile', fontsize=14)
+#     plt.ylabel('Area change (%)', fontsize=14)
+#     plt.tick_params(axis='both', which='major', labelsize=14)
+#     plt.legend(loc='lower right', prop={'size': 12})
+#     plt.tight_layout()
+#
+#     plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.svg'))
+#     plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.png'))
+
+## Statistical modelling of cell size
+
+# load SQWAT data
+depot = 'sqwat'
+filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
+
+aux = np.load(filename_quantiles)
+area_q_sqwat = aux['area_q_all']
+id_sqwat = aux['id_all']
+ko_sqwat = aux['ko_all']
+genotype_sqwat = aux['genotype_all']
+sex_sqwat = aux['sex_all']
+
+# load gWAT data
+depot = 'gwat'
+filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
+
+aux = np.load(filename_quantiles)
+area_q_gwat = aux['area_q_all']
+id_gwat = aux['id_all']
+ko_gwat = aux['ko_all']
+genotype_gwat = aux['genotype_all']
+sex_gwat = aux['sex_all']
+
+# add a new column to the metainfo frame with the median cell size for SQWAT
+metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
+metainfo['sc_area_for_q_50'] = np.NaN
+metainfo.loc[metainfo_idx, 'sc_area_for_q_50'] = np.power(np.sqrt(area_q_sqwat[:, 4]), 3)
+
+# add a new column to the metainfo frame with the median cell size for gWAT
+metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
+metainfo['gwat_area_for_q_50'] = np.NaN
+metainfo.loc[metainfo_idx, 'gwat_area_for_q_50'] = np.power(np.sqrt(area_q_gwat[:, 4]), 3)
+
 if DEBUG:
     plt.clf()
-    idx = pval_perc_f_pat2mat < 0.05
-    delta_a_f_pat2mat = (area_interval_f_mat[1, :] - area_interval_f_pat[1, :]) / area_interval_f_pat[1, :]
-    if np.any(idx):
-        plt.stem(quantiles[idx], 100 * delta_a_f_pat2mat[idx],
-                 markerfmt='.', linefmt='C6-', basefmt='C6',
-                 label='p-val$_{\mathrm{PAT}}$ < 0.05')
+    idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    plt.scatter(metainfo['sc_area_for_q_50'][idx], metainfo['SC'][idx])
+    plt.xlim(0.25e-13, 4e-13)
 
-    idx = pval_perc_m_pat2mat < 0.05
-    delta_a_m_pat2mat = (area_interval_m_mat[1, :] - area_interval_m_pat[1, :]) / area_interval_m_pat[1, :]
-    if np.any(idx):
-        plt.stem(quantiles[idx], 100 * delta_a_m_pat2mat[idx],
-                 markerfmt='.', linefmt='C7-', basefmt='C7', bottom=250,
-                 label='p-val$_{\mathrm{MAT}}$ < 0.05')
+    plt.clf()
+    idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    plt.scatter(metainfo['gwat_area_for_q_50'][idx], metainfo['gWAT'][idx])
+    plt.xlim(0.25e-13, 7e-13)
 
-    plt.plot(quantiles, 100 * delta_a_f_pat2mat, 'C6', linewidth=3, label='Female PAT to MAT')
-    plt.plot(quantiles, 100 * delta_a_m_pat2mat, 'C7', linewidth=3, label='Male PAT to MAT')
+    plt.clf()
+    idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    plt.scatter(metainfo['gwat_area_for_q_50'][idx], metainfo['gWAT'][idx])
+    plt.xlim(0.25e-13, 7e-13)
 
-    plt.xlabel('Cell population quantile', fontsize=14)
-    plt.ylabel('Area change (%)', fontsize=14)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.legend(loc='lower right', prop={'size': 12})
-    plt.tight_layout()
+# linear model
+sc_50_model = sm.formula.ols('sc_area_for_q_50 ~ C(ko) * C(genotype)', data=metainfo, subset=metainfo['sex']=='f').fit()
+print(sc_50_model.summary())
 
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.svg'))
-    plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.png'))
+# partial regression plots
+sm.graphics.plot_partregress_grid(sc_50_model)
 
+sm.graphics.influence_plot(bw_model, criterion="cooks")
 
+# list of point with high influence (large residuals and leverage)
+idx_influence = [65, 52, 64, 32, 72, 75, 0]
+idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
+print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
+
+#        id   ko sex      genotype     BW    SC  gWAT
+# 65  37.2e  PAT   f  KLF14-KO:Het  21.18  1.62  0.72
+# 52  36.3d  PAT   m  KLF14-KO:Het  40.77  1.38  1.78
+# 64  37.2d  PAT   f   KLF14-KO:WT  20.02  0.72  0.12
+# 32  18.3c  MAT   m   KLF14-KO:WT  37.83  1.24  1.68
+# 72  37.4b  PAT   m   KLF14-KO:WT  50.54  0.87  1.11
+# 75  38.1f  PAT   m   KLF14-KO:WT  38.98  0.49  0.98
+# 0   16.2a  MAT   f   KLF14-KO:WT  40.80  0.38  1.10
 
