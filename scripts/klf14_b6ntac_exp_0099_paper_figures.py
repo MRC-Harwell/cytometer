@@ -1062,6 +1062,8 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 
+DEBUG = False
+
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
@@ -1181,10 +1183,10 @@ print(bw_model.summary())
 # Kurtosis:                       3.047   Cond. No.                         23.3
 # ==============================================================================
 
-# partial regression plots
-sm.graphics.plot_partregress_grid(bw_model)
-
-sm.graphics.influence_plot(bw_model, criterion="cooks")
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(bw_model)
+    sm.graphics.influence_plot(bw_model, criterion="cooks")
 
 # list of point with high influence (large residuals and leverage)
 idx_influence = [65, 52, 64, 32, 72, 75, 0]
@@ -1235,6 +1237,40 @@ print(bw_model_no_influence.summary())
 # Warnings:
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
+# further refinement of the model, to decrease AIC and BIC, and improve R^2
+bw_model_no_influence = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) : (SC * gWAT)', data=metainfo, subset=idx_no_influence).fit()
+print(bw_model_no_influence.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.798
+# Model:                            OLS   Adj. R-squared:                  0.771
+# Method:                 Least Squares   F-statistic:                     29.69
+# Date:                Mon, 17 Feb 2020   Prob (F-statistic):           3.92e-18
+# Time:                        15:46:06   Log-Likelihood:                -179.24
+# No. Observations:                  69   AIC:                             376.5
+# Df Residuals:                      60   BIC:                             396.6
+# Df Model:                           8
+# Covariance Type:            nonrobust
+# =====================================================================================================
+#                                         coef    std err          t      P>|t|      [0.025      0.975]
+# -----------------------------------------------------------------------------------------------------
+# Intercept                            17.7812      2.205      8.066      0.000      13.371      22.191
+# C(sex)[T.m]                           9.2769      0.969      9.577      0.000       7.339      11.215
+# C(ko)[T.PAT]                         -3.4809      0.947     -3.677      0.001      -5.374      -1.588
+# C(genotype)[KLF14-KO:Het]:SC         24.3363      7.999      3.042      0.003       8.336      40.337
+# C(genotype)[KLF14-KO:WT]:SC          24.5670      7.179      3.422      0.001      10.206      38.928
+# C(genotype)[KLF14-KO:Het]:gWAT       11.8047      2.592      4.554      0.000       6.620      16.990
+# C(genotype)[KLF14-KO:WT]:gWAT        11.7082      2.688      4.355      0.000       6.331      17.086
+# C(genotype)[KLF14-KO:Het]:SC:gWAT   -21.0835      6.575     -3.207      0.002     -34.236      -7.931
+# C(genotype)[KLF14-KO:WT]:SC:gWAT    -19.8530      5.828     -3.407      0.001     -31.510      -8.196
+# ==============================================================================
+# Omnibus:                        1.026   Durbin-Watson:                   1.515
+# Prob(Omnibus):                  0.599   Jarque-Bera (JB):                0.925
+# Skew:                          -0.009   Prob(JB):                        0.630
+# Kurtosis:                       2.433   Cond. No.                         44.9
+# ==============================================================================
+
 # range of weight values
 print(np.min(metainfo.BW))
 print(np.max(metainfo.BW))
@@ -1247,7 +1283,9 @@ print(np.max(metainfo.gWAT))
 
 
 ########################################################################################################################
-## Plots of cell populations from automatically segmented images: SQWAT and GWAT
+## Cell populations from automatically segmented images in two depots: SQWAT and GWAT.
+## This section needs to be run for each of the depots. But the results are saved, so in later sections, it's possible
+## to get all the data together
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
@@ -1866,7 +1904,16 @@ np.set_printoptions(precision=8)
 #     plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.svg'))
 #     plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_change_pat_2_mat.png'))
 
-## Statistical modelling of cell size
+########################################################################################################################
+## Introduce cell population quantiles into BW linear model, replacing QWAT and gWAT weight
+########################################################################################################################
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+quantiles = np.linspace(0, 1, 11)
+quantiles = quantiles[1:-1]
 
 # load SQWAT data
 depot = 'sqwat'
@@ -1890,52 +1937,65 @@ ko_gwat = aux['ko_all']
 genotype_gwat = aux['genotype_all']
 sex_gwat = aux['sex_all']
 
-# add a new column to the metainfo frame with the median cell size for SQWAT
-metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
-metainfo['sc_area_for_q_50'] = np.NaN
-metainfo.loc[metainfo_idx, 'sc_area_for_q_50'] = np.power(np.sqrt(area_q_sqwat[:, 4]), 3)
+# volume sphere with same radius as given circle
+def vol_sphere(area_circle):
+    return (4 / 3 / np.sqrt(np.pi)) * np.power(area_circle, 3/2)
 
-# add a new column to the metainfo frame with the median cell size for gWAT
+# add a new column to the metainfo frame with the median cell volume for SQWAT
+metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
+metainfo['sc_vol_for_q_50'] = np.NaN
+metainfo.loc[metainfo_idx, 'sc_vol_for_q_50'] = vol_sphere(area_q_sqwat[:, 4]) * 1e15  # femto m^3 (fm^2)
+
+# add a new column to the metainfo frame with the median cell volume for gWAT
 metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
-metainfo['gwat_area_for_q_50'] = np.NaN
-metainfo.loc[metainfo_idx, 'gwat_area_for_q_50'] = np.power(np.sqrt(area_q_gwat[:, 4]), 3)
+metainfo['gwat_vol_for_q_50'] = np.NaN
+metainfo.loc[metainfo_idx, 'gwat_vol_for_q_50'] = vol_sphere(area_q_gwat[:, 4]) * 1e15  # femto m^3 (fm^2)
 
 if DEBUG:
     plt.clf()
     idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['sc_area_for_q_50'][idx], metainfo['SC'][idx])
-    plt.xlim(0.25e-13, 4e-13)
+    plt.scatter(metainfo['sc_vol_for_q_50'][idx], metainfo['SC'][idx])
 
     plt.clf()
     idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['gwat_area_for_q_50'][idx], metainfo['gWAT'][idx])
-    plt.xlim(0.25e-13, 7e-13)
+    plt.scatter(metainfo['gwat_vol_for_q_50'][idx], metainfo['gWAT'][idx])
 
     plt.clf()
     idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['gwat_area_for_q_50'][idx], metainfo['gWAT'][idx])
-    plt.xlim(0.25e-13, 7e-13)
+    plt.scatter(metainfo['gwat_vol_for_q_50'][idx], metainfo['gWAT'][idx])
 
-# linear model
-sc_50_model = sm.formula.ols('sc_area_for_q_50 ~ C(ko) * C(genotype)', data=metainfo, subset=metainfo['sex']=='f').fit()
-print(sc_50_model.summary())
+# Ordinary least squares linear model
+bw_model = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + sc_vol_for_q_50 * gwat_vol_for_q_50', data=metainfo).fit()
+print(bw_model.summary())
 
-# partial regression plots
-sm.graphics.plot_partregress_grid(sc_50_model)
-
-sm.graphics.influence_plot(bw_model, criterion="cooks")
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(bw_model)
+    sm.graphics.influence_plot(bw_model, criterion="cooks")
 
 # list of point with high influence (large residuals and leverage)
-idx_influence = [65, 52, 64, 32, 72, 75, 0]
+idx_influence = [72, 0, 26, 2, 3, 38]
 idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
 print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
 
-#        id   ko sex      genotype     BW    SC  gWAT
-# 65  37.2e  PAT   f  KLF14-KO:Het  21.18  1.62  0.72
-# 52  36.3d  PAT   m  KLF14-KO:Het  40.77  1.38  1.78
-# 64  37.2d  PAT   f   KLF14-KO:WT  20.02  0.72  0.12
-# 32  18.3c  MAT   m   KLF14-KO:WT  37.83  1.24  1.68
-# 72  37.4b  PAT   m   KLF14-KO:WT  50.54  0.87  1.11
-# 75  38.1f  PAT   m   KLF14-KO:WT  38.98  0.49  0.98
-# 0   16.2a  MAT   f   KLF14-KO:WT  40.80  0.38  1.10
+# Refine ordinary least squares linear model by removing influence points
+bw_model_no_influence = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + sc_vol_for_q_50 * gwat_vol_for_q_50',
+                                       data=metainfo, subset=idx_no_influence).fit()
+print(bw_model_no_influence.summary())
 
+
+## model where the depot weight is a function of the genetic variables
+bw_model = sm.formula.ols('BW ~ (C(sex) + C(ko) + C(genotype)) : (sc_vol_for_q_50)', data=metainfo).fit()
+print(bw_model.summary())
+
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(bw_model)
+    sm.graphics.influence_plot(bw_model, criterion="cooks")
+
+
+
+
+# further refinement of the model, to decrease AIC and BIC, and improve R^2
+bw_model_no_influence = sm.formula.ols('BW ~ C(sex) * C(ko) * C(genotype) * sc_vol_for_q_50 * gwat_vol_for_q_50', data=metainfo, subset=idx_no_influence).fit()
+print(bw_model_no_influence.summary())
