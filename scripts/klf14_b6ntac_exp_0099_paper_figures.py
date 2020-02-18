@@ -2320,7 +2320,11 @@ print(model.summary())
 # Warnings:
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
-
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    plt.tight_layout()
+    sm.graphics.influence_plot(model, criterion="cooks")
 
 ########################################################################################################################
 ### Model gWAT cell size vs. BW (but with sex, ko and genotype factors)
@@ -2367,7 +2371,9 @@ if DEBUG:
     sm.graphics.influence_plot(model, criterion="cooks")
 
 # list of rows with great influence in the model
-idx_influence = [72, 2, 3, 20, 0, 71, 37]
+idx_influence = [72, 2, 3, 20, 0, 71, 37, 45, 16, 65, 50, 21]
+if DEBUG:
+    print(metainfo.loc[idx_influence, ['id', 'sex', 'ko', 'genotype']])
 
 # list of data points to use in the model
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
@@ -2403,3 +2409,9 @@ print(model.summary())
 # ==============================================================================
 # Warnings:
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    plt.tight_layout()
+    sm.graphics.influence_plot(model, criterion="cooks")
