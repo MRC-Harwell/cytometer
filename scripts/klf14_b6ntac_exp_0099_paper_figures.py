@@ -1945,6 +1945,33 @@ print(np.max(metainfo.gWAT))
 ## Load SQWAT and gWAT quantile data computed in a previous section
 ########################################################################################################################
 
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats
+import pandas as pd
+import statsmodels.api as sm
+
+# directories
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+
+DEBUG = False
+
+quantiles = np.linspace(0, 1, 11)
+quantiles = quantiles[1:-1]
+
+# load metainfo file
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# make sure that in the boxplots PAT comes before MAT
+metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+metainfo['ko'] = metainfo['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
 # load SQWAT data
 depot = 'sqwat'
 filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
@@ -1976,22 +2003,22 @@ def vol_sphere(area_circle):
 # add a new column to the metainfo frame with the mean cell volume for SQWAT
 metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
 metainfo['SC_vol_mean'] = np.NaN
-metainfo.loc[metainfo_idx, 'SC_vol_mean'] = vol_sphere(area_mean_sqwat) * 1e15  # femto m^3 (fm^2)
+metainfo.loc[metainfo_idx, 'SC_vol_mean'] = vol_sphere(area_mean_sqwat) * 1e12  # pico m^3 (pm^2)
 
 # add a new column to the metainfo frame with the mean cell volume for gWAT
 metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
 metainfo['gWAT_vol_mean'] = np.NaN
-metainfo.loc[metainfo_idx, 'gWAT_vol_mean'] = vol_sphere(area_mean_gwat) * 1e15  # femto m^3 (fm^2)
+metainfo.loc[metainfo_idx, 'gWAT_vol_mean'] = vol_sphere(area_mean_gwat) * 1e12  # pico m^3 (pm^2)
 
 # add a new column to the metainfo frame with the median cell volume for SQWAT
 metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
 metainfo['SC_vol_median'] = np.NaN
-metainfo.loc[metainfo_idx, 'SC_vol_median'] = vol_sphere(area_q_sqwat[:, 4]) * 1e15  # femto m^3 (fm^2)
+metainfo.loc[metainfo_idx, 'SC_vol_median'] = vol_sphere(area_q_sqwat[:, 4]) * 1e12  # pico m^3 (pm^2)
 
 # add a new column to the metainfo frame with the median cell volume for gWAT
 metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
 metainfo['gWAT_vol_median'] = np.NaN
-metainfo.loc[metainfo_idx, 'gWAT_vol_median'] = vol_sphere(area_q_gwat[:, 4]) * 1e15  # femto m^3 (fm^2)
+metainfo.loc[metainfo_idx, 'gWAT_vol_median'] = vol_sphere(area_q_gwat[:, 4]) * 1e12  # pico m^3 (pm^2)
 
 if DEBUG:
     plt.clf()
@@ -2015,21 +2042,6 @@ if DEBUG:
     plt.scatter(metainfo['gWAT_vol_median'], metainfo['BW'])
     plt.scatter(metainfo['gWAT_vol_mean'], metainfo['BW'])
 
-if DEBUG:
-    plt.clf()
-    idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['SC_vol_median'][idx], metainfo['SC'][idx])
-    plt.scatter(metainfo['SC_vol_mean'][idx], metainfo['SC'][idx])
-
-    plt.clf()
-    idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['gWAT_vol_median'][idx], metainfo['gWAT'][idx])
-    plt.scatter(metainfo['gWAT_vol_mean'][idx], metainfo['gWAT'][idx])
-
-    plt.clf()
-    idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['gWAT_vol_median'][idx], metainfo['gWAT'][idx])
-    plt.scatter(metainfo['gWAT_vol_mean'][idx], metainfo['gWAT'][idx])
 
 ########################################################################################################################
 ### Model BW ~ SC + gWAT
@@ -2037,6 +2049,32 @@ if DEBUG:
 
 model = sm.formula.ols('BW ~ SC + gWAT', data=metainfo).fit()
 print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.283
+# Model:                            OLS   Adj. R-squared:                  0.263
+# Method:                 Least Squares   F-statistic:                     14.37
+# Date:                Wed, 19 Feb 2020   Prob (F-statistic):           5.46e-06
+# Time:                        16:23:02   Log-Likelihood:                -249.44
+# No. Observations:                  76   AIC:                             504.9
+# Df Residuals:                      73   BIC:                             511.9
+# Df Model:                           2
+# Covariance Type:            nonrobust
+# ==============================================================================
+#                  coef    std err          t      P>|t|      [0.025      0.975]
+# ------------------------------------------------------------------------------
+# Intercept     22.8628      2.127     10.749      0.000      18.624      27.102
+# SC            -0.8182      2.520     -0.325      0.746      -5.841       4.204
+# gWAT          11.5932      2.478      4.679      0.000       6.655      16.531
+# ==============================================================================
+# Omnibus:                        1.243   Durbin-Watson:                   1.056
+# Prob(Omnibus):                  0.537   Jarque-Bera (JB):                1.109
+# Skew:                           0.292   Prob(JB):                        0.574
+# Kurtosis:                       2.898   Cond. No.                         6.66
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 # partial regression and influence plots
 if DEBUG:
@@ -2052,6 +2090,121 @@ print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'g
 model = sm.formula.ols('BW ~ SC + gWAT',
                        data=metainfo, subset=idx_no_influence).fit()
 print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.453
+# Model:                            OLS   Adj. R-squared:                  0.436
+# Method:                 Least Squares   F-statistic:                     26.53
+# Date:                Wed, 19 Feb 2020   Prob (F-statistic):           4.06e-09
+# Time:                        16:24:40   Log-Likelihood:                -203.63
+# No. Observations:                  67   AIC:                             413.3
+# Df Residuals:                      64   BIC:                             419.9
+# Df Model:                           2
+# Covariance Type:            nonrobust
+# ==============================================================================
+#                  coef    std err          t      P>|t|      [0.025      0.975]
+# ------------------------------------------------------------------------------
+# Intercept     21.1608      1.813     11.670      0.000      17.538      24.783
+# SC            -2.8056      2.503     -1.121      0.267      -7.806       2.195
+# gWAT          14.4122      2.376      6.066      0.000       9.665      19.159
+# ==============================================================================
+# Omnibus:                        1.761   Durbin-Watson:                   1.521
+# Prob(Omnibus):                  0.415   Jarque-Bera (JB):                1.705
+# Skew:                           0.305   Prob(JB):                        0.426
+# Kurtosis:                       2.512   Cond. No.                         7.98
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    sm.graphics.influence_plot(model, criterion="cooks")
+
+########################################################################################################################
+### Model BW ~ SC + gWAT * sex
+#
+# Fitting the (SC + gWAT) * sex model shows no significant interaction between sex and SC
+########################################################################################################################
+
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+
+model = sm.formula.ols('BW ~ SC + gWAT * C(sex)', data=metainfo, subset=idx_not_nan).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.717
+# Model:                            OLS   Adj. R-squared:                  0.702
+# Method:                 Least Squares   F-statistic:                     45.08
+# Date:                Wed, 19 Feb 2020   Prob (F-statistic):           8.60e-19
+# Time:                        17:20:47   Log-Likelihood:                -214.02
+# No. Observations:                  76   AIC:                             438.0
+# Df Residuals:                      71   BIC:                             449.7
+# Df Model:                           4
+# Covariance Type:            nonrobust
+# ====================================================================================
+#                        coef    std err          t      P>|t|      [0.025      0.975]
+# ------------------------------------------------------------------------------------
+# Intercept           20.8264      1.621     12.844      0.000      17.593      24.060
+# C(sex)[T.m]         17.1459      3.107      5.519      0.000      10.951      23.341
+# SC                  -2.5526      1.619     -1.577      0.119      -5.781       0.676
+# gWAT                 9.5160      1.931      4.927      0.000       5.665      13.367
+# gWAT:C(sex)[T.m]    -6.6193      2.972     -2.227      0.029     -12.546      -0.693
+# ==============================================================================
+# Omnibus:                        2.780   Durbin-Watson:                   1.257
+# Prob(Omnibus):                  0.249   Jarque-Bera (JB):                2.029
+# Skew:                           0.348   Prob(JB):                        0.363
+# Kurtosis:                       3.395   Cond. No.                         16.4
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    sm.graphics.influence_plot(model, criterion="cooks")
+
+# list of point with high influence (large residuals and leverage)
+idx_influence = [49, 63, 35, 72, 0, 20]
+
+# list of data points to use in the model
+idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
+idx_for_model = list(idx_for_model)
+
+# Refine ordinary least squares linear model by removing influence points
+model = sm.formula.ols('BW ~ SC + gWAT * C(sex)',
+                       data=metainfo, subset=idx_for_model).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.813
+# Model:                            OLS   Adj. R-squared:                  0.802
+# Method:                 Least Squares   F-statistic:                     70.75
+# Date:                Wed, 19 Feb 2020   Prob (F-statistic):           5.70e-23
+# Time:                        17:22:59   Log-Likelihood:                -180.32
+# No. Observations:                  70   AIC:                             370.6
+# Df Residuals:                      65   BIC:                             381.9
+# Df Model:                           4
+# Covariance Type:            nonrobust
+# ====================================================================================
+#                        coef    std err          t      P>|t|      [0.025      0.975]
+# ------------------------------------------------------------------------------------
+# Intercept           20.3360      1.308     15.548      0.000      17.724      22.948
+# C(sex)[T.m]         20.2885      2.725      7.445      0.000      14.846      25.731
+# SC                  -2.1036      1.317     -1.597      0.115      -4.734       0.527
+# gWAT                 9.8118      1.643      5.971      0.000       6.530      13.093
+# gWAT:C(sex)[T.m]    -9.6857      2.599     -3.726      0.000     -14.876      -4.495
+# ==============================================================================
+# Omnibus:                        0.328   Durbin-Watson:                   1.060
+# Prob(Omnibus):                  0.849   Jarque-Bera (JB):                0.504
+# Skew:                          -0.034   Prob(JB):                        0.777
+# Kurtosis:                       2.590   Cond. No.                         17.4
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 if DEBUG:
     sm.graphics.plot_partregress_grid(model)
@@ -2101,15 +2254,13 @@ print(model.summary())
 # Warnings:
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
-
-
 # partial regression and influence plots
 if DEBUG:
     sm.graphics.plot_partregress_grid(model)
     sm.graphics.influence_plot(model, criterion="cooks")
 
 # list of point with high influence (large residuals and leverage)
-idx_influence = [65, 49, 72, 68, 35, 0]
+idx_influence = [65, 49, 72, 68, 35, 0, 64]
 
 # list of data points to use in the model
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
@@ -2120,38 +2271,165 @@ print(model.summary())
 
 #                             OLS Regression Results
 # ==============================================================================
-# Dep. Variable:                     BW   R-squared:                       0.850
-# Model:                            OLS   Adj. R-squared:                  0.821
-# Method:                 Least Squares   F-statistic:                     29.84
-# Date:                Tue, 18 Feb 2020   Prob (F-statistic):           7.11e-20
-# Time:                        23:47:11   Log-Likelihood:                -172.80
-# No. Observations:                  70   AIC:                             369.6
-# Df Residuals:                      58   BIC:                             396.6
+# Dep. Variable:                     BW   R-squared:                       0.847
+# Model:                            OLS   Adj. R-squared:                  0.817
+# Method:                 Least Squares   F-statistic:                     28.66
+# Date:                Wed, 19 Feb 2020   Prob (F-statistic):           2.94e-19
+# Time:                        16:28:31   Log-Likelihood:                -169.80
+# No. Observations:                  69   AIC:                             363.6
+# Df Residuals:                      57   BIC:                             390.4
 # Df Model:                          11
 # Covariance Type:            nonrobust
 # ====================================================================================================
 #                                        coef    std err          t      P>|t|      [0.025      0.975]
 # ----------------------------------------------------------------------------------------------------
-# Intercept                           17.7790      1.874      9.486      0.000      14.027      21.531
-# C(sex)[T.m]                         19.9911      2.649      7.547      0.000      14.689      25.293
-# C(ko)[T.MAT]                         3.9938      2.216      1.802      0.077      -0.442       8.429
-# C(genotype)[T.KLF14-KO:Het]          0.3117      2.183      0.143      0.887      -4.059       4.682
-# SC                                   6.1195      2.947      2.077      0.042       0.221      12.018
-# SC:C(sex)[T.m]                       1.8228      2.999      0.608      0.546      -4.181       7.826
-# SC:C(ko)[T.MAT]                    -10.6039      3.211     -3.303      0.002     -17.031      -4.177
-# SC:C(genotype)[T.KLF14-KO:Het]      -2.8646      3.035     -0.944      0.349      -8.940       3.211
-# gWAT                                 6.7024      2.178      3.077      0.003       2.342      11.063
-# gWAT:C(sex)[T.m]                   -10.6402      2.939     -3.621      0.001     -16.523      -4.757
-# gWAT:C(ko)[T.MAT]                    4.6400      2.895      1.603      0.114      -1.156      10.436
-# gWAT:C(genotype)[T.KLF14-KO:Het]    -0.0539      2.733     -0.020      0.984      -5.526       5.418
+# Intercept                           18.9656      2.071      9.158      0.000      14.819      23.113
+# C(sex)[T.m]                         19.2679      2.690      7.164      0.000      13.882      24.654
+# C(ko)[T.MAT]                         3.4671      2.239      1.549      0.127      -1.016       7.950
+# C(genotype)[T.KLF14-KO:Het]         -0.4535      2.247     -0.202      0.841      -4.953       4.046
+# SC                                   8.5699      3.474      2.467      0.017       1.613      15.527
+# SC:C(sex)[T.m]                       0.6657      3.109      0.214      0.831      -5.559       6.891
+# SC:C(ko)[T.MAT]                    -11.7583      3.310     -3.552      0.001     -18.387      -5.129
+# SC:C(genotype)[T.KLF14-KO:Het]      -4.1380      3.169     -1.306      0.197     -10.484       2.208
+# gWAT                                 4.2939      2.839      1.512      0.136      -1.392       9.980
+# gWAT:C(sex)[T.m]                    -9.3653      3.078     -3.042      0.004     -15.530      -3.201
+# gWAT:C(ko)[T.MAT]                    5.7427      2.998      1.916      0.060      -0.261      11.746
+# gWAT:C(genotype)[T.KLF14-KO:Het]     1.2717      2.899      0.439      0.663      -4.533       7.076
 # ==============================================================================
-# Omnibus:                        4.137   Durbin-Watson:                   1.553
-# Prob(Omnibus):                  0.126   Jarque-Bera (JB):                2.036
-# Skew:                           0.056   Prob(JB):                        0.361
-# Kurtosis:                       2.172   Cond. No.                         25.8
+# Omnibus:                        3.016   Durbin-Watson:                   1.638
+# Prob(Omnibus):                  0.221   Jarque-Bera (JB):                1.817
+# Skew:                           0.134   Prob(JB):                        0.403
+# Kurtosis:                       2.251   Cond. No.                         33.1
 # ==============================================================================
 # Warnings:
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+########################################################################################################################
+### TODO: Model BW ~ (SC + gWAT) * C(sex) * C(ko) * C(genotype)
+########################################################################################################################
+
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+
+model = sm.formula.ols('BW ~ (SC + gWAT) * (C(sex) + C(ko) * C(genotype))', data=metainfo, subset=idx_not_nan).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.831
+# Model:                            OLS   Adj. R-squared:                  0.756
+# Method:                 Least Squares   F-statistic:                     11.12
+# Date:                Wed, 19 Feb 2020   Prob (F-statistic):           6.07e-13
+# Time:                        16:40:57   Log-Likelihood:                -194.48
+# No. Observations:                  76   AIC:                             437.0
+# Df Residuals:                      52   BIC:                             492.9
+# Df Model:                          23
+# Covariance Type:            nonrobust
+# =============================================================================================================================
+#                                                                 coef    std err          t      P>|t|      [0.025      0.975]
+# -----------------------------------------------------------------------------------------------------------------------------
+# Intercept                                                    19.7847      2.967      6.667      0.000      13.830      25.739
+# C(sex)[T.m]                                                  11.6311      6.692      1.738      0.088      -1.797      25.059
+# C(ko)[T.MAT]                                                 -1.6068      4.945     -0.325      0.747     -11.530       8.316
+# C(genotype)[T.KLF14-KO:Het]                                  -1.1953      4.316     -0.277      0.783      -9.857       7.466
+# C(sex)[T.m]:C(ko)[T.MAT]                                     15.8830      8.893      1.786      0.080      -1.963      33.729
+# C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                       1.7384      8.392      0.207      0.837     -15.101      18.578
+# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                      3.4696      6.759      0.513      0.610     -10.094      17.033
+# C(sex)[T.m]:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]         -7.9892     15.853     -0.504      0.616     -39.801      23.823
+# SC                                                            1.2871      5.226      0.246      0.806      -9.200      11.774
+# SC:C(sex)[T.m]                                                6.1563      6.961      0.884      0.381      -7.812      20.124
+# SC:C(ko)[T.MAT]                                             -18.0154      7.908     -2.278      0.027     -33.884      -2.147
+# SC:C(genotype)[T.KLF14-KO:Het]                               -0.2550      5.923     -0.043      0.966     -12.141      11.631
+# SC:C(sex)[T.m]:C(ko)[T.MAT]                                  13.8479     10.441      1.326      0.191      -7.104      34.799
+# SC:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   -6.6730     11.945     -0.559      0.579     -30.641      17.295
+# SC:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                  21.3549     15.454      1.382      0.173      -9.655      52.365
+# SC:C(sex)[T.m]:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]     -28.9167     20.235     -1.429      0.159     -69.522      11.689
+# gWAT                                                          7.7826      3.299      2.359      0.022       1.163      14.402
+# gWAT:C(sex)[T.m]                                             -5.4397      6.691     -0.813      0.420     -18.867       7.988
+# gWAT:C(ko)[T.MAT]                                            13.5310      6.658      2.032      0.047       0.170      26.892
+# gWAT:C(genotype)[T.KLF14-KO:Het]                             -1.8614      4.930     -0.378      0.707     -11.754       8.031
+# gWAT:C(sex)[T.m]:C(ko)[T.MAT]                               -22.8162     10.117     -2.255      0.028     -43.118      -2.514
+# gWAT:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                  5.2470     10.775      0.487      0.628     -16.374      26.868
+# gWAT:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]               -10.2820      8.769     -1.173      0.246     -27.879       7.315
+# gWAT:C(sex)[T.m]:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]    17.9868     18.087      0.994      0.325     -18.307      54.281
+# ==============================================================================
+# Omnibus:                        3.451   Durbin-Watson:                   1.525
+# Prob(Omnibus):                  0.178   Jarque-Bera (JB):                2.842
+# Skew:                           0.284   Prob(JB):                        0.241
+# Kurtosis:                       3.758   Cond. No.                         169.
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    sm.graphics.influence_plot(model, criterion="cooks")
+
+# list of point with high influence (large residuals and leverage)
+idx_influence = [65, 47, 52, 72, 37, 68, 35]
+idx_influence = [65, 72, 0, 68, 35]
+
+# list of data points to use in the model
+idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
+idx_for_model = list(idx_for_model)
+
+model = sm.formula.ols('BW ~ (SC + gWAT) * C(sex) + C(ko) * C(genotype)', data=metainfo, subset=idx_for_model).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.889
+# Model:                            OLS   Adj. R-squared:                  0.833
+# Method:                 Least Squares   F-statistic:                     15.74
+# Date:                Wed, 19 Feb 2020   Prob (F-statistic):           1.28e-14
+# Time:                        16:51:36   Log-Likelihood:                -159.85
+# No. Observations:                  69   AIC:                             367.7
+# Df Residuals:                      45   BIC:                             421.3
+# Df Model:                          23
+# Covariance Type:            nonrobust
+# =============================================================================================================================
+#                                                                 coef    std err          t      P>|t|      [0.025      0.975]
+# -----------------------------------------------------------------------------------------------------------------------------
+# Intercept                                                    19.7847      2.386      8.293      0.000      14.979      24.590
+# C(sex)[T.m]                                                  13.8221     10.613      1.302      0.199      -7.553      35.197
+# C(ko)[T.MAT]                                                 -3.4901      4.025     -0.867      0.390     -11.596       4.616
+# C(genotype)[T.KLF14-KO:Het]                                   0.2763      3.537      0.078      0.938      -6.848       7.400
+# C(sex)[T.m]:C(ko)[T.MAT]                                     15.5753     11.627      1.340      0.187      -7.843      38.994
+# C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                      -4.5624     11.585     -0.394      0.696     -27.897      18.772
+# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                      3.8813      5.513      0.704      0.485      -7.222      14.984
+# C(sex)[T.m]:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]         -3.5717     15.860     -0.225      0.823     -35.516      28.372
+# SC                                                            1.2871      4.202      0.306      0.761      -7.176       9.750
+# SC:C(sex)[T.m]                                                6.3057      6.109      1.032      0.307      -5.998      18.609
+# SC:C(ko)[T.MAT]                                             -18.3192      7.284     -2.515      0.016     -32.991      -3.648
+# SC:C(genotype)[T.KLF14-KO:Het]                                7.1178      5.868      1.213      0.231      -4.700      18.936
+# SC:C(sex)[T.m]:C(ko)[T.MAT]                                  14.0023      9.439      1.483      0.145      -5.010      33.014
+# SC:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                  -18.3940     11.022     -1.669      0.102     -40.594       3.806
+# SC:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                  14.2860     13.370      1.069      0.291     -12.642      41.214
+# SC:C(sex)[T.m]:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]     -17.4995     17.510     -0.999      0.323     -52.766      17.767
+# gWAT                                                          7.7826      2.652      2.935      0.005       2.441      13.124
+# gWAT:C(sex)[T.m]                                             -7.9080     11.287     -0.701      0.487     -30.642      14.826
+# gWAT:C(ko)[T.MAT]                                            15.8910      5.438      2.922      0.005       4.939      26.843
+# gWAT:C(genotype)[T.KLF14-KO:Het]                             -7.3969      4.726     -1.565      0.125     -16.915       2.121
+# gWAT:C(sex)[T.m]:C(ko)[T.MAT]                               -22.7079     12.866     -1.765      0.084     -48.622       3.206
+# gWAT:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 20.5954     14.676      1.403      0.167      -8.963      50.154
+# gWAT:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -7.1065      7.566     -0.939      0.353     -22.345       8.132
+# gWAT:C(sex)[T.m]:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]     4.9984     18.781      0.266      0.791     -32.828      42.824
+# ==============================================================================
+# Omnibus:                        0.192   Durbin-Watson:                   1.528
+# Prob(Omnibus):                  0.908   Jarque-Bera (JB):                0.165
+# Skew:                           0.109   Prob(JB):                        0.921
+# Kurtosis:                       2.901   Cond. No.                         231.
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+
+
+
+
+
+
+
 
 ########################################################################################################################
 ### Model SC ~ C(sex) * C(ko) * C(genotype)
@@ -2506,18 +2784,43 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### BW ~ SC_vol_median * (sex + ko + genotype)
+### TODO: BW ~ (SC_vol_mean + gWAT_vol_mean) * (sex + ko + genotype)
 ########################################################################################################################
 
-idx_not_nan = np.where(~np.isnan(metainfo['SC_vol_median']) * ~np.isnan(metainfo['BW']))[0]
+idx_not_nan = np.where(~np.isnan(metainfo['SC_vol_mean']) * ~np.isnan(metainfo['BW']))[0]
 
 if DEBUG:
     plt.clf()
-    plt.scatter(metainfo['SC_vol_median'], metainfo['BW'])
+    plt.scatter(metainfo['SC_vol_mean'], metainfo['BW'])
 
-model = sm.formula.ols('BW ~ SC_vol_median * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
-model = sm.formula.ols('SC_vol_median ~ BW * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
+    plt.clf()
+    plt.scatter(metainfo['SC_vol_mean'][metainfo['sex'] == 'f'], metainfo['BW'][metainfo['sex'] == 'f'])
+    plt.scatter(metainfo['SC_vol_mean'][metainfo['sex'] == 'm'], metainfo['BW'][metainfo['sex'] == 'm'])
+
+
+model = sm.formula.ols('BW ~ (SC_vol_mean + gWAT_vol_mean) * C(sex)', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
+
+# list of data points to use in the model
+idx_for_model = set(np.where(metainfo['sex'] == 'f')[0]) & set(idx_not_nan)
+idx_for_model = list(idx_for_model)
+
+# TODO:
+model = sm.formula.ols('BW ~ (SC_vol_mean + gWAT_vol_mean)', data=metainfo, subset=idx_for_model).fit()
+print(model.summary())
+
+# list of data points to use in the model
+idx_for_model = set(np.where(metainfo['sex'] == 'm')[0]) & set(idx_not_nan)
+idx_for_model = list(idx_for_model)
+
+metainfo['gWAT_vol_mean'] /= 1000
+metainfo['SC_vol_mean'] /= 1000
+model = sm.formula.ols('BW ~ (SC_vol_mean + gWAT_vol_mean)', data=metainfo, subset=idx_for_model).fit()
+print(model.summary())
+
+y, X = patsy.dmatrices('BW ~ (SC_vol_mean + gWAT_vol_mean)', metainfo.loc[metainfo['sex']=='m', :], return_type='matrix')
+idx = np.argsort(X[:, 1])
+X[idx, :]
 
 #                             OLS Regression Results
 # ==============================================================================
