@@ -1270,6 +1270,7 @@ filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quant
 if os.path.isfile(filename_quantiles):
 
     aux = np.load(filename_quantiles)
+    area_mean_all = aux['area_mean_all']
     area_q_all = aux['area_q_all']
     id_all = aux['id_all']
     ko_all = aux['ko_all']
@@ -1278,6 +1279,7 @@ if os.path.isfile(filename_quantiles):
 
 else:
 
+    area_mean_all = []
     area_q_all = []
     id_all = []
     ko_all = []
@@ -1327,10 +1329,14 @@ else:
         # compute area of each contour
         areas = [Polygon(c).area * xres * yres for c in contours]  # (um^2)
 
+        # compute average area of all contours
+        area_mean = np.mean(areas)
+
         # compute HD quantiles
         area_q = scipy.stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
 
         # append to totals
+        area_mean_all.append(area_mean)
         area_q_all.append(area_q)
         id_all.append(id)
         ko_all.append(ko)
@@ -1341,6 +1347,7 @@ else:
         sc_all.append(sc)
 
     # reorder from largest to smallest final area value
+    area_mean_all = np.array(area_mean_all)
     area_q_all = np.array(area_q_all)
     id_all = np.array(id_all)
     ko_all = np.array(ko_all)
@@ -1352,6 +1359,7 @@ else:
 
     idx = np.argsort(area_q_all[:, -1])
     idx = idx[::-1]  # sort from larger to smaller
+    area_mean_all = area_mean_all[idx]
     area_q_all = area_q_all[idx, :]
     id_all = id_all[idx]
     ko_all = ko_all[idx]
@@ -1361,8 +1369,9 @@ else:
     gwat_all = gwat_all[idx]
     sc_all = sc_all[idx]
 
-    np.savez_compressed(filename_quantiles, area_q_all=area_q_all, id_all=id_all, ko_all=ko_all, genotype_all=genotype_all,
-                        sex_all=sex_all, bw_all=bw_all, gwat_all=gwat_all, sc_all=sc_all)
+    np.savez_compressed(filename_quantiles, area_mean_all=area_mean_all, area_q_all=area_q_all, id_all=id_all,
+                        ko_all=ko_all, genotype_all=genotype_all, sex_all=sex_all,
+                        bw_all=bw_all, gwat_all=gwat_all, sc_all=sc_all)
 
 if DEBUG:
     plt.clf()
@@ -1941,6 +1950,7 @@ depot = 'sqwat'
 filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
 
 aux = np.load(filename_quantiles)
+area_mean_sqwat = aux['area_mean_all']
 area_q_sqwat = aux['area_q_all']
 id_sqwat = aux['id_all']
 ko_sqwat = aux['ko_all']
@@ -1952,6 +1962,7 @@ depot = 'gwat'
 filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
 
 aux = np.load(filename_quantiles)
+area_mean_gwat = aux['area_mean_all']
 area_q_gwat = aux['area_q_all']
 id_gwat = aux['id_all']
 ko_gwat = aux['ko_all']
@@ -1962,41 +1973,63 @@ sex_gwat = aux['sex_all']
 def vol_sphere(area_circle):
     return (4 / 3 / np.sqrt(np.pi)) * np.power(area_circle, 3/2)
 
+# add a new column to the metainfo frame with the mean cell volume for SQWAT
+metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
+metainfo['SC_vol_mean'] = np.NaN
+metainfo.loc[metainfo_idx, 'SC_vol_mean'] = vol_sphere(area_mean_sqwat) * 1e15  # femto m^3 (fm^2)
+
+# add a new column to the metainfo frame with the mean cell volume for gWAT
+metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
+metainfo['gWAT_vol_mean'] = np.NaN
+metainfo.loc[metainfo_idx, 'gWAT_vol_mean'] = vol_sphere(area_mean_gwat) * 1e15  # femto m^3 (fm^2)
+
 # add a new column to the metainfo frame with the median cell volume for SQWAT
 metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
-metainfo['sc_vol_for_q_50'] = np.NaN
-metainfo.loc[metainfo_idx, 'sc_vol_for_q_50'] = vol_sphere(area_q_sqwat[:, 4]) * 1e15  # femto m^3 (fm^2)
+metainfo['SC_vol_median'] = np.NaN
+metainfo.loc[metainfo_idx, 'SC_vol_median'] = vol_sphere(area_q_sqwat[:, 4]) * 1e15  # femto m^3 (fm^2)
 
 # add a new column to the metainfo frame with the median cell volume for gWAT
 metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
-metainfo['gwat_vol_for_q_50'] = np.NaN
-metainfo.loc[metainfo_idx, 'gwat_vol_for_q_50'] = vol_sphere(area_q_gwat[:, 4]) * 1e15  # femto m^3 (fm^2)
+metainfo['gWAT_vol_median'] = np.NaN
+metainfo.loc[metainfo_idx, 'gWAT_vol_median'] = vol_sphere(area_q_gwat[:, 4]) * 1e15  # femto m^3 (fm^2)
+
+if DEBUG:
+    plt.clf()
+    plt.scatter(metainfo['gWAT_vol_mean'], metainfo['gWAT_vol_median'])
+    plt.clf()
+    plt.scatter(metainfo['SC_vol_mean'], metainfo['SC_vol_median'])
 
 if DEBUG:
     # compare SQWAT to gWAT
     plt.clf()
-    plt.scatter(metainfo['sc_vol_for_q_50'], metainfo['gwat_vol_for_q_50'])
+    plt.scatter(metainfo['SC_vol_median'], metainfo['gWAT_vol_median'])
+    plt.scatter(metainfo['SC_vol_mean'], metainfo['gWAT_vol_median'])
 
     # BW vs. SQWAT
     plt.clf()
-    plt.scatter(metainfo['sc_vol_for_q_50'], metainfo['BW'])
+    plt.scatter(metainfo['SC_vol_median'], metainfo['BW'])
+    plt.scatter(metainfo['SC_vol_mean'], metainfo['BW'])
 
     # BW vs. gWAT
     plt.clf()
-    plt.scatter(metainfo['gwat_vol_for_q_50'], metainfo['BW'])
+    plt.scatter(metainfo['gWAT_vol_median'], metainfo['BW'])
+    plt.scatter(metainfo['gWAT_vol_mean'], metainfo['BW'])
 
 if DEBUG:
     plt.clf()
     idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['sc_vol_for_q_50'][idx], metainfo['SC'][idx])
+    plt.scatter(metainfo['SC_vol_median'][idx], metainfo['SC'][idx])
+    plt.scatter(metainfo['SC_vol_mean'][idx], metainfo['SC'][idx])
 
     plt.clf()
     idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['gwat_vol_for_q_50'][idx], metainfo['gWAT'][idx])
+    plt.scatter(metainfo['gWAT_vol_median'][idx], metainfo['gWAT'][idx])
+    plt.scatter(metainfo['gWAT_vol_mean'][idx], metainfo['gWAT'][idx])
 
     plt.clf()
     idx = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-    plt.scatter(metainfo['gwat_vol_for_q_50'][idx], metainfo['gWAT'][idx])
+    plt.scatter(metainfo['gWAT_vol_median'][idx], metainfo['gWAT'][idx])
+    plt.scatter(metainfo['gWAT_vol_mean'][idx], metainfo['gWAT'][idx])
 
 ########################################################################################################################
 ### Model BW ~ SC + gWAT
@@ -2473,17 +2506,17 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### BW ~ sc_vol_for_q_50 * (sex + ko + genotype)
+### BW ~ SC_vol_median * (sex + ko + genotype)
 ########################################################################################################################
 
-idx_not_nan = np.where(~np.isnan(metainfo['sc_vol_for_q_50']) * ~np.isnan(metainfo['BW']))[0]
+idx_not_nan = np.where(~np.isnan(metainfo['SC_vol_median']) * ~np.isnan(metainfo['BW']))[0]
 
 if DEBUG:
     plt.clf()
-    plt.scatter(metainfo['sc_vol_for_q_50'], metainfo['BW'])
+    plt.scatter(metainfo['SC_vol_median'], metainfo['BW'])
 
-model = sm.formula.ols('BW ~ sc_vol_for_q_50 * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
-model = sm.formula.ols('sc_vol_for_q_50 ~ BW * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('BW ~ SC_vol_median * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('SC_vol_median ~ BW * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2504,10 +2537,10 @@ print(model.summary())
 # C(sex)[T.m]                                    11.9289      2.245      5.313      0.000       7.447      16.411
 # C(ko)[T.MAT]                                    4.1352      1.935      2.137      0.036       0.272       7.998
 # C(genotype)[T.KLF14-KO:Het]                     0.2840      1.931      0.147      0.884      -3.571       4.139
-# sc_vol_for_q_50                                 0.0735      0.015      5.021      0.000       0.044       0.103
-# sc_vol_for_q_50:C(sex)[T.m]                    -0.0248      0.014     -1.724      0.089      -0.053       0.004
-# sc_vol_for_q_50:C(ko)[T.MAT]                   -0.0178      0.013     -1.393      0.168      -0.043       0.008
-# sc_vol_for_q_50:C(genotype)[T.KLF14-KO:Het]    -0.0065      0.012     -0.521      0.604      -0.031       0.018
+# SC_vol_median                                 0.0735      0.015      5.021      0.000       0.044       0.103
+# SC_vol_median:C(sex)[T.m]                    -0.0248      0.014     -1.724      0.089      -0.053       0.004
+# SC_vol_median:C(ko)[T.MAT]                   -0.0178      0.013     -1.393      0.168      -0.043       0.008
+# SC_vol_median:C(genotype)[T.KLF14-KO:Het]    -0.0065      0.012     -0.521      0.604      -0.031       0.018
 # ==============================================================================
 # Omnibus:                        2.565   Durbin-Watson:                   1.279
 # Prob(Omnibus):                  0.277   Jarque-Bera (JB):                2.143
@@ -2529,7 +2562,7 @@ idx_influence = [72, 38, 26, 7]
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
 
-model = sm.formula.ols('BW ~ sc_vol_for_q_50 * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('BW ~ SC_vol_median * (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2550,10 +2583,10 @@ print(model.summary())
 # C(sex)[T.m]                                    12.5882      2.076      6.064      0.000       8.439      16.738
 # C(ko)[T.MAT]                                    1.1443      1.781      0.643      0.523      -2.415       4.704
 # C(genotype)[T.KLF14-KO:Het]                    -0.1418      1.770     -0.080      0.936      -3.680       3.396
-# sc_vol_for_q_50                                 0.0739      0.014      5.311      0.000       0.046       0.102
-# sc_vol_for_q_50:C(sex)[T.m]                    -0.0355      0.014     -2.486      0.016      -0.064      -0.007
-# sc_vol_for_q_50:C(ko)[T.MAT]                    0.0079      0.012      0.646      0.520      -0.017       0.032
-# sc_vol_for_q_50:C(genotype)[T.KLF14-KO:Het]    -0.0007      0.012     -0.056      0.956      -0.025       0.023
+# SC_vol_median                                 0.0739      0.014      5.311      0.000       0.046       0.102
+# SC_vol_median:C(sex)[T.m]                    -0.0355      0.014     -2.486      0.016      -0.064      -0.007
+# SC_vol_median:C(ko)[T.MAT]                    0.0079      0.012      0.646      0.520      -0.017       0.032
+# SC_vol_median:C(genotype)[T.KLF14-KO:Het]    -0.0007      0.012     -0.056      0.956      -0.025       0.023
 # ==============================================================================
 # Omnibus:                        1.230   Durbin-Watson:                   1.287
 # Prob(Omnibus):                  0.541   Jarque-Bera (JB):                1.102
@@ -2579,21 +2612,21 @@ print(model.summary())
 ## TODO: Review from here
 
 ########################################################################################################################
-### Model sc_vol_for_q_50 ~ BW : (C(sex) + C(ko) + C(genotype))
+### Model SC_vol_median ~ BW : (C(sex) + C(ko) + C(genotype))
 ########################################################################################################################
 
 if DEBUG:
     plt.clf()
-    plt.scatter(metainfo['BW'], metainfo['sc_vol_for_q_50'])
+    plt.scatter(metainfo['BW'], metainfo['SC_vol_median'])
 
-idx_not_nan = np.where(~np.isnan(metainfo['sc_vol_for_q_50']) * ~np.isnan(metainfo['BW']))[0]
+idx_not_nan = np.where(~np.isnan(metainfo['SC_vol_median']) * ~np.isnan(metainfo['BW']))[0]
 
-model = sm.formula.ols('sc_vol_for_q_50 ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('SC_vol_median ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
 # ==============================================================================
-# Dep. Variable:        sc_vol_for_q_50   R-squared:                       0.592
+# Dep. Variable:        SC_vol_median   R-squared:                       0.592
 # Model:                            OLS   Adj. R-squared:                  0.569
 # Method:                 Least Squares   F-statistic:                     25.07
 # Date:                Tue, 18 Feb 2020   Prob (F-statistic):           7.67e-13
@@ -2629,12 +2662,12 @@ idx_influence = [72, 0, 20, 26, 7, 38]
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
 
-model = sm.formula.ols('sc_vol_for_q_50 ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('SC_vol_median ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
 # ==============================================================================
-# Dep. Variable:        sc_vol_for_q_50   R-squared:                       0.679
+# Dep. Variable:        SC_vol_median   R-squared:                       0.679
 # Model:                            OLS   Adj. R-squared:                  0.658
 # Method:                 Least Squares   F-statistic:                     33.27
 # Date:                Tue, 18 Feb 2020   Prob (F-statistic):           6.55e-15
@@ -2672,16 +2705,16 @@ if DEBUG:
 
 if DEBUG:
     plt.clf()
-    plt.scatter(metainfo['BW'], metainfo['gwat_vol_for_q_50'])
+    plt.scatter(metainfo['BW'], metainfo['gWAT_vol_median'])
 
-idx_not_nan = np.where(~np.isnan(metainfo['gwat_vol_for_q_50']) * ~np.isnan(metainfo['BW']))[0]
+idx_not_nan = np.where(~np.isnan(metainfo['gWAT_vol_median']) * ~np.isnan(metainfo['BW']))[0]
 
-model = sm.formula.ols('gwat_vol_for_q_50 ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('gWAT_vol_median ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
 # ==============================================================================
-# Dep. Variable:      gwat_vol_for_q_50   R-squared:                       0.557
+# Dep. Variable:      gWAT_vol_median   R-squared:                       0.557
 # Model:                            OLS   Adj. R-squared:                  0.530
 # Method:                 Least Squares   F-statistic:                     20.45
 # Date:                Tue, 18 Feb 2020   Prob (F-statistic):           6.05e-11
@@ -2719,12 +2752,12 @@ if DEBUG:
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
 
-model = sm.formula.ols('gwat_vol_for_q_50 ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('gWAT_vol_median ~ BW : (C(sex) + C(ko) + C(genotype))', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
 # ==============================================================================
-# Dep. Variable:      gwat_vol_for_q_50   R-squared:                       0.759
+# Dep. Variable:      gWAT_vol_median   R-squared:                       0.759
 # Model:                            OLS   Adj. R-squared:                  0.743
 # Method:                 Least Squares   F-statistic:                     45.79
 # Date:                Tue, 18 Feb 2020   Prob (F-statistic):           2.60e-17
