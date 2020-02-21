@@ -138,7 +138,7 @@ for i in range(full_dataset['lab'].shape[0]):
 
     # create dataframe with metainformation from mouse
     df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(full_file_list['im'][i]),
-                                                          area, values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+                                                          area, values_tag='area', tags_to_keep=['id', 'ko_parent', 'sex'])
 
     # add a column with the window filename. This is later used in the linear models
     df_window['file'] = os.path.basename(full_file_list['im'][i])
@@ -151,19 +151,19 @@ for i in range(full_dataset['lab'].shape[0]):
 
 
 # make sure that in the boxplots PAT comes before MAT
-df_gtruth['ko'] = df_gtruth['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_gtruth['ko_parent'] = df_gtruth['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
 # plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
 plt.clf()
 ax = plt.subplot(121)
-df_gtruth[df_gtruth['sex'] == 'f'].boxplot(column='area', by='ko', ax=ax, notch=True)
+df_gtruth[df_gtruth['sex'] == 'f'].boxplot(column='area', by='ko_parent', ax=ax, notch=True)
 #ax.set_ylim(0, 2e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-df_gtruth[df_gtruth['sex'] == 'm'].boxplot(column='area', by='ko', ax=ax, notch=True)
+df_gtruth[df_gtruth['sex'] == 'm'].boxplot(column='area', by='ko_parent', ax=ax, notch=True)
 #ax.set_ylim(0, 2e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
@@ -171,10 +171,10 @@ ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 
 # split data into groups
-area_gtruth_f_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko'] == 'PAT'))]
-area_gtruth_f_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko'] == 'MAT'))]
-area_gtruth_m_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko'] == 'PAT'))]
-area_gtruth_m_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko'] == 'MAT'))]
+area_gtruth_f_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko_parent'] == 'PAT'))]
+area_gtruth_f_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko_parent'] == 'MAT'))]
+area_gtruth_m_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko_parent'] == 'PAT'))]
+area_gtruth_m_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko_parent'] == 'MAT'))]
 
 # compute percentile profiles of cell populations
 perc = np.linspace(0, 100, num=101)
@@ -289,7 +289,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe with metainformation from mouse
         df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
                                                               good_areas,
-                                                              values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+                                                              values_tag='area', tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # add a column with the window filename. This is later used in the linear models
         df_window['file'] = os.path.basename(im_test_file_list[i])
@@ -299,7 +299,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
             df_pipeline_gtruth = df_window
 
             # make sure that in the boxplots PAT comes before MAT
-            df_pipeline_gtruth['ko'] = df_pipeline_gtruth['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
+            df_pipeline_gtruth['ko_parent'] = df_pipeline_gtruth['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
                                                                                                      ordered=True))
 
         else:
@@ -362,13 +362,13 @@ if SAVE_FIGS:
 
 # split data into groups
 area_pipeline_gtruth_f_PAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'f',
-                                                                        df_pipeline_gtruth['ko'] == 'PAT'))]
+                                                                        df_pipeline_gtruth['ko_parent'] == 'PAT'))]
 area_pipeline_gtruth_f_MAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'f',
-                                                                        df_pipeline_gtruth['ko'] == 'MAT'))]
+                                                                        df_pipeline_gtruth['ko_parent'] == 'MAT'))]
 area_pipeline_gtruth_m_PAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'm',
-                                                                        df_pipeline_gtruth['ko'] == 'PAT'))]
+                                                                        df_pipeline_gtruth['ko_parent'] == 'PAT'))]
 area_pipeline_gtruth_m_MAT = df_pipeline_gtruth['area'][(np.logical_and(df_pipeline_gtruth['sex'] == 'm',
-                                                                        df_pipeline_gtruth['ko'] == 'MAT'))]
+                                                                        df_pipeline_gtruth['ko_parent'] == 'MAT'))]
 
 # compute percentile profiles of cell populations
 perc = np.linspace(0, 100, num=101)
@@ -516,7 +516,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe with metainformation from mouse
         df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(im_test_file_list[i]),
                                                               area,
-                                                              values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+                                                              values_tag='area', tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # add a column with the quality values
         df_window['quality'] = qual
@@ -529,7 +529,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
             df_pipeline = df_window
 
             # make sure that in the boxplots PAT comes before MAT
-            df_pipeline['ko'] = df_pipeline['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
+            df_pipeline['ko_parent'] = df_pipeline['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'],
                                                                                        ordered=True))
         else:
             df_pipeline = pd.concat([df_pipeline, df_window], axis=0, ignore_index=True)
@@ -555,13 +555,13 @@ df_pipeline_quality = df_pipeline[df_pipeline.quality >= quality_threshold]
 
 # split data into groups
 area_pipeline_quality_f_PAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
-                                                                          df_pipeline_quality['ko'] == 'PAT'))]
+                                                                          df_pipeline_quality['ko_parent'] == 'PAT'))]
 area_pipeline_quality_f_MAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'f',
-                                                                          df_pipeline_quality['ko'] == 'MAT'))]
+                                                                          df_pipeline_quality['ko_parent'] == 'MAT'))]
 area_pipeline_quality_m_PAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'm',
-                                                                          df_pipeline_quality['ko'] == 'PAT'))]
+                                                                          df_pipeline_quality['ko_parent'] == 'PAT'))]
 area_pipeline_quality_m_MAT = df_pipeline_quality['area'][(np.logical_and(df_pipeline_quality['sex'] == 'm',
-                                                                          df_pipeline_quality['ko'] == 'MAT'))]
+                                                                          df_pipeline_quality['ko_parent'] == 'MAT'))]
 
 # size of each group
 print('f/PAT: ' + str(area_pipeline_quality_f_PAT.shape[0]))

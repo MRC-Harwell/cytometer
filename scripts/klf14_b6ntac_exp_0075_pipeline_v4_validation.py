@@ -453,7 +453,7 @@ for i_fold in range(len(idx_test_all)):
         im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=im_idx, values_tag='im',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
         df_im['contour'] = range(len(contours))
         df_im['type'] = contour_type_all
 
@@ -801,7 +801,7 @@ for i_fold in range(len(idx_test_all)):
         im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=im_idx, values_tag='im',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
         df_im['contour'] = range(len(contours))
         df_im['type'] = contour_type_all
 
@@ -1349,7 +1349,7 @@ for i_fold in range(len(idx_test_all)):
         im_idx = [idx_test_all[i_fold][i], ] * len(labels_unique_ref)  # absolute index of current test image
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=im_idx, values_tag='im',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
         df_im['lab'] = labels_unique_ref
         df_im['area'] = labels_count_ref * xres * yres / sx / sy
         df_im['area_corrected'] = corrected_count_ref * xres * yres / sx / sy

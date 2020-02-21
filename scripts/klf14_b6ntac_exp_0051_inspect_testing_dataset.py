@@ -221,7 +221,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe: one cell per row, tagged with mouse metainformation
         df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                        values=match_info['lab_test'], values_tag='lab_test',
-                                                       tags_to_keep=['id', 'ko', 'sex'])
+                                                       tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # add to dataframe: rest of match columns
         df['lab_ref'] = match_info['lab_ref']

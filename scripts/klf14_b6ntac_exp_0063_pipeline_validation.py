@@ -220,7 +220,7 @@ for i_fold in range(n_folds):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=[i_fold], values_tag='fold',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
         '''Ground truth cell by cell processing
         '''

@@ -127,7 +127,7 @@ for i in range(full_dataset['lab'].shape[0]):
 
     # create dataframe with metainformation from mouse
     df_window = cytometer.data.tag_values_with_mouse_info(metainfo, os.path.basename(full_file_list['im'][i]),
-                                                          area, values_tag='area', tags_to_keep=['id', 'ko', 'sex'])
+                                                          area, values_tag='area', tags_to_keep=['id', 'ko_parent', 'sex'])
 
     # add a column with the window filename. This is later used in the linear models
     df_window['file'] = os.path.basename(full_file_list['im'][i])
@@ -140,29 +140,29 @@ for i in range(full_dataset['lab'].shape[0]):
 
 
 # make sure that in the boxplots PAT comes before MAT
-df_gtruth['ko'] = df_gtruth['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_gtruth['ko_parent'] = df_gtruth['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
 # plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
 plt.clf()
 ax = plt.subplot(121)
-df_gtruth[df_gtruth['sex'] == 'f'].boxplot(column='area', by='ko', ax=ax, notch=True)
+df_gtruth[df_gtruth['sex'] == 'f'].boxplot(column='area', by='ko_parent', ax=ax, notch=True)
 #ax.set_ylim(0, 2e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-df_gtruth[df_gtruth['sex'] == 'm'].boxplot(column='area', by='ko', ax=ax, notch=True)
+df_gtruth[df_gtruth['sex'] == 'm'].boxplot(column='area', by='ko_parent', ax=ax, notch=True)
 #ax.set_ylim(0, 2e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
 plt.tick_params(axis='both', which='major', labelsize=14)
 
 # split data into groups
-area_gtruth_f_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko'] == 'PAT'))]
-area_gtruth_f_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko'] == 'MAT'))]
-area_gtruth_m_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko'] == 'PAT'))]
-area_gtruth_m_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko'] == 'MAT'))]
+area_gtruth_f_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko_parent'] == 'PAT'))]
+area_gtruth_f_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'f', df_gtruth['ko_parent'] == 'MAT'))]
+area_gtruth_m_PAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko_parent'] == 'PAT'))]
+area_gtruth_m_MAT = df_gtruth['area'][(np.logical_and(df_gtruth['sex'] == 'm', df_gtruth['ko_parent'] == 'MAT'))]
 
 # compute percentile profiles of cell populations
 perc = np.linspace(0, 100, num=101)
@@ -306,10 +306,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe with mouse metainformation and area values
         df_bad = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                            values=areas[idx_bad], values_tag='area',
-                                                           tags_to_keep=['id', 'ko', 'sex'])
+                                                           tags_to_keep=['id', 'ko_parent', 'sex'])
         df_good = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                             values=areas[idx_good], values_tag='area',
-                                                            tags_to_keep=['id', 'ko', 'sex'])
+                                                            tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # concatenate results
         if len(df_gtruth_pipeline_good) == 0:
@@ -323,22 +323,22 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
 # split data into groups
 area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'MAT'))]
 area_gtruth_pipeline_good_m_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_good_m_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'MAT'))]
 
 area_gtruth_pipeline_bad_f_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
-                                                                                df_gtruth_pipeline_bad['ko'] == 'PAT'))]
+                                                                                df_gtruth_pipeline_bad['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_bad['ko_parent'] == 'MAT'))]
 area_gtruth_pipeline_bad_m_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'PAT'))]
+                                                                                  df_gtruth_pipeline_bad['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_bad_m_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_bad['ko_parent'] == 'MAT'))]
 
 # plot results
 if DEBUG:
@@ -505,10 +505,10 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe with mouse metainformation and area values
         df_bad = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                            values=areas[idx_bad], values_tag='area',
-                                                           tags_to_keep=['id', 'ko', 'sex'])
+                                                           tags_to_keep=['id', 'ko_parent', 'sex'])
         df_good = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                             values=areas[idx_good], values_tag='area',
-                                                            tags_to_keep=['id', 'ko', 'sex'])
+                                                            tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # concatenate results
         if len(df_gtruth_pipeline_good) == 0:
@@ -522,22 +522,22 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 
 # split data into groups
 area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'MAT'))]
 area_gtruth_pipeline_good_m_PAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'PAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_good_m_MAT = df_gtruth_pipeline_good['area'][(np.logical_and(df_gtruth_pipeline_good['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_good['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_good['ko_parent'] == 'MAT'))]
 
 area_gtruth_pipeline_bad_f_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
-                                                                                df_gtruth_pipeline_bad['ko'] == 'PAT'))]
+                                                                                df_gtruth_pipeline_bad['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_bad_f_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'f',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_bad['ko_parent'] == 'MAT'))]
 area_gtruth_pipeline_bad_m_PAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'PAT'))]
+                                                                                  df_gtruth_pipeline_bad['ko_parent'] == 'PAT'))]
 area_gtruth_pipeline_bad_m_MAT = df_gtruth_pipeline_bad['area'][(np.logical_and(df_gtruth_pipeline_bad['sex'] == 'm',
-                                                                                  df_gtruth_pipeline_bad['ko'] == 'MAT'))]
+                                                                                  df_gtruth_pipeline_bad['ko_parent'] == 'MAT'))]
 
 # plot results
 if DEBUG:
@@ -686,7 +686,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe: one cell per row, tagged with mouse metainformation
         df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                        values=areas, values_tag='area',
-                                                       tags_to_keep=['id', 'ko', 'sex'])
+                                                       tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # add to dataframe: image index and cell label
         df['im'] = i
@@ -742,7 +742,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
 # split data into groups
 idx_good = np.array(df_gtruth_pipeline['quality'] >= quality_threshold)
 idx_f = np.array(df_gtruth_pipeline['sex'] == 'f')
-idx_pat = np.array(df_gtruth_pipeline['ko'] == 'PAT')
+idx_pat = np.array(df_gtruth_pipeline['ko_parent'] == 'PAT')
 
 area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline['area'][idx_good * idx_f * idx_pat]
 area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline['area'][idx_good * idx_f * ~idx_pat]
@@ -1028,7 +1028,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe: one cell per row, tagged with mouse metainformation
         df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                        values=areas, values_tag='area',
-                                                       tags_to_keep=['id', 'ko', 'sex'])
+                                                       tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # add to dataframe: image index and cell label
         df['im'] = i
@@ -1090,7 +1090,7 @@ df_gtruth_pipeline = df_gtruth_pipeline.loc[idx, :]
 # split data into groups
 idx_good = np.array(df_gtruth_pipeline['quality'] >= quality_threshold)
 idx_f = np.array(df_gtruth_pipeline['sex'] == 'f')
-idx_pat = np.array(df_gtruth_pipeline['ko'] == 'PAT')
+idx_pat = np.array(df_gtruth_pipeline['ko_parent'] == 'PAT')
 
 area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline['area'][idx_good * idx_f * idx_pat]
 area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline['area'][idx_good * idx_f * ~idx_pat]
@@ -1376,7 +1376,7 @@ for i_fold, idx_test in enumerate(idx_orig_test_all):
         # create dataframe: one cell per row, tagged with mouse metainformation
         df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(im_test_file_list[i]),
                                                        values=areas, values_tag='area',
-                                                       tags_to_keep=['id', 'ko', 'sex'])
+                                                       tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # add to dataframe: image index and cell label
         df['im'] = i
@@ -1438,7 +1438,7 @@ df_gtruth_pipeline = df_gtruth_pipeline.loc[idx, :]
 # split data into groups
 idx_good = np.array(df_gtruth_pipeline['quality'] >= quality_threshold)
 idx_f = np.array(df_gtruth_pipeline['sex'] == 'f')
-idx_pat = np.array(df_gtruth_pipeline['ko'] == 'PAT')
+idx_pat = np.array(df_gtruth_pipeline['ko_parent'] == 'PAT')
 
 area_gtruth_pipeline_good_f_PAT = df_gtruth_pipeline['area'][idx_good * idx_f * idx_pat]
 area_gtruth_pipeline_good_f_MAT = df_gtruth_pipeline['area'][idx_good * idx_f * ~idx_pat]

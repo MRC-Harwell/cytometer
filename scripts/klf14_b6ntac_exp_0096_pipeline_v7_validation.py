@@ -483,7 +483,7 @@ else:
             im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
             df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                                   values=im_idx, values_tag='im',
-                                                                  tags_to_keep=['id', 'ko', 'sex'])
+                                                                  tags_to_keep=['id', 'ko_parent', 'sex'])
             df_common['contour'] = range(len(contours))
             df_common['type'] = contour_type_all
 
@@ -724,7 +724,7 @@ for i_fold in range(len(idx_test_all)):
         im_idx = [idx_test_all[i_fold][i], ] * len(contours)  # absolute index of current test image
         df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                               values=im_idx, values_tag='im',
-                                                              tags_to_keep=['id', 'ko', 'sex'])
+                                                              tags_to_keep=['id', 'ko_parent', 'sex'])
         df_common['contour'] = range(len(contours))
         df_common['type'] = contour_type_all
 
@@ -1268,7 +1268,7 @@ for i_fold in range(len(idx_test_all)):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                               values=[i_fold], values_tag='fold',
-                                                              tags_to_keep=['id', 'ko', 'sex'])
+                                                              tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # cells on the edge
         labels_edge = cytometer.utils.edge_labels(pred_seg_test[i, :, :])
@@ -1696,7 +1696,7 @@ if DEBUG:
 
 # for the mixed-effects linear model, we want the KO variable to be ordered, so that it's PAT=0, MAT=1 in terms of
 # genetic risk, and the sex variable to be ordered in the sense that males have larger cells than females
-df_manual_all['ko'] = df_manual_all['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_manual_all['ko_parent'] = df_manual_all['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 df_manual_all['sex'] = df_manual_all['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
 
 # create column for sqrt(data)
@@ -1772,7 +1772,7 @@ for i, file_svg in enumerate(file_svg_list_extra):
     im_idx = 'extra_' + str(i)
     df_manual = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=[im_idx] * len(contours), values_tag='im',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
     df_manual['contour'] = range(0, len(contours))
     df_manual['area'] = np.nan
 
@@ -1791,10 +1791,10 @@ for i, file_svg in enumerate(file_svg_list_extra):
 
 ## boxplots of PAT vs MAT in male
 
-idx_f_mat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'MAT')
-idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko'] == 'PAT')
-idx_m_mat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'MAT')
-idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko'] == 'PAT')
+idx_f_mat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko_parent'] == 'MAT')
+idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko_parent'] == 'PAT')
+idx_m_mat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko_parent'] == 'MAT')
+idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko_parent'] == 'PAT')
 
 if DEBUG:
     plt.clf()
