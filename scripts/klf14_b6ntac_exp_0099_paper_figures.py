@@ -139,12 +139,12 @@ for i, file_svg in enumerate(file_svg_list):
     # create dataframe for this image
     df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
                                                           values=[i,], values_tag='i',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
     # mouse ID as a string
     id = df_common['id'].values[0]
     sex = df_common['sex'].values[0]
-    ko = df_common['ko'].values[0]
+    ko = df_common['ko_parent'].values[0]
 
     # row to add to the table
     df = pd.DataFrame(
@@ -1259,7 +1259,7 @@ metainfo = pd.read_csv(metainfo_csv_file)
 
 # make sure that in the boxplots PAT comes before MAT
 metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-metainfo['ko'] = metainfo['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
 
 quantiles = np.linspace(0, 1, 11)
@@ -1311,12 +1311,12 @@ else:
         # create dataframe for this image
         df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
                                                               values=[i_file,], values_tag='i_file',
-                                                              tags_to_keep=['id', 'ko', 'genotype', 'sex',
+                                                              tags_to_keep=['id', 'ko_parent', 'genotype', 'sex',
                                                                             'BW', 'gWAT', 'SC'])
 
         # mouse ID as a string
         id = df_common['id'].values[0]
-        ko = df_common['ko'].values[0]
+        ko = df_common['ko_parent'].values[0]
         genotype = df_common['genotype'].values[0]
         sex = df_common['sex'].values[0]
         bw = df_common['BW'].values[0]
@@ -1717,18 +1717,18 @@ metainfo = pd.read_csv(metainfo_csv_file)
 
 # make sure that in the boxplots PAT comes before MAT
 metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-metainfo['ko'] = metainfo['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
 
 # subgroups
-idx_f_pat_wt = (metainfo.sex == 'f') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_f_pat_het = (metainfo.sex == 'f') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
-idx_f_mat_wt = (metainfo.sex == 'f') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_f_mat_het = (metainfo.sex == 'f') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
-idx_m_pat_wt = (metainfo.sex == 'm') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_m_pat_het = (metainfo.sex == 'm') * (metainfo.ko == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
-idx_m_mat_wt = (metainfo.sex == 'm') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_m_mat_het = (metainfo.sex == 'm') * (metainfo.ko == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+idx_f_pat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_f_pat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+idx_f_mat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_f_mat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+idx_m_pat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_m_pat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
+idx_m_mat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
+idx_m_mat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
 
 # body weight
 bw_f_pat_wt = metainfo.BW[idx_f_pat_wt]
@@ -1795,9 +1795,9 @@ if DEBUG:
     plt.scatter(np.concatenate((bw_f_mat_wt, bw_m_mat_wt)), np.concatenate((sq_f_mat_wt, sq_m_mat_wt)))
     plt.tight_layout()
 
-# Model BW ~ C(sex) + C(ko) + C(genotype) + SC * gWAT
+# Model BW ~ C(sex) + C(ko_parent) + C(genotype) + SC * gWAT
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
-model = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + SC * gWAT', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('BW ~ C(sex) + C(ko_parent) + C(genotype) + SC * gWAT', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -1816,7 +1816,7 @@ print(model.summary())
 # -----------------------------------------------------------------------------------------------
 # Intercept                      19.0376      2.217      8.587      0.000      14.615      23.460
 # C(sex)[T.m]                    10.3729      1.017     10.198      0.000       8.344      12.402
-# C(ko)[T.MAT]                    2.6057      1.023      2.548      0.013       0.565       4.646
+# C(ko_parent)[T.MAT]                    2.6057      1.023      2.548      0.013       0.565       4.646
 # C(genotype)[T.KLF14-KO:Het]    -1.1439      0.941     -1.216      0.228      -3.021       0.733
 # SC                              6.2866      4.062      1.548      0.126      -1.817      14.391
 # gWAT                            9.4847      2.434      3.897      0.000       4.630      14.340
@@ -1839,7 +1839,7 @@ if DEBUG:
 # list of point with high influence (large residuals and leverage)
 idx_influence = [65, 52, 64, 32, 72, 75, 0]
 idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
-print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
+print(metainfo.loc[idx_influence, ['id', 'ko_parent', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
 
 #        id   ko sex      genotype     BW    SC  gWAT
 # 65  37.2e  PAT   f  KLF14-KO:Het  21.18  1.62  0.72
@@ -1852,7 +1852,7 @@ print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'g
 
 # linear model removing the high influence points
 # Ordinary least squares linear model
-model = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) + SC * gWAT', data=metainfo, subset=idx_no_influence).fit()
+model = sm.formula.ols('BW ~ C(sex) + C(ko_parent) + C(genotype) + SC * gWAT', data=metainfo, subset=idx_no_influence).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -1871,7 +1871,7 @@ print(model.summary())
 # ----------------------------------------------------------------------------------------------
 # Intercept                     17.6196      2.188      8.051      0.000      13.245      21.994
 # C(sex)[T.m]                    9.2063      0.946      9.728      0.000       7.315      11.098
-# C(ko)[T.PAT]                  -3.5029      0.911     -3.845      0.000      -5.324      -1.682
+# C(ko_parent)[T.PAT]                  -3.5029      0.911     -3.845      0.000      -5.324      -1.682
 # C(genotype)[T.KLF14-KO:WT]     0.7111      0.833      0.853      0.397      -0.955       2.377
 # SC                            23.8520      6.429      3.710      0.000      11.000      36.704
 # gWAT                          11.6718      2.399      4.865      0.000       6.875      16.468
@@ -1895,7 +1895,7 @@ idx_influence = [65, 52, 64, 32, 72, 75, 0]
 # list of data points to use in the model
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
-model = sm.formula.ols('BW ~ C(sex) + C(ko) + C(genotype) : (SC * gWAT)', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('BW ~ C(sex) + C(ko_parent) + C(genotype) : (SC * gWAT)', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -1914,7 +1914,7 @@ print(model.summary())
 # -----------------------------------------------------------------------------------------------------
 # Intercept                            14.3003      2.322      6.159      0.000       9.656      18.945
 # C(sex)[T.m]                           9.2769      0.969      9.577      0.000       7.339      11.215
-# C(ko)[T.MAT]                          3.4809      0.947      3.677      0.001       1.588       5.374
+# C(ko_parent)[T.MAT]                          3.4809      0.947      3.677      0.001       1.588       5.374
 # C(genotype)[KLF14-KO:WT]:SC          24.5670      7.179      3.422      0.001      10.206      38.928
 # C(genotype)[KLF14-KO:Het]:SC         24.3363      7.999      3.042      0.003       8.336      40.337
 # C(genotype)[KLF14-KO:WT]:gWAT        11.7082      2.688      4.355      0.000       6.331      17.086
@@ -1969,7 +1969,7 @@ metainfo = pd.read_csv(metainfo_csv_file)
 
 # make sure that in the boxplots PAT comes before MAT
 metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-metainfo['ko'] = metainfo['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
 
 # load SQWAT data
@@ -2029,10 +2029,10 @@ metainfo['SC_BW'] = metainfo['SC'] / metainfo['BW']
 metainfo['gWAT_BW'] = metainfo['gWAT'] / metainfo['BW']
 
 # add new column with estimates number of cells
-fat_density = 0.92  # g / cm^3
-fat_density_1e6 = 0.92 * 1e6  # g / m^3
-metainfo['SC_N'] = metainfo['SC'] / (fat_density_1e6 * metainfo['SC_vol_mean'])
-metainfo['gWAT_N'] = metainfo['gWAT'] / (fat_density_1e6 * metainfo['gWAT_vol_mean'])
+fat_density_SC = 0.9038  # g / cm^3
+fat_density_gWAT = 0.9029  # g / cm^3
+metainfo['SC_rho_N'] = metainfo['SC'] / (fat_density_SC * 1e6 * metainfo['SC_vol_mean'])
+metainfo['gWAT_rho_N'] = metainfo['gWAT'] / (fat_density_gWAT * 1e6 * metainfo['gWAT_vol_mean'])
 
 if DEBUG:
     plt.clf()
@@ -2098,7 +2098,7 @@ if DEBUG:
 # list of point with high influence (large residuals and leverage)
 idx_influence = [65, 64, 4, 63, 35, 72, 5, 45, 62]
 idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
-print(metainfo.loc[idx_influence, ['id', 'ko', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
+print(metainfo.loc[idx_influence, ['id', 'ko_parent', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
 
 # Refine ordinary least squares linear model by removing influence points
 model = sm.formula.ols('BW ~ SC + gWAT',
@@ -2225,12 +2225,12 @@ if DEBUG:
     sm.graphics.influence_plot(model, criterion="cooks")
 
 ########################################################################################################################
-### Model BW ~ (SC + gWAT * C(sex)) + (SC * C(ko) + gWAT)
+### Model BW ~ (SC + gWAT * C(sex)) + (SC * C(ko_parent) + gWAT)
 ########################################################################################################################
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
-model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + (SC * C(ko) + gWAT)', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + (SC * C(ko_parent) + gWAT)', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2249,9 +2249,9 @@ print(model.summary())
 # ------------------------------------------------------------------------------------
 # Intercept           17.3729      1.760      9.872      0.000      13.862      20.884
 # C(sex)[T.m]         17.5361      2.869      6.113      0.000      11.814      23.259
-# C(ko)[T.MAT]         6.4310      1.705      3.771      0.000       3.029       9.833
+# C(ko_parent)[T.MAT]         6.4310      1.705      3.771      0.000       3.029       9.833
 # SC                   1.6510      1.863      0.886      0.379      -2.065       5.367
-# SC:C(ko)[T.MAT]     -7.3225      2.664     -2.749      0.008     -12.636      -2.009
+# SC:C(ko_parent)[T.MAT]     -7.3225      2.664     -2.749      0.008     -12.636      -2.009
 # gWAT                 9.0049      1.834      4.910      0.000       5.346      12.664
 # gWAT:C(sex)[T.m]    -6.9600      2.746     -2.535      0.014     -12.438      -1.482
 # ==============================================================================
@@ -2275,7 +2275,7 @@ idx_influence = [65, 49, 72, 35]
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
 
-model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + (SC * C(ko) + gWAT)', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + (SC * C(ko_parent) + gWAT)', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2294,9 +2294,9 @@ print(model.summary())
 # ------------------------------------------------------------------------------------
 # Intercept           17.0769      1.555     10.983      0.000      13.972      20.182
 # C(sex)[T.m]         19.9881      2.795      7.152      0.000      14.406      25.570
-# C(ko)[T.MAT]         6.3089      1.566      4.027      0.000       3.180       9.437
+# C(ko_parent)[T.MAT]         6.3089      1.566      4.027      0.000       3.180       9.437
 # SC                   3.0020      1.911      1.571      0.121      -0.815       6.819
-# SC:C(ko)[T.MAT]     -5.8590      2.496     -2.347      0.022     -10.844      -0.874
+# SC:C(ko_parent)[T.MAT]     -5.8590      2.496     -2.347      0.022     -10.844      -0.874
 # gWAT                 8.8744      1.665      5.331      0.000       5.550      12.199
 # gWAT:C(sex)[T.m]   -10.1070      2.649     -3.815      0.000     -15.398      -4.816
 # ==============================================================================
@@ -2309,12 +2309,12 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### Model BW ~ (SC + gWAT * C(sex)) + (SC * C(ko) + gWAT) + C(sex) : C(genotype)
+### Model BW ~ (SC + gWAT * C(sex)) + (SC * C(ko_parent) + gWAT) + C(sex) : C(genotype)
 ########################################################################################################################
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
-model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + SC * C(ko) + C(sex) : C(genotype)', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + SC * C(ko_parent) + C(sex) : C(genotype)', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2333,11 +2333,11 @@ print(model.summary())
 # ---------------------------------------------------------------------------------------------------------
 # Intercept                                18.4278      1.819     10.129      0.000      14.796      22.059
 # C(sex)[T.m]                              16.2815      2.940      5.538      0.000      10.413      22.150
-# C(ko)[T.MAT]                              7.1224      1.712      4.160      0.000       3.705      10.540
+# C(ko_parent)[T.MAT]                              7.1224      1.712      4.160      0.000       3.705      10.540
 # C(sex)[f]:C(genotype)[T.KLF14-KO:Het]    -2.5284      1.263     -2.002      0.049      -5.050      -0.007
 # C(sex)[m]:C(genotype)[T.KLF14-KO:Het]    -0.6830      1.252     -0.545      0.587      -3.182       1.816
 # SC                                        2.1720      1.862      1.167      0.248      -1.544       5.888
-# SC:C(ko)[T.MAT]                          -8.5476      2.687     -3.182      0.002     -13.910      -3.185
+# SC:C(ko_parent)[T.MAT]                          -8.5476      2.687     -3.182      0.002     -13.910      -3.185
 # gWAT                                      8.8175      1.808      4.876      0.000       5.208      12.427
 # gWAT:C(sex)[T.m]                         -6.6075      2.710     -2.438      0.017     -12.017      -1.197
 # ==============================================================================
@@ -2361,7 +2361,7 @@ idx_influence = [72, 65, 49, 35]
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
 
-model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + SC * C(ko) + C(sex) : C(genotype)', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('BW ~ (SC + gWAT * C(sex)) + SC * C(ko_parent) + C(sex) : C(genotype)', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2380,11 +2380,11 @@ print(model.summary())
 # ---------------------------------------------------------------------------------------------------------
 # Intercept                                18.2000      1.599     11.380      0.000      15.004      21.396
 # C(sex)[T.m]                              18.5612      2.802      6.623      0.000      12.961      24.161
-# C(ko)[T.MAT]                              6.7051      1.562      4.294      0.000       3.585       9.826
+# C(ko_parent)[T.MAT]                              6.7051      1.562      4.294      0.000       3.585       9.826
 # C(sex)[f]:C(genotype)[T.KLF14-KO:Het]    -2.4983      1.114     -2.242      0.029      -4.725      -0.271
 # C(sex)[m]:C(genotype)[T.KLF14-KO:Het]     0.3268      1.147      0.285      0.777      -1.965       2.619
 # SC                                        2.9757      1.906      1.561      0.123      -0.833       6.784
-# SC:C(ko)[T.MAT]                          -6.6264      2.484     -2.668      0.010     -11.590      -1.663
+# SC:C(ko_parent)[T.MAT]                          -6.6264      2.484     -2.668      0.010     -11.590      -1.663
 # gWAT                                      8.9535      1.631      5.491      0.000       5.695      12.212
 # gWAT:C(sex)[T.m]                        -10.0162      2.625     -3.816      0.000     -15.261      -4.771
 # ==============================================================================
@@ -2397,12 +2397,12 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### Model SC_BW ~ SC_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)
+### Model SC_BW ~ SC_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
-model = sm.formula.ols('SC_BW ~ SC_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('SC_BW ~ SC_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2420,21 +2420,21 @@ print(model.summary())
 #                                                                        coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                            0.0040      0.008      0.490      0.626      -0.012       0.020
-# C(ko)[T.MAT]                                                         0.0156      0.011      1.430      0.158      -0.006       0.037
+# C(ko_parent)[T.MAT]                                                         0.0156      0.011      1.430      0.158      -0.006       0.037
 # C(sex)[T.m]                                                         -0.0042      0.016     -0.263      0.794      -0.036       0.027
 # C(genotype)[T.KLF14-KO:Het]                                         -0.0058      0.012     -0.486      0.629      -0.030       0.018
-# C(ko)[T.MAT]:C(sex)[T.m]                                            -0.0202      0.025     -0.804      0.425      -0.070       0.030
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.0086      0.016     -0.555      0.581      -0.040       0.022
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                            -0.0202      0.025     -0.804      0.425      -0.070       0.030
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.0086      0.016     -0.555      0.581      -0.040       0.022
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                              0.0163      0.023      0.713      0.479      -0.029       0.062
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 0.0351      0.034      1.044      0.301      -0.032       0.102
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 0.0351      0.034      1.044      0.301      -0.032       0.102
 # SC_vol_mean                                                          0.0916      0.056      1.626      0.109      -0.021       0.204
-# SC_vol_mean:C(ko)[T.MAT]                                            -0.1107      0.065     -1.695      0.095      -0.242       0.020
+# SC_vol_mean:C(ko_parent)[T.MAT]                                            -0.1107      0.065     -1.695      0.095      -0.242       0.020
 # SC_vol_mean:C(sex)[T.m]                                             -0.0239      0.077     -0.312      0.756      -0.178       0.130
 # SC_vol_mean:C(genotype)[T.KLF14-KO:Het]                              0.1840      0.099      1.865      0.067      -0.014       0.381
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                 0.1107      0.107      1.040      0.303      -0.102       0.324
-# SC_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -0.1416      0.110     -1.290      0.202      -0.361       0.078
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                 0.1107      0.107      1.040      0.303      -0.102       0.324
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -0.1416      0.110     -1.290      0.202      -0.361       0.078
 # SC_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 -0.2032      0.122     -1.664      0.102      -0.448       0.041
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]     0.0134      0.160      0.084      0.933      -0.306       0.333
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]     0.0134      0.160      0.084      0.933      -0.306       0.333
 # ==============================================================================
 # Omnibus:                       45.980   Durbin-Watson:                   1.451
 # Prob(Omnibus):                  0.000   Jarque-Bera (JB):              173.644
@@ -2457,7 +2457,7 @@ idx_influence = [65, 35, 49]
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
 
-model = sm.formula.ols('SC_BW ~ SC_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('SC_BW ~ SC_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2475,21 +2475,21 @@ print(model.summary())
 #                                                                        coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                            0.0040      0.006      0.674      0.503      -0.008       0.016
-# C(ko)[T.MAT]                                                         0.0083      0.008      1.018      0.313      -0.008       0.025
+# C(ko_parent)[T.MAT]                                                         0.0083      0.008      1.018      0.313      -0.008       0.025
 # C(sex)[T.m]                                                         -0.0042      0.011     -0.362      0.719      -0.027       0.019
 # C(genotype)[T.KLF14-KO:Het]                                         -0.0052      0.009     -0.597      0.553      -0.023       0.012
-# C(ko)[T.MAT]:C(sex)[T.m]                                            -0.0129      0.018     -0.704      0.485      -0.050       0.024
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.0020      0.011     -0.173      0.863      -0.025       0.021
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                            -0.0129      0.018     -0.704      0.485      -0.050       0.024
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.0020      0.011     -0.173      0.863      -0.025       0.021
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                              0.0293      0.020      1.475      0.146      -0.011       0.069
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 0.0148      0.027      0.553      0.583      -0.039       0.069
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 0.0148      0.027      0.553      0.583      -0.039       0.069
 # SC_vol_mean                                                          0.0916      0.041      2.240      0.029       0.010       0.174
-# SC_vol_mean:C(ko)[T.MAT]                                            -0.0879      0.048     -1.836      0.072      -0.184       0.008
+# SC_vol_mean:C(ko_parent)[T.MAT]                                            -0.0879      0.048     -1.836      0.072      -0.184       0.008
 # SC_vol_mean:C(sex)[T.m]                                             -0.0239      0.056     -0.430      0.669      -0.136       0.088
 # SC_vol_mean:C(genotype)[T.KLF14-KO:Het]                              0.1190      0.072      1.646      0.106      -0.026       0.264
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                 0.0879      0.078      1.133      0.262      -0.068       0.243
-# SC_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -0.0994      0.081     -1.234      0.222      -0.261       0.062
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                 0.0879      0.078      1.133      0.262      -0.068       0.243
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -0.0994      0.081     -1.234      0.222      -0.261       0.062
 # SC_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 -0.1821      0.096     -1.899      0.063      -0.374       0.010
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]     0.0151      0.122      0.124      0.901      -0.229       0.259
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]     0.0151      0.122      0.124      0.901      -0.229       0.259
 # ==============================================================================
 # Omnibus:                       12.050   Durbin-Watson:                   1.441
 # Prob(Omnibus):                  0.002   Jarque-Bera (JB):               12.787
@@ -2500,12 +2500,12 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### Model gWAT_BW ~ gWAT_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)
+### Model gWAT_BW ~ gWAT_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
-model = sm.formula.ols('gWAT_BW ~ gWAT_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)', data=metainfo, subset=idx_not_nan).fit()
+model = sm.formula.ols('gWAT_BW ~ gWAT_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)', data=metainfo, subset=idx_not_nan).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2523,21 +2523,21 @@ print(model.summary())
 #                                                                          coef    std err          t      P>|t|      [0.025      0.975]
 # --------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                              0.0101      0.008      1.306      0.197      -0.005       0.026
-# C(ko)[T.MAT]                                                           0.0241      0.012      2.087      0.042       0.001       0.047
+# C(ko_parent)[T.MAT]                                                           0.0241      0.012      2.087      0.042       0.001       0.047
 # C(sex)[T.m]                                                            0.0103      0.025      0.410      0.683      -0.040       0.060
 # C(genotype)[T.KLF14-KO:Het]                                            0.0169      0.013      1.333      0.188      -0.009       0.042
-# C(ko)[T.MAT]:C(sex)[T.m]                                               0.0275      0.040      0.683      0.498      -0.053       0.108
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -0.0461      0.018     -2.534      0.014      -0.083      -0.010
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                               0.0275      0.040      0.683      0.498      -0.053       0.108
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -0.0461      0.018     -2.534      0.014      -0.083      -0.010
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                               -0.0598      0.047     -1.282      0.205      -0.153       0.034
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   0.0550      0.063      0.867      0.390      -0.072       0.182
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   0.0550      0.063      0.867      0.390      -0.072       0.182
 # gWAT_vol_mean                                                          0.0907      0.040      2.263      0.028       0.010       0.171
-# gWAT_vol_mean:C(ko)[T.MAT]                                            -0.0991      0.047     -2.090      0.041      -0.194      -0.004
+# gWAT_vol_mean:C(ko_parent)[T.MAT]                                            -0.0991      0.047     -2.090      0.041      -0.194      -0.004
 # gWAT_vol_mean:C(sex)[T.m]                                             -0.0705      0.069     -1.016      0.314      -0.209       0.069
 # gWAT_vol_mean:C(genotype)[T.KLF14-KO:Het]                             -0.0608      0.059     -1.035      0.305      -0.179       0.057
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                -0.0281      0.102     -0.277      0.783      -0.232       0.176
-# gWAT_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 0.1487      0.074      1.999      0.051      -0.000       0.298
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                -0.0281      0.102     -0.277      0.783      -0.232       0.176
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 0.1487      0.074      1.999      0.051      -0.000       0.298
 # gWAT_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                  0.1493      0.117      1.273      0.209      -0.086       0.385
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.1482      0.159     -0.930      0.357      -0.468       0.171
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.1482      0.159     -0.930      0.357      -0.468       0.171
 # ==============================================================================
 # Omnibus:                        8.962   Durbin-Watson:                   1.486
 # Prob(Omnibus):                  0.011   Jarque-Bera (JB):                9.826
@@ -2561,7 +2561,7 @@ idx_influence = [63, 62, 35, 53]
 idx_for_model = (set(range(metainfo.shape[0])) - set(idx_influence)) & set(idx_not_nan)
 idx_for_model = list(idx_for_model)
 
-model = sm.formula.ols('gWAT_BW ~ gWAT_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)', data=metainfo, subset=idx_for_model).fit()
+model = sm.formula.ols('gWAT_BW ~ gWAT_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)', data=metainfo, subset=idx_for_model).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2579,21 +2579,21 @@ print(model.summary())
 #                                                                          coef    std err          t      P>|t|      [0.025      0.975]
 # --------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                             -0.0009      0.006     -0.147      0.884      -0.014       0.012
-# C(ko)[T.MAT]                                                           0.0216      0.010      2.251      0.029       0.002       0.041
+# C(ko_parent)[T.MAT]                                                           0.0216      0.010      2.251      0.029       0.002       0.041
 # C(sex)[T.m]                                                            0.0213      0.019      1.140      0.260      -0.016       0.059
 # C(genotype)[T.KLF14-KO:Het]                                            0.0105      0.015      0.692      0.492      -0.020       0.041
-# C(ko)[T.MAT]:C(sex)[T.m]                                               0.0299      0.030      0.995      0.324      -0.030       0.090
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -0.0262      0.018     -1.430      0.159      -0.063       0.011
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                               0.0299      0.030      0.995      0.324      -0.030       0.090
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -0.0262      0.018     -1.430      0.159      -0.063       0.011
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                               -0.0534      0.037     -1.463      0.150      -0.127       0.020
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   0.0351      0.049      0.722      0.473      -0.062       0.133
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   0.0351      0.049      0.722      0.473      -0.062       0.133
 # gWAT_vol_mean                                                          0.1322      0.031      4.213      0.000       0.069       0.195
-# gWAT_vol_mean:C(ko)[T.MAT]                                            -0.1084      0.037     -2.891      0.006      -0.184      -0.033
+# gWAT_vol_mean:C(ko_parent)[T.MAT]                                            -0.1084      0.037     -2.891      0.006      -0.184      -0.033
 # gWAT_vol_mean:C(sex)[T.m]                                             -0.1119      0.052     -2.141      0.037      -0.217      -0.007
 # gWAT_vol_mean:C(genotype)[T.KLF14-KO:Het]                             -0.0368      0.061     -0.605      0.548      -0.159       0.086
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                -0.0189      0.076     -0.247      0.806      -0.172       0.134
-# gWAT_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 0.0925      0.070      1.319      0.193      -0.048       0.233
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                -0.0189      0.076     -0.247      0.806      -0.172       0.134
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 0.0925      0.070      1.319      0.193      -0.048       0.233
 # gWAT_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                  0.1253      0.097      1.296      0.201      -0.069       0.319
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.0919      0.126     -0.732      0.468      -0.344       0.160
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.0919      0.126     -0.732      0.468      -0.344       0.160
 # ==============================================================================
 # Omnibus:                        1.926   Durbin-Watson:                   1.904
 # Prob(Omnibus):                  0.382   Jarque-Bera (JB):                1.345
@@ -2604,10 +2604,10 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### Model SC ~ SC_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)
+### Model SC ~ SC_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
-formula = 'SC ~ SC_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)'
+formula = 'SC ~ SC_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)'
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
@@ -2629,21 +2629,21 @@ print(model.summary())
 #                                                                        coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                            0.0268      0.223      0.120      0.905      -0.419       0.473
-# C(ko)[T.MAT]                                                         0.4371      0.296      1.475      0.145      -0.156       1.030
+# C(ko_parent)[T.MAT]                                                         0.4371      0.296      1.475      0.145      -0.156       1.030
 # C(sex)[T.m]                                                         -0.2833      0.429     -0.661      0.511      -1.142       0.575
 # C(genotype)[T.KLF14-KO:Het]                                         -0.1929      0.326     -0.592      0.556      -0.845       0.459
-# C(ko)[T.MAT]:C(sex)[T.m]                                            -0.4068      0.680     -0.598      0.552      -1.769       0.955
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.1811      0.421     -0.431      0.668      -1.023       0.661
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                            -0.4068      0.680     -0.598      0.552      -1.769       0.955
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.1811      0.421     -0.431      0.668      -1.023       0.661
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                              0.6555      0.619      1.060      0.294      -0.583       1.894
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 1.0524      0.912      1.154      0.253      -0.773       2.878
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 1.0524      0.912      1.154      0.253      -0.773       2.878
 # SC_vol_mean                                                          3.2500      1.528      2.126      0.038       0.190       6.310
-# SC_vol_mean:C(ko)[T.MAT]                                            -3.1775      1.772     -1.793      0.078      -6.724       0.369
+# SC_vol_mean:C(ko_parent)[T.MAT]                                            -3.1775      1.772     -1.793      0.078      -6.724       0.369
 # SC_vol_mean:C(sex)[T.m]                                              0.4043      2.083      0.194      0.847      -3.765       4.574
 # SC_vol_mean:C(genotype)[T.KLF14-KO:Het]                              4.8356      2.676      1.807      0.076      -0.520      10.191
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                 2.3689      2.888      0.820      0.415      -3.412       8.150
-# SC_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -3.8944      2.975     -1.309      0.196      -9.849       2.060
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                 2.3689      2.888      0.820      0.415      -3.412       8.150
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -3.8944      2.975     -1.309      0.196      -9.849       2.060
 # SC_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 -5.9087      3.312     -1.784      0.080     -12.538       0.721
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.3243      4.328     -0.075      0.941      -8.989       8.340
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.3243      4.328     -0.075      0.941      -8.989       8.340
 # ==============================================================================
 # Omnibus:                       12.378   Durbin-Watson:                   1.277
 # Prob(Omnibus):                  0.002   Jarque-Bera (JB):               12.995
@@ -2685,21 +2685,21 @@ print(model.summary())
 #                                                                        coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                            0.0268      0.195      0.137      0.891      -0.365       0.418
-# C(ko)[T.MAT]                                                         0.4371      0.260      1.683      0.098      -0.083       0.958
+# C(ko_parent)[T.MAT]                                                         0.4371      0.260      1.683      0.098      -0.083       0.958
 # C(sex)[T.m]                                                         -0.2833      0.376     -0.754      0.454      -1.037       0.470
 # C(genotype)[T.KLF14-KO:Het]                                         -0.1814      0.286     -0.635      0.528      -0.754       0.391
-# C(ko)[T.MAT]:C(sex)[T.m]                                            -0.4068      0.597     -0.682      0.498      -1.603       0.789
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.1926      0.369     -0.522      0.604      -0.932       0.547
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                            -0.4068      0.597     -0.682      0.498      -1.603       0.789
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                            -0.1926      0.369     -0.522      0.604      -0.932       0.547
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                              1.1441      0.650      1.760      0.084      -0.159       2.447
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 1.0067      0.895      1.125      0.266      -0.787       2.801
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 1.0067      0.895      1.125      0.266      -0.787       2.801
 # SC_vol_mean                                                          3.2500      1.340      2.425      0.019       0.564       5.936
-# SC_vol_mean:C(ko)[T.MAT]                                            -3.1775      1.554     -2.045      0.046      -6.291      -0.064
+# SC_vol_mean:C(ko_parent)[T.MAT]                                            -3.1775      1.554     -2.045      0.046      -6.291      -0.064
 # SC_vol_mean:C(sex)[T.m]                                              0.4043      1.827      0.221      0.826      -3.256       4.065
 # SC_vol_mean:C(genotype)[T.KLF14-KO:Het]                              3.6627      2.369      1.546      0.128      -1.085       8.411
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                 2.3689      2.532      0.935      0.354      -2.706       7.444
-# SC_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -2.7215      2.629     -1.035      0.305      -7.991       2.548
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                 2.3689      2.532      0.935      0.354      -2.706       7.444
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                -2.7215      2.629     -1.035      0.305      -7.991       2.548
 # SC_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                 -6.3447      3.142     -2.019      0.048     -12.641      -0.048
-# SC_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -1.6498      4.047     -0.408      0.685      -9.759       6.460
+# SC_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -1.6498      4.047     -0.408      0.685      -9.759       6.460
 # ==============================================================================
 # Omnibus:                       10.882   Durbin-Watson:                   1.409
 # Prob(Omnibus):                  0.004   Jarque-Bera (JB):               11.004
@@ -2710,10 +2710,10 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### Model gWAT ~ gWAT_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)
+### Model gWAT ~ gWAT_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
-formula = 'gWAT ~ gWAT_vol_mean_1e12 * C(ko) * C(sex) * C(genotype)'
+formula = 'gWAT ~ gWAT_vol_mean_1e12 * C(ko_parent) * C(sex) * C(genotype)'
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
@@ -2735,21 +2735,21 @@ print(model.summary())
 #                                                                          coef    std err          t      P>|t|      [0.025      0.975]
 # --------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                              0.1167      0.229      0.510      0.612      -0.342       0.576
-# C(ko)[T.MAT]                                                           0.5163      0.341      1.513      0.136      -0.168       1.201
+# C(ko_parent)[T.MAT]                                                           0.5163      0.341      1.513      0.136      -0.168       1.201
 # C(sex)[T.m]                                                            0.6129      0.739      0.829      0.411      -0.870       2.095
 # C(genotype)[T.KLF14-KO:Het]                                            0.3916      0.376      1.042      0.302      -0.362       1.145
-# C(ko)[T.MAT]:C(sex)[T.m]                                               1.3474      1.189      1.133      0.262      -1.037       3.731
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -1.0333      0.538     -1.920      0.060      -2.112       0.046
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                               1.3474      1.189      1.133      0.262      -1.037       3.731
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -1.0333      0.538     -1.920      0.060      -2.112       0.046
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                               -1.8740      1.380     -1.358      0.180      -4.641       0.893
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   1.3060      1.877      0.696      0.489      -2.457       5.069
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   1.3060      1.877      0.696      0.489      -2.457       5.069
 # gWAT_vol_mean                                                          3.4100      1.185      2.878      0.006       1.035       5.785
-# gWAT_vol_mean:C(ko)[T.MAT]                                            -2.3242      1.403     -1.657      0.103      -5.137       0.489
+# gWAT_vol_mean:C(ko_parent)[T.MAT]                                            -2.3242      1.403     -1.657      0.103      -5.137       0.489
 # gWAT_vol_mean:C(sex)[T.m]                                             -2.4867      2.050     -1.213      0.230      -6.597       1.624
 # gWAT_vol_mean:C(genotype)[T.KLF14-KO:Het]                             -1.8693      1.738     -1.075      0.287      -5.354       1.616
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                -2.2568      3.006     -0.751      0.456      -8.284       3.771
-# gWAT_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 3.6775      2.200      1.672      0.100      -0.733       8.088
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                -2.2568      3.006     -0.751      0.456      -8.284       3.771
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 3.6775      2.200      1.672      0.100      -0.733       8.088
 # gWAT_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                  4.9107      3.470      1.415      0.163      -2.046      11.867
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -3.4917      4.713     -0.741      0.462     -12.941       5.957
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -3.4917      4.713     -0.741      0.462     -12.941       5.957
 # ==============================================================================
 # Omnibus:                        6.645   Durbin-Watson:                   1.825
 # Prob(Omnibus):                  0.036   Jarque-Bera (JB):                5.842
@@ -2790,21 +2790,21 @@ print(model.summary())
 #                                                                          coef    std err          t      P>|t|      [0.025      0.975]
 # --------------------------------------------------------------------------------------------------------------------------------------
 # Intercept                                                             -0.1588      0.186     -0.854      0.397      -0.532       0.215
-# C(ko)[T.MAT]                                                           0.4728      0.281      1.681      0.099      -0.093       1.038
+# C(ko_parent)[T.MAT]                                                           0.4728      0.281      1.681      0.099      -0.093       1.038
 # C(sex)[T.m]                                                            0.8884      0.547      1.624      0.111      -0.211       1.988
 # C(genotype)[T.KLF14-KO:Het]                                            0.2912      0.366      0.796      0.430      -0.444       1.026
-# C(ko)[T.MAT]:C(sex)[T.m]                                               1.3909      0.879      1.582      0.120      -0.377       3.159
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -0.6139      0.473     -1.299      0.200      -1.564       0.336
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                               1.3909      0.879      1.582      0.120      -0.377       3.159
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                              -0.6139      0.473     -1.299      0.200      -1.564       0.336
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                               -0.8940      1.310     -0.683      0.498      -3.527       1.739
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   0.0070      1.610      0.004      0.997      -3.229       3.243
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                   0.0070      1.610      0.004      0.997      -3.229       3.243
 # gWAT_vol_mean                                                          4.4445      0.918      4.842      0.000       2.599       6.290
-# gWAT_vol_mean:C(ko)[T.MAT]                                            -2.5967      1.097     -2.367      0.022      -4.802      -0.391
+# gWAT_vol_mean:C(ko_parent)[T.MAT]                                            -2.5967      1.097     -2.367      0.022      -4.802      -0.391
 # gWAT_vol_mean:C(sex)[T.m]                                             -3.5212      1.530     -2.302      0.026      -6.597      -0.445
 # gWAT_vol_mean:C(genotype)[T.KLF14-KO:Het]                             -1.3656      1.527     -0.894      0.376      -4.436       1.705
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]                                -1.9842      2.233     -0.889      0.379      -6.474       2.506
-# gWAT_vol_mean:C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 2.4118      1.834      1.315      0.195      -1.275       6.099
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]                                -1.9842      2.233     -0.889      0.379      -6.474       2.506
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]                 2.4118      1.834      1.315      0.195      -1.275       6.099
 # gWAT_vol_mean:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]                  2.3745      3.136      0.757      0.453      -3.931       8.680
-# gWAT_vol_mean:C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.1935      3.916     -0.049      0.961      -8.068       7.681
+# gWAT_vol_mean:C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]    -0.1935      3.916     -0.049      0.961      -8.068       7.681
 # ==============================================================================
 # Omnibus:                        2.710   Durbin-Watson:                   1.710
 # Prob(Omnibus):                  0.258   Jarque-Bera (JB):                2.207
@@ -2815,10 +2815,10 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 ########################################################################################################################
-### Model SC_vol_mean ~ C(ko) * C(sex) * C(genotype)
+### Model SC_vol_mean ~ C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
-formula = 'SC_vol_mean ~ C(ko) * C(sex) * C(genotype)'
+formula = 'SC_vol_mean ~ C(sex) * C(ko_parent) * C(genotype)'
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
@@ -2840,13 +2840,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                              1.28e-13   2.85e-14      4.490      0.000    7.11e-14    1.85e-13
-# C(ko)[T.MAT]                                          6.585e-14   3.72e-14      1.772      0.081   -8.36e-15     1.4e-13
+# C(ko_parent)[T.MAT]                                          6.585e-14   3.72e-14      1.772      0.081   -8.36e-15     1.4e-13
 # C(sex)[T.m]                                           1.231e-13   3.72e-14      3.311      0.002    4.88e-14    1.97e-13
 # C(genotype)[T.KLF14-KO:Het]                          -2.858e-14    3.8e-14     -0.752      0.455   -1.04e-13    4.73e-14
-# C(ko)[T.MAT]:C(sex)[T.m]                             -4.697e-14   5.02e-14     -0.936      0.353   -1.47e-13    5.32e-14
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]              1.541e-15   5.08e-14      0.030      0.976   -9.99e-14    1.03e-13
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                             -4.697e-14   5.02e-14     -0.936      0.353   -1.47e-13    5.32e-14
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]              1.541e-15   5.08e-14      0.030      0.976   -9.99e-14    1.03e-13
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]               4.829e-14   5.22e-14      0.925      0.358   -5.59e-14    1.53e-13
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het] -7.957e-14   7.07e-14     -1.125      0.265   -2.21e-13    6.16e-14
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het] -7.957e-14   7.07e-14     -1.125      0.265   -2.21e-13    6.16e-14
 # ==============================================================================
 # Omnibus:                        2.630   Durbin-Watson:                   1.580
 # Prob(Omnibus):                  0.268   Jarque-Bera (JB):                2.575
@@ -2886,13 +2886,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                              1.28e-13   2.34e-14      5.482      0.000    8.13e-14    1.75e-13
-# C(ko)[T.MAT]                                          2.746e-14    3.2e-14      0.859      0.394   -3.65e-14    9.14e-14
+# C(ko_parent)[T.MAT]                                          2.746e-14    3.2e-14      0.859      0.394   -3.65e-14    9.14e-14
 # C(sex)[T.m]                                           1.231e-13   3.04e-14      4.042      0.000    6.22e-14    1.84e-13
 # C(genotype)[T.KLF14-KO:Het]                          -2.858e-14   3.11e-14     -0.918      0.362   -9.08e-14    3.37e-14
-# C(ko)[T.MAT]:C(sex)[T.m]                              -8.58e-15   4.23e-14     -0.203      0.840   -9.31e-14    7.59e-14
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -4.573e-15   4.39e-14     -0.104      0.917   -9.22e-14    8.31e-14
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                              -8.58e-15   4.23e-14     -0.203      0.840   -9.31e-14    7.59e-14
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -4.573e-15   4.39e-14     -0.104      0.917   -9.22e-14    8.31e-14
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]               4.829e-14   4.28e-14      1.129      0.263   -3.72e-14    1.34e-13
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het] -7.346e-14   5.95e-14     -1.234      0.222   -1.92e-13    4.56e-14
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het] -7.346e-14   5.95e-14     -1.234      0.222   -1.92e-13    4.56e-14
 # ==============================================================================
 # Omnibus:                        6.511   Durbin-Watson:                   1.528
 # Prob(Omnibus):                  0.039   Jarque-Bera (JB):                2.547
@@ -2905,10 +2905,10 @@ print(model.summary())
 
 
 ########################################################################################################################
-### Model gWAT_vol_mean ~ C(ko) * C(sex) * C(genotype)
+### Model gWAT_vol_mean ~ C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
-formula = 'gWAT_vol_mean ~ C(ko) * C(sex) * C(genotype)'
+formula = 'gWAT_vol_mean ~ C(ko_parent) * C(sex) * C(genotype)'
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
@@ -2930,13 +2930,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                             1.724e-13   2.91e-14      5.920      0.000    1.14e-13    2.31e-13
-# C(ko)[T.MAT]                                           1.38e-13   4.01e-14      3.440      0.001    5.78e-14    2.18e-13
+# C(ko_parent)[T.MAT]                                           1.38e-13   4.01e-14      3.440      0.001    5.78e-14    2.18e-13
 # C(sex)[T.m]                                           2.433e-13   4.12e-14      5.909      0.000    1.61e-13    3.26e-13
 # C(genotype)[T.KLF14-KO:Het]                           4.539e-14   4.24e-14      1.070      0.289   -3.94e-14     1.3e-13
-# C(ko)[T.MAT]:C(sex)[T.m]                              -1.23e-13   5.75e-14     -2.138      0.036   -2.38e-13   -8.02e-15
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -1.132e-13   5.84e-14     -1.938      0.057    -2.3e-13    3.57e-15
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                              -1.23e-13   5.75e-14     -2.138      0.036   -2.38e-13   -8.02e-15
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -1.132e-13   5.84e-14     -1.938      0.057    -2.3e-13    3.57e-15
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]              -1.171e-14   6.11e-14     -0.192      0.849   -1.34e-13    1.11e-13
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  4.928e-14   8.39e-14      0.587      0.559   -1.19e-13    2.17e-13
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  4.928e-14   8.39e-14      0.587      0.559   -1.19e-13    2.17e-13
 # ==============================================================================
 # Omnibus:                        1.120   Durbin-Watson:                   1.766
 # Prob(Omnibus):                  0.571   Jarque-Bera (JB):                1.193
@@ -2978,13 +2978,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                             1.724e-13   2.54e-14      6.798      0.000    1.22e-13    2.23e-13
-# C(ko)[T.MAT]                                              9e-14    3.7e-14      2.435      0.018     1.6e-14    1.64e-13
+# C(ko_parent)[T.MAT]                                              9e-14    3.7e-14      2.435      0.018     1.6e-14    1.64e-13
 # C(sex)[T.m]                                           2.433e-13   3.59e-14      6.785      0.000    1.72e-13    3.15e-13
 # C(genotype)[T.KLF14-KO:Het]                           4.539e-14    3.7e-14      1.228      0.224   -2.86e-14    1.19e-13
-# C(ko)[T.MAT]:C(sex)[T.m]                             -7.491e-14   5.15e-14     -1.455      0.151   -1.78e-13    2.81e-14
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -8.848e-14    5.3e-14     -1.668      0.101   -1.95e-13    1.76e-14
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                             -7.491e-14   5.15e-14     -1.455      0.151   -1.78e-13    2.81e-14
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -8.848e-14    5.3e-14     -1.668      0.101   -1.95e-13    1.76e-14
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]              -1.171e-14   5.32e-14     -0.220      0.827   -1.18e-13    9.48e-14
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  2.457e-14   7.46e-14      0.329      0.743   -1.25e-13    1.74e-13
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  2.457e-14   7.46e-14      0.329      0.743   -1.25e-13    1.74e-13
 # ==============================================================================
 # Omnibus:                        3.101   Durbin-Watson:                   1.777
 # Prob(Omnibus):                  0.212   Jarque-Bera (JB):                1.925
@@ -2996,10 +2996,10 @@ print(model.summary())
 
 
 ########################################################################################################################
-### Model SC_N ~ C(ko) * C(sex) * C(genotype)
+### Model SC_N ~ C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
-formula = 'SC_N ~ C(ko) * C(sex) * C(genotype)'
+formula = 'SC_N ~ C(ko_parent) * C(sex) * C(genotype)'
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
@@ -3021,13 +3021,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                             4.188e+06   8.49e+05      4.930      0.000    2.49e+06    5.88e+06
-# C(ko)[T.MAT]                                         -9.438e+05   1.11e+06     -0.852      0.397   -3.16e+06    1.27e+06
+# C(ko_parent)[T.MAT]                                         -9.438e+05   1.11e+06     -0.852      0.397   -3.16e+06    1.27e+06
 # C(sex)[T.m]                                          -1.401e+06   1.11e+06     -1.265      0.210   -3.61e+06    8.11e+05
 # C(genotype)[T.KLF14-KO:Het]                           2.228e+06   1.13e+06      1.967      0.053   -3.31e+04    4.49e+06
-# C(ko)[T.MAT]:C(sex)[T.m]                              3.018e+05    1.5e+06      0.202      0.841   -2.68e+06    3.29e+06
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -3.637e+06   1.51e+06     -2.402      0.019   -6.66e+06   -6.14e+05
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                              3.018e+05    1.5e+06      0.202      0.841   -2.68e+06    3.29e+06
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -3.637e+06   1.51e+06     -2.402      0.019   -6.66e+06   -6.14e+05
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]              -1.347e+06   1.56e+06     -0.866      0.390   -4.45e+06    1.76e+06
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  4.091e+06   2.11e+06      1.942      0.056   -1.15e+05     8.3e+06
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  4.091e+06   2.11e+06      1.942      0.056   -1.15e+05     8.3e+06
 # ==============================================================================
 # Omnibus:                       32.335   Durbin-Watson:                   1.792
 # Prob(Omnibus):                  0.000   Jarque-Bera (JB):               70.647
@@ -3068,13 +3068,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                             4.188e+06   6.01e+05      6.966      0.000    2.99e+06    5.39e+06
-# C(ko)[T.MAT]                                         -1.628e+06   8.02e+05     -2.031      0.047   -3.23e+06   -2.56e+04
+# C(ko_parent)[T.MAT]                                         -1.628e+06   8.02e+05     -2.031      0.047   -3.23e+06   -2.56e+04
 # C(sex)[T.m]                                          -1.401e+06   7.84e+05     -1.787      0.079   -2.97e+06    1.66e+05
 # C(genotype)[T.KLF14-KO:Het]                           1.762e+06    8.5e+05      2.073      0.042    6.27e+04    3.46e+06
-# C(ko)[T.MAT]:C(sex)[T.m]                               9.86e+05   1.07e+06      0.920      0.361   -1.16e+06    3.13e+06
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -2.487e+06   1.12e+06     -2.218      0.030   -4.73e+06   -2.46e+05
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                               9.86e+05   1.07e+06      0.920      0.361   -1.16e+06    3.13e+06
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -2.487e+06   1.12e+06     -2.218      0.030   -4.73e+06   -2.46e+05
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]               -8.81e+05   1.14e+06     -0.775      0.441   -3.15e+06    1.39e+06
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  2.281e+06   1.54e+06      1.485      0.143    -7.9e+05    5.35e+06
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  2.281e+06   1.54e+06      1.485      0.143    -7.9e+05    5.35e+06
 # ==============================================================================
 # Omnibus:                       32.581   Durbin-Watson:                   2.094
 # Prob(Omnibus):                  0.000   Jarque-Bera (JB):               76.434
@@ -3087,10 +3087,10 @@ print(model.summary())
 
 
 ########################################################################################################################
-### Model gWAT_N ~ C(ko) * C(sex) * C(genotype)
+### Model gWAT_N ~ C(ko_parent) * C(sex) * C(genotype)
 ########################################################################################################################
 
-formula = 'gWAT_N ~ C(ko) * C(sex) * C(genotype)'
+formula = 'gWAT_N ~ C(ko_parent) * C(sex) * C(genotype)'
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
 
@@ -3112,13 +3112,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                             4.642e+06   7.67e+05      6.049      0.000    3.11e+06    6.18e+06
-# C(ko)[T.MAT]                                         -7.396e+05   1.06e+06     -0.699      0.487   -2.85e+06    1.37e+06
+# C(ko_parent)[T.MAT]                                         -7.396e+05   1.06e+06     -0.699      0.487   -2.85e+06    1.37e+06
 # C(sex)[T.m]                                          -1.684e+06   1.09e+06     -1.551      0.126   -3.85e+06    4.86e+05
 # C(genotype)[T.KLF14-KO:Het]                           4.202e+05   1.12e+06      0.376      0.708   -1.82e+06    2.66e+06
-# C(ko)[T.MAT]:C(sex)[T.m]                              4.516e+05   1.52e+06      0.298      0.767   -2.58e+06    3.48e+06
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -1.298e+06   1.54e+06     -0.843      0.402   -4.38e+06    1.78e+06
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                              4.516e+05   1.52e+06      0.298      0.767   -2.58e+06    3.48e+06
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -1.298e+06   1.54e+06     -0.843      0.402   -4.38e+06    1.78e+06
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]              -9.171e+05   1.61e+06     -0.569      0.571   -4.14e+06     2.3e+06
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  2.469e+06   2.21e+06      1.116      0.269   -1.95e+06    6.89e+06
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  2.469e+06   2.21e+06      1.116      0.269   -1.95e+06    6.89e+06
 # ==============================================================================
 # Omnibus:                       66.663   Durbin-Watson:                   1.398
 # Prob(Omnibus):                  0.000   Jarque-Bera (JB):              432.785
@@ -3159,13 +3159,13 @@ print(model.summary())
 #                                                            coef    std err          t      P>|t|      [0.025      0.975]
 # ------------------------------------------------------------------------------------------------------------------------
 # Intercept                                             3.549e+06   3.48e+05     10.196      0.000    2.85e+06    4.25e+06
-# C(ko)[T.MAT]                                          -3.39e+05   4.78e+05     -0.709      0.481    -1.3e+06    6.19e+05
+# C(ko_parent)[T.MAT]                                          -3.39e+05   4.78e+05     -0.709      0.481    -1.3e+06    6.19e+05
 # C(sex)[T.m]                                           -5.91e+05   4.78e+05     -1.235      0.222   -1.55e+06    3.67e+05
 # C(genotype)[T.KLF14-KO:Het]                          -1.234e+05   5.61e+05     -0.220      0.827   -1.25e+06       1e+06
-# C(ko)[T.MAT]:C(sex)[T.m]                                5.1e+04   6.66e+05      0.077      0.939   -1.28e+06    1.39e+06
-# C(ko)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -6.235e+04   7.28e+05     -0.086      0.932   -1.52e+06     1.4e+06
+# C(ko_parent)[T.MAT]:C(sex)[T.m]                                5.1e+04   6.66e+05      0.077      0.939   -1.28e+06    1.39e+06
+# C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]             -6.235e+04   7.28e+05     -0.086      0.932   -1.52e+06     1.4e+06
 # C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]              -3.735e+05   7.49e+05     -0.499      0.620   -1.87e+06    1.13e+06
-# C(ko)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  1.233e+06   9.96e+05      1.238      0.221   -7.61e+05    3.23e+06
+# C(ko_parent)[T.MAT]:C(sex)[T.m]:C(genotype)[T.KLF14-KO:Het]  1.233e+06   9.96e+05      1.238      0.221   -7.61e+05    3.23e+06
 # ==============================================================================
 # Omnibus:                        5.136   Durbin-Watson:                   1.758
 # Prob(Omnibus):                  0.077   Jarque-Bera (JB):                4.428

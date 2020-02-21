@@ -225,7 +225,7 @@ for i_fold in range(n_folds):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=[i_fold], values_tag='fold',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
         '''Ground truth cell by cell processing
         '''
@@ -541,7 +541,7 @@ df_all.to_pickle(dataframe_filename)
 '''
 
 # dataframe:
-#  ['index', 'id', 'ko', 'sex', 'fold', 'im', 'contour', 'area_gtruth',
+#  ['index', 'id', 'ko_parent', 'sex', 'fold', 'im', 'contour', 'area_gtruth',
 #   'area_seg', 'dice', 'area_seg_corrected']
 
 ## previous experiment: classifier without data augmentation (only segmentations with corresponding ground truth)

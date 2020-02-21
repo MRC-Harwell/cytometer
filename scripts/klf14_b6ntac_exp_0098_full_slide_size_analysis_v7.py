@@ -182,12 +182,12 @@ for i, file_svg in enumerate(file_svg_list):
     # create dataframe for this image
     df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
                                                           values=[i,], values_tag='i',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
     # mouse ID as a string
     id = df_common['id'].values[0]
     sex = df_common['sex'].values[0]
-    ko = df_common['ko'].values[0]
+    ko = df_common['ko_parent'].values[0]
 
     # compute cell area
     if sex == 'f':
@@ -320,12 +320,12 @@ for i_file, json_file in enumerate(json_annotation_files):
     # create dataframe for this image
     df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(ndpi_file),
                                                           values=[i,], values_tag='i',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
     # mouse ID as a string
     id = df_common['id'].values[0]
     sex = df_common['sex'].values[0]
-    ko = df_common['ko'].values[0]
+    ko = df_common['ko_parent'].values[0]
 
     # convert area values to quantiles
     if sex == 'f':

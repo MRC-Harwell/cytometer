@@ -125,7 +125,7 @@ klf14_ids = [x['id'] for x in klf14_info]
 file_list = glob.glob(os.path.join(training_data_dir, '*.svg'))
 
 # create empty dataframe to host the data
-df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [],
+df = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko_parent': [],
                         'bw': [], 'sc': [], 'gwat': [], 'liver': [], 'image_id': []})
 
 # read all contour files, and categorise them into MAT/PAT and f/m
@@ -149,7 +149,7 @@ for file in file_list:
 
     # metainformation for this mouse
     mouse_sex = klf14_info[idx]['sex']
-    mouse_ko = klf14_info[idx]['ko']
+    mouse_ko = klf14_info[idx]['ko_parent']
     mouse_bw = float(klf14_info[idx]['BW'])
     mouse_sc = float(klf14_info[idx]['SC'])
     mouse_gwat = float(klf14_info[idx]['gWAT'])
@@ -162,7 +162,7 @@ for file in file_list:
     for i, a in enumerate(areas):
         if a == 0.0:
             print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
-        df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko,
+        df = df.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko_parent': mouse_ko,
                         'bw': mouse_bw, 'sc': mouse_sc, 'gwat': mouse_gwat, 'liver': mouse_liver, 'image_id': image_id},
                        ignore_index=True)
 
@@ -176,7 +176,7 @@ for file in file_list:
 file_list = glob.glob(os.path.join(training_non_overlap_data_dir, '*.tif'))
 
 # create empty dataframe to host the data
-df_no = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko': [], 'image_id': []})
+df_no = pd.DataFrame(data={'area': [], 'mouse_id': [], 'sex': [], 'ko_parent': [], 'image_id': []})
 
 for file in file_list:
 
@@ -198,7 +198,7 @@ for file in file_list:
 
     # sex and KO-side for this mouse
     mouse_sex = klf14_info[idx]['sex']
-    mouse_ko = klf14_info[idx]['ko']
+    mouse_ko = klf14_info[idx]['ko_parent']
 
     # load file with the whatershed non-overlapping labels
     im = PIL.Image.open(file)
@@ -229,7 +229,7 @@ for file in file_list:
     for i, a in enumerate(areas):
         if a == 0.0:
             print('Warning! Area == 0.0: index ' + str(i) + ':' + image_id)
-        df_no = df_no.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko': mouse_ko, 'image_id': image_id},
+        df_no = df_no.append({'area': a, 'mouse_id': mouse_id, 'sex': mouse_sex, 'ko_parent': mouse_ko, 'image_id': image_id},
                              ignore_index=True)
 
 
@@ -238,18 +238,18 @@ for file in file_list:
 '''
 
 # split dataset into groups
-df_f = df.loc[df.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
-df_m = df.loc[df.sex == 'm', ('area', 'ko', 'image_id', 'mouse_id')]
+df_f = df.loc[df.sex == 'f', ('area', 'ko_parent', 'image_id', 'mouse_id')]
+df_m = df.loc[df.sex == 'm', ('area', 'ko_parent', 'image_id', 'mouse_id')]
 
-df_no_f = df_no.loc[df_no.sex == 'f', ('area', 'ko', 'image_id', 'mouse_id')]
-df_no_m = df_no.loc[df_no.sex == 'm', ('area', 'ko', 'image_id', 'mouse_id')]
+df_no_f = df_no.loc[df_no.sex == 'f', ('area', 'ko_parent', 'image_id', 'mouse_id')]
+df_no_m = df_no.loc[df_no.sex == 'm', ('area', 'ko_parent', 'image_id', 'mouse_id')]
 
 df_MAT = df.loc[df.ko == 'MAT', ('area', 'sex', 'image_id', 'mouse_id')]
 df_PAT = df.loc[df.ko == 'PAT', ('area', 'sex', 'image_id', 'mouse_id')]
 
 # make sure that in the boxplots PAT comes before MAT
-df_f['ko'] = df_f['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
-df_m['ko'] = df_m['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_f['ko_parent'] = df_f['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_m['ko_parent'] = df_m['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
 # make sure that in the boxplots f comes before m
 df_MAT['sex'] = df_MAT['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
@@ -302,14 +302,14 @@ plt.title('PAT')
 # plot boxplots for f/m, PAT/MAT comparison as in Nature Genetics paper
 plt.clf()
 ax = plt.subplot(121)
-df_f.boxplot(column='area', by='ko', ax=ax, notch=True)
+df_f.boxplot(column='area', by='ko_parent', ax=ax, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-df_m.boxplot(column='area', by='ko', ax=ax, notch=True)
+df_m.boxplot(column='area', by='ko_parent', ax=ax, notch=True)
 ax.set_ylim(0, 2e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
@@ -319,14 +319,14 @@ plt.tick_params(axis='both', which='major', labelsize=14)
 # same boxplots without outliers
 plt.clf()
 ax = plt.subplot(121)
-df_f.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
+df_f.boxplot(column='area', by='ko_parent', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 1e4)
 ax.set_title('female', fontsize=16)
 ax.set_xlabel('')
 ax.set_ylabel('area (um^2)', fontsize=14)
 plt.tick_params(axis='both', which='major', labelsize=14)
 ax = plt.subplot(122)
-df_m.boxplot(column='area', by='ko', ax=ax, showfliers=False, notch=True)
+df_m.boxplot(column='area', by='ko_parent', ax=ax, showfliers=False, notch=True)
 ax.set_ylim(0, 1e4)
 ax.set_title('male', fontsize=16)
 ax.set_xlabel('')
@@ -687,9 +687,9 @@ if DEBUG:
 
 # for the mixed-effects linear model, we want the KO variable to be ordered, so that it's PAT=0, MAT=1 in terms of
 # genetic risk, and the sex variable to be ordered in the sense that males have larger cells than females
-df['ko'] = df['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df['ko_parent'] = df['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 df['sex'] = df['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-df_m['ko'] = df_m['ko'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_m['ko_parent'] = df_m['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 
 # Mixed-effects linear model
 vc = {'image_id': '0 + C(image_id)'}  # image_id is a random effected nested inside mouse_id
@@ -798,7 +798,7 @@ plt.tick_params(axis='both', which='major', labelsize=16)
 plt.subplot(222)
 plt.plot(threshold * 1e12, lme4_ko_coeff)
 plt.ylabel(r'$\beta_{ko}$', fontsize=18)
-plt.title('ko', fontsize=20)
+plt.title('ko_parent', fontsize=20)
 plt.tick_params(axis='both', which='major', labelsize=16)
 plt.subplot(223)
 plt.semilogy(threshold * 1e12, lme4_sex_pval)

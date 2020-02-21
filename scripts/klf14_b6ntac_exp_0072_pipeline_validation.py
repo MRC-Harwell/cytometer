@@ -210,7 +210,7 @@ for i_fold in range(n_folds):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=[i_fold], values_tag='fold',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # loop contours
         for j, contour in enumerate(contours):
@@ -602,7 +602,7 @@ for i_fold in range(n_folds):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=[i_fold], values_tag='fold',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
         # loop automatic segmentations
         for j, lab in enumerate(labels_seg):
@@ -916,7 +916,7 @@ for i_fold in range(n_folds):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=[i_fold], values_tag='fold',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
         '''Find the automatic segmentation that best overlaps with each cell contour'''
 
@@ -1505,7 +1505,7 @@ for i_fold in range(n_folds):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                           values=[i_fold], values_tag='fold',
-                                                          tags_to_keep=['id', 'ko', 'sex'])
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
 
         '''Iterate segmentation labels'''
 
@@ -1871,7 +1871,7 @@ for i, file_svg in enumerate(file_list):
     # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
     df_im = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                       values=[i], values_tag='file',
-                                                      tags_to_keep=['id', 'ko', 'sex'])
+                                                      tags_to_keep=['id', 'ko_parent', 'sex'])
 
     # loop contours
     for j, contour in enumerate(contours):
@@ -1915,10 +1915,10 @@ df_all.reset_index(drop=True, inplace=True)
 
 ## boxplots of PAT vs MAT in male
 
-idx_f_mat = np.logical_and(df_all['sex'] == 'f', df_all['ko'] == 'MAT')
-idx_f_pat = np.logical_and(df_all['sex'] == 'f', df_all['ko'] == 'PAT')
-idx_m_mat = np.logical_and(df_all['sex'] == 'm', df_all['ko'] == 'MAT')
-idx_m_pat = np.logical_and(df_all['sex'] == 'm', df_all['ko'] == 'PAT')
+idx_f_mat = np.logical_and(df_all['sex'] == 'f', df_all['ko_parent'] == 'MAT')
+idx_f_pat = np.logical_and(df_all['sex'] == 'f', df_all['ko_parent'] == 'PAT')
+idx_m_mat = np.logical_and(df_all['sex'] == 'm', df_all['ko_parent'] == 'MAT')
+idx_m_pat = np.logical_and(df_all['sex'] == 'm', df_all['ko_parent'] == 'PAT')
 
 if DEBUG:
     plt.clf()
