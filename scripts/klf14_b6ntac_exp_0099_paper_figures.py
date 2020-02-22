@@ -2914,6 +2914,10 @@ print(model.summary())
 
 print(model.pvalues)
 
+# ANOVA table
+aov_table = sm.stats.anova_lm(model, typ=2)
+print(aov_table)
+
 ########################################################################################################################
 ### Model gWAT_vol_mean ~ C(sex) * C(ko_parent) * C(genotype)
 ########################################################################################################################
@@ -3004,6 +3008,10 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 print(model.pvalues)
+
+# ANOVA table
+aov_table = sm.stats.anova_lm(model, typ=2)
+print(aov_table)
 
 ########################################################################################################################
 ### Model SC_rho_N ~ C(sex) * C(ko_parent) * C(genotype)
@@ -3097,6 +3105,10 @@ print(model.summary())
 
 print(model.pvalues)
 
+# ANOVA table
+aov_table = sm.stats.anova_lm(model, typ=2)
+print(aov_table)
+
 ########################################################################################################################
 ### Model gWAT_rho_N ~ C(sex) * C(ko_parent) * C(genotype)
 ########################################################################################################################
@@ -3187,3 +3199,7 @@ print(model.summary())
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
 print(model.pvalues)
+
+# ANOVA table
+aov_table = sm.stats.anova_lm(model, typ=2)
+print(aov_table)
