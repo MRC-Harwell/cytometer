@@ -202,5 +202,6 @@ for annotation_file in annotation_files_list:
 
     # link to copied file
     # os.symlink(corrected_monolayer_file_left, main_json_file)
-    os.symlink(corrected_monolayer_file_right, main_json_file)
+    # os.symlink(corrected_monolayer_file_right, main_json_file)
     # os.symlink(annotation_file, main_json_file)
+    os.symlink(refined_file_left, main_json_file)
