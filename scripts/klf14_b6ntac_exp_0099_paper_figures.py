@@ -1720,6 +1720,8 @@ metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categorie
 metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
 
+## plot boxplots by group
+
 # subgroups
 idx_f_pat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
 idx_f_pat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
@@ -1794,6 +1796,366 @@ if DEBUG:
     plt.scatter(np.concatenate((bw_f_pat_wt, bw_m_pat_wt)), np.concatenate((sq_f_pat_wt, sq_m_pat_wt)))
     plt.scatter(np.concatenate((bw_f_mat_wt, bw_m_mat_wt)), np.concatenate((sq_f_mat_wt, sq_m_mat_wt)))
     plt.tight_layout()
+
+########################################################################################################################
+### Model BW ~ (C(sex) + C(ko_parent) + C(genotype)) * (SC * gWAT)
+########################################################################################################################
+
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+model = sm.formula.ols('BW ~ (C(sex) + C(ko_parent) + C(genotype)) * (SC * gWAT)', data=metainfo, subset=idx_not_nan).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.816
+# Model:                            OLS   Adj. R-squared:                  0.769
+# Method:                 Least Squares   F-statistic:                     17.69
+# Date:                Mon, 24 Feb 2020   Prob (F-statistic):           1.19e-16
+# Time:                        15:32:07   Log-Likelihood:                -197.81
+# No. Observations:                  76   AIC:                             427.6
+# Df Residuals:                      60   BIC:                             464.9
+# Df Model:                          15
+# Covariance Type:            nonrobust
+# =======================================================================================================
+#                                           coef    std err          t      P>|t|      [0.025      0.975]
+# -------------------------------------------------------------------------------------------------------
+# Intercept                              20.8129      3.915      5.317      0.000      12.982      28.644
+# C(sex)[T.m]                             8.2952      5.920      1.401      0.166      -3.547      20.138
+# C(ko_parent)[T.MAT]                    -3.1038      4.417     -0.703      0.485     -11.938       5.731
+# C(genotype)[T.KLF14-KO:Het]             0.4508      4.154      0.109      0.914      -7.858       8.759
+# SC                                     -1.7885      8.152     -0.219      0.827     -18.096      14.519
+# C(sex)[T.m]:SC                         14.4534      9.416      1.535      0.130      -4.382      33.289
+# C(ko_parent)[T.MAT]:SC                 13.9682     12.136      1.151      0.254     -10.307      38.244
+# C(genotype)[T.KLF14-KO:Het]:SC         -4.4397      8.417     -0.527      0.600     -21.277      12.397
+# gWAT                                    4.6153      4.514      1.022      0.311      -4.414      13.644
+# C(sex)[T.m]:gWAT                       -1.1889      5.786     -0.205      0.838     -12.763      10.385
+# C(ko_parent)[T.MAT]:gWAT               11.1354      4.622      2.409      0.019       1.890      20.380
+# C(genotype)[T.KLF14-KO:Het]:gWAT       -0.6653      4.608     -0.144      0.886      -9.883       8.553
+# SC:gWAT                                 5.7281      7.709      0.743      0.460      -9.692      21.148
+# C(sex)[T.m]:SC:gWAT                    -8.8374      8.256     -1.070      0.289     -25.352       7.678
+# C(ko_parent)[T.MAT]:SC:gWAT           -20.5613      9.163     -2.244      0.029     -38.889      -2.234
+# C(genotype)[T.KLF14-KO:Het]:SC:gWAT     1.2538      7.420      0.169      0.866     -13.589      16.096
+# ==============================================================================
+# Omnibus:                        0.893   Durbin-Watson:                   1.584
+# Prob(Omnibus):                  0.640   Jarque-Bera (JB):                0.419
+# Skew:                           0.138   Prob(JB):                        0.811
+# Kurtosis:                       3.236   Cond. No.                         103.
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    sm.graphics.influence_plot(model, criterion="cooks")
+
+# list of point with high influence (large residuals and leverage)
+idx_influence = [32, 35, 72, 68]
+idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
+print(metainfo.loc[idx_influence, ['id', 'ko_parent', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
+
+model = sm.formula.ols('BW ~ (C(sex) + C(ko_parent) + C(genotype)) * (SC * gWAT)', data=metainfo, subset=idx_no_influence).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.861
+# Model:                            OLS   Adj. R-squared:                  0.824
+# Method:                 Least Squares   F-statistic:                     23.10
+# Date:                Mon, 24 Feb 2020   Prob (F-statistic):           1.24e-18
+# Time:                        15:34:55   Log-Likelihood:                -175.74
+# No. Observations:                  72   AIC:                             383.5
+# Df Residuals:                      56   BIC:                             419.9
+# Df Model:                          15
+# Covariance Type:            nonrobust
+# =======================================================================================================
+#                                           coef    std err          t      P>|t|      [0.025      0.975]
+# -------------------------------------------------------------------------------------------------------
+# Intercept                              20.6669      3.402      6.076      0.000      13.853      27.481
+# C(sex)[T.m]                             4.2722      5.559      0.768      0.445      -6.865      15.409
+# C(ko_parent)[T.MAT]                    -4.4564      4.015     -1.110      0.272     -12.500       3.587
+# C(genotype)[T.KLF14-KO:Het]             2.4807      3.726      0.666      0.508      -4.983       9.945
+# SC                                     -1.8838      7.199     -0.262      0.795     -16.305      12.537
+# C(sex)[T.m]:SC                         24.8487      9.077      2.738      0.008       6.666      43.031
+# C(ko_parent)[T.MAT]:SC                 17.3592     11.858      1.464      0.149      -6.394      41.113
+# C(genotype)[T.KLF14-KO:Het]:SC        -11.1209      7.935     -1.402      0.167     -27.016       4.774
+# gWAT                                    4.1218      3.915      1.053      0.297      -3.721      11.965
+# C(sex)[T.m]:gWAT                        2.8226      5.439      0.519      0.606      -8.073      13.718
+# C(ko_parent)[T.MAT]:gWAT               12.9151      4.104      3.147      0.003       4.694      21.136
+# C(genotype)[T.KLF14-KO:Het]:gWAT       -2.9809      4.139     -0.720      0.474     -11.272       5.310
+# SC:gWAT                                 7.4178      6.822      1.087      0.282      -6.248      21.084
+# C(sex)[T.m]:SC:gWAT                   -19.8285      8.170     -2.427      0.018     -36.194      -3.463
+# C(ko_parent)[T.MAT]:SC:gWAT           -23.8903      9.152     -2.610      0.012     -42.225      -5.556
+# C(genotype)[T.KLF14-KO:Het]:SC:gWAT     7.9907      7.174      1.114      0.270      -6.381      22.362
+# ==============================================================================
+# Omnibus:                        0.139   Durbin-Watson:                   1.639
+# Prob(Omnibus):                  0.933   Jarque-Bera (JB):                0.298
+# Skew:                           0.082   Prob(JB):                        0.862
+# Kurtosis:                       2.731   Cond. No.                         103.
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+print(model.pvalues)
+
+########################################################################################################################
+### Model BW ~ C(sex):SC + C(ko_parent):gWAT + (C(sex) + C(ko_parent)) : SC : gWAT
+########################################################################################################################
+
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+model = sm.formula.ols('BW ~ C(sex):SC + C(ko_parent):gWAT + (C(sex) + C(ko_parent)) : SC : gWAT', data=metainfo, subset=idx_not_nan).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.746
+# Model:                            OLS   Adj. R-squared:                  0.720
+# Method:                 Least Squares   F-statistic:                     28.60
+# Date:                Mon, 24 Feb 2020   Prob (F-statistic):           6.18e-18
+# Time:                        15:46:31   Log-Likelihood:                -209.90
+# No. Observations:                  76   AIC:                             435.8
+# Df Residuals:                      68   BIC:                             454.5
+# Df Model:                           7
+# Covariance Type:            nonrobust
+# ===============================================================================================
+#                                   coef    std err          t      P>|t|      [0.025      0.975]
+# -----------------------------------------------------------------------------------------------
+# Intercept                      20.4806      2.180      9.395      0.000      16.131      24.831
+# C(sex)[f]:SC                   -5.0626      5.507     -0.919      0.361     -16.052       5.927
+# C(sex)[m]:SC                   27.9299      4.528      6.169      0.000      18.895      36.965
+# C(ko_parent)[PAT]:gWAT          7.9753      2.887      2.763      0.007       2.215      13.736
+# C(ko_parent)[MAT]:gWAT         16.9186      2.525      6.701      0.000      11.880      21.957
+# C(sex)[f]:SC:gWAT               3.0075      5.657      0.532      0.597      -8.281      14.296
+# C(sex)[m]:SC:gWAT             -14.0323      3.993     -3.514      0.001     -22.000      -6.065
+# C(ko_parent)[T.MAT]:SC:gWAT    -9.5150      2.649     -3.591      0.001     -14.802      -4.228
+# ==============================================================================
+# Omnibus:                        0.062   Durbin-Watson:                   1.535
+# Prob(Omnibus):                  0.970   Jarque-Bera (JB):                0.092
+# Skew:                           0.059   Prob(JB):                        0.955
+# Kurtosis:                       2.876   Cond. No.                         27.8
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    sm.graphics.influence_plot(model, criterion="cooks")
+
+# list of point with high influence (large residuals and leverage)
+idx_influence = [52, 72, 32, 35]
+idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
+print(metainfo.loc[idx_influence, ['id', 'ko_parent', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
+
+model = sm.formula.ols('BW ~ C(sex):SC + C(ko_parent):gWAT + (C(sex) + C(ko_parent)) : SC : gWAT', data=metainfo, subset=idx_no_influence).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.773
+# Model:                            OLS   Adj. R-squared:                  0.749
+# Method:                 Least Squares   F-statistic:                     31.21
+# Date:                Mon, 24 Feb 2020   Prob (F-statistic):           2.48e-18
+# Time:                        15:50:15   Log-Likelihood:                -192.78
+# No. Observations:                  72   AIC:                             401.6
+# Df Residuals:                      64   BIC:                             419.8
+# Df Model:                           7
+# Covariance Type:            nonrobust
+# ===============================================================================================
+#                                   coef    std err          t      P>|t|      [0.025      0.975]
+# -----------------------------------------------------------------------------------------------
+# Intercept                      19.9024      2.117      9.400      0.000      15.673      24.132
+# C(sex)[f]:SC                   -5.1565      5.388     -0.957      0.342     -15.921       5.608
+# C(sex)[m]:SC                   33.8215      5.667      5.968      0.000      22.500      45.143
+# C(ko_parent)[PAT]:gWAT          8.7298      2.861      3.051      0.003       3.014      14.445
+# C(ko_parent)[MAT]:gWAT         17.2337      2.443      7.056      0.000      12.354      22.113
+# C(sex)[f]:SC:gWAT               3.0981      5.762      0.538      0.593      -8.414      14.610
+# C(sex)[m]:SC:gWAT             -20.9777      5.588     -3.754      0.000     -32.142      -9.813
+# C(ko_parent)[T.MAT]:SC:gWAT    -7.5714      2.981     -2.540      0.014     -13.527      -1.616
+# ==============================================================================
+# Omnibus:                        0.502   Durbin-Watson:                   1.454
+# Prob(Omnibus):                  0.778   Jarque-Bera (JB):                0.649
+# Skew:                          -0.104   Prob(JB):                        0.723
+# Kurtosis:                       2.584   Cond. No.                         31.4
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+print(model.pvalues)
+
+# helper function to plot the different lines created by the model
+def model_line(model, sex, ko_parent, SC, gWAT):
+    sex = np.float(sex == 'm')
+    ko_parent = np.float(ko_parent == 'MAT')
+
+    return model.params['Intercept'] +\
+           model.params['C(sex)[f]:SC'] * (1 - sex) * SC +\
+           model.params['C(sex)[m]:SC'] * sex * SC + \
+           model.params['C(ko_parent)[PAT]:gWAT'] * (1 - ko_parent) * gWAT + \
+           model.params['C(ko_parent)[MAT]:gWAT'] * ko_parent * gWAT + \
+           model.params['C(sex)[f]:SC:gWAT'] * (1 - sex) * SC * gWAT + \
+           model.params['C(sex)[m]:SC:gWAT'] * sex * SC * gWAT + \
+           model.params['C(ko_parent)[T.MAT]:SC:gWAT'] * ko_parent * SC * gWAT
+
+
+# plot BW as a function of gWAT
+if DEBUG:
+
+    plt.clf()
+
+    # f PAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f PAT', color='C0')
+    # BW = model_line(model, sex='f', ko_parent='PAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C0', linewidth=3)
+    # BW = model_line(model, sex='f', ko_parent='PAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C0', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='f', ko_parent='PAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C0', linewidth=3)
+
+    # f MAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f MAT', color='C2')
+    # BW = model_line(model, sex='f', ko_parent='MAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C2', linewidth=3)
+    # BW = model_line(model, sex='f', ko_parent='MAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C2', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='f', ko_parent='MAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C2', linewidth=3)
+
+    # m PAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m PAT', color='C1')
+    # BW = model_line(model, sex='m', ko_parent='PAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C1', linewidth=3)
+    # BW = model_line(model, sex='m', ko_parent='PAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C1', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='m', ko_parent='PAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C1', linewidth=3)
+
+    # m MAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m MAT', color='C3')
+    # BW = model_line(model, sex='m', ko_parent='MAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C3', linewidth=3)
+    # BW = model_line(model, sex='m', ko_parent='MAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C3', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='m', ko_parent='MAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C3', linewidth=3)
+
+    plt.legend()
+
+    plt.xlabel('m$_G$ (g)', fontsize=14)
+    plt.ylabel('BW (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mG.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mG.svg'), bbox_inches='tight')
+
+########################################################################################################################
+### Model BW ~ C(sex):SC + C(ko_parent):gWAT + (C(sex) + C(ko_parent)) : (SC + gWAT)
+########################################################################################################################
+
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+model = sm.formula.ols('BW ~ C(sex) + C(ko_parent) + SC * gWAT - SC - SC:gWAT', data=metainfo, subset=idx_not_nan).fit()
+print(model.summary())
+
+# helper function to plot the different lines created by the model
+def model_line(model, sex, ko_parent, SC, gWAT):
+    sex = np.float(sex == 'm')
+    ko_parent = np.float(ko_parent == 'MAT')
+
+    return model.params['Intercept'] +\
+           model.params['C(sex)[T.m]'] * sex + \
+           model.params['C(ko_parent)[T.MAT]'] * ko_parent + \
+           model.params['gWAT'] * gWAT
+
+
+# plot BW as a function of gWAT
+if DEBUG:
+
+    plt.clf()
+
+    # f PAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f PAT', color='C0')
+    # BW = model_line(model, sex='f', ko_parent='PAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C0', linewidth=3)
+    # BW = model_line(model, sex='f', ko_parent='PAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C0', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='f', ko_parent='PAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C0', linewidth=3)
+
+    # f MAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f MAT', color='C2')
+    # BW = model_line(model, sex='f', ko_parent='MAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C2', linewidth=3)
+    # BW = model_line(model, sex='f', ko_parent='MAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C2', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='f', ko_parent='MAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C2', linewidth=3)
+
+    # m PAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m PAT', color='C1')
+    # BW = model_line(model, sex='m', ko_parent='PAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C1', linewidth=3)
+    # BW = model_line(model, sex='m', ko_parent='PAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C1', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='m', ko_parent='PAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C1', linewidth=3)
+
+    # m MAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
+    gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
+    plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m MAT', color='C3')
+    # BW = model_line(model, sex='m', ko_parent='MAT', SC=np.min(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C3', linewidth=3)
+    # BW = model_line(model, sex='m', ko_parent='MAT', SC=np.max(metainfo['SC'][idx]), gWAT=gWAT)
+    # plt.plot(gWAT, BW, color='C3', linewidth=3)
+    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
+    for x in sc:
+        BW = model_line(model, sex='m', ko_parent='MAT', SC=x, gWAT=gWAT)
+        plt.plot(gWAT, BW, color='C3', linewidth=3)
+
+    plt.legend()
+
+    plt.xlabel('m$_G$ (g)', fontsize=14)
+    plt.ylabel('BW (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mG.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mG.svg'), bbox_inches='tight')
+
+
+########################################################################################################################
+### Model BW ~ C(sex) + C(ko_parent) + C(genotype) + SC * gWAT
+########################################################################################################################
 
 # Model BW ~ C(sex) + C(ko_parent) + C(genotype) + SC * gWAT
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
