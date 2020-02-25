@@ -1797,6 +1797,21 @@ if DEBUG:
     plt.scatter(np.concatenate((bw_f_mat_wt, bw_m_mat_wt)), np.concatenate((sq_f_mat_wt, sq_m_mat_wt)))
     plt.tight_layout()
 
+
+########################################################################################################################
+### Plot SC vs. gWAT to look for outliers
+########################################################################################################################
+
+if DEBUG:
+    plt.clf()
+    plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k')
+    for i in np.where(idx)[0]:
+        plt.annotate(i, (metainfo['SC'][i], metainfo['gWAT'][i]))
+    plt.xlabel('SC')
+    plt.ylabel('gWAT')
+
+# 64 and 65 are outliers.
+
 ########################################################################################################################
 ### Model BW ~ (C(sex) + C(ko_parent) + C(genotype)) * (SC * gWAT)
 ### WARNING: This model is an example of having too many variables
@@ -2034,43 +2049,88 @@ print(model.summary())
 # plot BW as a function of gWAT
 if DEBUG:
 
+    annotate = False
     plt.clf()
 
     # f PAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f PAT WT', color='C0', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f PAT Het', color='C0')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
     SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
-    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f PAT', color='C0')
-    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
-    for x in sc:
-        BW = model_line(model, sex='f', ko_parent='PAT', SC=x, gWAT=gWAT)
-        plt.plot(gWAT, BW, color='C0', linewidth=3)
+    BW = model_line(model, sex='f', ko_parent='PAT', SC=SC)
+    plt.plot(SC, BW, color='C0', linewidth=3)
 
     # f MAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f MAT WT', color='C2', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f MAT Het', color='C2')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
     SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
-    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f MAT', color='C2')
-    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
-    for x in sc:
-        BW = model_line(model, sex='f', ko_parent='MAT', SC=x, gWAT=gWAT)
-        plt.plot(gWAT, BW, color='C2', linewidth=3)
+    BW = model_line(model, sex='f', ko_parent='MAT', SC=SC)
+    plt.plot(SC, BW, color='C2', linewidth=3)
 
     # m PAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m PAT WT', color='k', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m PAT Het', color='k')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
     SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
-    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m PAT', color='C1')
-    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
-    for x in sc:
-        BW = model_line(model, sex='m', ko_parent='PAT', SC=x, gWAT=gWAT)
-        plt.plot(gWAT, BW, color='C1', linewidth=3)
+    BW = model_line(model, sex='m', ko_parent='PAT', SC=SC)
+    plt.plot(SC, BW, color='k', linewidth=3)
 
     # m MAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m MAT WT', color='C3', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m MAT Het', color='C3')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
     SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
-    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m MAT', color='C3')
-    sc = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]), 5)
-    for x in sc:
-        BW = model_line(model, sex='m', ko_parent='MAT', SC=x, gWAT=gWAT)
-        plt.plot(gWAT, BW, color='C3', linewidth=3)
+    BW = model_line(model, sex='m', ko_parent='MAT', SC=SC)
+    plt.plot(SC, BW, color='C3', linewidth=3)
 
     plt.legend()
 
