@@ -1802,7 +1802,10 @@ if DEBUG:
 ### Plot SC vs. gWAT to look for outliers
 ########################################################################################################################
 
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+
 if DEBUG:
+    idx = idx_not_nan
     plt.clf()
     plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k')
     for i in np.where(idx)[0]:
