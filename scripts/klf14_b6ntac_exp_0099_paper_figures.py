@@ -1870,7 +1870,7 @@ if DEBUG:
     sm.graphics.influence_plot(model, criterion="cooks")
 
 # list of point with high influence (large residuals and leverage)
-idx_influence = [32, 35, 72, 68]
+idx_influence = [35, 36, 37, 64, 65]
 idx_no_influence = list(set(range(metainfo.shape[0])) - set(idx_influence))
 print(metainfo.loc[idx_influence, ['id', 'ko_parent', 'sex', 'genotype', 'BW', 'SC', 'gWAT']])
 
@@ -1879,39 +1879,39 @@ print(model.summary())
 
 #                             OLS Regression Results
 # ==============================================================================
-# Dep. Variable:                     BW   R-squared:                       0.861
-# Model:                            OLS   Adj. R-squared:                  0.824
-# Method:                 Least Squares   F-statistic:                     23.10
-# Date:                Mon, 24 Feb 2020   Prob (F-statistic):           1.24e-18
-# Time:                        15:34:55   Log-Likelihood:                -175.74
-# No. Observations:                  72   AIC:                             383.5
-# Df Residuals:                      56   BIC:                             419.9
+# Dep. Variable:                     BW   R-squared:                       0.817
+# Model:                            OLS   Adj. R-squared:                  0.768
+# Method:                 Least Squares   F-statistic:                     16.41
+# Date:                Wed, 26 Feb 2020   Prob (F-statistic):           3.87e-15
+# Time:                        14:08:33   Log-Likelihood:                -183.06
+# No. Observations:                  71   AIC:                             398.1
+# Df Residuals:                      55   BIC:                             434.3
 # Df Model:                          15
 # Covariance Type:            nonrobust
 # =======================================================================================================
 #                                           coef    std err          t      P>|t|      [0.025      0.975]
 # -------------------------------------------------------------------------------------------------------
-# Intercept                              20.6669      3.402      6.076      0.000      13.853      27.481
-# C(sex)[T.m]                             4.2722      5.559      0.768      0.445      -6.865      15.409
-# C(ko_parent)[T.MAT]                    -4.4564      4.015     -1.110      0.272     -12.500       3.587
-# C(genotype)[T.KLF14-KO:Het]             2.4807      3.726      0.666      0.508      -4.983       9.945
-# SC                                     -1.8838      7.199     -0.262      0.795     -16.305      12.537
-# C(sex)[T.m]:SC                         24.8487      9.077      2.738      0.008       6.666      43.031
-# C(ko_parent)[T.MAT]:SC                 17.3592     11.858      1.464      0.149      -6.394      41.113
-# C(genotype)[T.KLF14-KO:Het]:SC        -11.1209      7.935     -1.402      0.167     -27.016       4.774
-# gWAT                                    4.1218      3.915      1.053      0.297      -3.721      11.965
-# C(sex)[T.m]:gWAT                        2.8226      5.439      0.519      0.606      -8.073      13.718
-# C(ko_parent)[T.MAT]:gWAT               12.9151      4.104      3.147      0.003       4.694      21.136
-# C(genotype)[T.KLF14-KO:Het]:gWAT       -2.9809      4.139     -0.720      0.474     -11.272       5.310
-# SC:gWAT                                 7.4178      6.822      1.087      0.282      -6.248      21.084
-# C(sex)[T.m]:SC:gWAT                   -19.8285      8.170     -2.427      0.018     -36.194      -3.463
-# C(ko_parent)[T.MAT]:SC:gWAT           -23.8903      9.152     -2.610      0.012     -42.225      -5.556
-# C(genotype)[T.KLF14-KO:Het]:SC:gWAT     7.9907      7.174      1.114      0.270      -6.381      22.362
+# Intercept                              22.4929      5.698      3.948      0.000      11.074      33.912
+# C(sex)[T.m]                             7.2408      6.769      1.070      0.289      -6.324      20.806
+# C(ko_parent)[T.MAT]                    -2.6859      4.448     -0.604      0.548     -11.600       6.229
+# C(genotype)[T.KLF14-KO:Het]            -0.0971      4.440     -0.022      0.983      -8.996       8.802
+# SC                                     -9.2532     23.095     -0.401      0.690     -55.537      37.031
+# C(sex)[T.m]:SC                         21.7051     21.391      1.015      0.315     -21.164      64.574
+# C(ko_parent)[T.MAT]:SC                 10.9030     13.041      0.836      0.407     -15.231      37.037
+# C(genotype)[T.KLF14-KO:Het]:SC         -2.7711     11.164     -0.248      0.805     -25.145      19.603
+# gWAT                                    2.5214      5.410      0.466      0.643      -8.321      13.364
+# C(sex)[T.m]:gWAT                        0.0320      6.181      0.005      0.996     -12.356      12.420
+# C(ko_parent)[T.MAT]:gWAT               11.2072      4.596      2.439      0.018       1.997      20.417
+# C(genotype)[T.KLF14-KO:Het]:gWAT       -0.3474      4.714     -0.074      0.942      -9.795       9.100
+# SC:gWAT                                13.9732     19.484      0.717      0.476     -25.074      53.020
+# C(sex)[T.m]:SC:gWAT                   -16.5886     17.869     -0.928      0.357     -52.398      19.221
+# C(ko_parent)[T.MAT]:SC:gWAT           -18.1201      9.764     -1.856      0.069     -37.687       1.447
+# C(genotype)[T.KLF14-KO:Het]:SC:gWAT    -0.2622      9.087     -0.029      0.977     -18.472      17.948
 # ==============================================================================
-# Omnibus:                        0.139   Durbin-Watson:                   1.639
-# Prob(Omnibus):                  0.933   Jarque-Bera (JB):                0.298
-# Skew:                           0.082   Prob(JB):                        0.862
-# Kurtosis:                       2.731   Cond. No.                         103.
+# Omnibus:                        1.715   Durbin-Watson:                   1.455
+# Prob(Omnibus):                  0.424   Jarque-Bera (JB):                1.060
+# Skew:                           0.245   Prob(JB):                        0.589
+# Kurtosis:                       3.342   Cond. No.                         229.
 # ==============================================================================
 # Warnings:
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
@@ -1923,8 +1923,14 @@ print(model.pvalues)
 ### VALID model
 ########################################################################################################################
 
+# don't use lines with NaNs (these should be removed by fit(), but just in case)
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
-model = sm.formula.ols('BW ~ C(sex) + C(sex):gWAT  + C(ko_parent) + gWAT', data=metainfo, subset=idx_not_nan).fit()
+
+# data that we are going to use
+idx_subset = idx_not_nan
+
+# fit linear model to data
+model = sm.formula.ols('BW ~ C(sex) + C(sex):gWAT  + C(ko_parent) + gWAT', data=metainfo, subset=idx_subset).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -1970,16 +1976,23 @@ def model_line(model, sex, ko_parent, gWAT):
 # plot BW as a function of gWAT
 if DEBUG:
 
+    annotate = False
     plt.clf()
 
     # f PAT
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f PAT WT', color='C0', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f PAT Het', color='C0')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
@@ -1990,10 +2003,16 @@ if DEBUG:
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f MAT WT', color='C2', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='f MAT Het', color='C2')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
@@ -2004,10 +2023,16 @@ if DEBUG:
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m PAT WT', color='k', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m PAT Het', color='k')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
@@ -2018,10 +2043,16 @@ if DEBUG:
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m MAT WT', color='C3', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
     plt.scatter(metainfo['gWAT'][idx], metainfo['BW'][idx], label='m MAT Het', color='C3')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
     gWAT = np.linspace(np.min(metainfo['gWAT'][idx]), np.max(metainfo['gWAT'][idx]))
@@ -2040,16 +2071,64 @@ if DEBUG:
 
 
 ########################################################################################################################
-### Model
+### TODO: Model
 ###
 ########################################################################################################################
 
+# don't use lines with NaNs (these should be removed by fit(), but just in case)
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
-model = sm.formula.ols('BW ~ C(sex) * C(sex) * C(ko_parent) * SC', data=metainfo, subset=idx_not_nan).fit()
-model = sm.formula.ols('BW ~ C(sex) + C(sex):gWAT  + C(ko_parent) + gWAT', data=metainfo, subset=idx_not_nan).fit()
+
+# SC outliers
+idx_outliers = [35, 36, 37, 64, 65]
+
+# data that we are going to use
+idx_subset = list(set(idx_not_nan) - set(idx_outliers))
+
+# fit linear model to data
+model = sm.formula.ols('BW ~ C(sex) + C(sex):SC  + C(ko_parent) + SC', data=metainfo, subset=idx_subset).fit()
 print(model.summary())
 
-# plot BW as a function of gWAT
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.694
+# Model:                            OLS   Adj. R-squared:                  0.676
+# Method:                 Least Squares   F-statistic:                     37.51
+# Date:                Wed, 26 Feb 2020   Prob (F-statistic):           2.43e-16
+# Time:                        14:31:38   Log-Likelihood:                -201.32
+# No. Observations:                  71   AIC:                             412.6
+# Df Residuals:                      66   BIC:                             424.0
+# Df Model:                           4
+# Covariance Type:            nonrobust
+# =======================================================================================
+#                           coef    std err          t      P>|t|      [0.025      0.975]
+# ---------------------------------------------------------------------------------------
+# Intercept              22.6903      1.542     14.717      0.000      19.612      25.769
+# C(sex)[T.m]            13.8537      2.027      6.833      0.000       9.806      17.902
+# C(ko_parent)[T.MAT]     3.6320      1.088      3.339      0.001       1.461       5.803
+# SC                      8.3782      2.979      2.812      0.006       2.429      14.327
+# C(sex)[T.m]:SC         -6.9142      3.581     -1.931      0.058     -14.064       0.236
+# ==============================================================================
+# Omnibus:                        8.616   Durbin-Watson:                   1.455
+# Prob(Omnibus):                  0.013   Jarque-Bera (JB):                8.091
+# Skew:                           0.758   Prob(JB):                       0.0175
+# Kurtosis:                       3.663   Cond. No.                         13.8
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+# helper function to plot the different lines created by the model
+def model_line(model, sex, ko_parent, SC):
+    sex = np.float(sex == 'm')
+    ko_parent = np.float(ko_parent == 'MAT')
+
+    return model.params['Intercept'] +\
+           model.params['C(sex)[T.m]'] * sex + \
+           model.params['C(ko_parent)[T.MAT]'] * ko_parent + \
+           model.params['SC'] * SC + \
+           model.params['C(sex)[T.m]:SC'] * sex * SC
+
+
+# plot BW as a function of SC
 if DEBUG:
 
     annotate = False
