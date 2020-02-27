@@ -2071,8 +2071,8 @@ if DEBUG:
 
 
 ########################################################################################################################
-### TODO: Model
-###
+### BW ~ C(sex) * C(ko_parent) * SC
+### Valid model
 ########################################################################################################################
 
 # don't use lines with NaNs (these should be removed by fit(), but just in case)
@@ -2085,48 +2085,53 @@ idx_outliers = [35, 36, 37, 64, 65]
 idx_subset = list(set(idx_not_nan) - set(idx_outliers))
 
 # fit linear model to data
-model = sm.formula.ols('BW ~ C(sex) + C(sex):SC  + C(ko_parent) + SC', data=metainfo, subset=idx_subset).fit()
+model = sm.formula.ols('BW ~ C(sex) * C(ko_parent) * SC', data=metainfo, subset=idx_subset).fit()
 print(model.summary())
 
 #                             OLS Regression Results
 # ==============================================================================
-# Dep. Variable:                     BW   R-squared:                       0.694
-# Model:                            OLS   Adj. R-squared:                  0.676
-# Method:                 Least Squares   F-statistic:                     37.51
-# Date:                Wed, 26 Feb 2020   Prob (F-statistic):           2.43e-16
-# Time:                        14:31:38   Log-Likelihood:                -201.32
-# No. Observations:                  71   AIC:                             412.6
-# Df Residuals:                      66   BIC:                             424.0
-# Df Model:                           4
+# Dep. Variable:                     BW   R-squared:                       0.754
+# Model:                            OLS   Adj. R-squared:                  0.727
+# Method:                 Least Squares   F-statistic:                     27.62
+# Date:                Wed, 26 Feb 2020   Prob (F-statistic):           6.14e-17
+# Time:                        23:36:55   Log-Likelihood:                -193.59
+# No. Observations:                  71   AIC:                             403.2
+# Df Residuals:                      63   BIC:                             421.3
+# Df Model:                           7
 # Covariance Type:            nonrobust
-# =======================================================================================
-#                           coef    std err          t      P>|t|      [0.025      0.975]
-# ---------------------------------------------------------------------------------------
-# Intercept              22.6903      1.542     14.717      0.000      19.612      25.769
-# C(sex)[T.m]            13.8537      2.027      6.833      0.000       9.806      17.902
-# C(ko_parent)[T.MAT]     3.6320      1.088      3.339      0.001       1.461       5.803
-# SC                      8.3782      2.979      2.812      0.006       2.429      14.327
-# C(sex)[T.m]:SC         -6.9142      3.581     -1.931      0.058     -14.064       0.236
+# ======================================================================================================
+#                                          coef    std err          t      P>|t|      [0.025      0.975]
+# ------------------------------------------------------------------------------------------------------
+# Intercept                             21.6675      1.715     12.634      0.000      18.240      25.095
+# C(sex)[T.m]                           12.2828      2.936      4.184      0.000       6.416      18.150
+# C(ko_parent)[T.MAT]                    0.2006      3.291      0.061      0.952      -6.375       6.777
+# C(sex)[T.m]:C(ko_parent)[T.MAT]        9.0601      4.486      2.020      0.048       0.095      18.025
+# SC                                     8.4782      2.989      2.837      0.006       2.506      14.450
+# C(sex)[T.m]:SC                        -2.5161      4.132     -0.609      0.545     -10.774       5.742
+# C(ko_parent)[T.MAT]:SC                20.4707     10.549      1.941      0.057      -0.609      41.550
+# C(sex)[T.m]:C(ko_parent)[T.MAT]:SC   -31.7102     11.327     -2.799      0.007     -54.346      -9.074
 # ==============================================================================
-# Omnibus:                        8.616   Durbin-Watson:                   1.455
-# Prob(Omnibus):                  0.013   Jarque-Bera (JB):                8.091
-# Skew:                           0.758   Prob(JB):                       0.0175
-# Kurtosis:                       3.663   Cond. No.                         13.8
+# Omnibus:                        5.918   Durbin-Watson:                   1.687
+# Prob(Omnibus):                  0.052   Jarque-Bera (JB):                5.075
+# Skew:                           0.575   Prob(JB):                       0.0790
+# Kurtosis:                       3.626   Cond. No.                         53.2
 # ==============================================================================
 # Warnings:
 # [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
 
-# helper function to plot the different lines created by the model
+
 def model_line(model, sex, ko_parent, SC):
     sex = np.float(sex == 'm')
     ko_parent = np.float(ko_parent == 'MAT')
 
-    return model.params['Intercept'] +\
+    return model.params['Intercept'] + \
            model.params['C(sex)[T.m]'] * sex + \
            model.params['C(ko_parent)[T.MAT]'] * ko_parent + \
+           model.params['C(sex)[T.m]:C(ko_parent)[T.MAT]'] * sex * ko_parent + \
            model.params['SC'] * SC + \
-           model.params['C(sex)[T.m]:SC'] * sex * SC
-
+           model.params['C(sex)[T.m]:SC'] * sex * SC + \
+           model.params['C(ko_parent)[T.MAT]:SC'] * ko_parent * SC + \
+           model.params['C(sex)[T.m]:C(ko_parent)[T.MAT]:SC'] * sex * ko_parent * SC
 
 # plot BW as a function of SC
 if DEBUG:
@@ -2220,6 +2225,10 @@ if DEBUG:
     plt.ylabel('BW (g)', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mSC.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mSC.svg'), bbox_inches='tight')
+
 
 ########################################################################################################################
 ### Model BW ~ C(sex) + C(ko_parent) + C(genotype) + SC * gWAT
