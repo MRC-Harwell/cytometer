@@ -1698,6 +1698,8 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import statsmodels.api as sm
+# import statsmodels.formula.api as smf
+import re
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -1719,6 +1721,13 @@ metainfo = pd.read_csv(metainfo_csv_file)
 metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
 metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
+# add litter and mother ID columns to the data
+for i, id in enumerate(metainfo['id']):
+    litter = re.sub('[a-zA-Z]', '', id)
+    metainfo.loc[i, 'litter'] = litter
+
+    metainfo.loc[i, 'mother_id'] = litter.split('.')[0]
 
 ## plot boxplots by group
 
@@ -1807,13 +1816,163 @@ idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) *
 if DEBUG:
     idx = idx_not_nan
     plt.clf()
-    plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k')
-    for i in np.where(idx)[0]:
-        plt.annotate(i, (metainfo['SC'][i], metainfo['gWAT'][i]))
-    plt.xlabel('SC')
-    plt.ylabel('gWAT')
+    plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k', label='All mice')
+    for i in idx:
+        plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['gWAT'][i]))
+    plt.xlabel('SC', fontsize=14)
+    plt.ylabel('gWAT', fontsize=14)
+    plt.legend()
+
+if DEBUG:
+    plt.clf()
+    plt.subplot(221)
+    idx = np.where((metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT'))[0]
+    plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k', label='f PAT')
+    for i in idx:
+        plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['gWAT'][i]))
+    plt.xlabel('SC', fontsize=14)
+    plt.ylabel('gWAT', fontsize=14)
+    plt.legend()
+
+    plt.subplot(222)
+    idx = np.where((metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT'))[0]
+    plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k', label='f MAT')
+    for i in idx:
+        plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['gWAT'][i]))
+    plt.xlabel('SC', fontsize=14)
+    plt.ylabel('gWAT', fontsize=14)
+    plt.legend()
+
+    plt.subplot(223)
+    idx = np.where((metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT'))[0]
+    plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k', label='m PAT')
+    for i in idx:
+        plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['gWAT'][i]))
+    plt.xlabel('SC', fontsize=14)
+    plt.ylabel('gWAT', fontsize=14)
+    plt.legend()
+
+    plt.subplot(224)
+    idx = np.where((metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT'))[0]
+    plt.scatter(metainfo['SC'][idx], metainfo['gWAT'][idx], color='k', label='m MAT')
+    for i in idx:
+        plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['gWAT'][i]))
+    plt.xlabel('SC', fontsize=14)
+    plt.ylabel('gWAT', fontsize=14)
+    plt.legend()
 
 # 64 and 65 are outliers.
+
+########################################################################################################################
+# Explore mice dataset in terms of weights alive and culled
+########################################################################################################################
+
+# plot weight when alive vs. weight after death
+idx = np.where(~np.isnan(metainfo['BW_alive']) * ~np.isnan(metainfo['BW']))[0]
+plt.clf()
+plt.scatter(metainfo['BW_alive'], metainfo['BW'])
+plt.plot([20, 50], [20, 50])
+for i in idx:
+    plt.annotate(i, (metainfo['BW_alive'][i], metainfo['BW'][i]))
+
+# plot weight evolution over time
+plt.clf()
+for i in idx:
+    plt.plot([metainfo['BW_alive_date'][i], metainfo['cull_age'][i]], [metainfo['BW_alive'][i], metainfo['BW'][i]])
+
+# plot SC vs. BW (females)
+if DEBUG:
+    plt.clf()
+    plt.subplot(121)
+
+    for litter in np.unique(metainfo['litter']):
+
+        # index of animals from this litter
+        idx = np.where((metainfo['litter'] == litter) * (metainfo['sex'] == 'f'))[0]
+
+        if (len(idx) > 1):
+
+            # order in order of increasing SC
+            idx_sort = np.argsort(metainfo['SC'][idx])
+
+            if np.array(metainfo['ko_parent'][idx])[0] == 'PAT':
+                color = 'k'
+            elif np.array(metainfo['ko_parent'][idx])[0] == 'MAT':
+                color = 'r'
+
+            plt.scatter(np.array(metainfo.loc[idx, 'SC'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
+            plt.plot(np.array(metainfo.loc[idx, 'SC'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
+
+            # if litter in ['19.1', '19.2']:
+                for i in idx:
+                    plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['BW'][i]))
+
+        plt.title('Females')
+        plt.xlabel('$m_{SC}$ (g)', fontsize=14)
+        plt.ylabel('BW (g)', fontsize=14)
+        plt.tick_params(labelsize=14)
+        plt.tight_layout()
+
+    # plot SC vs. BW (males)
+    plt.subplot(122)
+
+    for litter in np.unique(metainfo['litter']):
+
+        # index of animals from this litter
+        idx = np.where((metainfo['litter'] == litter) * (metainfo['sex'] == 'm'))[0]
+
+        if (len(idx) > 1):
+
+            # order in order of increasing SC
+            idx_sort = np.argsort(metainfo['SC'][idx])
+
+            if np.array(metainfo['ko_parent'][idx])[0] == 'PAT':
+                color = 'k'
+            elif np.array(metainfo['ko_parent'][idx])[0] == 'MAT':
+                color = 'r'
+
+            plt.scatter(np.array(metainfo.loc[idx, 'SC'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
+            plt.plot(np.array(metainfo.loc[idx, 'SC'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
+
+            # if litter in ['19.1', '19.2']:
+                for i in idx:
+                    plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['BW'][i]))
+
+        plt.title('Males')
+        plt.xlabel('$m_{SC}$ (g)', fontsize=14)
+        plt.ylabel('BW (g)', fontsize=14)
+        plt.tick_params(labelsize=14)
+        plt.tight_layout()
+
+# plot gWAT vs. BW (female)
+plt.clf()
+
+for litter in np.unique(metainfo['litter']):
+
+    # index of animals from this litter
+    idx = np.where((metainfo['litter'] == litter) * (metainfo['sex'] == 'f'))[0]
+
+    if (len(idx) > 1):
+
+        # order in order of increasing gWAT
+        idx_sort = np.argsort(metainfo['gWAT'][idx])
+
+        if np.array(metainfo['ko_parent'][idx])[0] == 'PAT':
+            color = 'k'
+        elif np.array(metainfo['ko_parent'][idx])[0] == 'MAT':
+            color = 'r'
+
+        plt.scatter(np.array(metainfo.loc[idx, 'gWAT'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
+        plt.plot(np.array(metainfo.loc[idx, 'gWAT'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
+
+        # if (litter == '19.2'):
+            for i in idx:
+                plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
+
+    plt.xlabel('$m_{G}$ (g)', fontsize=14)
+    plt.ylabel('BW (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
 
 ########################################################################################################################
 ### Model BW ~ (C(sex) + C(ko_parent) + C(genotype)) * (SC * gWAT)
@@ -2081,8 +2240,17 @@ idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) *
 # data that we are going to use
 idx_subset = idx_not_nan
 
+# Mixed-effects linear model
+aux = metainfo.loc[idx_subset, :]
+formula = 'BW ~ C(sex) * C(ko_parent) * gWAT'
+vc = {'litter': '0 + C(litter)'}  # litter is a random effected nested inside mother_id
+model = sm.formula.mixedlm(formula, vc_formula=vc, re_formula='1', groups='mother_id', data=aux).fit()
+print(model.summary())
+
+
 # fit linear model to data
-model = sm.formula.ols('BW ~ C(sex) * C(ko_parent) * gWAT', data=metainfo, subset=idx_subset).fit()
+formula = 'BW ~ C(sex) * C(ko_parent) * gWAT'
+model = sm.formula.ols(formula, data=metainfo, subset=idx_subset).fit()
 print(model.summary())
 
 #                             OLS Regression Results
@@ -2228,6 +2396,51 @@ if DEBUG:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mG.png'), bbox_inches='tight')
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mG.svg'), bbox_inches='tight')
+
+########################################################################################################################
+### Model BW ~ C(sex) * C(ko_parent) * gWAT
+### Add nested random effects: mother_id -> litter -> mouse
+# https://www.statsmodels.org/dev/generated/statsmodels.formula.api.mixedlm.html?highlight=mixedlm#statsmodels.formula.api.mixedlm
+### EXPERIMENTAL model
+########################################################################################################################
+
+# don't use lines with NaNs (these should be removed by fit(), but just in case)
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+
+# data that we are going to use
+idx_subset = idx_not_nan
+
+# Mixed-effects linear model
+aux = metainfo.loc[idx_subset, :]
+formula = 'BW ~ C(sex) * C(ko_parent) * gWAT'
+vc = {'litter': '0 + C(litter)'}  # litter is a random effected nested inside mother_id
+model = sm.formula.mixedlm(formula, vc_formula=vc, re_formula='1', groups='mother_id', data=aux).fit()
+print(model.summary())
+
+# /home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/statsmodels/base/model.py:1286: RuntimeWarning: invalid value encountered in sqrt
+#   bse_ = np.sqrt(np.diag(self.cov_params()))
+#                       Mixed Linear Model Regression Results
+# =================================================================================
+# Model:                      MixedLM         Dependent Variable:         BW
+# No. Observations:           76              Method:                     REML
+# No. Groups:                 8               Scale:                      9.5401
+# Min. group size:            1               Likelihood:                 -189.5050
+# Max. group size:            20              Converged:                  Yes
+# Mean group size:            9.5
+# ---------------------------------------------------------------------------------
+#                                       Coef.  Std.Err.   z    P>|z|  [0.025 0.975]
+# ---------------------------------------------------------------------------------
+# Intercept                             22.692    2.227 10.191 0.000  18.328 27.056
+# C(sex)[T.m]                            9.604    3.253  2.953 0.003   3.229 15.980
+# C(ko_parent)[T.MAT]                   -2.804    3.152 -0.889 0.374  -8.982  3.375
+# C(sex)[T.m]:C(ko_parent)[T.MAT]        7.670    6.151  1.247 0.212  -4.386 19.727
+# gWAT                                   4.437    2.195  2.022 0.043   0.136  8.739
+# C(sex)[T.m]:gWAT                       1.656    3.157  0.524 0.600  -4.533  7.844
+# C(ko_parent)[T.MAT]:gWAT               6.823    3.262  2.092 0.036   0.430 13.216
+# C(sex)[T.m]:C(ko_parent)[T.MAT]:gWAT -10.814    5.674 -1.906 0.057 -21.935  0.308
+# mother_id Var                          0.000
+# litter Var                             7.659
+# =================================================================================
 
 
 ########################################################################################################################
@@ -2556,6 +2769,52 @@ if DEBUG:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mSC_no_outliers.png'), bbox_inches='tight')
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mSC_no_outliers.svg'), bbox_inches='tight')
+
+
+########################################################################################################################
+### Model BW ~ C(sex) * C(ko_parent) * gWAT
+### Add nested random effects: mother_id -> litter -> mouse
+# https://www.statsmodels.org/dev/generated/statsmodels.formula.api.mixedlm.html?highlight=mixedlm#statsmodels.formula.api.mixedlm
+### EXPERIMENTAL model
+########################################################################################################################
+
+# don't use lines with NaNs (these should be removed by fit(), but just in case)
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+
+# data that we are going to use
+idx_subset = idx_not_nan
+
+# Mixed-effects linear model
+aux = metainfo.loc[idx_subset, :]
+formula = 'BW ~ C(sex) * C(ko_parent) * SC'
+vc = {'litter': '0 + C(litter)'}  # litter is a random effected nested inside mother_id
+model = sm.formula.mixedlm(formula, vc_formula=vc, re_formula='1', groups='mother_id', data=aux).fit()
+print(model.summary())
+
+# /home/rcasero/.conda/envs/cytometer_tensorflow/lib/python3.6/site-packages/pandas/core/computation/expressions.py:183: UserWarning: evaluating in Python space because the '*' operator is not supported by numexpr for the bool dtype, use '&' instead
+#   .format(op=op_str, alt_op=unsupported[op_str]))
+#                      Mixed Linear Model Regression Results
+# ===============================================================================
+# Model:                    MixedLM         Dependent Variable:         BW
+# No. Observations:         76              Method:                     REML
+# No. Groups:               8               Scale:                      13.6930
+# Min. group size:          1               Likelihood:                 -199.2320
+# Max. group size:          20              Converged:                  Yes
+# Mean group size:          9.5
+# -------------------------------------------------------------------------------
+#                                     Coef.  Std.Err.   z    P>|z|  [0.025 0.975]
+# -------------------------------------------------------------------------------
+# Intercept                           25.506    2.129 11.981 0.000  21.333 29.678
+# C(sex)[T.m]                          8.618    2.990  2.882 0.004   2.757 14.479
+# C(ko_parent)[T.MAT]                  2.191    3.433  0.638 0.523  -4.539  8.920
+# C(sex)[T.m]:C(ko_parent)[T.MAT]      4.530    4.099  1.105 0.269  -3.504 12.565
+# SC                                   1.437    2.447  0.587 0.557  -3.360  6.233
+# C(sex)[T.m]:SC                       4.643    3.661  1.268 0.205  -2.531 11.818
+# C(ko_parent)[T.MAT]:SC               4.991    5.019  0.994 0.320  -4.847 14.829
+# C(sex)[T.m]:C(ko_parent)[T.MAT]:SC -13.179    6.603 -1.996 0.046 -26.120 -0.238
+# mother_id Var                        2.805    3.306
+# litter Var                           4.728    2.638
+# ===============================================================================
 
 
 ########################################################################################################################
