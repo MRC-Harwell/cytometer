@@ -1265,6 +1265,60 @@ metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype
 quantiles = np.linspace(0, 1, 11)
 quantiles = quantiles[1:-1]
 
+# compute areas of the rough masks
+filename_rough_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_area_' + depot + '.npz')
+id_all = []
+rough_mask_area_all = []
+for i_file, json_file in enumerate(json_annotation_files):
+
+    print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
+
+    if not os.path.isfile(json_file):
+        print('Missing file')
+        continue
+
+    # open full resolution histology slide
+    ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
+    ndpi_file = os.path.join(ndpi_dir, os.path.basename(ndpi_file))
+    im = openslide.OpenSlide(ndpi_file)
+
+    # pixel size
+    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution'])
+    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+
+    # load mask
+    rough_mask_file = json_file.replace('_exp_0097_corrected.json', '_rough_mask.npz')
+    rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
+
+    if not os.path.isfile(rough_mask_file):
+        print('No mask: ' + rough_mask_file)
+
+    aux = np.load(rough_mask_file)
+    lores_istissue0 = aux['lores_istissue0']
+
+    # compute scaling factor between downsampled mask and original image
+    size_orig = np.array(im.dimensions)  # width, height
+    size_downsampled = np.array(lores_istissue0.shape)[::-1]  # width, height
+    downsample_factor = size_orig / size_downsampled  # width, height
+
+    # create dataframe for this image
+    rough_mask_area = np.count_nonzero(lores_istissue0) * (xres * downsample_factor[0]) * (yres * downsample_factor[1])  # m^2
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                          values=[rough_mask_area,], values_tag='SC_rough_mask_area',
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+
+    # add to output
+    id_all.append(id)
+    rough_mask_area_all.append(rough_mask_area)
+
+# save results
+np.savez_compressed(filename_rough_mask_area, id_all=id_all, rough_mask_area_all=rough_mask_area_all)
+
+
 # load or compute area quantiles
 filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
 if os.path.isfile(filename_quantiles):
@@ -1698,8 +1752,11 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import statsmodels.api as sm
+import glob
 # import statsmodels.formula.api as smf
 import re
+import cytometer.data
+import openslide
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -1904,8 +1961,8 @@ if DEBUG:
             plt.plot(np.array(metainfo.loc[idx, 'SC'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
 
             # if litter in ['19.1', '19.2']:
-                for i in idx:
-                    plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['BW'][i]))
+            for i in idx:
+                plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['BW'][i]))
 
         plt.title('Females')
         plt.xlabel('$m_{SC}$ (g)', fontsize=14)
@@ -1935,8 +1992,8 @@ if DEBUG:
             plt.plot(np.array(metainfo.loc[idx, 'SC'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
 
             # if litter in ['19.1', '19.2']:
-                for i in idx:
-                    plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['BW'][i]))
+            for i in idx:
+                plt.annotate(metainfo['id'][i], (metainfo['SC'][i], metainfo['BW'][i]))
 
         plt.title('Males')
         plt.xlabel('$m_{SC}$ (g)', fontsize=14)
