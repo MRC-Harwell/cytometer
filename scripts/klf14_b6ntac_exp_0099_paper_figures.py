@@ -2723,7 +2723,7 @@ if DEBUG:
 
 ########################################################################################################################
 ### BW ~ C(sex) * C(ko_parent) * SC
-### VALID model, outliers removed
+### VALID model, 5 outliers removed
 ########################################################################################################################
 
 # don't use lines with NaNs (these should be removed by fit(), but just in case)
@@ -2731,7 +2731,6 @@ idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) *
 
 # SC outliers
 idx_outliers = [35, 36, 37, 64, 65]
-# idx_outliers = [35, 36, 64, 65]
 
 # data that we are going to use
 idx_subset = list(set(idx_not_nan) - set(idx_outliers))
@@ -2889,6 +2888,173 @@ if DEBUG:
 
 
 ########################################################################################################################
+### BW ~ C(sex) * C(ko_parent) * SC
+### VALID model, 2 outliers removed
+########################################################################################################################
+
+# don't use lines with NaNs (these should be removed by fit(), but just in case)
+idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
+
+# SC outliers
+idx_outliers = [35, 36, 65]
+
+# data that we are going to use
+idx_subset = list(set(idx_not_nan) - set(idx_outliers))
+
+# fit linear model to data
+model = sm.formula.ols('BW ~ C(sex) * C(ko_parent) * SC', data=metainfo, subset=idx_subset).fit()
+print(model.summary())
+
+#                             OLS Regression Results
+# ==============================================================================
+# Dep. Variable:                     BW   R-squared:                       0.743
+# Model:                            OLS   Adj. R-squared:                  0.715
+# Method:                 Least Squares   F-statistic:                     26.85
+# Date:                Wed, 04 Mar 2020   Prob (F-statistic):           6.67e-17
+# Time:                        02:52:03   Log-Likelihood:                -201.43
+# No. Observations:                  73   AIC:                             418.9
+# Df Residuals:                      65   BIC:                             437.2
+# Df Model:                           7
+# Covariance Type:            nonrobust
+# ======================================================================================================
+#                                          coef    std err          t      P>|t|      [0.025      0.975]
+# ------------------------------------------------------------------------------------------------------
+# Intercept                             21.7064      1.769     12.273      0.000      18.174      25.239
+# C(sex)[T.m]                           12.2438      3.028      4.044      0.000       6.197      18.291
+# C(ko_parent)[T.MAT]                    3.6077      2.575      1.401      0.166      -1.535       8.751
+# C(sex)[T.m]:C(ko_parent)[T.MAT]        5.6530      4.064      1.391      0.169      -2.464      13.770
+# SC                                     7.4582      3.031      2.460      0.017       1.404      13.512
+# C(sex)[T.m]:SC                        -1.4961      4.225     -0.354      0.724      -9.934       6.942
+# C(ko_parent)[T.MAT]:SC                 7.5800      6.199      1.223      0.226      -4.801      19.961
+# C(sex)[T.m]:C(ko_parent)[T.MAT]:SC   -18.8194      7.520     -2.503      0.015     -33.838      -3.801
+# ==============================================================================
+# Omnibus:                        5.698   Durbin-Watson:                   1.666
+# Prob(Omnibus):                  0.058   Jarque-Bera (JB):                4.862
+# Skew:                           0.571   Prob(JB):                       0.0879
+# Kurtosis:                       3.544   Cond. No.                         34.6
+# ==============================================================================
+# Warnings:
+# [1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+
+
+print(model.pvalues)
+
+# partial regression and influence plots
+if DEBUG:
+    sm.graphics.plot_partregress_grid(model)
+    sm.graphics.influence_plot(model, criterion="cooks")
+
+def model_line(model, sex, ko_parent, SC):
+    sex = np.float(sex == 'm')
+    ko_parent = np.float(ko_parent == 'MAT')
+
+    return model.params['Intercept'] + \
+           model.params['C(sex)[T.m]'] * sex + \
+           model.params['C(ko_parent)[T.MAT]'] * ko_parent + \
+           model.params['C(sex)[T.m]:C(ko_parent)[T.MAT]'] * sex * ko_parent + \
+           model.params['SC'] * SC + \
+           model.params['C(sex)[T.m]:SC'] * sex * SC + \
+           model.params['C(ko_parent)[T.MAT]:SC'] * ko_parent * SC + \
+           model.params['C(sex)[T.m]:C(ko_parent)[T.MAT]:SC'] * sex * ko_parent * SC
+
+# plot BW as a function of SC
+if DEBUG:
+
+    annotate = False
+    plt.clf()
+
+    # f PAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f PAT WT', color='C0', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f PAT Het', color='C0')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='f', ko_parent='PAT', SC=SC)
+    plt.plot(SC, BW, color='C0', linewidth=3)
+
+    # f MAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f MAT WT', color='C2', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f MAT Het', color='C2')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='f', ko_parent='MAT', SC=SC)
+    plt.plot(SC, BW, color='C2', linewidth=3)
+
+    # m PAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m PAT WT', color='k', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m PAT Het', color='k')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='m', ko_parent='PAT', SC=SC)
+    plt.plot(SC, BW, color='k', linewidth=3)
+
+    # m MAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m MAT WT', color='C3', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m MAT Het', color='C3')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='m', ko_parent='MAT', SC=SC)
+    plt.plot(SC, BW, color='C3', linewidth=3)
+
+    plt.legend()
+
+    plt.xlabel('m$_{SC}$ (g)', fontsize=14)
+    plt.ylabel('BW (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mSC_3_outliers.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_model_mSC_3_outliers.svg'), bbox_inches='tight')
+
+
+########################################################################################################################
 ### Model BW ~ C(sex) * C(ko_parent) * gWAT
 ### Add nested random effects: mother_id -> litter -> mouse
 # https://www.statsmodels.org/dev/generated/statsmodels.formula.api.mixedlm.html?highlight=mixedlm#statsmodels.formula.api.mixedlm
@@ -2932,6 +3098,115 @@ print(model.summary())
 # mother_id Var                        2.805    3.306
 # litter Var                           4.728    2.638
 # ===============================================================================
+
+def model_line(model, sex, ko_parent, SC):
+    sex = np.float(sex == 'm')
+    ko_parent = np.float(ko_parent == 'MAT')
+
+    return model.params['Intercept'] + \
+           model.params['C(sex)[T.m]'] * sex + \
+           model.params['C(ko_parent)[T.MAT]'] * ko_parent + \
+           model.params['C(sex)[T.m]:C(ko_parent)[T.MAT]'] * sex * ko_parent + \
+           model.params['SC'] * SC + \
+           model.params['C(sex)[T.m]:SC'] * sex * SC + \
+           model.params['C(ko_parent)[T.MAT]:SC'] * ko_parent * SC + \
+           model.params['C(sex)[T.m]:C(ko_parent)[T.MAT]:SC'] * sex * ko_parent * SC
+
+# plot BW as a function of SC
+if DEBUG:
+
+    annotate = False
+    plt.clf()
+
+    # f PAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f PAT WT', color='C0', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f PAT Het', color='C0')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='f', ko_parent='PAT', SC=SC)
+    plt.plot(SC, BW, color='C0', linewidth=3)
+
+    # f MAT
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f MAT WT', color='C2', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='f MAT Het', color='C2')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='f', ko_parent='MAT', SC=SC)
+    plt.plot(SC, BW, color='C2', linewidth=3)
+
+    # m PAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m PAT WT', color='k', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m PAT Het', color='k')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='m', ko_parent='PAT', SC=SC)
+    plt.plot(SC, BW, color='k', linewidth=3)
+
+    # m MAT
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m MAT WT', color='C3', facecolor='none')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    plt.scatter(metainfo['SC'][idx], metainfo['BW'][idx], label='m MAT Het', color='C3')
+    if annotate:
+        for i in np.where(idx)[0]:
+            plt.annotate(i, (metainfo['SC'][i], metainfo['BW'][i]))
+
+    idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
+    SC = np.linspace(np.min(metainfo['SC'][idx]), np.max(metainfo['SC'][idx]))
+    BW = model_line(model, sex='m', ko_parent='MAT', SC=SC)
+    plt.plot(SC, BW, color='C3', linewidth=3)
+
+    plt.legend()
+
+    plt.xlabel('m$_{SC}$ (g)', fontsize=14)
+    plt.ylabel('BW (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_mixed_model_mSC.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_bw_mixed_model_mSC.svg'), bbox_inches='tight')
 
 
 ########################################################################################################################
