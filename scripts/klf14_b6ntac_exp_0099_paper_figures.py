@@ -1275,7 +1275,7 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     if not os.path.isfile(json_file):
         print('Missing file')
-        continue
+        # continue
 
     # open full resolution histology slide
     ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
@@ -1297,6 +1297,13 @@ for i_file, json_file in enumerate(json_annotation_files):
     aux = np.load(rough_mask_file)
     lores_istissue0 = aux['lores_istissue0']
 
+    if DEBUG:
+        foo = aux['im_downsampled']
+        foo = PIL.Image.fromarray(foo)
+        foo = foo.resize(tuple((np.round(np.array(foo.size[0:2]) / 4)).astype(np.int)))
+        plt.imshow(foo)
+        plt.title(os.path.basename(ndpi_file))
+
     # compute scaling factor between downsampled mask and original image
     size_orig = np.array(im.dimensions)  # width, height
     size_downsampled = np.array(lores_istissue0.shape)[::-1]  # width, height
@@ -1310,6 +1317,18 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     # mouse ID as a string
     id = df_common['id'].values[0]
+
+    # correct area because most slides contain two slices, but some don't
+    if depot == 'sqwat' and not (id in ['16.2d', '17.1e', '17.2g', '16.2e', '18.1f', '37.4a', '37.2e']):
+        # two slices in the slide, so slice area is approx. one half
+        rough_mask_area /= 2
+    elif depot == 'gwat' and not (id in ['36.1d', '16.2a', '16.2b', '16.2c', '16.2d', '16.2e', '17.1b', '17.1d',
+                                         '17.1e', '17.1f', '17.2c', '17.2d', '17.2f', '17.2g', '18.1b', '18.1c',
+                                         '18.1d', '18.2a', '18.2c', '18.2d', '18.2f', '18.2g', '18.3c', '19.1a',
+                                         '19.2e', '19.2f', '19.2g', '36.3d', '37.2e', '37.2f', '37.2g', '37.2h',
+                                         '37.3a', '37.4a', '37.4b', '39.2d']):
+        # two slices in the slide, so slice area is approx. one half
+        rough_mask_area /= 2
 
     # add to output
     id_all.append(id)
@@ -1752,11 +1771,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import statsmodels.api as sm
-import glob
-# import statsmodels.formula.api as smf
 import re
-import cytometer.data
-import openslide
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -1785,6 +1800,27 @@ for i, id in enumerate(metainfo['id']):
     metainfo.loc[i, 'litter'] = litter
 
     metainfo.loc[i, 'mother_id'] = litter.split('.')[0]
+
+# add rough mask area column to the data
+depot = 'sqwat'
+filename_rough_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_area_' + depot + '.npz')
+
+aux = np.load(filename_rough_mask_area)
+id_all = aux['id_all']
+rough_mask_area_all = aux['rough_mask_area_all']
+for id, rough_mask_area in zip(id_all, rough_mask_area_all):
+    metainfo.loc[metainfo['id'] == id, 'SC_rough_mask_area'] = rough_mask_area
+
+# add rough mask area column to the data
+depot = 'gwat'
+filename_rough_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_area_' + depot + '.npz')
+
+aux = np.load(filename_rough_mask_area)
+id_all = aux['id_all']
+rough_mask_area_all = aux['rough_mask_area_all']
+for id, rough_mask_area in zip(id_all, rough_mask_area_all):
+    metainfo.loc[metainfo['id'] == id, 'gWAT_rough_mask_area'] = rough_mask_area
+
 
 ## plot boxplots by group
 
@@ -1919,6 +1955,30 @@ if DEBUG:
     plt.legend()
 
 # 64 and 65 are outliers.
+
+########################################################################################################################
+### Plot SC and gWAT vs. corresponding rough mask areas
+########################################################################################################################
+
+if DEBUG:
+    plt.clf()
+    plt.subplot(121)
+    plt.scatter(np.power(metainfo['SC_rough_mask_area'] * 1e6, 3/2), metainfo['SC'])
+    # for i in range(metainfo.shape[0]):
+    #     plt.annotate(metainfo['id'][i], (np.power(metainfo['SC_rough_mask_area'][i] * 1e6, 3/2), metainfo['SC'][i]))
+
+    plt.xlabel('Subcutaneous vol from slice area mm$^3$', fontsize=14)
+    plt.ylabel('m$_{SC}$ (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+
+    plt.subplot(122)
+    plt.scatter(np.power(metainfo['gWAT_rough_mask_area'] * 1e6, 3/2), metainfo['gWAT'])
+    # for i in range(metainfo.shape[0]):
+    #     plt.annotate(metainfo['id'][i], (metainfo['gWAT_rough_mask_area'][i] * 1e6, metainfo['gWAT'][i]))
+
+    plt.xlabel('Gonadal slice area mm$^2$', fontsize=14)
+    plt.ylabel('m$_{G}$ (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
 
 ########################################################################################################################
 # Explore mice dataset in terms of weights alive and culled
