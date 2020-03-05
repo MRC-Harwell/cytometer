@@ -1210,9 +1210,163 @@ if DEBUG:
 ## Check whether manual correction of pipeline results makes a difference
 ########################################################################################################################
 
-@@@
+# TODO @@@@@@@@
 
+import matplotlib.pyplot as plt
+import cytometer.data
+from shapely.geometry import Polygon
+import openslide
+import numpy as np
+import scipy.stats
+import pandas as pd
+from mlxtend.evaluate import permutation_test
+from statsmodels.stats.multitest import multipletests
+import math
 
+# directories
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+
+DEBUG = False
+
+depot = 'sqwat'
+# depot = 'gwat'
+
+permutation_sample_size = 9  # the factorial of this number is the number of repetitions in the permutation tests
+
+# list of annotation files for this depot
+json_annotation_files = json_annotation_files_dict[depot]
+
+# modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
+json_pipeline_annotation_files = [x.replace('.json', '_exp_0097_corrected_monolayer_left.json') for x in json_annotation_files]
+json_pipeline_annotation_files = [os.path.join(annotations_dir, x) for x in json_pipeline_annotation_files]
+
+# modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
+json_refined_annotation_files = [x.replace('.json', '_exp_0097_refined_left.json') for x in json_annotation_files]
+json_refined_annotation_files = [os.path.join(annotations_dir, x) for x in json_refined_annotation_files]
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# make sure that in the boxplots PAT comes before MAT
+metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
+quantiles = np.linspace(0, 1, 11)
+quantiles = quantiles[1:-1]
+
+pipeline_area_q_all = []
+refined_area_q_all = []
+pipeline_area_mean_all = []
+refined_area_mean_all = []
+id_all = []
+for i_file, (json_pipeline_annotation_file, json_refined_annotation_file) in enumerate(zip(json_pipeline_annotation_files, json_refined_annotation_files)):
+
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_pipeline_annotation_file),
+                                                          values=[i_file, ], values_tag='i_file',
+                                                          tags_to_keep=['id', 'ko_parent', 'genotype', 'sex',
+                                                                        'BW', 'gWAT', 'SC'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+
+    # we have only refined some of the segmentations for testing
+    if not id in ['16.2a', '16.2b', '16.2c', '16.2d', '16.2e', '16.2f', '17.1a', '17.1b', '17.1c', '17.1d', '17.1e',
+                  '17.1f', '17.2a', '17.2b', '17.2c', '17.2d', '17.2f', '17.2g', '18.1a', '18.1b', '18.1c', '18.1d']:
+       continue
+
+    print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ')
+    if os.path.isfile(json_pipeline_annotation_file):
+        print('\t' + os.path.basename(json_pipeline_annotation_file))
+    else:
+        print('\t' + os.path.basename(json_pipeline_annotation_file) + ' ... missing')
+    if os.path.isfile(json_refined_annotation_file):
+        print('\t' + os.path.basename(json_refined_annotation_file))
+    else:
+        print('\t' + os.path.basename(json_refined_annotation_file) + ' ... missing')
+
+    # ndpi file that corresponds to this .json file
+    ndpi_file = json_pipeline_annotation_file.replace('_exp_0097_corrected_monolayer_left.json', '.ndpi')
+    ndpi_file = ndpi_file.replace(annotations_dir, ndpi_dir)
+
+    # open full resolution histology slide
+    im = openslide.OpenSlide(ndpi_file)
+
+    # pixel size
+    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution'])  # m
+    yres = 1e-2 / float(im.properties['tiff.YResolution'])  # m
+
+    # ko = df_common['ko_parent'].values[0]
+    # genotype = df_common['genotype'].values[0]
+    # sex = df_common['sex'].values[0]
+    # bw = df_common['BW'].values[0]
+    # gwat = df_common['gWAT'].values[0]
+    # sc = df_common['SC'].values[0]
+
+    # read contours from AIDA annotations
+    pipeline_contours = cytometer.data.aida_get_contours(json_pipeline_annotation_file, layer_name='White adipocyte.*')
+    refined_contours = cytometer.data.aida_get_contours(json_refined_annotation_file, layer_name='White adipocyte.*')
+
+    # compute area of each contour
+    pipeline_areas = [Polygon(c).area * xres * yres for c in pipeline_contours]  # (um^2)
+    refined_areas = [Polygon(c).area * xres * yres for c in refined_contours]  # (um^2)
+
+    # compute HD quantiles
+    pipeline_area_q = scipy.stats.mstats.hdquantiles(pipeline_areas, prob=quantiles, axis=0)
+    refined_area_q = scipy.stats.mstats.hdquantiles(refined_areas, prob=quantiles, axis=0)
+
+    # compute average cell size
+    pipeline_area_mean = np.mean(pipeline_areas)
+    refined_area_mean = np.mean(refined_areas)
+
+    pipeline_area_q_all.append(pipeline_area_q)
+    refined_area_q_all.append(refined_area_q)
+    pipeline_area_mean_all.append(pipeline_area_mean)
+    refined_area_mean_all.append(refined_area_mean)
+    id_all.append(id)
+
+    print('Removed cells: %.2f' % (1 - len(refined_areas) / len(pipeline_areas)))
+    print((np.array(pipeline_area_q) - np.array(refined_area_q)) * 1e12)
+
+    if DEBUG:
+        plt.clf()
+        plt.plot(quantiles, pipeline_area_q * 1e12, label='Pipeline', linewidth=3)
+        plt.plot(quantiles, refined_area_q * 1e12, label='Refined', linewidth=3)
+        plt.tick_params(axis='both', which='major', labelsize=14)
+        plt.xlabel('Quantiles', fontsize=14)
+        plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+        plt.legend(fontsize=12)
+
+# convert the list of vectors into a matrix
+pipeline_area_q_all = np.vstack(pipeline_area_q_all)
+refined_area_q_all = np.vstack(refined_area_q_all)
+refined_area_mean_all = np.array(refined_area_mean_all)
+pipeline_area_mean_all = np.array(pipeline_area_mean_all)
+
+if DEBUG:
+    plt.clf()
+    pipeline_area_q_mean = np.mean(pipeline_area_q_all, axis=0)
+    for i in range(pipeline_area_q_all.shape[0]):
+        plt.plot(quantiles, 100 * (refined_area_q_all[i, :] - pipeline_area_q_all[i, :]) / pipeline_area_q_mean, label=id_all[i], linewidth=3)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.xlabel('Quantiles', fontsize=14)
+    plt.ylabel('Area change with refinement (%)', fontsize=14)
+    plt.legend(fontsize=12)
+    plt.tight_layout()
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot(100 * (refined_area_mean_all - pipeline_area_mean_all) / pipeline_area_mean_all, labels=['Mean size'])
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.ylabel('Area change with refinement (%)', fontsize=14)
+    plt.tight_layout()
 
 ########################################################################################################################
 ## Plots of segmented full slides with quantile colourmaps
@@ -2080,7 +2234,7 @@ for litter in np.unique(metainfo['litter']):
     # index of animals from this litter
     idx = np.where((metainfo['litter'] == litter) * (metainfo['sex'] == 'f'))[0]
 
-    if (len(idx) > 1):
+    if len(idx) > 1:
 
         # order in order of increasing gWAT
         idx_sort = np.argsort(metainfo['gWAT'][idx])
@@ -2094,8 +2248,8 @@ for litter in np.unique(metainfo['litter']):
         plt.plot(np.array(metainfo.loc[idx, 'gWAT'])[idx_sort], np.array(metainfo.loc[idx, 'BW'])[idx_sort], color=color)
 
         # if (litter == '19.2'):
-            for i in idx:
-                plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
+        for i in idx:
+            plt.annotate(i, (metainfo['gWAT'][i], metainfo['BW'][i]))
 
     plt.xlabel('$m_{G}$ (g)', fontsize=14)
     plt.ylabel('BW (g)', fontsize=14)
