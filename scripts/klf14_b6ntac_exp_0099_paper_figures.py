@@ -3304,6 +3304,16 @@ fat_density_gWAT = 0.9029  # g / cm^3
 metainfo['SC_kN'] = metainfo['SC'] / (fat_density_SC * 1e6 * metainfo['SC_vol_mean'])
 metainfo['gWAT_kN'] = metainfo['gWAT'] / (fat_density_gWAT * 1e6 * metainfo['gWAT_vol_mean'])
 
+# make a group variable for PAT WT, PAT Het, MAT WT, MAT Het
+idx = (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+metainfo.loc[idx, 'ko_parent_genotype'] = 'PAT_WT'
+idx = (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+metainfo.loc[idx, 'ko_parent_genotype'] = 'PAT_Het'
+idx = (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
+metainfo.loc[idx, 'ko_parent_genotype'] = 'MAT_WT'
+idx = (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
+metainfo.loc[idx, 'ko_parent_genotype'] = 'MAT_Het'
+
 if DEBUG:
     plt.clf()
     plt.scatter(metainfo['gWAT_vol_mean'], metainfo['gWAT_vol_median'])
@@ -3711,116 +3721,6 @@ if DEBUG:
     sm.graphics.plot_partregress_grid(model)
     sm.graphics.influence_plot(model, criterion="cooks")
 
-# def model_line(model, sex, ko_parent, gWAT_vol_mean_1e12):
-#     sex = np.float(sex == 'm')
-#     ko_parent = np.float(ko_parent == 'MAT')
-#
-#     return model.params['Intercept'] + \
-#            model.params['C(ko_parent)[T.MAT]'] * ko_parent + \
-#            model.params['C(sex)[T.m]'] * sex + \
-#            model.params['C(ko_parent)[T.MAT]:C(sex)[T.m]'] * ko_parent * sex + \
-#            model.params['gWAT_vol_mean_1e12'] * gWAT_vol_mean_1e12 + \
-#            model.params['gWAT_vol_mean_1e12:C(ko_parent)[T.MAT]'] * gWAT_vol_mean_1e12 * ko_parent + \
-#            model.params['gWAT_vol_mean_1e12:C(sex)[T.m]'] * gWAT_vol_mean_1e12 * sex + \
-#            model.params['gWAT_vol_mean_1e12:C(ko_parent)[T.MAT]:C(sex)[T.m]'] * gWAT_vol_mean_1e12 * ko_parent * sex
-#
-#
-# # plot BW as a function of gWAT
-# if DEBUG:
-#
-#     annotate = False
-#     plt.clf()
-#
-#     # f PAT
-#     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='f PAT WT', color='C0', facecolor='none')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='f PAT Het', color='C0')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     gWAT = model_line(model, sex='f', ko_parent='PAT', gWAT_vol_mean_1e12=gWAT_vol_mean_1e12)
-#     plt.plot(gWAT_vol_mean_1e12, gWAT, color='C0', linewidth=3)
-#
-#     # f MAT
-#     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='f MAT WT', color='C2', facecolor='none')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='f MAT Het', color='C2')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     gWAT = model_line(model, sex='f', ko_parent='MAT', gWAT_vol_mean_1e12=gWAT_vol_mean_1e12)
-#     plt.plot(gWAT_vol_mean_1e12, gWAT, color='C2', linewidth=3)
-#
-#     # m PAT
-#     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='m PAT WT', color='k', facecolor='none')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='m PAT Het', color='k')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     gWAT = model_line(model, sex='m', ko_parent='PAT', gWAT_vol_mean_1e12=gWAT_vol_mean_1e12)
-#     plt.plot(gWAT_vol_mean_1e12, gWAT, color='k', linewidth=3)
-#
-#     # m MAT
-#     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='m MAT WT', color='C3', facecolor='none')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     plt.scatter(metainfo['gWAT_vol_mean_1e12'][idx], metainfo['gWAT'][idx], label='m MAT Het', color='C3')
-#     if annotate:
-#         for i in np.where(idx)[0]:
-#             plt.annotate(i, (metainfo['gWAT_vol_mean_1e12'][i], metainfo['gWAT'][i]))
-#
-#     idx = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
-#     gWAT_vol_mean_1e12 = np.linspace(np.min(metainfo['gWAT_vol_mean_1e12'][idx]), np.max(metainfo['gWAT_vol_mean_1e12'][idx]))
-#     gWAT = model_line(model, sex='m', ko_parent='MAT', gWAT_vol_mean_1e12=gWAT_vol_mean_1e12)
-#     plt.plot(gWAT_vol_mean_1e12, gWAT, color='C3', linewidth=3)
-#
-#     plt.legend()
-#
-#     plt.xlabel(r'$\overline{V}_{gWAT}$ (g)', fontsize=14)
-#     plt.ylabel('m$_{gWAT}$ (g)', fontsize=14)
-#     plt.tick_params(labelsize=14)
-#     plt.tight_layout()
-#
-#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_gWAT_model_Vm.png'), bbox_inches='tight')
-#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_gWAT_model_Vm.svg'), bbox_inches='tight')
-
 
 ########################################################################################################################
 ### Model SC_vol_mean_1e18 ~ C(ko_parent) * C(sex) * C(genotype)
@@ -4207,3 +4107,27 @@ print(model.pvalues)
 # ANOVA table
 aov_table = sm.stats.anova_lm(model, typ=2)
 print(aov_table)
+
+########################################################################################################################
+### ANOVA testing of Vm w.r.t. ko_parent and genotype
+########################################################################################################################
+
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.multicomp import MultiComparison
+
+idx_not_nan = ~np.isnan(metainfo['gWAT_vol_mean_1e18'])
+idx_f = metainfo['sex'] == 'f'
+idx_m = metainfo['sex'] == 'm'
+
+# female: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_f)[0]
+mc = MultiComparison(metainfo.loc[idx, 'gWAT_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent_genotype'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+# male: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_m)[0]
+mc = MultiComparison(metainfo.loc[idx, 'gWAT_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent_genotype'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
