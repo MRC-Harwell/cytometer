@@ -3218,6 +3218,8 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import statsmodels.api as sm
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.multicomp import MultiComparison
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -4109,25 +4111,66 @@ aov_table = sm.stats.anova_lm(model, typ=2)
 print(aov_table)
 
 ########################################################################################################################
-### ANOVA testing of Vm w.r.t. ko_parent and genotype
+### ANOVA testing of gWAT Vm w.r.t. ko_parent and genotype
 ########################################################################################################################
-
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-from statsmodels.stats.multicomp import MultiComparison
 
 idx_not_nan = ~np.isnan(metainfo['gWAT_vol_mean_1e18'])
 idx_f = metainfo['sex'] == 'f'
 idx_m = metainfo['sex'] == 'm'
 
-# female: TUKEY’S HSD POST-HOC COMPARISON
+# gWAT female PAT, MAT, WT, Het: TUKEY’S HSD POST-HOC COMPARISON
 idx = np.where(idx_not_nan * idx_f)[0]
 mc = MultiComparison(metainfo.loc[idx, 'gWAT_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent_genotype'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
 
-# male: TUKEY’S HSD POST-HOC COMPARISON
+# gWAT male PAT, MAT, WT, Het: TUKEY’S HSD POST-HOC COMPARISON
 idx = np.where(idx_not_nan * idx_m)[0]
 mc = MultiComparison(metainfo.loc[idx, 'gWAT_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent_genotype'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+# gWAT female, PAT vs MAT: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_f)[0]
+mc = MultiComparison(metainfo.loc[idx, 'gWAT_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+# gWAT male, PAT vs MAT: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_m)[0]
+mc = MultiComparison(metainfo.loc[idx, 'gWAT_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+########################################################################################################################
+### ANOVA testing of SC Vm w.r.t. ko_parent and genotype
+########################################################################################################################
+
+idx_not_nan = ~np.isnan(metainfo['SC_vol_mean_1e18'])
+idx_f = metainfo['sex'] == 'f'
+idx_m = metainfo['sex'] == 'm'
+
+# SC female PAT, MAT, WT, Het: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_f)[0]
+mc = MultiComparison(metainfo.loc[idx, 'SC_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent_genotype'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+# SC male PAT, MAT, WT, Het: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_m)[0]
+mc = MultiComparison(metainfo.loc[idx, 'SC_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent_genotype'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+# SC female, PAT vs MAT: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_f)[0]
+mc = MultiComparison(metainfo.loc[idx, 'SC_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+# SC male, PAT vs MAT: TUKEY’S HSD POST-HOC COMPARISON
+idx = np.where(idx_not_nan * idx_m)[0]
+mc = MultiComparison(metainfo.loc[idx, 'SC_vol_mean_1e18'], metainfo.loc[idx, 'ko_parent'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
 
