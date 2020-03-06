@@ -1210,8 +1210,6 @@ if DEBUG:
 ## Check whether manual correction of pipeline results makes a difference
 ########################################################################################################################
 
-# TODO @@@@@@@@
-
 import matplotlib.pyplot as plt
 import cytometer.data
 from shapely.geometry import Polygon
