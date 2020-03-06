@@ -1985,84 +1985,6 @@ for id, rough_mask_area in zip(id_all, rough_mask_area_all):
     metainfo.loc[metainfo['id'] == id, 'gWAT_rough_mask_area'] = rough_mask_area
 
 
-## plot boxplots by group
-
-# subgroups
-idx_f_pat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_f_pat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
-idx_f_mat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_f_mat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
-idx_m_pat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_m_pat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
-idx_m_mat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT') * ~np.isnan(metainfo.BW)
-idx_m_mat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het') * ~np.isnan(metainfo.BW)
-
-# body weight
-bw_f_pat_wt = metainfo.BW[idx_f_pat_wt]
-bw_f_pat_het = metainfo.BW[idx_f_pat_het]
-bw_f_mat_wt = metainfo.BW[idx_f_mat_wt]
-bw_f_mat_het = metainfo.BW[idx_f_mat_het]
-bw_m_pat_wt = metainfo.BW[idx_m_pat_wt]
-bw_m_pat_het = metainfo.BW[idx_m_pat_het]
-bw_m_mat_wt = metainfo.BW[idx_m_mat_wt]
-bw_m_mat_het = metainfo.BW[idx_m_mat_het]
-
-# SQWAT depot weight
-sq_f_pat_wt = metainfo.SC[idx_f_pat_wt]
-sq_f_pat_het = metainfo.SC[idx_f_pat_het]
-sq_f_mat_wt = metainfo.SC[idx_f_mat_wt]
-sq_f_mat_het = metainfo.SC[idx_f_mat_het]
-sq_m_pat_wt = metainfo.SC[idx_m_pat_wt]
-sq_m_pat_het = metainfo.SC[idx_m_pat_het]
-sq_m_mat_wt = metainfo.SC[idx_m_mat_wt]
-sq_m_mat_het = metainfo.SC[idx_m_mat_het]
-
-# GWAT depot weight
-g_f_pat_wt = metainfo.gWAT[idx_f_pat_wt]
-g_f_pat_het = metainfo.gWAT[idx_f_pat_het]
-g_f_mat_wt = metainfo.gWAT[idx_f_mat_wt]
-g_f_mat_het = metainfo.gWAT[idx_f_mat_het]
-g_m_pat_wt = metainfo.gWAT[idx_m_pat_wt]
-g_m_pat_het = metainfo.gWAT[idx_m_pat_het]
-g_m_mat_wt = metainfo.gWAT[idx_m_mat_wt]
-g_m_mat_het = metainfo.gWAT[idx_m_mat_het]
-
-if DEBUG:
-    plt.clf()
-    plt.subplot(131)
-    plt.boxplot(
-        (bw_f_pat_wt, bw_f_pat_het, bw_f_mat_wt, bw_f_mat_het, bw_m_pat_wt, bw_m_pat_het, bw_m_mat_wt, bw_m_mat_het),
-        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
-        notch=False
-    )
-    plt.xticks(rotation=45)
-    plt.title('Body')
-    plt.ylabel('Weight (g)', fontsize=14)
-    plt.subplot(132)
-    plt.boxplot(
-        (sq_f_pat_wt, sq_f_pat_het, sq_f_mat_wt, sq_f_mat_het, sq_m_pat_wt, sq_m_pat_het, sq_m_mat_wt, sq_m_mat_het),
-        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
-        notch=False
-    )
-    plt.xticks(rotation=45)
-    plt.title('SQWAT')
-    plt.subplot(133)
-    plt.boxplot(
-        (g_f_pat_wt, g_f_pat_het, g_f_mat_wt, g_f_mat_het, g_m_pat_wt, g_m_pat_het, g_m_mat_wt, g_m_mat_het),
-        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
-        notch=False
-    )
-    plt.xticks(rotation=45)
-    plt.title('GWAT')
-    plt.tight_layout()
-
-if DEBUG:
-    plt.clf()
-    plt.scatter(np.concatenate((bw_f_pat_wt, bw_m_pat_wt)), np.concatenate((sq_f_pat_wt, sq_m_pat_wt)))
-    plt.scatter(np.concatenate((bw_f_mat_wt, bw_m_mat_wt)), np.concatenate((sq_f_mat_wt, sq_m_mat_wt)))
-    plt.tight_layout()
-
-
 ########################################################################################################################
 ### Plot SC vs. gWAT to look for outliers
 ########################################################################################################################
@@ -3429,21 +3351,28 @@ ko_gwat = aux['ko_all']
 genotype_gwat = aux['genotype_all']
 sex_gwat = aux['sex_all']
 
+# add a new column to the metainfo frame with the mean cell area for SQWAT
+metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
+metainfo.loc[metainfo_idx, 'SC_area_mean'] = area_mean_sqwat  # m^2
+metainfo['SC_area_mean_1e12'] = metainfo['SC_area_mean'] * 1e12  # um^2
+
+# add a new column to the metainfo frame with the mean cell area for gWAT
+metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
+metainfo.loc[metainfo_idx, 'gWAT_area_mean'] = area_mean_gwat  # m^2
+metainfo['gWAT_area_mean_1e12'] = metainfo['gWAT_area_mean'] * 1e12  # um^2
+
+
 # volume sphere with same radius as given circle
 def vol_sphere(area_circle):
     return (4 / 3 / np.sqrt(np.pi)) * np.power(area_circle, 3/2)
 
 # add a new column to the metainfo frame with the mean cell volume for SQWAT
-metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_sqwat]
-metainfo['SC_vol_mean'] = np.NaN
-metainfo.loc[metainfo_idx, 'SC_vol_mean'] = vol_sphere(area_mean_sqwat)  # m^3
+metainfo.loc[metainfo_idx, 'SC_vol_mean'] = vol_sphere(metainfo['SC_area_mean'])  # m^3
 metainfo['SC_vol_mean_1e12'] = metainfo['SC_vol_mean'] * 1e12  # mean(gWAT_vol_mean_1e12) = 0.2013305044030984
 metainfo['SC_vol_mean_1e18'] = metainfo['SC_vol_mean'] * 1e18  # mean(gWAT_vol_mean_1e18) = 201331 um^3
 
 # add a new column to the metainfo frame with the mean cell volume for gWAT
-metainfo_idx = [np.where(metainfo['id'] == x)[0][0] for x in id_gwat]
-metainfo['gWAT_vol_mean'] = np.NaN
-metainfo.loc[metainfo_idx, 'gWAT_vol_mean'] = vol_sphere(area_mean_gwat)  # m^3
+metainfo.loc[metainfo_idx, 'gWAT_vol_mean'] = vol_sphere(metainfo['gWAT_area_mean'])  # m^3
 metainfo['gWAT_vol_mean_1e12'] = metainfo['gWAT_vol_mean'] * 1e12 # mean(gWAT_vol_mean_1e12) = 0.3281878940926992
 metainfo['gWAT_vol_mean_1e18'] = metainfo['gWAT_vol_mean'] * 1e18 # mean(gWAT_vol_mean_1e18) = 328188 um^3
 
@@ -3468,16 +3397,6 @@ fat_density_SC = 0.9038  # g / cm^3
 fat_density_gWAT = 0.9029  # g / cm^3
 metainfo['SC_kN'] = metainfo['SC'] / (fat_density_SC * 1e6 * metainfo['SC_vol_mean'])
 metainfo['gWAT_kN'] = metainfo['gWAT'] / (fat_density_gWAT * 1e6 * metainfo['gWAT_vol_mean'])
-
-# make a group variable for PAT WT, PAT Het, MAT WT, MAT Het
-idx = (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
-metainfo.loc[idx, 'ko_parent_genotype'] = 'PAT_WT'
-idx = (metainfo['ko_parent'] == 'PAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
-metainfo.loc[idx, 'ko_parent_genotype'] = 'PAT_Het'
-idx = (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:WT')
-metainfo.loc[idx, 'ko_parent_genotype'] = 'MAT_WT'
-idx = (metainfo['ko_parent'] == 'MAT') * (metainfo['genotype'] == 'KLF14-KO:Het')
-metainfo.loc[idx, 'ko_parent_genotype'] = 'MAT_Het'
 
 if DEBUG:
     plt.clf()
@@ -3512,6 +3431,214 @@ if DEBUG:
     print(np.min(metainfo['gWAT_kN']))
     print(np.max(metainfo['gWAT_kN']))
 
+
+########################################################################################################################
+### Statistical tests comparing sex, ko_parent and genotype for SC and gWAT mean areas
+########################################################################################################################
+
+def make_groups(metainfo, indices, groups):
+    metainfo['groups'] = np.nan
+    indices_acc = set({})
+    for index, group in zip(indices, groups):
+        if len(indices_acc.intersection(set(index))) > 0:
+            raise ValueError('Index in more than one group')
+        metainfo.loc[index, 'groups'] = group
+
+
+# subgroups stratified by sex
+idx_f = (metainfo['sex'] == 'f')
+idx_m = (metainfo['sex'] == 'm')
+
+# subgroups stratified by sex and ko_parent
+idx_f_pat = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
+idx_f_mat = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
+idx_m_pat = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
+idx_m_mat = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
+
+# ANOVA: sex groups
+model = sm.formula.ols('SC_area_mean_1e12 ~ C(sex)', data=metainfo).fit()
+print(model.summary())
+
+# subgroups stratified by sex and genotype
+idx_f_wt = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
+idx_f_het = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:Het')
+idx_m_wt = (metainfo['sex'] == 'm') * (metainfo['genotype'] == 'KLF14-KO:WT')
+idx_m_het = (metainfo['sex'] == 'm') * (metainfo['genotype'] == 'KLF14-KO:Het')
+
+# Tukey's HSD post-hoc comparison: SC: sex+genotype groups
+idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
+make_groups(metainfo, (idx_f_wt, idx_f_het, idx_m_wt, idx_m_het), ('f_WT', 'f_Het', 'm_WT', 'm_Het'))
+idx = idx_not_nan
+mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+if DEBUG:
+    plt.clf()
+    mc_results.plot_simultaneous()
+
+    plt.clf()
+    plt.boxplot(
+        (metainfo['SC_area_mean'][idx_f_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_f_het] * 1e12,
+         metainfo['SC_area_mean'][idx_m_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_m_het] * 1e12),
+        notch=True,
+        labels=('f WT', 'f Het', 'm WT', 'm Het')
+    )
+    plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+# subgroups with 3 factors: sex, ko_parent, genotype
+idx_f_pat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT')
+idx_f_pat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het')
+idx_f_mat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT')
+idx_f_mat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het')
+idx_m_pat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT')
+idx_m_pat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het')
+idx_m_mat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT')
+idx_m_mat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het')
+
+# Tukey's HSD post-hoc comparison: Female SC: ko_parent + genotype groups
+idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
+make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+idx = idx_not_nan * idx_f
+mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+if DEBUG:
+    mc_results.plot_simultaneous()
+
+    plt.clf()
+    plt.boxplot(
+        (metainfo['SC_area_mean'][idx_f_pat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_f_pat_het] * 1e12,
+         metainfo['SC_area_mean'][idx_f_mat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_f_mat_het] * 1e12),
+        notch=False,
+        labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
+    )
+    plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+# Tukey's HSD post-hoc comparison: Female gWAT: ko_parent + genotype groups
+idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
+make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+idx = idx_not_nan * idx_f
+mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+if DEBUG:
+    mc_results.plot_simultaneous()
+
+    plt.clf()
+    plt.boxplot(
+        (metainfo['SC_area_mean'][idx_f_pat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_f_pat_het] * 1e12,
+         metainfo['SC_area_mean'][idx_f_mat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_f_mat_het] * 1e12),
+        notch=False,
+        labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
+    )
+    plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+# Tukey's HSD post-hoc comparison: Male SC: ko_parent + genotype groups
+idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
+make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+idx = idx_not_nan * idx_m
+mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+if DEBUG:
+    mc_results.plot_simultaneous()
+
+    plt.clf()
+    plt.boxplot(
+        (metainfo['SC_area_mean'][idx_m_pat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_m_pat_het] * 1e12,
+         metainfo['SC_area_mean'][idx_m_mat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_m_mat_het] * 1e12),
+        notch=False,
+        labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
+    )
+    plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+# Tukey's HSD post-hoc comparison: Female gWAT: ko_parent + genotype groups
+idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
+make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+idx = idx_not_nan * idx_m
+mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
+mc_results = mc.tukeyhsd()
+print(mc_results)
+
+if DEBUG:
+    mc_results.plot_simultaneous()
+
+    plt.clf()
+    plt.boxplot(
+        (metainfo['SC_area_mean'][idx_f_pat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_f_pat_het] * 1e12,
+         metainfo['SC_area_mean'][idx_f_mat_wt] * 1e12,
+         metainfo['SC_area_mean'][idx_f_mat_het] * 1e12),
+        notch=False,
+        labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
+    )
+    plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+
+
+
+
+
+
+
+
+if DEBUG:
+
+    plt.clf()
+    plt.subplot(131)
+    plt.boxplot(
+        (bw_f_pat_wt, bw_f_pat_het, bw_f_mat_wt, bw_f_mat_het, bw_m_pat_wt, bw_m_pat_het, bw_m_mat_wt, bw_m_mat_het),
+        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
+        notch=False
+    )
+    plt.xticks(rotation=45)
+    plt.title('Body')
+    plt.ylabel('Weight (g)', fontsize=14)
+    plt.subplot(132)
+    plt.boxplot(
+        (sq_f_pat_wt, sq_f_pat_het, sq_f_mat_wt, sq_f_mat_het, sq_m_pat_wt, sq_m_pat_het, sq_m_mat_wt, sq_m_mat_het),
+        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
+        notch=False
+    )
+    plt.xticks(rotation=45)
+    plt.title('SQWAT')
+    plt.subplot(133)
+    plt.boxplot(
+        (g_f_pat_wt, g_f_pat_het, g_f_mat_wt, g_f_mat_het, g_m_pat_wt, g_m_pat_het, g_m_mat_wt, g_m_mat_het),
+        labels=('f_PAT_WT', 'f_PAT_Het', 'f_MAT_WT', 'f_MAT_Het', 'm_PAT_WT', 'm_PAT_Het', 'm_MAT_WT', 'm_MAT_Het'),
+        notch=False
+    )
+    plt.xticks(rotation=45)
+    plt.title('GWAT')
+    plt.tight_layout()
+
+if DEBUG:
+    plt.clf()
+    plt.scatter(np.concatenate((bw_f_pat_wt, bw_m_pat_wt)), np.concatenate((sq_f_pat_wt, sq_m_pat_wt)))
+    plt.scatter(np.concatenate((bw_f_mat_wt, bw_m_mat_wt)), np.concatenate((sq_f_mat_wt, sq_m_mat_wt)))
+    plt.tight_layout()
 
 ########################################################################################################################
 ### Model gWAT ~ gWAT_vol_mean_1e12 * C(ko_parent) * C(sex)
