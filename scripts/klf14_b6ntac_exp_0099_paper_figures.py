@@ -1979,6 +1979,7 @@ depot = 'gwat'
 filename_rough_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_area_' + depot + '.npz')
 
 aux = np.load(filename_rough_mask_area)
+aux = np.load(filename_rough_mask_area)
 id_all = aux['id_all']
 rough_mask_area_all = aux['rough_mask_area_all']
 for id, rough_mask_area in zip(id_all, rough_mask_area_all):
@@ -3305,6 +3306,7 @@ import pandas as pd
 import statsmodels.api as sm
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.multicomp import MultiComparison
+from statsmodels.stats.multitest import multipletests
 import scipy.stats
 
 # directories
@@ -3435,6 +3437,7 @@ if DEBUG:
 
 ########################################################################################################################
 ### Statistical tests comparing sex, ko_parent and genotype for SC and gWAT mean areas
+### All possible combinations between: PAT WT, PAT Het, MAT WT, MAT Het
 ########################################################################################################################
 
 def make_groups(metainfo, indices, groups):
@@ -3446,29 +3449,32 @@ def make_groups(metainfo, indices, groups):
         metainfo.loc[index, 'groups'] = group
 
 
-# subgroups stratified by sex
-idx_f = (metainfo['sex'] == 'f')
-idx_m = (metainfo['sex'] == 'm')
+# shorthand for subgroups
+idx_f = metainfo['sex'] == 'f'
+idx_m = metainfo['sex'] == 'm'
 
-# subgroups stratified by sex and ko_parent
-idx_f_pat = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'PAT')
-idx_f_mat = (metainfo['sex'] == 'f') * (metainfo['ko_parent'] == 'MAT')
-idx_m_pat = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'PAT')
-idx_m_mat = (metainfo['sex'] == 'm') * (metainfo['ko_parent'] == 'MAT')
+idx_pat = metainfo['ko_parent'] == 'PAT'
+idx_mat = metainfo['ko_parent'] == 'MAT'
+
+idx_wt = metainfo['genotype'] == 'KLF14-KO:WT'
+idx_het = metainfo['genotype'] == 'KLF14-KO:Het'
+
+print('Females N = ' + str(np.count_nonzero(idx_f)))
+print('Males N = ' + str(np.count_nonzero(idx_m)))
+
+print('PAT N = ' + str(np.count_nonzero(idx_pat)))
+print('MAT N = ' + str(np.count_nonzero(idx_mat)))
+
+print('WT N = ' + str(np.count_nonzero(idx_wt)))
+print('Het N = ' + str(np.count_nonzero(idx_het)))
 
 # ANOVA: sex groups
 model = sm.formula.ols('SC_area_mean_1e12 ~ C(sex)', data=metainfo).fit()
 print(model.summary())
 
-# subgroups stratified by sex and genotype
-idx_f_wt = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:WT')
-idx_f_het = (metainfo['sex'] == 'f') * (metainfo['genotype'] == 'KLF14-KO:Het')
-idx_m_wt = (metainfo['sex'] == 'm') * (metainfo['genotype'] == 'KLF14-KO:WT')
-idx_m_het = (metainfo['sex'] == 'm') * (metainfo['genotype'] == 'KLF14-KO:Het')
-
 # Tukey's HSD post-hoc comparison: SC: sex+genotype groups
 idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
-make_groups(metainfo, (idx_f_wt, idx_f_het, idx_m_wt, idx_m_het), ('f_WT', 'f_Het', 'm_WT', 'm_Het'))
+make_groups(metainfo, (idx_f & idx_wt, idx_f & idx_het, idx_m & idx_wt, idx_m & idx_het), ('f_WT', 'f_Het', 'm_WT', 'm_Het'))
 idx = idx_not_nan
 mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
 mc_results = mc.tukeyhsd()
@@ -3480,10 +3486,10 @@ if DEBUG:
 
     plt.clf()
     plt.boxplot(
-        (metainfo['SC_area_mean'][idx_f_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_f_het] * 1e12,
-         metainfo['SC_area_mean'][idx_m_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_m_het] * 1e12),
+        (metainfo.loc[idx_f & idx_wt & idx_not_nan, 'SC_area_mean'] * 1e12,
+         metainfo.loc[idx_f & idx_het & idx_not_nan, 'SC_area_mean'] * 1e12,
+         metainfo.loc[idx_m & idx_wt & idx_not_nan, 'SC_area_mean'] * 1e12,
+         metainfo.loc[idx_m & idx_het & idx_not_nan, 'SC_area_mean'] * 1e12),
         notch=True,
         labels=('f WT', 'f Het', 'm WT', 'm Het')
     )
@@ -3491,20 +3497,12 @@ if DEBUG:
     plt.tick_params(labelsize=14)
     plt.tight_layout()
 
-# subgroups with 3 factors: sex, ko_parent, genotype
-idx_f_pat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT')
-idx_f_pat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het')
-idx_f_mat_wt = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT')
-idx_f_mat_het = (metainfo.sex == 'f') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het')
-idx_m_pat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:WT')
-idx_m_pat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'PAT') * (metainfo.genotype == 'KLF14-KO:Het')
-idx_m_mat_wt = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:WT')
-idx_m_mat_het = (metainfo.sex == 'm') * (metainfo.ko_parent == 'MAT') * (metainfo.genotype == 'KLF14-KO:Het')
-
 # Tukey's HSD post-hoc comparison: Female SC: ko_parent + genotype groups
 idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f
+make_groups(metainfo,
+            (idx_f & idx_pat & idx_wt, idx_f & idx_pat & idx_het, idx_f & idx_mat & idx_wt, idx_f & idx_mat & idx_het),
+            ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+idx = idx_not_nan & idx_f
 mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
@@ -3514,10 +3512,10 @@ if DEBUG:
 
     plt.clf()
     plt.boxplot(
-        (metainfo['SC_area_mean'][idx_f_pat_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_f_pat_het] * 1e12,
-         metainfo['SC_area_mean'][idx_f_mat_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_f_mat_het] * 1e12),
+        (metainfo['SC_area_mean'][idx_f & idx_pat & idx_wt & idx_not_nan] * 1e12,
+         metainfo['SC_area_mean'][idx_f & idx_pat & idx_het & idx_not_nan] * 1e12,
+         metainfo['SC_area_mean'][idx_f & idx_mat & idx_wt & idx_not_nan] * 1e12,
+         metainfo['SC_area_mean'][idx_f & idx_mat & idx_het & idx_not_nan] * 1e12),
         notch=False,
         labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
     )
@@ -3527,8 +3525,10 @@ if DEBUG:
 
 # Tukey's HSD post-hoc comparison: Female gWAT: ko_parent + genotype groups
 idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f
+make_groups(metainfo,
+            (idx_f & idx_pat & idx_wt, idx_f & idx_pat & idx_het, idx_f & idx_mat & idx_wt, idx_f & idx_mat & idx_het),
+            ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+idx = idx_not_nan & idx_f
 mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
@@ -3538,10 +3538,10 @@ if DEBUG:
 
     plt.clf()
     plt.boxplot(
-        (metainfo['SC_area_mean'][idx_f_pat_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_f_pat_het] * 1e12,
-         metainfo['SC_area_mean'][idx_f_mat_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_f_mat_het] * 1e12),
+        (metainfo['gWAT_area_mean'][idx_f & idx_pat & idx_wt & idx_not_nan] * 1e12,
+         metainfo['gWAT_area_mean'][idx_f & idx_pat & idx_het & idx_not_nan] * 1e12,
+         metainfo['gWAT_area_mean'][idx_f & idx_mat & idx_wt & idx_not_nan] * 1e12,
+         metainfo['gWAT_area_mean'][idx_f & idx_mat & idx_het & idx_not_nan] * 1e12),
         notch=False,
         labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
     )
@@ -3551,16 +3551,20 @@ if DEBUG:
 
 # Tukey's HSD post-hoc comparison: Male SC: ko_parent + genotype groups
 idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+make_groups(metainfo,
+            (idx_m & idx_pat & idx_wt, idx_m & idx_pat & idx_het, idx_m & idx_mat & idx_wt, idx_m & idx_mat & idx_het),
+            ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
 idx = idx_not_nan * idx_m
 mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
 
 idx_not_nan = ~np.isnan(metainfo['SC_kN'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+make_groups(metainfo,
+            (idx_m & idx_pat & idx_wt, idx_m & idx_pat & idx_het, idx_m & idx_mat & idx_wt, idx_m & idx_mat & idx_het),
+            ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
 idx = idx_not_nan * idx_m
-mc = MultiComparison(metainfo.loc[idx, 'SC_kN'] * 1e12, metainfo.loc[idx, 'groups'])
+mc = MultiComparison(metainfo.loc[idx, 'SC_kN'], metainfo.loc[idx, 'groups'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
 
@@ -3569,29 +3573,33 @@ if DEBUG:
 
     plt.clf()
     plt.boxplot(
-        (metainfo['SC_area_mean'][idx_m_pat_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_m_pat_het] * 1e12,
-         metainfo['SC_area_mean'][idx_m_mat_wt] * 1e12,
-         metainfo['SC_area_mean'][idx_m_mat_het] * 1e12),
+        (metainfo['SC_kN'][idx_m & idx_pat & idx_wt & idx_not_nan],
+         metainfo['SC_kN'][idx_m & idx_pat & idx_het & idx_not_nan],
+         metainfo['SC_kN'][idx_m & idx_mat & idx_wt & idx_not_nan],
+         metainfo['SC_kN'][idx_m & idx_mat & idx_het & idx_not_nan]),
         notch=False,
         labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
     )
-    plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+    plt.ylabel('Weighted cell count', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.tight_layout()
 
 # Tukey's HSD post-hoc comparison: Male gWAT: ko_parent + genotype groups
 idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+make_groups(metainfo,
+            (idx_m & idx_pat & idx_wt, idx_m & idx_pat & idx_het, idx_m & idx_mat & idx_wt, idx_m & idx_mat & idx_het),
+            ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
 idx = idx_not_nan * idx_m
 mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
 
 idx_not_nan = ~np.isnan(metainfo['gWAT_kN'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
+make_groups(metainfo,
+            (idx_m & idx_pat & idx_wt, idx_m & idx_pat & idx_het, idx_m & idx_mat & idx_wt, idx_m & idx_mat & idx_het),
+            ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
 idx = idx_not_nan * idx_m
-mc = MultiComparison(metainfo.loc[idx, 'gWAT_kN'] * 1e12, metainfo.loc[idx, 'groups'])
+mc = MultiComparison(metainfo.loc[idx, 'gWAT_kN'], metainfo.loc[idx, 'groups'])
 mc_results = mc.tukeyhsd()
 print(mc_results)
 
@@ -3600,125 +3608,351 @@ if DEBUG:
 
     plt.clf()
     plt.boxplot(
-        (metainfo['gWAT_area_mean'][idx_f_pat_wt] * 1e12,
-         metainfo['gWAT_area_mean'][idx_f_pat_het] * 1e12,
-         metainfo['gWAT_area_mean'][idx_f_mat_wt] * 1e12,
-         metainfo['gWAT_area_mean'][idx_f_mat_het] * 1e12),
+        (metainfo['gWAT_kN'][idx_f & idx_pat & idx_wt & idx_not_nan],
+         metainfo['gWAT_kN'][idx_f & idx_pat & idx_het & idx_not_nan],
+         metainfo['gWAT_kN'][idx_f & idx_mat & idx_wt & idx_not_nan],
+         metainfo['gWAT_kN'][idx_f & idx_mat & idx_het & idx_not_nan]),
         notch=False,
         labels=('PAT WT', 'PAT Het', 'MAT WT', 'MAT Het')
     )
-    plt.ylabel('Area ($\mu m^2$)', fontsize=14)
+    plt.ylabel('Weighted cell count', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.tight_layout()
 
 ########################################################################################################################
-### Female SC and gWAT mean cell area stratified in MAT and PAT
+### Female and male SC and gWAT mean cell area stratified in MAT and PAT
+### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
 ########################################################################################################################
 
-# Tukey's HSD post-hoc comparison: Female PAT SC: genotype groups
+pval = []
 idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f * (metainfo['ko_parent'] == 'PAT')
-mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
 
-# Tukey's HSD post-hoc comparison: Female MAT SC: genotype groups
-idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f * (metainfo['ko_parent'] == 'MAT')
-mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Female PAT, WT vs Het
+group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_pat & idx_wt]
+group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Female PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
 
-# Tukey's HSD post-hoc comparison: Female PAT gWAT: genotype groups
+# Female MAT, WT vs Het
+group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_mat & idx_wt]
+group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Female MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+
+# Male PAT, WT vs Het
+group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_pat & idx_wt]
+group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Male PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+
+# Male MAT, WT vs Het
+group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_mat & idx_wt]
+group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Male MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
+
+pval = []
 idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f * (metainfo['ko_parent'] == 'PAT')
-mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
 
-# Tukey's HSD post-hoc comparison: Female MAT gWAT: genotype groups
-idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f * (metainfo['ko_parent'] == 'MAT')
-mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Female PAT, WT vs Het
+group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_pat & idx_wt]
+group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Female PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+
+# Female MAT, WT vs Het
+group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_mat & idx_wt]
+group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Female MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+
+# Male PAT, WT vs Het
+group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_pat & idx_wt]
+group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Male PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+
+# Male MAT, WT vs Het
+group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_mat & idx_wt]
+group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Male MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
 
 ########################################################################################################################
-### Male SC and gWAT mean cell area stratified in MAT and PAT
+### Female and male SC and gWAT cell count (k N) stratified in MAT and PAT
+### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
 ########################################################################################################################
 
-# Tukey's HSD post-hoc comparison: Male PAT SC: genotype groups
-idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_m * (metainfo['ko_parent'] == 'PAT')
-mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+pval = []
+idx_not_nan = ~np.isnan(metainfo['SC_kN'])
 
-# Tukey's HSD post-hoc comparison: Male MAT SC: genotype groups
-idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_m * (metainfo['ko_parent'] == 'MAT')
-mc = MultiComparison(metainfo.loc[idx, 'SC_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Female PAT, WT vs Het
+group_0 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_pat & idx_wt]
+group_1 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Female PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
 
-# Tukey's HSD post-hoc comparison: Male PAT gWAT: genotype groups
-idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_m * (metainfo['ko_parent'] == 'PAT')
-mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Female MAT, WT vs Het
+group_0 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_mat & idx_wt]
+group_1 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Female MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
 
-scipy.stats.f_oneway(metainfo.loc[metainfo['groups'] == 'PAT, 'gWAT_area_mean'] * 1e12)
+# Male PAT, WT vs Het
+group_0 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_pat & idx_wt]
+group_1 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Male PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
 
-# Tukey's HSD post-hoc comparison: Male MAT gWAT: genotype groups
-idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
-make_groups(metainfo, (idx_m_pat_wt, idx_m_pat_het, idx_m_mat_wt, idx_m_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_m * (metainfo['ko_parent'] == 'MAT')
-mc = MultiComparison(metainfo.loc[idx, 'gWAT_area_mean'] * 1e12, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Male MAT, WT vs Het
+group_0 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_mat & idx_wt]
+group_1 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('SC Male MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
 
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
+
+pval = []
+idx_not_nan = ~np.isnan(metainfo['gWAT_kN'])
+
+# Female PAT, WT vs Het
+group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_pat & idx_wt]
+group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Female PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+
+# Female MAT, WT vs Het
+group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_mat & idx_wt]
+group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Female MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+
+# Male PAT, WT vs Het
+group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_pat & idx_wt]
+group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_pat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Male PAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+
+# Male MAT, WT vs Het
+group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_mat & idx_wt]
+group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_mat & idx_het]
+results = scipy.stats.f_oneway(group_0, group_1)
+pval.append(results.pvalue)
+print('gWAT Male MAT, WT vs Het: p = ' + str(results.pvalue)
+      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
 
 ########################################################################################################################
-### Correct SC mean areas with BW
+### Adjust for BW
+### Female and male SC and gWAT mean cell area stratified in MAT and PAT
+### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
 ########################################################################################################################
 
-# Tukey's HSD post-hoc comparison: Female SC: ko_parent + genotype groups
-idx_not_nan = ~np.isnan(metainfo['SC_vol_mean']) * ~np.isnan(metainfo['BW'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f
-mc = MultiComparison(metainfo.loc[idx, 'SC_vol_mean'] / metainfo.loc[idx, 'BW'] * 1e18, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+pval = []
+idx_not_nan = ~np.isnan(metainfo['SC_vol_mean'])
 
-idx_not_nan = ~np.isnan(metainfo['SC_kN']) * ~np.isnan(metainfo['BW'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f
-mc = MultiComparison(metainfo.loc[idx, 'SC_kN'] / metainfo.loc[idx, 'BW'] * 1e18, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Female PAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
 
-# Tukey's HSD post-hoc comparison: Female gWAT: ko_parent + genotype groups
-idx_not_nan = ~np.isnan(metainfo['gWAT_vol_mean']) * ~np.isnan(metainfo['BW'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f
-mc = MultiComparison(metainfo.loc[idx, 'gWAT_vol_mean'] / metainfo.loc[idx, 'BW'] * 1e18, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Female MAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
 
-idx_not_nan = ~np.isnan(metainfo['gWAT_kN']) * ~np.isnan(metainfo['BW'])
-make_groups(metainfo, (idx_f_pat_wt, idx_f_pat_het, idx_f_mat_wt, idx_f_mat_het), ('PAT_WT', 'PAT_Het', 'MAT_WT', 'MAT_Het'))
-idx = idx_not_nan * idx_f
-mc = MultiComparison(metainfo.loc[idx, 'gWAT_kN'] / metainfo.loc[idx, 'BW'] * 1e18, metainfo.loc[idx, 'groups'])
-mc_results = mc.tukeyhsd()
-print(mc_results)
+# Male PAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Male MAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
+
+pval = []
+idx_not_nan = ~np.isnan(metainfo['gWAT_vol_mean'])
+
+# Female PAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Female MAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Male PAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Male MAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
+
+########################################################################################################################
+### Adjust for BW
+### Female and male SC and gWAT cell count (k N) stratified in MAT and PAT
+### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
+########################################################################################################################
+
+pval = []
+idx_not_nan = ~np.isnan(metainfo['SC_kN'])
+
+# Female PAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Female MAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Male PAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Male MAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
+
+pval = []
+idx_not_nan = ~np.isnan(metainfo['gWAT_kN'])
+
+# Female PAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Female MAT, WT vs Het
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Male PAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Male MAT, WT vs Het
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+
+# Benjamini/Hochberg tests
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Adjusted pvalues: ' + str(pval_adj))
+
 
 
 
