@@ -1382,6 +1382,7 @@ if DEBUG:
 ## Cell populations from automatically segmented images in two depots: SQWAT and GWAT.
 ## This section needs to be run for each of the depots. But the results are saved, so in later sections, it's possible
 ## to get all the data together
+### USED IN PAPER
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
@@ -1859,8 +1860,8 @@ print(pval_perc_m_pat2mat)
 np.set_printoptions(precision=8)
 
 # multitest correction using Hochberg a.k.a. Simes-Hochberg method
-_, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
-_, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='fdr_bh', alpha=0.05, returnsorted=False)
+_, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='fdr_bh', alpha=0.05, returnsorted=False)
 
 np.set_printoptions(precision=2)
 print('PAT vs. MAT with multitest correction')
@@ -1870,7 +1871,7 @@ print('Male:')
 print(pval_perc_m_pat2mat)
 np.set_printoptions(precision=8)
 
-np.set_printoptions(precision=2)
+np.set_printoptions(precision=3)
 print('WT vs. Het before multitest correction')
 print('Female:')
 print(pval_perc_f_pat_wt2het)
@@ -1881,12 +1882,12 @@ print(pval_perc_m_mat_wt2het)
 np.set_printoptions(precision=8)
 
 # multitest correction using Hochberg a.k.a. Simes-Hochberg method
-_, pval_perc_f_pat_wt2het, _, _ = multipletests(pval_perc_f_pat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
-_, pval_perc_f_mat_wt2het, _, _ = multipletests(pval_perc_f_mat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
-_, pval_perc_m_pat_wt2het, _, _ = multipletests(pval_perc_m_pat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
-_, pval_perc_m_mat_wt2het, _, _ = multipletests(pval_perc_m_mat_wt2het, method='simes-hochberg', alpha=0.05, returnsorted=False)
+_, pval_perc_f_pat_wt2het, _, _ = multipletests(pval_perc_f_pat_wt2het, method='fdr_bh', alpha=0.05, returnsorted=False)
+_, pval_perc_f_mat_wt2het, _, _ = multipletests(pval_perc_f_mat_wt2het, method='fdr_bh', alpha=0.05, returnsorted=False)
+_, pval_perc_m_pat_wt2het, _, _ = multipletests(pval_perc_m_pat_wt2het, method='fdr_bh', alpha=0.05, returnsorted=False)
+_, pval_perc_m_mat_wt2het, _, _ = multipletests(pval_perc_m_mat_wt2het, method='fdr_bh', alpha=0.05, returnsorted=False)
 
-np.set_printoptions(precision=2)
+np.set_printoptions(precision=3)
 print('WT vs. Het with multitest correction')
 print('Female:')
 print(pval_perc_f_pat_wt2het)
