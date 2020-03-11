@@ -3297,6 +3297,7 @@ if DEBUG:
 
 ########################################################################################################################
 ## Load SQWAT and gWAT quantile data computed in a previous section
+### USED IN PAPER
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
@@ -3401,6 +3402,25 @@ fat_density_gWAT = 0.9029  # g / cm^3
 metainfo['SC_kN'] = metainfo['SC'] / (fat_density_SC * 1e6 * metainfo['SC_vol_mean'])
 metainfo['gWAT_kN'] = metainfo['gWAT'] / (fat_density_gWAT * 1e6 * metainfo['gWAT_vol_mean'])
 
+# shorthand for subgroups
+idx_f = metainfo['sex'] == 'f'
+idx_m = metainfo['sex'] == 'm'
+
+idx_pat = metainfo['ko_parent'] == 'PAT'
+idx_mat = metainfo['ko_parent'] == 'MAT'
+
+idx_wt = metainfo['genotype'] == 'KLF14-KO:WT'
+idx_het = metainfo['genotype'] == 'KLF14-KO:Het'
+
+print('Females N = ' + str(np.count_nonzero(idx_f)))
+print('Males N = ' + str(np.count_nonzero(idx_m)))
+
+print('PAT N = ' + str(np.count_nonzero(idx_pat)))
+print('MAT N = ' + str(np.count_nonzero(idx_mat)))
+
+print('WT N = ' + str(np.count_nonzero(idx_wt)))
+print('Het N = ' + str(np.count_nonzero(idx_het)))
+
 if DEBUG:
     plt.clf()
     plt.scatter(metainfo['gWAT_vol_mean'], metainfo['gWAT_vol_median'])
@@ -3438,6 +3458,7 @@ if DEBUG:
 ########################################################################################################################
 ### Statistical tests comparing sex, ko_parent and genotype for SC and gWAT mean areas
 ### All possible combinations between: PAT WT, PAT Het, MAT WT, MAT Het
+### NOT USED IN PAPER
 ########################################################################################################################
 
 def make_groups(metainfo, indices, groups):
@@ -3448,25 +3469,6 @@ def make_groups(metainfo, indices, groups):
             raise ValueError('Index in more than one group')
         metainfo.loc[index, 'groups'] = group
 
-
-# shorthand for subgroups
-idx_f = metainfo['sex'] == 'f'
-idx_m = metainfo['sex'] == 'm'
-
-idx_pat = metainfo['ko_parent'] == 'PAT'
-idx_mat = metainfo['ko_parent'] == 'MAT'
-
-idx_wt = metainfo['genotype'] == 'KLF14-KO:WT'
-idx_het = metainfo['genotype'] == 'KLF14-KO:Het'
-
-print('Females N = ' + str(np.count_nonzero(idx_f)))
-print('Males N = ' + str(np.count_nonzero(idx_m)))
-
-print('PAT N = ' + str(np.count_nonzero(idx_pat)))
-print('MAT N = ' + str(np.count_nonzero(idx_mat)))
-
-print('WT N = ' + str(np.count_nonzero(idx_wt)))
-print('Het N = ' + str(np.count_nonzero(idx_het)))
 
 # ANOVA: sex groups
 model = sm.formula.ols('SC_area_mean_1e12 ~ C(sex)', data=metainfo).fit()
@@ -3622,6 +3624,7 @@ if DEBUG:
 ########################################################################################################################
 ### Female and male SC and gWAT mean cell area stratified in MAT and PAT
 ### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
+### USED IN PAPER
 ########################################################################################################################
 
 pval = []
@@ -3705,6 +3708,7 @@ print('Adjusted pvalues: ' + str(pval_adj))
 ########################################################################################################################
 ### Female and male SC and gWAT cell count (k N) stratified in MAT and PAT
 ### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
+### USED IN PAPER
 ########################################################################################################################
 
 pval = []
@@ -3789,6 +3793,7 @@ print('Adjusted pvalues: ' + str(pval_adj))
 ### Adjust for BW
 ### Female and male SC and gWAT mean cell area stratified in MAT and PAT
 ### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
+### USED IN PAPER
 ########################################################################################################################
 
 pval = []
@@ -3873,6 +3878,7 @@ print('Adjusted pvalues: ' + str(pval_adj))
 ### Adjust for BW
 ### Female and male SC and gWAT cell count (k N) stratified in MAT and PAT
 ### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
+### USED IN PAPER
 ########################################################################################################################
 
 pval = []
@@ -3954,12 +3960,10 @@ reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_
 print('Adjusted pvalues: ' + str(pval_adj))
 
 
-
-
-
 ########################################################################################################################
 ### Model gWAT ~ gWAT_vol_mean_1e12 * C(ko_parent) * C(sex)
 ### INVALID model: No significance for ko_parent
+### NOT USED IN PAPER
 ########################################################################################################################
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
@@ -4120,6 +4124,7 @@ if DEBUG:
 ########################################################################################################################
 ### Model SC ~ SC_vol_mean_1e12 * C(ko_parent) * C(sex)
 ### INVALID model, like previous
+### NOT USED IN PAPER
 ########################################################################################################################
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
@@ -4281,6 +4286,7 @@ if DEBUG:
 ########################################################################################################################
 ### Model gWAT_vol_mean_1e18 ~ C(ko_parent) * C(sex) * C(genotype)
 ### VALID model.
+### NOT USED IN PAPER
 ########################################################################################################################
 
 idx_not_nan = np.where(~np.isnan(metainfo['SC']) * ~np.isnan(metainfo['gWAT']) * ~np.isnan(metainfo['BW']))[0]
@@ -4333,6 +4339,7 @@ if DEBUG:
 
 ########################################################################################################################
 ### Model SC_vol_mean_1e18 ~ C(ko_parent) * C(sex) * C(genotype)
+### NOT USED IN PAPER
 ########################################################################################################################
 
 formula = 'SC_vol_mean_1e18 ~ C(ko_parent) * C(sex) * C(genotype)'
@@ -4431,6 +4438,7 @@ print(aov_table)
 
 ########################################################################################################################
 ### Model gWAT_vol_mean ~ C(sex) * C(ko_parent) * C(genotype)
+### NOT USED IN PAPER
 ########################################################################################################################
 
 formula = 'gWAT_vol_mean ~ C(sex) * C(ko_parent) * C(genotype)'
@@ -4526,6 +4534,7 @@ print(aov_table)
 
 ########################################################################################################################
 ### Model SC_kN ~ C(sex) * C(ko_parent) * C(genotype)
+### NOT USED IN PAPER
 ########################################################################################################################
 
 formula = 'SC_kN ~ C(sex) * C(ko_parent) * C(genotype)'
@@ -4623,6 +4632,7 @@ print(aov_table)
 
 ########################################################################################################################
 ### Model gWAT_kN ~ C(sex) * C(ko_parent) * C(genotype)
+### NOT USED IN PAPER
 ########################################################################################################################
 
 formula = 'gWAT_kN ~ C(sex) * C(ko_parent) * C(genotype)'
@@ -4719,6 +4729,7 @@ print(aov_table)
 
 ########################################################################################################################
 ### ANOVA testing of gWAT Vm w.r.t. ko_parent and genotype
+### NOT USED IN PAPER
 ########################################################################################################################
 
 idx_not_nan = ~np.isnan(metainfo['gWAT_vol_mean_1e18'])
@@ -4751,6 +4762,7 @@ print(mc_results)
 
 ########################################################################################################################
 ### ANOVA testing of SC Vm w.r.t. ko_parent and genotype
+### NOT USED IN PAPER
 ########################################################################################################################
 
 idx_not_nan = ~np.isnan(metainfo['SC_vol_mean_1e18'])
