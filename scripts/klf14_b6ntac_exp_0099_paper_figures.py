@@ -3422,6 +3422,57 @@ print('MAT N = ' + str(np.count_nonzero(idx_mat)))
 print('WT N = ' + str(np.count_nonzero(idx_wt)))
 print('Het N = ' + str(np.count_nonzero(idx_het)))
 
+# number of animals by group
+# SC_area_mean female, SC_area_mean male
+print(
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_f & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_f & idx_pat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_f & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_f & idx_mat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_m & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_m & idx_pat & idx_het))  + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_m & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_area_mean']) & idx_m & idx_mat & idx_het))
+)
+
+# gWAT_area_mean female, gWAT_area_mean male
+print(
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_f & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_f & idx_pat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_f & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_f & idx_mat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_m & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_m & idx_pat & idx_het))  + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_m & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_area_mean']) & idx_m & idx_mat & idx_het))
+)
+
+# SC_kN female, SC_area_mean male
+print(
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_f & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_f & idx_pat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_f & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_f & idx_mat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_m & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_m & idx_pat & idx_het))  + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_m & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['SC_kN']) & idx_m & idx_mat & idx_het))
+)
+
+# gWAT_area_mean female, gWAT_area_mean male
+print(
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_f & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_f & idx_pat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_f & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_f & idx_mat & idx_het)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_m & idx_pat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_m & idx_pat & idx_het))  + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_m & idx_mat & idx_wt)) + ', ' +
+    str(np.count_nonzero(~np.isnan(metainfo['gWAT_kN']) & idx_m & idx_mat & idx_het))
+)
+
+
+
 if DEBUG:
     plt.clf()
     plt.scatter(metainfo['gWAT_vol_mean'], metainfo['gWAT_vol_median'])
