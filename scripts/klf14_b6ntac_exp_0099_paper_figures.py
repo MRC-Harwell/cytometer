@@ -3683,41 +3683,44 @@ pval = []
 idx_not_nan = ~np.isnan(metainfo['SC_area_mean'])
 
 # Female PAT, WT vs Het
-group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_pat & idx_wt]
-group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Female PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
-
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('SC_area_mean ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
-group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_mat & idx_wt]
-group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_f & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Female MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('SC_area_mean ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
-group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_pat & idx_wt]
-group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Male PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('SC_area_mean ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
-group_0 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_mat & idx_wt]
-group_1 = metainfo['SC_area_mean'][idx_not_nan & idx_m & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Male MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('SC_area_mean ~  C(genotype) ', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
@@ -3727,40 +3730,44 @@ pval = []
 idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
 
 # Female PAT, WT vs Het
-group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_pat & idx_wt]
-group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Female PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('gWAT_area_mean ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
-group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_mat & idx_wt]
-group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_f & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Female MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('gWAT_area_mean ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
-group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_pat & idx_wt]
-group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Male PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('gWAT_area_mean ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
-group_0 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_mat & idx_wt]
-group_1 = metainfo['gWAT_area_mean'][idx_not_nan & idx_m & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Male MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0)) * 1e12))
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('gWAT_area_mean ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(1e12 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
@@ -3776,40 +3783,44 @@ pval = []
 idx_not_nan = ~np.isnan(metainfo['SC_kN'])
 
 # Female PAT, WT vs Het
-group_0 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_pat & idx_wt]
-group_1 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Female PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('SC_kN ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
-group_0 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_mat & idx_wt]
-group_1 = metainfo['SC_kN'][idx_not_nan & idx_f & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Female MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('SC_kN ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
-group_0 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_pat & idx_wt]
-group_1 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Male PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('SC_kN ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
-group_0 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_mat & idx_wt]
-group_1 = metainfo['SC_kN'][idx_not_nan & idx_m & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('SC Male MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('SC_kN ~  C(genotype) ', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
@@ -3819,40 +3830,44 @@ pval = []
 idx_not_nan = ~np.isnan(metainfo['gWAT_kN'])
 
 # Female PAT, WT vs Het
-group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_pat & idx_wt]
-group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Female PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_f & idx_pat
+model = sm.formula.ols('gWAT_kN ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
-group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_mat & idx_wt]
-group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_f & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Female MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_f & idx_mat
+model = sm.formula.ols('gWAT_kN ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
-group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_pat & idx_wt]
-group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_pat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Male PAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_m & idx_pat
+model = sm.formula.ols('gWAT_kN ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
-group_0 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_mat & idx_wt]
-group_1 = metainfo['gWAT_kN'][idx_not_nan & idx_m & idx_mat & idx_het]
-results = scipy.stats.f_oneway(group_0, group_1)
-pval.append(results.pvalue)
-print('gWAT Male MAT, WT vs Het: p = ' + str(results.pvalue)
-      + ', F = ' + str(results.statistic)
-      + ', meandiff = ' + str((np.mean(group_1) - np.mean(group_0))))
+idx_subset = idx_not_nan & idx_m & idx_mat
+model = sm.formula.ols('gWAT_kN ~  C(genotype)', data=metainfo, subset=idx_subset).fit()
+# print(model.summary())
+pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
@@ -3874,8 +3889,9 @@ model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
 idx_subset = idx_not_nan & idx_f & idx_mat
@@ -3883,8 +3899,9 @@ model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_pat
@@ -3892,8 +3909,9 @@ model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_mat
@@ -3901,8 +3919,9 @@ model = sm.formula.ols('SC_vol_mean ~  C(genotype) + BW', data=metainfo, subset=
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
@@ -3917,8 +3936,9 @@ model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subse
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
 idx_subset = idx_not_nan & idx_f & idx_mat
@@ -3926,8 +3946,9 @@ model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subse
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_pat
@@ -3935,8 +3956,9 @@ model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subse
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_mat
@@ -3944,8 +3966,9 @@ model = sm.formula.ols('gWAT_vol_mean ~  C(genotype) + BW', data=metainfo, subse
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(1e18 * model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
@@ -3967,8 +3990,9 @@ model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_su
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
 idx_subset = idx_not_nan & idx_f & idx_mat
@@ -3976,8 +4000,9 @@ model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_su
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_pat
@@ -3985,8 +4010,9 @@ model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_su
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_mat
@@ -3994,8 +4020,9 @@ model = sm.formula.ols('SC_kN ~  C(genotype) + BW', data=metainfo, subset=idx_su
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
@@ -4010,8 +4037,9 @@ model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT Female PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Female MAT, WT vs Het
 idx_subset = idx_not_nan & idx_f & idx_mat
@@ -4019,8 +4047,9 @@ model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT Female MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male PAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_pat
@@ -4028,8 +4057,9 @@ model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT male PAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Male MAT, WT vs Het
 idx_subset = idx_not_nan & idx_m & idx_mat
@@ -4037,8 +4067,9 @@ model = sm.formula.ols('gWAT_kN ~  C(genotype) + BW', data=metainfo, subset=idx_
 # print(model.summary())
 pval.append(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
 print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO:Het]'])
-      + ', F = ' + str(model.fvalue)
-      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']))
+      + ', meandiff = ' + str(model.params['C(genotype)[T.KLF14-KO:Het]']) + ',\n'
+      + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
+      )
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
