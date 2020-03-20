@@ -3722,11 +3722,6 @@ print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO
       + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
       )
 
-# Benjamini/Hochberg tests
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
-
-pval = []
 idx_not_nan = ~np.isnan(metainfo['gWAT_area_mean'])
 
 # Female PAT, WT vs Het
@@ -3769,17 +3764,12 @@ print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-
       + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
       )
 
-# Benjamini/Hochberg tests
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
-
 ########################################################################################################################
 ### Female and male SC and gWAT cell count (k N) stratified in MAT and PAT
 ### Only compare: PAT WT vs. PAT Het and MAT WT vs. MAT Het
 ### USED IN PAPER
 ########################################################################################################################
 
-pval = []
 idx_not_nan = ~np.isnan(metainfo['SC_kN'])
 
 # Female PAT, WT vs Het
@@ -3822,11 +3812,6 @@ print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO
       + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
       )
 
-# Benjamini/Hochberg tests
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
-
-pval = []
 idx_not_nan = ~np.isnan(metainfo['gWAT_kN'])
 
 # Female PAT, WT vs Het
@@ -3869,10 +3854,6 @@ print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-
       + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
       )
 
-# Benjamini/Hochberg tests
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
-
 ########################################################################################################################
 ### Control for BW
 ### Female and male SC and gWAT mean cell area stratified in MAT and PAT
@@ -3880,7 +3861,6 @@ print('Adjusted pvalues: ' + str(pval_adj))
 ### USED IN PAPER
 ########################################################################################################################
 
-pval = []
 idx_not_nan = ~np.isnan(metainfo['SC_vol_mean'])
 
 # Female PAT, WT vs Het
@@ -3923,11 +3903,6 @@ print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO
       + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
       )
 
-# Benjamini/Hochberg tests
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
-
-pval = []
 idx_not_nan = ~np.isnan(metainfo['gWAT_vol_mean'])
 
 # Female PAT, WT vs Het
@@ -3970,10 +3945,6 @@ print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-
       + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
       )
 
-# Benjamini/Hochberg tests
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
-
 ########################################################################################################################
 ### Adjust for BW
 ### Female and male SC and gWAT cell count (k N) stratified in MAT and PAT
@@ -3981,7 +3952,6 @@ print('Adjusted pvalues: ' + str(pval_adj))
 ### USED IN PAPER
 ########################################################################################################################
 
-pval = []
 idx_not_nan = ~np.isnan(metainfo['SC_kN'])
 
 # Female PAT, WT vs Het
@@ -4024,11 +3994,6 @@ print('SC male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-KO
       + 'F = ' + str(model.fvalue) + '(' + str(int(model.df_model)) + ', ' + str(int(model.df_resid)) +  ')'
       )
 
-# Benjamini/Hochberg tests
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
-
-pval = []
 idx_not_nan = ~np.isnan(metainfo['gWAT_kN'])
 
 # Female PAT, WT vs Het
@@ -4073,7 +4038,8 @@ print('gWAT male MAT, WT vs Het: p = ' + str(model.pvalues['C(genotype)[T.KLF14-
 
 # Benjamini/Hochberg tests
 reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Adjusted pvalues: ' + str(pval_adj))
+print('Original pvalues:\n' + str(np.reshape(pval, (8, 4))))
+print('Adjusted pvalues:\n' + str(np.reshape(pval_adj, (8, 4))))
 
 
 ########################################################################################################################
