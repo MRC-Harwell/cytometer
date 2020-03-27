@@ -1268,7 +1268,7 @@ for i_fold in range(len(idx_test_all)):
         # initialise dataframe to keep results: one cell per row, tagged with mouse metainformation
         df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_tif),
                                                               values=[i_fold], values_tag='fold',
-                                                              tags_to_keep=['id', 'ko_parent', 'sex'])
+                                                              tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
 
         # cells on the edge
         labels_edge = cytometer.utils.edge_labels(pred_seg_test[i, :, :])
@@ -1538,6 +1538,29 @@ plt.tight_layout()
 
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_areas_ratio_hist.svg'))
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_areas_ratio_hist.png'))
+
+if DEBUG:
+    plt.clf()
+    plt.boxplot(df_manual_all['area_manual'][idx] - df_manual_all['area_auto'][idx])
+
+# Wilcoxon sign-ranked tests of whether manual areas are significantly different to auto/corrected areas
+print('Manual mean ± std = ' + str(np.mean(df_manual_all['area_manual'][idx])) + ' ± '
+      + str(np.std(df_manual_all['area_manual'][idx])))
+print('Auto mean ± std = ' + str(np.mean(df_manual_all['area_auto'][idx])) + ' ± '
+      + str(np.std(df_manual_all['area_auto'][idx])))
+print('Corrected mean ± std = ' + str(np.mean(df_manual_all['area_corrected'][idx])) + ' ± '
+      + str(np.std(df_manual_all['area_corrected'][idx])))
+result = stats.wilcoxon(df_manual_all['area_manual'][idx], df_manual_all['area_auto'][idx])
+print('Manual to auto difference')
+print('\tt-Statistic = ' + str(result.statistic))
+print('\tP-value = ' + str(result.pvalue))
+result = stats.wilcoxon(df_manual_all['area_manual'][idx], df_manual_all['area_corrected'][idx])
+print('Manual to corrected difference')
+print('\tt-Statistic = ' + str(result.statistic))
+print('\tP-value = ' + str(result.pvalue))
+
+# test whether the cell area estimation error is different in WT vs. Het
+idx_wt = idx & (df_manual_all['genotype'] == 'WT')
 
 # auto area: inspect whether the ratios are more or less constant with the area size
 plt.clf()
