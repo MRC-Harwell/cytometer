@@ -1088,9 +1088,15 @@ pixels.
 ************************************************************************************************************************
 '''
 
+import statsmodels.api as sm
+from statsmodels.stats.multitest import multipletests
+import scipy.stats.mstats
+
 # correct home directory in file paths
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/home/rcasero', home, check_isfile=True)
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
+
+## compute and save results
 
 # load data computed in the previous section
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
@@ -1462,6 +1468,7 @@ dataframe_auto_filename = os.path.join(saved_models_dir, experiment_id + '_test_
 df_auto_all.to_pickle(dataframe_auto_filename)
 
 ## Analyse results: Manual data
+## TODO: @@@
 
 # load dataframe with manual segmentations matched to automatic segmentations
 data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
@@ -1559,8 +1566,63 @@ print('Manual to corrected difference')
 print('\tt-Statistic = ' + str(result.statistic))
 print('\tP-value = ' + str(result.pvalue))
 
-# test whether the cell area estimation error is different in WT vs. Het
-idx_wt = idx & (df_manual_all['genotype'] == 'WT')
+# test whether area errors are similar in different stratifications of the data ...
+df_manual_all['area_manual_corrected'] = df_manual_all['area_manual'] - df_manual_all['area_corrected']
+
+model = sm.formula.ols('area_manual_corrected ~ C(genotype) + C(ko_parent) + C(sex)', data=df_manual_all, subset=idx).fit()
+print(model.summary())
+
+# ... PAT vs. MAT
+model = sm.formula.ols('area_manual_corrected ~ area_manual', data=df_manual_all, subset=idx).fit()
+print(model.summary())
+
+## median and CI of segmentation area error vs. hand traced area
+
+# sort manual areas from smallest to largest
+idx = np.argsort(df_manual_all['area_manual'])
+x = np.array(df_manual_all['area_manual'][idx])
+y = np.array(df_manual_all['area_manual_corrected'][idx])
+
+# remove NaNs
+idx = ~np.isnan(x) & ~np.isnan(y)
+x = x[idx]
+y = y[idx]
+
+# bin the points so that each bin has the same number of points (roughly)
+x_split = np.array_split(x, 50)
+x_bins = [scipy.stats.mstats.hdquantiles(x_bin, prob=[0.50], axis=0).data[0] for x_bin in x_split]
+y_bins = np.array_split(y, 50)
+
+y_bins_q1 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.25], axis=0).data[0] for y_bin in y_bins]
+y_bins_q2 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0] for y_bin in y_bins]
+y_bins_q3 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.75], axis=0).data[0] for y_bin in y_bins]
+
+# add a first and last point, with the first and last half sets
+x_bins = [x_split[0][0]] + x_bins
+y_bin = np.array_split(y_bins[0], 2)[0]
+y_bins_q1 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.25], axis=0).data[0]] + y_bins_q1
+y_bins_q2 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0]] + y_bins_q2
+y_bins_q3 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.75], axis=0).data[0]] + y_bins_q3
+
+x_bins += [x_split[-1][-1]]
+y_bin = np.array_split(y_bins[-1], 2)[-1]
+y_bins_q1 += [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.25], axis=0).data[0]]
+y_bins_q2 += [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0]]
+y_bins_q3 += [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.75], axis=0).data[0]]
+
+
+if DEBUG:
+    plt.clf()
+    plt.plot([x_bins[0], x_bins[-1]], [0, 0], 'k')
+    plt.scatter(df_manual_all['area_manual'], df_manual_all['area_manual_corrected'], s=1)
+    plt.plot(x_bins, y_bins_q1, 'r--')
+    plt.plot(x_bins, y_bins_q2, 'r')
+    plt.plot(x_bins, y_bins_q3, 'r--')
+
+# Benjamini/Hochberg correction
+reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+print('Original pvalues:\n' + str(np.reshape(pval, (8, 4))))
+print('Adjusted pvalues:\n' + str(np.reshape(pval_adj, (8, 4))))
 
 # auto area: inspect whether the ratios are more or less constant with the area size
 plt.clf()
