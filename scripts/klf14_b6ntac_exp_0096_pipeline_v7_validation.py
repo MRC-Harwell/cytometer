@@ -1091,12 +1091,15 @@ pixels.
 import statsmodels.api as sm
 from statsmodels.stats.multitest import multipletests
 import scipy.stats.mstats
+import more_itertools
+import statsmodels.formula.api as smf
 
 # correct home directory in file paths
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/home/rcasero', home, check_isfile=True)
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
 
-## compute and save results
+## compute and save results (you can skip this section if this has been done before, and go straight where you load the
+## results)
 
 # load data computed in the previous section
 data_filename = os.path.join(saved_models_dir, experiment_id + '_data.npz')
@@ -1483,7 +1486,7 @@ plt.clf()
 bp = plt.boxplot((df_manual_all['area_manual'][idx_manual_auto_overlap] / 1e3,
                   df_manual_all['area_auto'][idx_manual_auto_overlap] / 1e3,
                   df_manual_all['area_corrected'][idx_manual_auto_overlap] / 1e3),
-                 positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
+                 positions=[1, 2, 3], notch=True, labels=['Hand traced', 'Auto', 'Corrected'])
 
 # points of interest from the boxplots
 bp_poi = cytometer.utils.boxplot_poi(bp)
@@ -1496,23 +1499,60 @@ plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
 plt.ylim(-700 / 1e3, 10000 / 1e3)
 plt.tight_layout()
 
+# manual quartile values
+plt.text(1.20, bp_poi[0, 3] + .1, '%0.1f' % (bp_poi[0, 3]), fontsize=12, color='k')
+plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
+
+# auto quartile values
+plt.text(2.20, bp_poi[1, 3] + .1 - .3, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
+plt.text(2.20, bp_poi[1, 2] + .1 - .3, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+plt.text(2.20, bp_poi[1, 1] + .1 - .4, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
+
+# corrected quartile values
+plt.text(3.20, bp_poi[2, 3] + .1 - .1, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
+plt.text(3.20, bp_poi[2, 2] + .1 + .0, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
+plt.text(3.20, bp_poi[2, 1] + .1 + .0, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots_manual_dataset.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots_manual_dataset.png'))
+
+# Wilcoxon sign-ranked tests of whether manual areas are significantly different to auto/corrected areas
+print('Manual mean ± std = ' + str(np.mean(df_manual_all['area_manual'][idx])) + ' ± '
+      + str(np.std(df_manual_all['area_manual'][idx])))
+print('Auto mean ± std = ' + str(np.mean(df_manual_all['area_auto'][idx])) + ' ± '
+      + str(np.std(df_manual_all['area_auto'][idx])))
+print('Corrected mean ± std = ' + str(np.mean(df_manual_all['area_corrected'][idx])) + ' ± '
+      + str(np.std(df_manual_all['area_corrected'][idx])))
+
+# Wilcoxon signed-rank test to check whether the medians are significantly different
+w, p = scipy.stats.wilcoxon(df_manual_all['area_manual'][idx_manual_auto_overlap],
+                            df_manual_all['area_auto'][idx_manual_auto_overlap])
+print('Manual vs. auto, W = ' + str(w) + ', p = ' + str(p))
+
+w, p = scipy.stats.wilcoxon(df_manual_all['area_manual'][idx_manual_auto_overlap],
+                            df_manual_all['area_corrected'][idx_manual_auto_overlap])
+print('Manual vs. corrected, W = ' + str(w) + ', p = ' + str(p))
+
 # 2D density plot
-plt.clf()
-sns.kdeplot(df_manual_all['area_manual'][idx_manual_auto_overlap],
-            df_manual_all['area_auto'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap],
-            cmap="Reds", shade=True)
-sns.kdeplot(df_manual_all['area_manual'][idx_manual_auto_overlap],
-            df_manual_all['area_corrected'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap],
-            cmap="Blues", shade=True)
+if DEBUG:
+    plt.clf()
+    sns.kdeplot(df_manual_all['area_manual'][idx_manual_auto_overlap],
+                df_manual_all['area_auto'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap],
+                cmap="Reds", shade=True)
+    sns.kdeplot(df_manual_all['area_manual'][idx_manual_auto_overlap],
+                df_manual_all['area_corrected'][idx_manual_auto_overlap] / df_manual_all['area_manual'][idx_manual_auto_overlap],
+                cmap="Blues", shade=True)
 
 
 # area vs. WAT proportion
-plt.clf()
-plt.scatter(df_manual_all['wat_prop_auto'], df_manual_all['area_auto'], s=4)
-plt.xlabel('Prop. WAT pixels', fontsize=14)
-plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
-plt.tick_params(axis="both", labelsize=14)
-plt.tight_layout()
+if DEBUG:
+    plt.clf()
+    plt.scatter(df_manual_all['wat_prop_auto'], df_manual_all['area_auto'], s=4)
+    plt.xlabel('Prop. WAT pixels', fontsize=14)
+    plt.ylabel('Area ($\mu$m$^2$)', fontsize=14)
+    plt.tick_params(axis="both", labelsize=14)
+    plt.tight_layout()
 
 # histogram of area correction factor
 
@@ -1550,38 +1590,18 @@ if DEBUG:
     plt.clf()
     plt.boxplot(df_manual_all['area_manual'][idx] - df_manual_all['area_auto'][idx])
 
-# Wilcoxon sign-ranked tests of whether manual areas are significantly different to auto/corrected areas
-print('Manual mean ± std = ' + str(np.mean(df_manual_all['area_manual'][idx])) + ' ± '
-      + str(np.std(df_manual_all['area_manual'][idx])))
-print('Auto mean ± std = ' + str(np.mean(df_manual_all['area_auto'][idx])) + ' ± '
-      + str(np.std(df_manual_all['area_auto'][idx])))
-print('Corrected mean ± std = ' + str(np.mean(df_manual_all['area_corrected'][idx])) + ' ± '
-      + str(np.std(df_manual_all['area_corrected'][idx])))
-result = stats.wilcoxon(df_manual_all['area_manual'][idx], df_manual_all['area_auto'][idx])
-print('Manual to auto difference')
-print('\tt-Statistic = ' + str(result.statistic))
-print('\tP-value = ' + str(result.pvalue))
-result = stats.wilcoxon(df_manual_all['area_manual'][idx], df_manual_all['area_corrected'][idx])
-print('Manual to corrected difference')
-print('\tt-Statistic = ' + str(result.statistic))
-print('\tP-value = ' + str(result.pvalue))
+## median and CI of segmentation auto area error vs. hand traced area
+## Note: If we perform a sign test to see whether the median = 0, we would assume a binomial distribution of number of
+## values < median, and with a Gaussian approximation to the binomial distribution, we'd be performing a normal null
+## hypothesis test. which corresponds to a CI-95% of -1.96*std, +1.96*std around the median value.
+## https://youtu.be/dLTvZUrs-CI?t=463
 
-# test whether area errors are similar in different stratifications of the data ...
-df_manual_all['area_manual_corrected'] = df_manual_all['area_manual'] - df_manual_all['area_corrected']
-
-model = sm.formula.ols('area_manual_corrected ~ C(genotype) + C(ko_parent) + C(sex)', data=df_manual_all, subset=idx).fit()
-print(model.summary())
-
-# ... PAT vs. MAT
-model = sm.formula.ols('area_manual_corrected ~ area_manual', data=df_manual_all, subset=idx).fit()
-print(model.summary())
-
-## median and CI of segmentation area error vs. hand traced area
+df_manual_all['area_auto_manual'] = df_manual_all['area_auto'] - df_manual_all['area_manual']
 
 # sort manual areas from smallest to largest
 idx = np.argsort(df_manual_all['area_manual'])
 x = np.array(df_manual_all['area_manual'][idx])
-y = np.array(df_manual_all['area_manual_corrected'][idx])
+y = np.array(df_manual_all['area_auto_manual'][idx])
 
 # remove NaNs
 idx = ~np.isnan(x) & ~np.isnan(y)
@@ -1589,40 +1609,173 @@ x = x[idx]
 y = y[idx]
 
 # bin the points so that each bin has the same number of points (roughly)
-x_split = np.array_split(x, 50)
-x_bins = [scipy.stats.mstats.hdquantiles(x_bin, prob=[0.50], axis=0).data[0] for x_bin in x_split]
-y_bins = np.array_split(y, 50)
+idx_split = more_itertools.windowed(range(len(x)), n=40)
+x_bins = [scipy.stats.mstats.hdquantiles(x[np.array(idx)], prob=[0.50], axis=0).data[0] for idx in idx_split]
 
-y_bins_q1 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.25], axis=0).data[0] for y_bin in y_bins]
-y_bins_q2 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0] for y_bin in y_bins]
-y_bins_q3 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.75], axis=0).data[0] for y_bin in y_bins]
+idx_split = more_itertools.windowed(range(len(y)), n=40)
+y_bins_q2 = [scipy.stats.mstats.hdquantiles(y[np.array(idx)], prob=[0.50], axis=0).data[0] for idx in idx_split]
+
+idx_split = more_itertools.windowed(range(len(y)), n=40)
+y_bins_q2_std = [scipy.stats.mstats.hdquantiles_sd(y[np.array(idx)], prob=[0.50], axis=0).data[0] for idx in idx_split]
 
 # add a first and last point, with the first and last half sets
-x_bins = [x_split[0][0]] + x_bins
-y_bin = np.array_split(y_bins[0], 2)[0]
-y_bins_q1 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.25], axis=0).data[0]] + y_bins_q1
+x_bins = [x[0]] + x_bins
+y_bin = y[0:20]
 y_bins_q2 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0]] + y_bins_q2
-y_bins_q3 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.75], axis=0).data[0]] + y_bins_q3
+y_bins_q2_std = [scipy.stats.mstats.hdquantiles_sd(y_bin, prob=[0.50], axis=0).data[0]] + y_bins_q2_std
 
-x_bins += [x_split[-1][-1]]
-y_bin = np.array_split(y_bins[-1], 2)[-1]
-y_bins_q1 += [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.25], axis=0).data[0]]
+x_bins += [x[-1]]
+y_bin = y[-20:]
 y_bins_q2 += [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0]]
-y_bins_q3 += [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.75], axis=0).data[0]]
+y_bins_q2_std += [scipy.stats.mstats.hdquantiles_sd(y_bin, prob=[0.50], axis=0).data[0]]
 
+x_bins = np.array(x_bins)
+y_bins_q2 = np.array(y_bins_q2)
+y_bins_q2_std = np.array(y_bins_q2_std)
 
-if DEBUG:
-    plt.clf()
-    plt.plot([x_bins[0], x_bins[-1]], [0, 0], 'k')
-    plt.scatter(df_manual_all['area_manual'], df_manual_all['area_manual_corrected'], s=1)
-    plt.plot(x_bins, y_bins_q1, 'r--')
-    plt.plot(x_bins, y_bins_q2, 'r')
-    plt.plot(x_bins, y_bins_q3, 'r--')
+# 95% confidence interval for the median estimate
+y_bins_ci_lo = y_bins_q2 - 1.96 * y_bins_q2_std
+y_bins_ci_hi = y_bins_q2 + 1.96 * y_bins_q2_std
 
-# Benjamini/Hochberg correction
-reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
-print('Original pvalues:\n' + str(np.reshape(pval, (8, 4))))
-print('Adjusted pvalues:\n' + str(np.reshape(pval_adj, (8, 4))))
+# plot for paper
+plt.clf()
+plt.plot([x_bins[0] * 1e-3, x_bins[-1] * 1e-3], [0, 0], 'k')
+plt.scatter(df_manual_all['area_manual'] * 1e-3, df_manual_all['area_auto_manual'] * 1e-3, s=1)
+plt.fill_between(x_bins * 1e-3, y_bins_ci_lo * 1e-3, y_bins_ci_hi * 1e-3, facecolor='r', alpha=0.5)
+plt.plot(x_bins * 1e-3, y_bins_q2 * 1e-3, 'r')
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
+plt.ylabel('Area$_{auto}$ - Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
+plt.tight_layout()
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_auto_manual_error.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_auto_manual_error.png'))
+
+# fit line to the cells > 1.3e3 um^2, to calculate the increase of area estimation error with cell area
+df_ols = pd.DataFrame()
+df_ols['area_manual_bins'] = x_bins
+df_ols['area_auto_manual_bins_q2'] = y_bins_q2
+
+# compute what proportion of cells are poorly segmented
+ecdf = sm.distributions.empirical_distribution.ECDF(df_ols['area_manual_bins'])
+cell_area_threshold = 740
+print('Poorly segmented cells = ' + str(ecdf(cell_area_threshold)))
+
+idx = np.where(df_ols['area_manual_bins'] > cell_area_threshold)[0]
+model = sm.formula.ols('area_auto_manual_bins_q2 ~ area_manual_bins', data=df_ols, subset=idx).fit()
+print(model.summary())
+
+print('R^2 = ' + str(model.rsquared) + ', F(' + str(model.df_model) + ', ' + str(model.df_resid) + ') = ' + str(model.fvalue) + ', p = ' + str(model.f_pvalue))
+print('beta = ' + str(model.params['area_manual_bins']) + ' 土 ' + str(model.bse['area_manual_bins']))
+
+y_aux = model.predict(df_ols['area_manual_bins'])
+
+plt.plot(df_ols['area_manual_bins'] * 1e-3, y_aux * 1e-3, 'g', linewidth=2)
+
+plt.xlim(-0.25, 11)
+plt.ylim(-2, 2)
+plt.tight_layout()
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_auto_manual_error_zoom.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_auto_manual_error_zoom.png'))
+
+## median and CI of segmentation corrected area error vs. hand traced area
+## Note: If we perform a sign test to see whether the median = 0, we would assume a binomial distribution of number of
+## values < median, and with a Gaussian approximation to the binomial distribution, we'd be performing a normal null
+## hypothesis test. which corresponds to a CI-95% of -1.96*std, +1.96*std around the median value.
+## https://youtu.be/dLTvZUrs-CI?t=463
+
+df_manual_all['area_corrected_manual'] = df_manual_all['area_corrected'] - df_manual_all['area_manual']
+
+# # test whether area errors are similar in different stratifications of the data ...
+# model = sm.formula.ols('area_corrected_manual ~ C(genotype) + C(ko_parent) + C(sex)', data=df_manual_all, subset=idx).fit()
+# print(model.summary())
+#
+# # ... PAT vs. MAT
+# model = sm.formula.ols('area_corrected_manual ~ area_manual', data=df_manual_all, subset=idx).fit()
+# print(model.summary())
+
+# sort manual areas from smallest to largest
+idx = np.argsort(df_manual_all['area_manual'])
+x = np.array(df_manual_all['area_manual'][idx])
+y = np.array(df_manual_all['area_corrected_manual'][idx])
+
+# remove NaNs
+idx = ~np.isnan(x) & ~np.isnan(y)
+x = x[idx]
+y = y[idx]
+
+# bin the points so that each bin has the same number of points (roughly)
+idx_split = more_itertools.windowed(range(len(x)), n=40)
+x_bins = [scipy.stats.mstats.hdquantiles(x[np.array(idx)], prob=[0.50], axis=0).data[0] for idx in idx_split]
+
+idx_split = more_itertools.windowed(range(len(y)), n=40)
+y_bins_q2 = [scipy.stats.mstats.hdquantiles(y[np.array(idx)], prob=[0.50], axis=0).data[0] for idx in idx_split]
+
+idx_split = more_itertools.windowed(range(len(y)), n=40)
+y_bins_q2_std = [scipy.stats.mstats.hdquantiles_sd(y[np.array(idx)], prob=[0.50], axis=0).data[0] for idx in idx_split]
+
+# add a first and last point, with the first and last half sets
+x_bins = [x[0]] + x_bins
+y_bin = y[0:20]
+y_bins_q2 = [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0]] + y_bins_q2
+y_bins_q2_std = [scipy.stats.mstats.hdquantiles_sd(y_bin, prob=[0.50], axis=0).data[0]] + y_bins_q2_std
+
+x_bins += [x[-1]]
+y_bin = y[-20:]
+y_bins_q2 += [scipy.stats.mstats.hdquantiles(y_bin, prob=[0.50], axis=0).data[0]]
+y_bins_q2_std += [scipy.stats.mstats.hdquantiles_sd(y_bin, prob=[0.50], axis=0).data[0]]
+
+x_bins = np.array(x_bins)
+y_bins_q2 = np.array(y_bins_q2)
+y_bins_q2_std = np.array(y_bins_q2_std)
+
+# 95% confidence interval for the median estimate
+y_bins_ci_lo = y_bins_q2 - 1.96 * y_bins_q2_std
+y_bins_ci_hi = y_bins_q2 + 1.96 * y_bins_q2_std
+
+# plot for paper
+plt.clf()
+plt.plot([x_bins[0] * 1e-3, x_bins[-1] * 1e-3], [0, 0], 'k')
+plt.scatter(df_manual_all['area_manual'] * 1e-3, df_manual_all['area_corrected_manual'] * 1e-3, s=1)
+plt.fill_between(x_bins * 1e-3, y_bins_ci_lo * 1e-3, y_bins_ci_hi * 1e-3, facecolor='r', alpha=0.5)
+plt.plot(x_bins * 1e-3, y_bins_q2 * 1e-3, 'r')
+plt.tick_params(axis='both', which='major', labelsize=14)
+plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
+plt.ylabel('Area$_{corr}$ - Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
+plt.tight_layout()
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_corrected_manual_error.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_corrected_manual_error.png'))
+
+# fit line to the cells > 1.3e3 um^2, to calculate the increase of area estimation error with cell area
+df_ols = pd.DataFrame()
+df_ols['area_manual_bins'] = x_bins
+df_ols['area_corrected_manual_bins_q2'] = y_bins_q2
+
+idx = np.where(df_ols['area_manual_bins'] > cell_area_threshold)[0]
+model = sm.formula.ols('area_corrected_manual_bins_q2 ~ area_manual_bins', data=df_ols, subset=idx).fit()
+print(model.summary())
+
+print('R^2 = ' + str(model.rsquared) + ', F(' + str(model.df_model) + ', ' + str(model.df_resid) + ') = ' + str(model.fvalue) + ', p = ' + str(model.f_pvalue))
+print('beta = ' + str(model.params['area_manual_bins']) + ' 土 ' + str(model.bse['area_manual_bins']))
+
+y_aux = model.predict(df_ols['area_manual_bins'])
+
+plt.plot(df_ols['area_manual_bins'] * 1e-3, y_aux * 1e-3, 'g', linewidth=2)
+
+plt.xlim(-0.25, 11)
+plt.ylim(-0.5, 2.5)
+plt.tight_layout()
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_corrected_manual_error_zoom.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_corrected_manual_error_zoom.png'))
+
+# TODO:
+# # Benjamini/Hochberg correction
+# reject_h0, pval_adj, _, _ = multipletests(pval, alpha=0.05, method='fdr_bh', is_sorted=False, returnsorted=False)
+# print('Original pvalues:\n' + str(np.reshape(pval, (8, 4))))
+# print('Adjusted pvalues:\n' + str(np.reshape(pval_adj, (8, 4))))
 
 # auto area: inspect whether the ratios are more or less constant with the area size
 plt.clf()
@@ -1711,8 +1864,10 @@ data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pip
 df_manual_all = pd.read_pickle(data_manual_filename)
 
 # boolean vectors to select subsets of rows from the dataframe
-idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.59) # this threshold computed above in the Object-wise validation
-idx_corrected_wat = np.array(df_auto_all['wat_prop_corrected'] >= 0.59) # ditto
+# idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.59) # this threshold computed above in the Object-wise validation
+# idx_corrected_wat = np.array(df_auto_all['wat_prop_corrected'] >= 0.59) # ditto
+idx_auto_wat = np.array(df_auto_all['wat_prop_auto'] >= 0.5) # threshold that was used in the experiments
+idx_corrected_wat = np.array(df_auto_all['wat_prop_corrected'] >= 0.5) # ditto
 idx_auto_not_large = np.array(df_auto_all['area_auto'] < 20e3)
 idx_corrected_not_large = np.array(df_auto_all['area_corrected'] < 20e3)
 idx_auto_not_edge = np.logical_not(df_auto_all['auto_is_edge_cell'])
@@ -1721,40 +1876,42 @@ idx_auto_not_edge = np.logical_not(df_auto_all['auto_is_edge_cell'])
 idx_auto = idx_auto_wat * idx_auto_not_large * idx_auto_not_edge
 idx_corrected = idx_corrected_wat * idx_corrected_not_large * idx_auto_not_edge
 
-# boxplots of manual/auto/corrected areas.
-plt.clf()
-bp = plt.boxplot((df_manual_all['area_manual'] / 1e3,
-                  df_auto_all['area_auto'][idx_auto] / 1e3,
-                  df_auto_all['area_corrected'][idx_corrected] / 1e3),
-                 positions=[1, 2, 3], notch=True, labels=['Manual', 'Auto', 'Corrected'])
+# plot not used in paper
+if DEBUG:
+    # boxplots of manual/auto/corrected areas.
+    plt.clf()
+    bp = plt.boxplot((df_manual_all['area_manual'] / 1e3,
+                      df_auto_all['area_auto'][idx_auto] / 1e3,
+                      df_auto_all['area_corrected'][idx_corrected] / 1e3),
+                     positions=[1, 2, 3], notch=True, labels=['Hand traced', 'Auto', 'Corrected'])
 
-# points of interest from the boxplots
-bp_poi = cytometer.utils.boxplot_poi(bp)
+    # points of interest from the boxplots
+    bp_poi = cytometer.utils.boxplot_poi(bp)
 
-plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual median
-plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
-plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
-plt.tick_params(axis="both", labelsize=14)
-plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
-plt.ylim(-700 / 1e3, 10000 / 1e3)
-plt.tight_layout()
+    plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual median
+    plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
+    plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
+    plt.tick_params(axis="both", labelsize=14)
+    plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+    plt.ylim(-700 / 1e3, 10000 / 1e3)
+    plt.tight_layout()
 
-# manual quartile values
-plt.text(1.20, bp_poi[0, 3] + .1, '%0.1f' % (bp_poi[0, 3]), fontsize=12, color='k')
-plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='C1')
-plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
+    # manual quartile values
+    plt.text(1.20, bp_poi[0, 3] + .1, '%0.1f' % (bp_poi[0, 3]), fontsize=12, color='k')
+    plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+    plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
 
-# auto quartile values
-plt.text(2.20, bp_poi[1, 3] + .1 - .3, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
-plt.text(2.20, bp_poi[1, 2] + .1 + .1, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
-plt.text(2.20, bp_poi[1, 1] + .1 + .02, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
+    # auto quartile values
+    plt.text(2.20, bp_poi[1, 3] + .1 - .3, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
+    plt.text(2.20, bp_poi[1, 2] + .1 + .1, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+    plt.text(2.20, bp_poi[1, 1] + .1 + .02, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
 
-# corrected quartile values
-plt.text(3.20, bp_poi[2, 3] + .1 - .1, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
-plt.text(3.20, bp_poi[2, 2] + .1 + .0, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
-plt.text(3.20, bp_poi[2, 1] + .1 - .1, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
+    # corrected quartile values
+    plt.text(3.20, bp_poi[2, 3] + .1 - .1, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
+    plt.text(3.20, bp_poi[2, 2] + .1 + .0, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
+    plt.text(3.20, bp_poi[2, 1] + .1 - .1, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
 
-plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_boxplots.svg'))
 
 ''' 
 ************************************************************************************************************************
