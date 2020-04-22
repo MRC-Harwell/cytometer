@@ -1535,7 +1535,7 @@ w, p = scipy.stats.wilcoxon(df_manual_all['area_manual'][idx_manual_auto_overlap
 print('Manual vs. corrected, W = ' + str(w) + ', p = ' + str(p))
 
 
-# boxplots of area error.
+# boxplots of area error
 plt.clf()
 bp = plt.boxplot((df_manual_all['area_auto'][idx_manual_auto_overlap] / 1e3
                   - df_manual_all['area_manual'][idx_manual_auto_overlap] / 1e3,
@@ -1560,6 +1560,42 @@ plt.tight_layout()
 
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_error_boxplots_manual_dataset.svg'))
 plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_error_boxplots_manual_dataset.png'))
+
+# boxplots of area error
+plt.clf()
+bp = plt.boxplot((df_manual_all['area_auto'][idx_manual_auto_overlap] / 1e3
+                  - df_manual_all['area_manual'][idx_manual_auto_overlap] / 1e3,
+                  df_manual_all['area_corrected'][idx_manual_auto_overlap] / 1e3
+                  - df_manual_all['area_manual'][idx_manual_auto_overlap] / 1e3),
+                 positions=[1, 2], notch=True, labels=['Auto -\nHand traced', 'Corrected -\nHand traced'])
+
+plt.plot([0.75, 2.25], [0, 0], 'k', 'linewidth', 2)
+plt.xlim(0.5, 2.5)
+plt.ylim(-1.4, 1.1)
+
+# points of interest from the boxplots
+bp_poi = cytometer.utils.boxplot_poi(bp)
+
+# manual quartile values
+plt.text(1.10, bp_poi[0, 2], '%0.2f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+plt.text(2.10, bp_poi[1, 2], '%0.2f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+
+plt.tick_params(axis="both", labelsize=14)
+plt.ylabel('Area error ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+plt.tight_layout()
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_error_boxplots_manual_dataset.svg'))
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_area_error_boxplots_manual_dataset.png'))
+
+# compute Dice coefficient mean, median, std
+print('Auto')
+print('Median: ' + str(np.median(df_manual_all['dice_auto'][idx_manual_auto_overlap])))
+print('Mean: ' + str(np.mean(df_manual_all['dice_auto'][idx_manual_auto_overlap])))
+print('Std: ' + str(np.std(df_manual_all['dice_auto'][idx_manual_auto_overlap])))
+print('Corrected')
+print('Median: ' + str(np.median(df_manual_all['dice_corrected'][idx_manual_auto_overlap])))
+print('Mean: ' + str(np.mean(df_manual_all['dice_corrected'][idx_manual_auto_overlap])))
+print('Std: ' + str(np.std(df_manual_all['dice_corrected'][idx_manual_auto_overlap])))
 
 # compute median and std
 auto_err_med = scipy.stats.mstats.hdquantiles(df_manual_all['area_auto'][idx_manual_auto_overlap] / 1e3
