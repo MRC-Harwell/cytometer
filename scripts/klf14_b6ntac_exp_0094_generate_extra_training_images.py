@@ -1,4 +1,6 @@
 """
+Create new training images using areas of "other" tissue. This extra data is for the classifier.
+
 Read full .ndpi slides, extract 1001x1001 windows manually selected to increase the dataset randomly created with 0074.
 
 The windows are saved with row_R_col_C, where R, C are the row, col centroid of the image. You can get the offset of the

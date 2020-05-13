@@ -1,5 +1,5 @@
 """
-Tissue classifier, using sherrah2016 CNN.
+Tissue classifier, using sherrah2016 CNN, for 10-fold cross validation.
 
 Like 0061, but:
   * Train by image instead of by object.
@@ -18,8 +18,8 @@ Use hand traced areas of white adipocytes and "other" tissues to train classifie
   * 1: "Brown" = brown adipocytes
   * 0: "Background" = flat background
 
-We assign cells to train or test sets grouped by image. This way, we guarantee that at testing time, the
-network has not seen neighbour cells to the ones used for training.
+For cross validation, we assign cells to train or test sets grouped by image. This way, we guarantee that at testing
+time, the network has not seen neighbour cells to the ones used for training.
 """
 
 # script name to identify this experiment

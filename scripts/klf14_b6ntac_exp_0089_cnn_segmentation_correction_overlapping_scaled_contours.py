@@ -1,5 +1,5 @@
 """
-Segmentation Correction Network.
+Segmentation Correction Network for 10-fold cross validation.
 
 Use original hand traced cells (with overlaps) for training.
 
@@ -10,8 +10,8 @@ differences between cell sizes.
 
 Training/test datasets created by random selection of individual cell images.
 
-CHANGE: Here we assign cells to train or test sets grouped by image. This way, we guarantee that at testing time, the
-network has not seen neighbour cells to the ones used for training.
+CHANGE: For cross validation, here we assign cells to train or test sets grouped by image. This way, we guarantee that
+at testing time, the network has not seen neighbour cells to the ones used for training.
 
 Training for the CNN:
 * Input: histology multiplied by segmentation.
