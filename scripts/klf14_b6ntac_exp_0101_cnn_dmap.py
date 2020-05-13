@@ -1,7 +1,7 @@
 '''
 Dmap regression with all training data (KLF14 dataset).
 
-Training vs testing is done at the histology slide level, not at the window level. This way, we really guarantee that
+Cross validation is done at the histology slide level, not at the window level. This way, we really guarantee that
 the network has not been trained with data sampled from the same image as the test data.
 
 Like 0056, but:

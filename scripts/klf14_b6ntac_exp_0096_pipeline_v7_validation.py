@@ -1,5 +1,5 @@
 """
-Validate pipeline v7:
+Validate pipeline v7 with 10-fold cross validation:
  * data generation
    * training images (*0076*)
    * non-overlap training images (*0077*)
