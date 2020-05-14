@@ -14,6 +14,8 @@ KLF14: 61 files
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0079_generate_kfolds'
 
+DEBUG = False
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
@@ -39,11 +41,12 @@ saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 #
 # Note: These training images were generated with script 0076.
 #
-# Note: The line below is the code we used the first time we ran this script, as an easy way to select all exisiting
+# Note: The line below is the code we used the first time we ran this script, as an easy way to select all existing
 # files at the time. However, since then, we have created more .svg files. For the sake of reproducibility of results,
-# this line is now commented out, and the list of files is provided explictly below
+# this line is now commented out, and the list of files is provided explicitly below
 # im_svg_file_list = glob.glob(os.path.join(klf14_training_dir, '*.svg'))
 
+# Note: Of these 61 files, only 55 contain cell segmentations
 im_svg_file_list = [
     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_019220_col_061724.svg',
     '/home/rcasero/Data/cytometer_data/klf14/klf14_b6ntac_training/KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_012172_col_049588.svg',
@@ -110,6 +113,14 @@ im_svg_file_list = [
 
 # correct home directory
 im_svg_file_list = [x.replace('/home/rcasero', home) for x in im_svg_file_list]
+
+if DEBUG:
+    for i, file in enumerate(im_svg_file_list):
+        print(file)
+        print('   Cell: ' + str(len(cytometer.data.read_paths_from_svg_file(file, tag='Cell'))))
+        print('   Other: ' + str(len(cytometer.data.read_paths_from_svg_file(file, tag='Other')) +
+                                 len(cytometer.data.read_paths_from_svg_file(file, tag='Brown'))))
+        print('   Background: ' + str(len(cytometer.data.read_paths_from_svg_file(file, tag='Background'))))
 
 # extract contours
 contours = {'cell': [], 'other': [], 'brown': []}
