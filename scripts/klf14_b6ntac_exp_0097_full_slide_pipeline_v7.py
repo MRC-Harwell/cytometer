@@ -539,13 +539,6 @@ for i_file in list(range(193, 196)):
             plt.subplot(212)
             plt.imshow(lores_istissue0)
 
-            plt.clf()
-            plt.subplot(211)
-            plt.imshow(im_downsampled)
-            plt.contour(lores_istissue, colors='k')
-            plt.subplot(212)
-            plt.imshow(lores_istissue)
-
     # keep extracting histology windows until we have finished
     while np.count_nonzero(lores_istissue) > 0:
 
