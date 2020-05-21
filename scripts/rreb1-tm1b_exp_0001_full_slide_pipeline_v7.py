@@ -1,5 +1,5 @@
 """
-Processing full slides of pipeline v7:
+Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7:
 
  * data generation
    * training images (*0076*)
@@ -12,10 +12,59 @@ Processing full slides of pipeline v7:
  * classifier (*0095*)
  * segmentation correction (*0089*) networks"
  * validation (*0096*)
+
+ Requirements for this script to work:
+
+ 1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
+
+ 2) Upload the AIDA project directory to ~/Software too.
+
+ 3) Mount the network share //scan-srv2/cox on ~/scan_srv2_cox with CIFS so that we have access to Roger and Liz's .ndpi
+    files. You can do it by creating an empty directory
+
+    mkdir ~/scan_srv2_cox
+
+    and adding a line like this to /etc/fstab in the server.
+
+    //scan-srv2/cox on /home/rcasero/scan_srv2_cox type cifs (rw,nosuid,nodev,noexec,relatime,vers=default,sec=ntlmv2,cache=strict,username=r.casero,domain=MRCH,uid=1003,forceuid,gid=1003,forcegid,addr=10.100.0.229,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,rsize=4194304,wsize=4194304,bsize=1048576,echo_interval=60,actimeo=1,user)
+
+    Then
+
+    mount ~/scan_srv2_cox
+
+ 4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
+    You need to go to the server that's going to process the slides, add a list of the files you want to process to
+    ~/Software/cytometer/tools/rebb1_full_histology_ndpi_to_dzi.sh
+
+    and run
+
+    cd ~/Software/cytometer/tools
+    ./rebb1_full_histology_ndpi_to_dzi.sh
+
+ 5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data.
+
+ 6) To monitor the segmentation as it's being processed, you need to have AIDA running
+
+    cd ~/Software/AIDA/dist/
+    node aidaLocal.js &
+
+    You also need to create a soft link per .dzi file to the annotations you want to visualise for that file, whether
+    the non-overlapping ones, or the corrected ones. E.g.
+
+    ln -s 'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55_exp_0097_corrected.json' 'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55_exp_0097.json'
+
+    Then you can use a browser to open the AIDA web interface by visiting the URL (note that you need to be on the MRC
+    VPN, or connected from inside the office to get access to the titanrtx server)
+
+    http://titanrtx:3000/dashboard
+
+    You can use the interface to open a .dzi file that corresponds to an .ndpi file being segmented, and see the
+    annotations (segmentation) being created for it.
+
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0097_full_slide_pipeline_v7'
+experiment_id = 'rreb1-tm1b_exp_0001_full_slide_pipeline_v7.py'
 
 # cross-platform home directory
 from pathlib import Path
@@ -33,8 +82,8 @@ import cytometer.data
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# # limit number of GPUs
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# limit number of GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -62,17 +111,17 @@ from shapely.geometry import Polygon
 DEBUG = False
 SAVE_FIGS = False
 
-root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
-seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
-figures_dir = os.path.join(root_data_dir, 'figures')
-saved_models_dir = os.path.join(root_data_dir, 'saved_models')
-results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
+pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+experiment_root_data_dir = os.path.join(home, 'Data/cytometer_data/rreb1')
+data_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace')
+figures_dir = os.path.join(experiment_root_data_dir, 'figures')
+saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
+results_dir = os.path.join(experiment_root_data_dir, 'results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
-training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 
-# k-folds file
+# although we don't need k-folds here, we need this file to load the list of SVG contours that we compute the AIDA
+# colourmap from
+# TODO: just save a cell size - colour function, instead of having to recompute it every time
 saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # model names
@@ -109,248 +158,42 @@ correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
 
-# segmentation correction parameters
+# list of NDPI files to process
+ndpi_files_list = [
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 Bat 1 - 2018-11-16 16.10.56.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 Bat 2 - 2018-11-16 16.13.43.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 Bat 3 - 2018-11-16 16.16.24.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 G2 - 2018-11-16 15.04.07.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 G3 - 2018-11-16 15.10.27.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 liv - 2018-11-16 16.54.43.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 M1 - 2018-11-16 15.27.25.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 M2 - 2018-11-16 15.33.30.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 M3 - 2018-11-16 15.39.07.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 mus - 2018-11-16 17.04.43.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 P1 - 2018-11-16 15.59.52.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 P2 - 2018-11-16 16.48.47.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 P3 - 2018-11-16 16.06.17.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 pan - 2018-11-16 17.00.28.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 S1 - 2018-11-16 15.45.10.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 S2 - 2018-11-16 15.49.47.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a  1132-18 S3 - 2018-11-16 15.53.46.ndpi'
+]
 
-# load list of images, and indices for training vs. testing indices
-saved_kfolds_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
-with open(saved_kfolds_filename, 'rb') as f:
-    aux = pickle.load(f)
-file_svg_list = aux['file_list']
-idx_test_all = aux['idx_test']
-idx_train_all = aux['idx_train']
-
-# correct home directory
-file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
-file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
-
-# loop the folds to get the ndpi files that correspond to testing of each fold.
-# Training SCWAT slices.
-# i_file = [0, 19]
-ndpi_files_test_list = {}
-for i_fold in range(len(idx_test_all)):
-    # list of .svg files for testing
-    file_svg_test = np.array(file_svg_list)[idx_test_all[i_fold]]
-
-    # list of .ndpi files that the .svg windows came from
-    file_ndpi_test = [os.path.basename(x).replace('.svg', '') for x in file_svg_test]
-    file_ndpi_test = np.unique([x.split('_row')[0] for x in file_ndpi_test])
-
-    # add to the dictionary {file: fold}
-    for file in file_ndpi_test:
-        ndpi_files_test_list[file] = i_fold
-
-# add more SCWAT slices. E.g. if 'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52' is in the list, we want to add
-# the C2 and C3 cuts too
-# i_file = [20, 59]
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 C2 - 2016-02-03 11.15.14'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 C3 - 2016-02-03 11.19.28'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 C2 - 2016-02-03 13.19.18'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 C3 - 2016-02-03 13.25.12'] = 0
-ndpi_files_test_list['KLF14-B6NTAC 36.1i PAT 104-16 C2 - 2016-02-12 12.22.20'] = 1
-ndpi_files_test_list['KLF14-B6NTAC 36.1i PAT 104-16 C3 - 2016-02-12 12.29.22'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2c  66-16 C2 - 2016-02-04 11.51.43'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2c  66-16 C3 - 2016-02-04 11.56.51'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1c  46-16 C2 - 2016-02-01 14.08.04'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1c  46-16 C3 - 2016-02-01 14.14.08'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3d  224-16 C2 - 2016-02-26 11.19.06'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3d  224-16 C3 - 2016-02-26 11.24.28'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-37.1c PAT 108-16 C2 - 2016-02-15 13.01.29'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-37.1c PAT 108-16 C3 - 2016-02-15 12.57.56'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2d  214-16 C2 - 2016-02-17 16.05.58'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2d  214-16 C3 - 2016-02-17 16.53.30'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-37.1d PAT 109-16 C2 - 2016-02-15 15.22.53'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-37.1d PAT 109-16 C3 - 2016-02-15 15.26.39'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2g  415-16 C2 - 2016-03-16 11.56.14'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2g  415-16 C3 - 2016-03-16 12.05.08'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-36.1a PAT 96-16 C2 - 2016-02-10 16.05.02'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-36.1a PAT 96-16 C3 - 2016-02-10 15.58.00'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-36.1b PAT 97-16 C2 - 2016-02-10 17.42.35'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-36.1b PAT 97-16 C3 - 2016-02-10 17.47.13'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1a  50-16 C2 - 2016-02-02 09.17.36'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1a  50-16 C3 - 2016-02-02 09.22.47'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3d  416-16 C2 - 2016-03-16 14.51.38'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3d  416-16 C3 - 2016-03-16 14.59.33'] = 6
-ndpi_files_test_list['KLF14-B6NTAC 36.1c PAT 98-16 C2 - 2016-02-11 10.50.59'] = 7
-ndpi_files_test_list['KLF14-B6NTAC 36.1c PAT 98-16 C3 - 2016-02-11 10.57.24'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4a  417-16 C2 - 2016-03-16 16.00.21'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4a  417-16 C3 - 2016-03-16 16.06.30'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1e  54-16 C2 - 2016-02-02 15.32.37'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1e  54-16 C3 - 2016-02-02 15.38.38'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3b  223-16 C1 - 2016-02-26 09.18.44'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3b  223-16 C3 - 2016-02-26 09.29.11'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 C2 - 2016-02-04 15.11.37'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 C3 - 2016-02-04 15.18.41'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C2 - 2016-02-03 17.05.57'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 C3 - 2016-02-03 17.12.44'] = 9
-
-# add slices from GWAT, but only one slice per animal
-# i_file = [60, 79]
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49'] = 0
-ndpi_files_test_list['KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37'] = 9
-
-# add slices from SCWAT, slices from other animals not from training
-# i_file = [80, 135]
-# males
-ndpi_files_test_list['KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31'] = 3
-ndpi_files_test_list['KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56'] = 7
-ndpi_files_test_list['KLF14-B6NTAC 36.1f PAT 101-16 C1 - 2016-02-11 15.23.06'] = 5
-ndpi_files_test_list['KLF14-B6NTAC 36.1g PAT 102-16 C1 - 2016-02-11 17.20.14'] = 1
-ndpi_files_test_list['KLF14-B6NTAC 36.1h PAT 103-16 C1 - 2016-02-12 10.15.22'] = 4
-ndpi_files_test_list['KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33'] = 1
-# females
-ndpi_files_test_list['KLF14-B6NTAC 37.1a PAT 106-16 C1 - 2016-02-12 16.21.00'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-37.1b PAT 107-16 C1 - 2016-02-15 11.43.31'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-37.1e PAT 110-16 C1 - 2016-02-15 17.33.11'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-37.1g PAT 112-16 C1 - 2016-02-16 13.33.09'] = 9
-# females
-ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3a  409-16 C1 - 2016-03-15 10.18.46'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3b  412-16 C1 - 2016-03-15 14.37.55'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2a  406-16 C1 - 2016-03-14 12.01.56'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2e  408-16 C1 - 2016-03-14 16.23.30'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2f  405-16 C1 - 2016-03-14 10.58.34'] = 1
-# male
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2h  418-16 C1 - 2016-03-16 17.01.17'] = 8
-# female
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3a  413-16 C1 - 2016-03-15 15.54.12'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3c  414-16 C1 - 2016-03-15 17.15.41'] = 7
-# male
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4b  419-16 C1 - 2016-03-17 10.22.54'] = 1
-# female
-ndpi_files_test_list['KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04'] = 6
-# male
-ndpi_files_test_list['KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-37.1h PAT 113-16 C1 - 2016-02-16 15.14.09'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-38.1e PAT 94-16 C1 - 2016-02-10 12.13.10'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-38.1f PAT 95-16 C1 - 2016-02-10 14.41.44'] = 0
-
-# female
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2a  211-16 C1 - 2016-02-17 11.46.42'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1a  44-16 C1 - 2016-02-01 11.14.17'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1d  47-16 C1 - 2016-02-01 15.25.53'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2a  64-16 C1 - 2016-02-04 09.17.52'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2b  65-16 C1 - 2016-02-04 10.24.22'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2d  67-16 C1 - 2016-02-04 12.34.32'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1b  51-16 C1 - 2016-02-02 09.59.16'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1c  52-16 C1 - 2016-02-02 12.26.58'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2a  57-16 C1 - 2016-02-03 09.10.17'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2c  59-16 C1 - 2016-02-03 11.56.52'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2e  61-16 C1 - 2016-02-03 14.19.35'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2b  219-16 C1 - 2016-02-18 15.41.38'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2c  220-16 C1 - 2016-02-18 17.03.38'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2e  221-16 C1 - 2016-02-25 14.00.14'] = 3
-# male
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2b  212-16 C1 - 2016-02-17 12.49.00'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2c  213-16 C1 - 2016-02-17 14.51.18'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2e  215-16 C1 - 2016-02-18 09.19.26'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2f  216-16 C1 - 2016-02-18 10.28.27'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1e  48-16 C1 - 2016-02-01 16.27.05'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1f  49-16 C1 - 2016-02-01 17.51.46'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1d  53-16 C1 - 2016-02-02 14.32.03'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1f  55-16 C1 - 2016-02-02 16.14.30'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2f  62-16 C1 - 2016-02-03 15.46.15'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3c  218-16 C1 - 2016-02-18 13.12.09'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00'] = 8
-
-# add slices from GWAT that haven't been added already
-# i_file = [136, 191]
-ndpi_files_test_list['KLF14-B6NTAC 36.1d PAT 99-16 B1 - 2016-02-11 11.29.55'] = 9
-ndpi_files_test_list['KLF14-B6NTAC 36.1e PAT 100-16 B1 - 2016-02-11 12.51.11'] = 4
-ndpi_files_test_list['KLF14-B6NTAC 36.1f PAT 101-16 B1 - 2016-02-11 14.57.03'] = 9
-ndpi_files_test_list['KLF14-B6NTAC 36.1g PAT 102-16 B1 - 2016-02-11 16.12.01'] = 4
-ndpi_files_test_list['KLF14-B6NTAC 36.1h PAT 103-16 B1 - 2016-02-12 09.51.08'] = 0
-ndpi_files_test_list['KLF14-B6NTAC 36.1j PAT 105-16 B1 - 2016-02-12 14.08.19'] = 4
-ndpi_files_test_list['KLF14-B6NTAC 37.1a PAT 106-16 B1 - 2016-02-12 15.33.02'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-37.1b PAT 107-16 B1 - 2016-02-15 11.25.20'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-37.1e PAT 110-16 B1 - 2016-02-15 16.16.06'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-37.1g PAT 112-16 B1 - 2016-02-16 12.02.07'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-37.1h PAT 113-16 B1 - 2016-02-16 14.53.02'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-38.1e PAT 94-16 B1 - 2016-02-10 11.35.53'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-38.1f PAT 95-16 B1 - 2016-02-10 14.16.55'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2a  211-16 B1 - 2016-02-17 11.21.54'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2b  212-16 B1 - 2016-02-17 12.33.18'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2c  213-16 B1 - 2016-02-17 14.01.06'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2e  215-16 B1 - 2016-02-17 17.14.16'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-MAT-16.2f  216-16 B1 - 2016-02-18 10.05.52'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1a  44-16 B1 - 2016-02-01 09.19.20'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1b  45-16 B1 - 2016-02-01 12.05.15'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1d  47-16 B1 - 2016-02-01 15.11.42'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1e  48-16 B1 - 2016-02-01 16.01.09'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.1f  49-16 B1 - 2016-02-01 17.12.31'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2a  64-16 B1 - 2016-02-04 08.57.34'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2b  65-16 B1 - 2016-02-04 10.06.00'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2d  67-16 B1 - 2016-02-04 12.20.20'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-MAT-17.2g  69-16 B1 - 2016-02-04 15.52.52'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1b  51-16 B1 - 2016-02-02 09.46.31'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1c  52-16 B1 - 2016-02-02 11.24.31'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.1d  53-16 B1 - 2016-02-02 14.11.37'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2a  57-16 B1 - 2016-02-03 08.54.27'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2c  59-16 B1 - 2016-02-03 11.41.32'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2e  61-16 B1 - 2016-02-03 14.02.25'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.2f  62-16 B1 - 2016-02-03 15.00.17'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-18.3c  218-16 B1 - 2016-02-18 12.51.46'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.1a  56-16 B1 - 2016-02-02 16.57.46'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2b  219-16 B1 - 2016-02-18 14.21.50'] = 5
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2c  220-16 B1 - 2016-02-18 16.40.48'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2e  221-16 B1 - 2016-02-25 13.15.27'] = 2
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2f  217-16 B1 - 2016-02-18 11.23.22'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-MAT-19.2g  222-16 B1 - 2016-02-25 14.51.57'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3a  409-16 B1 - 2016-03-15 09.24.54'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-PAT-36.3b  412-16 B1 - 2016-03-15 14.11.47'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2a  406-16 B1 - 2016-03-14 11.46.47'] = 4
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2b  410-16 B1 - 2016-03-15 11.12.01'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2c  407-16 B1 - 2016-03-14 12.54.55'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2d  411-16 B1 - 2016-03-15 12.01.13'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2e  408-16 B1 - 2016-03-14 16.06.43'] = 1
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2f  405-16 B1 - 2016-03-14 09.49.45'] = 9
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.2h  418-16 B1 - 2016-03-16 16.42.16'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3a  413-16 B1 - 2016-03-15 15.31.26'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.3c  414-16 B1 - 2016-03-15 16.49.22'] = 3
-ndpi_files_test_list['KLF14-B6NTAC-PAT-37.4b  419-16 B1 - 2016-03-17 09.10.42'] = 7
-ndpi_files_test_list['KLF14-B6NTAC-PAT-38.1a  90-16 B1 - 2016-02-04 17.27.42'] = 6
-ndpi_files_test_list['KLF14-B6NTAC-PAT-39.1h  453-16 B1 - 2016-03-17 11.15.50'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06'] = 7
-# add missing slices
-# i_file = [192]
-ndpi_files_test_list['KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1)'] = 5
-# add recut slices
-# i_file = [193, 195]
-ndpi_files_test_list['KLF14-B6NTAC-PAT 37.2b 410-16 C4 - 2020-02-14 10.27.23'] = 8
-ndpi_files_test_list['KLF14-B6NTAC-PAT 37.2c 407-16 C4 - 2020-02-14 10.15.57'] = 0
-ndpi_files_test_list['KLF14-B6NTAC-PAT 37.2d 411-16 C4 - 2020-02-14 10.34.10'] = 9
-
-
-if DEBUG:
-    for i, key in enumerate(ndpi_files_test_list.keys()):
-        print('File ' + str(i) + ': Fold ' + str(ndpi_files_test_list[key]) + ': ' + key)
 
 ########################################################################################################################
 ## Colourmap for AIDA
 ########################################################################################################################
+
+# TODO: load a pre-computed colourmap, instead of having to compute cell sizes every time
+
+# list of SVG contours
+saved_kfolds_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
+with open(saved_kfolds_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_svg_list = aux['file_list']
+file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
+file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
 # loop files with hand traced contours
 manual_areas_all = []
@@ -386,21 +229,12 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 ## Segmentation loop
 ########################################################################################################################
 
-# DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
-# for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
-for i_file in list(range(193, 196)):
+for i_file, ndpi_file in enumerate(ndpi_files_list):
 
-    # name of the slice to analyse
-    ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
-
-    # fold  where the current .ndpi image was not used for training
-    i_fold = ndpi_files_test_list[ndpi_file_kernel]
-
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': ' + ndpi_file_kernel
-          + '. Fold = ' + str(i_fold))
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': ' + ndpi_file)
 
     # make full path to ndpi file
-    ndpi_file = os.path.join(data_dir, ndpi_file_kernel + '.ndpi')
+    ndpi_file = os.path.join(data_dir, ndpi_file)
 
     # check whether there's a lock on this file
     lock_file = os.path.basename(ndpi_file).replace('.ndpi', '.lock')
@@ -411,6 +245,10 @@ for i_file in list(range(193, 196)):
     else:
         # create an empty lock file to prevent other other instances of the script to process the same .ndpi file
         Path(lock_file).touch()
+
+    # choose a random fold for this image
+    np.random.seed(i_file)
+    i_fold = np.random.randint(0, 10)
 
     contour_model_file = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
@@ -460,50 +298,12 @@ for i_file in list(range(193, 196)):
 
         time_prev = time.time()
 
-        # rough segmentation of the tissue in the image
-        if (i_file <= 19) and (os.path.basename(ndpi_file) != 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
-
-            # the original 20 images were thresholded with mode - std, except for one image
-            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                    dilation_size=dilation_size,
-                                                                    component_size_threshold=component_size_threshold,
-                                                                    hole_size_treshold=hole_size_treshold,
-                                                                    return_im=True)
-
-        elif (i_file <= 19) and (os.path.basename(ndpi_file) == 'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.ndpi'):
-
-            # special case for an image that has very low contrast, with strong bright pink and purple areas of other
-            # tissue. We threshold with mode - 0.25 std
-            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                    dilation_size=dilation_size,
-                                                                    component_size_threshold=component_size_threshold,
-                                                                    hole_size_treshold=hole_size_treshold, std_k=0.25,
-                                                                    return_im=True)
-
-        elif os.path.basename(ndpi_file) in {
-            'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40.ndpi',
-            'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42.ndpi',
-            'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40.ndpi',
-            'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06.ndpi',
-            'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49.ndpi',
-            'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28.ndpi',
-            'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30.ndpi',
-            'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10.ndpi'}:
-
-            # some of the posterior images also work with mode - std
-            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                    dilation_size=dilation_size,
-                                                                    component_size_threshold=component_size_threshold,
-                                                                    hole_size_treshold=hole_size_treshold,
-                                                                    return_im=True)
-
-        else:  # any other case
-
-            lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
-                                                                    dilation_size=dilation_size,
-                                                                    component_size_threshold=component_size_threshold,
-                                                                    hole_size_treshold=hole_size_treshold, std_k=0.25,
-                                                                    return_im=True)
+        # compute the rough foreground mask of tissue vs. background
+        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+                                                                dilation_size=dilation_size,
+                                                                component_size_threshold=component_size_threshold,
+                                                                hole_size_treshold=hole_size_treshold, std_k=1.00,
+                                                                return_im=True)
 
         # segmentation copy, to keep track of what's left to do
         lores_istissue = lores_istissue0.copy()
@@ -523,7 +323,7 @@ for i_file in list(range(193, 196)):
     # checkpoint: here the rough tissue mask has either been loaded or computed
     time_step = time_step_all[-1]
     time_total = np.sum(time_step_all)
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
+    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': step ' +
           str(step) + ': ' +
           str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
           "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
@@ -538,13 +338,6 @@ for i_file in list(range(193, 196)):
             plt.contour(lores_istissue0, colors='k')
             plt.subplot(212)
             plt.imshow(lores_istissue0)
-
-            plt.clf()
-            plt.subplot(211)
-            plt.imshow(im_downsampled)
-            plt.contour(lores_istissue, colors='k')
-            plt.subplot(212)
-            plt.imshow(lores_istissue)
 
     # keep extracting histology windows until we have finished
     while np.count_nonzero(lores_istissue) > 0:
@@ -753,7 +546,7 @@ for i_file in list(range(193, 196)):
         time_step_all.append(time_step)
         time_total = np.sum(time_step_all)
 
-        print('File ' + str(i_file) + '/' + str(len(ndpi_files_test_list) - 1) + ': step ' +
+        print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': step ' +
               str(step) + ': ' +
               str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
               "{0:.1f}".format(perc_completed) +
@@ -767,21 +560,3 @@ for i_file in list(range(193, 196)):
                             time_step_all=time_step_all)
 
 # end of "keep extracting histology windows until we have finished"
-
-# if we run the script with qsub on the cluster, the standard output is in file
-# klf14_b6ntac_exp_0001_cnn_dmap_contour.sge.sh.oPID where PID is the process ID
-# Save it to saved_models directory
-log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-stdout_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', experiment_id + '.sge.sh.o*')
-stdout_filename = glob.glob(stdout_filename)[0]
-if stdout_filename and os.path.isfile(stdout_filename):
-    shutil.copy2(stdout_filename, log_filename)
-else:
-    # if we ran the script with nohup in linux, the standard output is in file nohup.out.
-    # Save it to saved_models directory
-    log_filename = os.path.join(saved_models_dir, experiment_id + '.log')
-    nohup_filename = os.path.join(home, 'Software', 'cytometer', 'scripts', 'nohup.out')
-    if os.path.isfile(nohup_filename):
-        shutil.copy2(nohup_filename, log_filename)
-
-
