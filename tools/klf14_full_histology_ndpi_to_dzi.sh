@@ -4,7 +4,7 @@
 # can be visualised by AIDA.
 #
 # Syntax:
-#    ./full_histology_ndpi_to_dzi.sh
+#    ./klf14_full_histology_ndpi_to_dzi.sh
 
 ndpi_dir=$HOME/scan_srv2_cox/"Maz Yon"
 dzi_dir=$HOME/Software/AIDA/dist/data/images
