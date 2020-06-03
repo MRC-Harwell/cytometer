@@ -377,6 +377,37 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         # reload the models every time
         K.clear_session()
 
+        # DEBUG
+        # np.savez(file='/home/rcasero/Downloads/foo.npz',
+        #          tile=tile,
+        #          dmap_model_file=dmap_model_file,
+        #          contour_model_file=contour_model_file,
+        #          correction_model_file=correction_model_file,
+        #          classifier_model_file=classifier_model_file,
+        #          min_cell_area=min_cell_area,
+        #          istissue_tile=istissue_tile,
+        #          min_mask_overlap=min_mask_overlap,
+        #          phagocytosis=phagocytosis,
+        #          min_class_prop=min_class_prop,
+        #          correction_window_len=correction_window_len,
+        #          correction_smoothing=correction_smoothing,
+        #          batch_size=batch_size
+        #          )
+        with np.load('/home/rcasero/Downloads/foo.npz') as data:
+            tile = data['tile']
+            dmap_model_file = str(data['dmap_model_file'])
+            contour_model_file = str(data['contour_model_file'])
+            correction_model_file = str(data['correction_model_file'])
+            classifier_model_file = str(data['classifier_model_file'])
+            min_cell_area = data['min_cell_area']
+            istissue_tile = data['istissue_tile']
+            min_mask_overlap = data['min_mask_overlap']
+            phagocytosis = data['phagocytosis']
+            min_class_prop = data['min_class_prop']
+            correction_window_len = data['correction_window_len']
+            correction_smoothing = data['correction_smoothing']
+            batch_size = data['batch_size']
+
         # segment histology, split into individual objects, and apply segmentation correction
         labels, labels_class, todo_edge, \
         window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
@@ -559,4 +590,4 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
                             time_step_all=time_step_all)
 
-# end of "keep extracting histology windows until we have finished"
+    # end of "keep extracting histology windows until we have finished"
