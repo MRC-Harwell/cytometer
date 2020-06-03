@@ -219,10 +219,6 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     print('File: ' + str(i_file) + ': JSON annotations file: ' + os.path.basename(json_file))
 
-    if i_file <= 19:
-        print('Skipping')
-        continue
-
     # name of corresponding .ndpi file
     ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
     kernel_file = os.path.splitext(ndpi_file)[0]
