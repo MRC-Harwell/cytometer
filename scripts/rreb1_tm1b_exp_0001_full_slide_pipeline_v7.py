@@ -82,8 +82,8 @@ import cytometer.data
 # Filter out INFO & WARNING messages
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# # limit number of GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -91,14 +91,14 @@ import time
 import openslide
 import numpy as np
 import matplotlib.pyplot as plt
-import glob
+# import glob
 from cytometer.utils import rough_foreground_mask, bspline_resample
 import PIL
-import tensorflow as tf
-import keras
+# import tensorflow as tf
+# import keras
 from keras import backend as K
-from skimage.measure import regionprops
-import shutil
+# from skimage.measure import regionprops
+# import shutil
 import itertools
 from shapely.geometry import Polygon
 
@@ -319,6 +319,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
                             time_step_all=time_step_all)
 
+        # end computing the rough foreground mask
 
     # checkpoint: here the rough tissue mask has either been loaded or computed
     time_step = time_step_all[-1]
