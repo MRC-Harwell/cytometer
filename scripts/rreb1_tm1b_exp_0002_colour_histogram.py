@@ -149,10 +149,22 @@ for i, file_svg in enumerate(file_svg_list):
     # histograms for each channel
     plt.subplot(131)
     hist_r, _, _ = plt.hist(np.array(im.getchannel('R')).flatten(), bins=xbins_edge, histtype='step', density=True)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.title('Red', fontsize=16)
+    plt.xlabel('Intensity', fontsize=14)
+    plt.ylabel('$\sqrt{Density}$', fontsize=14)
+
     plt.subplot(132)
     hist_g, _, _ = plt.hist(np.array(im.getchannel('G')).flatten(), bins=xbins_edge, histtype='step', density=True)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.title('Green', fontsize=16)
+    plt.xlabel('Intensity', fontsize=14)
+
     plt.subplot(133)
     hist_b, _, _ = plt.hist(np.array(im.getchannel('B')).flatten(), bins=xbins_edge, histtype='step', density=True)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.title('Blue', fontsize=16)
+    plt.xlabel('Intensity', fontsize=14)
 
     hist_r_all.append(hist_r)
     hist_g_all.append(hist_g)
@@ -170,21 +182,35 @@ hist_b_q1, hist_b_q2, hist_b_q3 = scipy.stats.mstats.hdquantiles(hist_b_all, pro
 
 if DEBUG:
     plt.clf()
+
     plt.subplot(131)
+    plt.tick_params(axis='both', which='major', labelsize=14)
     plt.plot(xbins, np.sqrt(hist_r_q2), label='Training median')
-    plt.fill_between(xbins, np.sqrt(hist_r_q2), np.sqrt(hist_r_q1), alpha=0.5, color='C0')
-    plt.fill_between(xbins, np.sqrt(hist_r_q2), np.sqrt(hist_r_q3), alpha=0.5, color='C0')
+    plt.fill_between(xbins, np.sqrt(hist_r_q2), np.sqrt(hist_r_q1), alpha=0.5, color='C0', label='Q1-Q3')
     plt.legend()
+    plt.title('Red', fontsize=16)
+    plt.xlabel('Intensity', fontsize=14)
+    plt.ylabel('$\sqrt{Density}$', fontsize=14)
+
     plt.subplot(132)
+    plt.tick_params(axis='both', which='major', labelsize=14)
     plt.plot(xbins, np.sqrt(hist_g_q2), label='Training median')
-    plt.fill_between(xbins, np.sqrt(hist_g_q2), np.sqrt(hist_g_q1), alpha=0.5, color='C0')
+    plt.fill_between(xbins, np.sqrt(hist_g_q2), np.sqrt(hist_g_q1), alpha=0.5, color='C0', label='Q1-Q3')
     plt.fill_between(xbins, np.sqrt(hist_g_q2), np.sqrt(hist_g_q3), alpha=0.5, color='C0')
     plt.legend()
+    plt.title('Green', fontsize=16)
+    plt.xlabel('Intensity', fontsize=14)
+
     plt.subplot(133)
+    plt.tick_params(axis='both', which='major', labelsize=14)
     plt.plot(xbins, np.sqrt(hist_b_q2), label='Training median')
-    plt.fill_between(xbins, np.sqrt(hist_b_q2), np.sqrt(hist_b_q1), alpha=0.5, color='C0')
+    plt.fill_between(xbins, np.sqrt(hist_b_q2), np.sqrt(hist_b_q1), alpha=0.5, color='C0', label='Q1-Q3')
     plt.fill_between(xbins, np.sqrt(hist_b_q2), np.sqrt(hist_b_q3), alpha=0.5, color='C0')
     plt.legend()
+    plt.title('Blue', fontsize=16)
+    plt.xlabel('Intensity', fontsize=14)
+
+    plt.tight_layout()
 
 # loop new data NDPI files
 for i_file, ndpi_file in enumerate(ndpi_files_list):
@@ -238,23 +264,18 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                            resample=PIL.Image.NEAREST)
 
     # histograms for each channel
-    hist_r, _ = np.histogram(tile[0].flatten(), bins=xbins_edge, density=True)
-    hist_g, _ = np.histogram(tile[1].flatten(), bins=xbins_edge, density=True)
-    hist_b, _ = np.histogram(tile[2].flatten(), bins=xbins_edge, density=True)
+    hist_r, _ = np.histogram(tile[:, :, 0].flatten(), bins=xbins_edge, density=True)
+    hist_g, _ = np.histogram(tile[:, :, 1].flatten(), bins=xbins_edge, density=True)
+    hist_b, _ = np.histogram(tile[:, :, 2].flatten(), bins=xbins_edge, density=True)
 
     plt.subplot(131)
     plt.plot(xbins, np.sqrt(hist_r), 'k', label='New data')
     plt.legend()
-    plt.title('Red')
-    plt.xlabel('Intensity')
-    plt.ylabel('$\sqrt{Density}$')
+
     plt.subplot(132)
     plt.plot(xbins, np.sqrt(hist_g), 'k', label='New data')
     plt.legend()
-    plt.title('Green')
-    plt.xlabel('Intensity')
+
     plt.subplot(133)
     plt.plot(xbins, np.sqrt(hist_b), 'k', label='New data')
     plt.legend()
-    plt.title('Blue')
-    plt.xlabel('Intensity')
