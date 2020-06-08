@@ -74,7 +74,6 @@ import os
 from pathlib import Path
 import sys
 import pickle
-import ujson
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 import cytometer.data
@@ -101,6 +100,7 @@ from keras import backend as K
 # import shutil
 import itertools
 from shapely.geometry import Polygon
+import scipy.stats
 
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
@@ -118,6 +118,7 @@ figures_dir = os.path.join(experiment_root_data_dir, 'figures')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
 results_dir = os.path.join(experiment_root_data_dir, 'results')
 annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
 
 # although we don't need k-folds here, we need this file to load the list of SVG contours that we compute the AIDA
 # colourmap from
@@ -160,24 +161,7 @@ batch_size = 16
 
 # list of NDPI files to process
 ndpi_files_list = [
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 Bat 1 - 2018-11-16 16.10.56.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 Bat 2 - 2018-11-16 16.13.43.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 Bat 3 - 2018-11-16 16.16.24.ndpi',
     'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 G2 - 2018-11-16 15.04.07.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 G3 - 2018-11-16 15.10.27.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 liv - 2018-11-16 16.54.43.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 M1 - 2018-11-16 15.27.25.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 M2 - 2018-11-16 15.33.30.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 M3 - 2018-11-16 15.39.07.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 mus - 2018-11-16 17.04.43.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 P1 - 2018-11-16 15.59.52.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 P2 - 2018-11-16 16.48.47.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 P3 - 2018-11-16 16.06.17.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 pan - 2018-11-16 17.00.28.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 S1 - 2018-11-16 15.45.10.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 S2 - 2018-11-16 15.49.47.ndpi',
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 S3 - 2018-11-16 15.53.46.ndpi'
 ]
 
 
@@ -340,6 +324,19 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.subplot(212)
             plt.imshow(lores_istissue0)
 
+    # load colour modes of the KLF14 training dataset
+    with np.load(klf14_training_colour_histogram_file) as data:
+        mode_r_klf14 = data['mode_r']
+        mode_g_klf14 = data['mode_g']
+        mode_b_klf14 = data['mode_b']
+
+    # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the KLF14
+    # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
+    # overcorrected
+    mode_r_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
+    mode_g_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
+    mode_b_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
+
     # keep extracting histology windows until we have finished
     while np.count_nonzero(lores_istissue) > 0:
 
@@ -361,6 +358,11 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         tile = np.array(tile)
         tile = tile[:, :, 0:3]
 
+        # correct tint of the tile to match KLF14 training data
+        tile[:, :, 0] = tile[:, :, 0] + (mode_r_klf14 - mode_r_rrbe1)
+        tile[:, :, 1] = tile[:, :, 1] + (mode_g_klf14 - mode_g_rrbe1)
+        tile[:, :, 2] = tile[:, :, 2] + (mode_b_klf14 - mode_b_rrbe1)
+
         # interpolate coarse tissue segmentation to full resolution
         istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
         istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
@@ -377,37 +379,6 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
         # reload the models every time
         K.clear_session()
-
-        # DEBUG
-        # np.savez(file='/home/rcasero/Downloads/foo.npz',
-        #          tile=tile,
-        #          dmap_model_file=dmap_model_file,
-        #          contour_model_file=contour_model_file,
-        #          correction_model_file=correction_model_file,
-        #          classifier_model_file=classifier_model_file,
-        #          min_cell_area=min_cell_area,
-        #          istissue_tile=istissue_tile,
-        #          min_mask_overlap=min_mask_overlap,
-        #          phagocytosis=phagocytosis,
-        #          min_class_prop=min_class_prop,
-        #          correction_window_len=correction_window_len,
-        #          correction_smoothing=correction_smoothing,
-        #          batch_size=batch_size
-        #          )
-        with np.load('/home/rcasero/Downloads/foo.npz') as data:
-            tile = data['tile']
-            dmap_model_file = str(data['dmap_model_file'])
-            contour_model_file = str(data['contour_model_file'])
-            correction_model_file = str(data['correction_model_file'])
-            classifier_model_file = str(data['classifier_model_file'])
-            min_cell_area = data['min_cell_area']
-            istissue_tile = data['istissue_tile']
-            min_mask_overlap = data['min_mask_overlap']
-            phagocytosis = data['phagocytosis']
-            min_class_prop = data['min_class_prop']
-            correction_window_len = data['correction_window_len']
-            correction_smoothing = data['correction_smoothing']
-            batch_size = data['batch_size']
 
         # segment histology, split into individual objects, and apply segmentation correction
         labels, labels_class, todo_edge, \
