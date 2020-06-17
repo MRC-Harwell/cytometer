@@ -1313,7 +1313,7 @@ for i_fold in range(len(idx_test_all)):
             # concatenate current row to general dataframe
             df_auto_all = df_auto_all.append(df_auto, ignore_index=True)
 
-        ''' Only manual contours and their corresponding auto labels loop '''
+        ''' Only manual contours regardless of whether they have a corresponding auto label loop '''
         for j, contour in enumerate(contours):
 
             # start dataframe row for this contour
@@ -1472,9 +1472,19 @@ df_auto_all.to_pickle(dataframe_auto_filename)
 
 ## Analyse results: Manual data
 
-# load dataframe with manual segmentations matched to automatic segmentations
+# load dataframe with manual segmentations matched or not to automatic segmentations
 data_manual_filename = os.path.join(saved_models_dir, experiment_id + '_test_pipeline_manual.pkl')
 df_manual_all = pd.read_pickle(data_manual_filename)
+
+# study of hand traced areas, all of them
+manual_quart = scipy.stats.mstats.hdquantiles(df_manual_all['area_manual'], prob=[0.25, 0.50, 0.75]).data
+print('Hand traced cells:')
+print('min = ' + str(np.min(df_manual_all['area_manual'])) + ' um^2')
+print('max = ' + str(np.max(df_manual_all['area_manual'])) + ' um^2')
+print('quartiles = ' + str(manual_quart) + ' um^2')
+print('min = ' + str(np.min(df_manual_all['area_manual']) / (xres * yres)) + ' pixel')
+print('max = ' + str(np.max(df_manual_all['area_manual']) / (xres * yres)) + ' pixel')
+print('quartiles = ' + str(manual_quart / (xres * yres)) + ' pixel')
 
 # cells where there's a manual and automatic segmentation reasonable overlap, even if it's poor
 idx_manual_auto_overlap = df_manual_all['dice_auto'] > 0.5  # this ignores NaNs
