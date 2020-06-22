@@ -1373,6 +1373,110 @@ if DEBUG:
 # This is done in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7
 
 ########################################################################################################################
+## Time and blocks that took to compute full slide segmentation
+########################################################################################################################
+
+# The results were noted down in klf14_b6ntac_exp_0097_full_slide_pipeline_v7_logs.csv. This file is in the GoogleDrive
+# directory with the rest of the paper.
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import openslide
+import statsmodels.api as sm
+import scipy.stats
+
+DEBUG = False
+
+'''Directories and filenames'''
+
+# data paths
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+times_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+
+# load filenames, number of blocks and time it took to segment them
+times_file = 'klf14_b6ntac_exp_0097_full_slide_pipeline_v7_logs.csv'
+times_file = os.path.join(times_dir, times_file)
+
+times_df = pd.read_csv(times_file)
+
+# read rough masks of the files in the dataframe, to measure the tissue area in each
+for i, file in enumerate(times_df['File']):
+
+    # filename of the coarse tissue mask
+    coarse_mask_file = os.path.join(annotations_dir, file + '_rough_mask.npz')
+
+    # load coarse tissue mask
+    with np.load(coarse_mask_file) as data:
+        mask = data['lores_istissue0']
+
+    if DEBUG:
+        plt.clf()
+        plt.imshow(mask)
+
+    # open full resolution histology slide to get pixel size
+    ndpi_file = os.path.join(ndpi_dir, file + '.ndpi')
+    im = openslide.OpenSlide(ndpi_file)
+
+    # pixel size
+    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution'])
+    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+
+    # scaling factor to get pixel size in the coarse mask
+    k = np.array(im.dimensions) / mask.shape[::-1]
+
+    # add tissue area to the dataframe. Calculations for full resolution slide, even though they
+    # are computed from the coarse mask
+    times_df.loc[i, 'tissue_area_pix'] = np.count_nonzero(mask) * k[0] * k[1]
+    times_df.loc[i, 'tissue_area_mm2'] = times_df.loc[i, 'tissue_area_pix'] * xres * yres * 1e6
+
+if DEBUG:
+    # plot tissue area vs. time to compute
+    plt.clf()
+    plt.scatter(times_df['tissue_area_mm2'], times_df['Blocks Time (s)'])
+
+# fit linear model
+model = sm.formula.ols('Q("Blocks Time (s)") ~ tissue_area_mm2', data=times_df).fit()
+print(model.summary())
+
+# Pearson coefficient
+rho, rho_p = scipy.stats.pearsonr(times_df['tissue_area_mm2'], times_df['Blocks Time (s)'])
+print('Pearson coeff = ' + str(rho))
+print('p-val = ' + str(rho_p))
+
+# tissue area
+print('Tissue area')
+print('min = ' + str(np.min(times_df['tissue_area_mm2'])) + ' mm2 = ' + str(np.min(times_df['tissue_area_pix']) * 1e-6) + ' Mpix')
+print('max = ' + str(np.max(times_df['tissue_area_mm2'])) + ' mm2 = ' + str(np.max(times_df['tissue_area_pix']) * 1e-6) + ' Mpix')
+
+# corresponding time to compute
+print('Time to compute')
+time_pred = model.predict(times_df['tissue_area_mm2'])
+print('min = ' + str(np.min(time_pred) / 3600) + ' h')
+print('max = ' + str(np.max(time_pred) / 3600) + ' h')
+
+tissue_area_mm2_q1 = scipy.stats.mstats.hdquantiles(times_df['tissue_area_mm2'], prob=0.25, axis=0)
+tissue_area_mm2_q2 = scipy.stats.mstats.hdquantiles(times_df['tissue_area_mm2'], prob=0.5, axis=0)
+tissue_area_mm2_q3 = scipy.stats.mstats.hdquantiles(times_df['tissue_area_mm2'], prob=0.75, axis=0)
+
+aux_df = times_df.loc[0:2, :].copy()
+aux_df.loc[0, 'tissue_area_mm2'] = tissue_area_mm2_q1
+aux_df.loc[1, 'tissue_area_mm2'] = tissue_area_mm2_q2
+aux_df.loc[2, 'tissue_area_mm2'] = tissue_area_mm2_q3
+tissue_time_pred_q = model.predict(aux_df)
+
+print('q1 = ' + str(tissue_area_mm2_q1) + ' mm2 -> '
+      + str(tissue_time_pred_q[0] / 3600) + ' h')
+print('q2 = ' + str(tissue_area_mm2_q2) + ' mm2 -> '
+      + str(tissue_time_pred_q[1] / 3600) + ' h')
+print('q3 = ' + str(tissue_area_mm2_q3) + ' mm2 -> '
+      + str(tissue_time_pred_q[2] / 3600) + ' h')
+
+########################################################################################################################
 ## Segmentation validation
 ########################################################################################################################
 
