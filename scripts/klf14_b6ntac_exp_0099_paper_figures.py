@@ -1208,6 +1208,8 @@ if DEBUG:
 
 ########################################################################################################################
 ## Check whether manual correction of pipeline results makes a difference
+#  For this experiment, we corrected by hand on AIDA the automatic segmentations produced by the pipeline,
+#  and compared the segmentation error.
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
@@ -1373,7 +1375,7 @@ if DEBUG:
 # This is done in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7
 
 ########################################################################################################################
-## Time and blocks that took to compute full slide segmentation
+## Analysis of time and blocks that took to compute full slide segmentation from the server logs
 ########################################################################################################################
 
 # The results were noted down in klf14_b6ntac_exp_0097_full_slide_pipeline_v7_logs.csv. This file is in the GoogleDrive
@@ -1481,6 +1483,221 @@ print('q3 = ' + str(tissue_area_mm2_q3) + ' mm2 -> '
 ########################################################################################################################
 
 # This is done in klf14_b6ntac_exp_0096_pipeline_v7_validation.py
+
+########################################################################################################################
+## Time that it takes to do Auto vs. Corrected segmentation
+########################################################################################################################
+
+import numpy as np
+import time
+import pandas as pd
+import pickle
+import matplotlib.pyplot as plt
+import cytometer.data
+import cytometer.utils
+from PIL import Image, ImageDraw, ImageEnhance
+
+DEBUG = False
+
+# data paths
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
+metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+times_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+
+saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
+saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
+
+# model names
+dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
+contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
+classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
+correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
+
+# training window length
+training_window_len = 401
+
+# segmentation parameters
+min_cell_area = 1500
+max_cell_area = 100e3
+min_mask_overlap = 0.8
+phagocytosis = True
+# min_class_prop = 0.5
+# correction_window_len = 401
+# correction_smoothing = 11
+batch_size = 2
+
+'''Load folds'''
+
+# load list of images, and indices for training vs. testing indices
+saved_kfolds_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(saved_kfolds_filename, 'rb') as f:
+    aux = pickle.load(f)
+file_svg_list = aux['file_list']
+idx_test_all = aux['idx_test']
+idx_train_all = aux['idx_train']
+
+# correct home directory
+file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
+file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
+
+# number of images
+n_im = len(file_svg_list)
+
+# number of folds
+n_folds = len(idx_test_all)
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+
+# # correct home directory in file paths
+# file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/home/rcasero', home, check_isfile=True)
+# file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home, check_isfile=True)
+
+## compute and save results (you can skip this section if this has been done before, and go straight where you load the
+## results)
+
+# load data computed in 0096 validation script
+data_filename = os.path.join(saved_models_dir, 'klf14_b6ntac_exp_0096_pipeline_v7_validation' + '_data.npz')
+with np.load(data_filename) as data:
+    im_array_all = data['im_array_all']
+    rough_mask_all = data['rough_mask_all']
+    out_class_all = 1 - data['out_class_all']  # encode as 0: other, 1: WAT
+    out_mask_all = data['out_mask_all']
+
+# init dataframes
+df_manual_all = pd.DataFrame()
+df_auto_all = pd.DataFrame()
+
+# init time vectors
+time_auto = []
+time_corrected = []
+
+for i_fold in range(len(idx_test_all)):
+
+    # start timer
+    t0 = time.time()
+
+    ''' Get the images/masks/classification that were not used for training of this particular fold '''
+
+    print('# Fold ' + str(i_fold) + '/' + str(len(idx_test_all) - 1))
+
+    # test and training image indices. These indices refer to file_list
+    idx_test = idx_test_all[i_fold]
+
+    # list of test files (used later for the dataframe)
+    file_list_test = np.array(file_svg_list)[idx_test]
+
+    print('## len(idx_test) = ' + str(len(idx_test)))
+
+    # split data into training and testing
+    im_array_test = im_array_all[idx_test, :, :, :]
+    rough_mask_test = rough_mask_all[idx_test, :, :]
+    out_class_test = out_class_all[idx_test, :, :, :]
+    out_mask_test = out_mask_all[idx_test, :, :]
+
+    ''' Segmentation into non-overlapping objects '''
+
+    # names of contour, dmap and tissue classifier models
+    contour_model_filename = \
+        os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    dmap_model_filename = \
+        os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    classifier_model_filename = \
+        os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+
+    # segment histology
+    pred_seg_test, pred_class_test, _ \
+        = cytometer.utils.segment_dmap_contour_v6(im_array_test,
+                                                  dmap_model=dmap_model_filename,
+                                                  contour_model=contour_model_filename,
+                                                  classifier_model=classifier_model_filename,
+                                                  border_dilation=0, batch_size=batch_size)
+
+    if DEBUG:
+        i = 0
+        plt.clf()
+        plt.subplot(221)
+        plt.cla()
+        plt.imshow(im_array_test[i, :, :, :])
+        plt.axis('off')
+        plt.subplot(222)
+        plt.cla()
+        plt.imshow(im_array_test[i, :, :, :])
+        plt.contourf(pred_class_test[i, :, :, 0].astype(np.float32), alpha=0.5)
+        plt.axis('off')
+        plt.subplot(223)
+        plt.cla()
+        plt.imshow(im_array_test[i, :, :, :])
+        plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+        plt.axis('off')
+        plt.subplot(224)
+        plt.cla()
+        plt.imshow(im_array_test[i, :, :, :])
+        plt.contourf(pred_class_test[i, :, :, 0].astype(np.float32), alpha=0.5)
+        plt.contour(pred_seg_test[i, :, :], levels=np.unique(pred_seg_test[i, :, :]), colors='k')
+        plt.axis('off')
+        plt.tight_layout()
+
+    # clean segmentation: remove labels that are too small or that don't overlap enough with
+    # the rough foreground mask
+    pred_seg_test, _ \
+        = cytometer.utils.clean_segmentation(pred_seg_test, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
+                                             remove_edge_labels=False,
+                                             mask=rough_mask_test, min_mask_overlap=min_mask_overlap,
+                                             phagocytosis=phagocytosis, labels_class=None)
+
+    # record processing time
+    time_auto.append((time.time() - t0) / im_array_test.shape[0])
+
+    if DEBUG:
+        plt.clf()
+        aux = np.stack((rough_mask_test[i, :, :],) * 3, axis=2)
+        plt.imshow(im_array_test[i, :, :, :] * aux)
+        plt.contour(pred_seg_test[i, ...], levels=np.unique(pred_seg_test[i, ...]), colors='k')
+        plt.axis('off')
+
+    ''' Split image into individual labels and correct segmentation to take overlaps into account '''
+
+    (window_seg_test, window_im_test, window_class_test, window_rough_mask_test), index_list, scaling_factor_list \
+        = cytometer.utils.one_image_per_label_v2((pred_seg_test, im_array_test,
+                                                  pred_class_test[:, :, :, 0].astype(np.uint8),
+                                                  rough_mask_test.astype(np.uint8)),
+                                                 resize_to=(training_window_len, training_window_len),
+                                                 resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
+                                                 only_central_label=True)
+
+    # correct segmentations
+    correction_model_filename = os.path.join(saved_models_dir,
+                                             correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    window_seg_corrected_test = cytometer.utils.correct_segmentation(im=window_im_test, seg=window_seg_test,
+                                                                     correction_model=correction_model_filename,
+                                                                     model_type='-1_1', batch_size=batch_size,
+                                                                     smoothing=11)
+
+    # record processing time
+    time_corrected.append((time.time() - t0 - time_auto[-1]) / im_array_test.shape[0])
+
+# save for later use
+times_file = os.path.join(times_dir, 'klf14_b6ntac_exp_0099_time_comparison_auto_corrected.npz')
+np.savez(times_file, time_auto=time_auto, time_corrected=time_corrected)
+
+# compute what proportion of time the algorithm spends on the Auto segmentatiom vs. corrected segmentation
+time_auto_ratio = np.array(time_auto) / (np.array(time_auto) + np.array(time_corrected))
+print('Time Auto ratio:')
+print('mean = ' + str(100 * np.mean(time_auto_ratio)) + ' %')
+print('std = ' + str(100 * np.std(time_auto_ratio)) + ' %')
+print('Ratio of total time to Auto')
+print('mean = ' + 'x' + str(np.mean(1 / time_auto_ratio)))
+print('std = ' + 'x' + str(np.std(1 / time_auto_ratio)))
+
+time_corrected_ratio = np.array(time_corrected) / (np.array(time_auto) + np.array(time_corrected))
+print('Time Corrected ratio:')
+print('mean = ' + str(100 * np.mean(time_corrected_ratio)) + ' %')
+print('std = ' + str(100 * np.std(time_corrected_ratio)) + ' %')
+
 
 ########################################################################################################################
 ## Cell populations from automatically segmented images in two depots: SQWAT and GWAT.
