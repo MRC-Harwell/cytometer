@@ -1999,26 +1999,33 @@ if DEBUG:
     idx = pval_perc_f2m_pat < 0.05
     delta_a_f2m_pat = (area_interval_m_pat[1, :] - area_interval_f_pat[1, :]) / area_interval_f_pat[1, :]
     plt.stem(quantiles[idx], 100 * delta_a_f2m_pat[idx],
-             markerfmt='.', linefmt='C4-', basefmt='C4',
+             markerfmt='C4o', linefmt='C4--', basefmt='C4',
              label='p-val$_{\mathrm{PAT}}$ < 0.05')
-
-    idx = pval_perc_f2m_mat < 0.05
-    delta_a_f2m_mat = (area_interval_m_mat[1, :] - area_interval_f_mat[1, :]) / area_interval_f_mat[1, :]
-    plt.stem(quantiles[idx], 100 * delta_a_f2m_mat[idx],
-             markerfmt='.', linefmt='C5:', basefmt='C5', bottom=225,
-             label='p-val$_{\mathrm{MAT}}$ < 0.05')
-
     plt.plot(quantiles, 100 * delta_a_f2m_pat, 'C4', linewidth=3, label='PAT female to male')
-    plt.plot(quantiles, 100 * delta_a_f2m_mat, 'C5', linewidth=3, label='MAT female to male')
-
     plt.xlabel('Cell population quantile', fontsize=14)
     plt.ylabel('Area change (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.legend(loc='upper right', prop={'size': 12})
+    plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male_pat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male_pat.png'))
+
+    plt.clf()
+    idx = pval_perc_f2m_mat < 0.05
+    delta_a_f2m_mat = (area_interval_m_mat[1, :] - area_interval_f_mat[1, :]) / area_interval_f_mat[1, :]
+    plt.stem(quantiles[idx], 100 * delta_a_f2m_mat[idx],
+             markerfmt='C5o', linefmt='C5-', basefmt='C5',
+             label='p-val$_{\mathrm{MAT}}$ < 0.05')
+    plt.plot(quantiles, 100 * delta_a_f2m_mat, 'C5', linewidth=3, label='MAT female to male')
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area change (%)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='best', prop={'size': 12})
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male_mat.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_female_2_male_mat.png'))
 
 # test whether the median values are different enough between PAT vs. MAT
 pval_perc_f_pat2mat = np.zeros(shape=(len(quantiles),))
@@ -2042,24 +2049,31 @@ if DEBUG:
     delta_a_f_pat2mat = (area_interval_f_mat[1, :] - area_interval_f_pat[1, :]) / area_interval_f_pat[1, :]
     if np.any(idx):
         plt.stem(quantiles[idx], 100 * delta_a_f_pat2mat[idx],
-                 markerfmt='.', linefmt='C6-', basefmt='C6',
+                 markerfmt='C6o', linefmt='C6-', basefmt='C6',
                  label='p-val$_{\mathrm{PAT}}$ < 0.05')
-
-    idx = pval_perc_m_pat2mat < 0.05
-    delta_a_m_pat2mat = (area_interval_m_mat[1, :] - area_interval_m_pat[1, :]) / area_interval_m_pat[1, :]
-    if np.any(idx):
-        plt.stem(quantiles[idx], 100 * delta_a_m_pat2mat[idx],
-                 markerfmt='.', linefmt='C7-', basefmt='C7', bottom=250,
-                 label='p-val$_{\mathrm{MAT}}$ < 0.05')
-
     plt.plot(quantiles, 100 * delta_a_f_pat2mat, 'C6', linewidth=3, label='Female PAT to MAT')
-    plt.plot(quantiles, 100 * delta_a_m_pat2mat, 'C7', linewidth=3, label='Male PAT to MAT')
-
     plt.xlabel('Cell population quantile', fontsize=14)
     plt.ylabel('Area change (%)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='lower right', prop={'size': 12})
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat_female.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat_female.png'))
+
+    plt.clf()
+    idx = pval_perc_m_pat2mat < 0.05
+    delta_a_m_pat2mat = (area_interval_m_mat[1, :] - area_interval_m_pat[1, :]) / area_interval_m_pat[1, :]
+    if np.any(idx):
+        plt.stem(quantiles[idx], 100 * delta_a_m_pat2mat[idx],
+                 markerfmt='C7o', linefmt='C7-', basefmt='C7',
+                 label='p-val$_{\mathrm{MAT}}$ < 0.05')
+    plt.plot(quantiles, 100 * delta_a_m_pat2mat, 'C7', linewidth=3, label='Male PAT to MAT')
+    plt.xlabel('Cell population quantile', fontsize=14)
+    plt.ylabel('Area change (%)', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    plt.legend(loc='lower right', prop={'size': 12})
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat_male.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_change_pat_2_mat_male.png'))
