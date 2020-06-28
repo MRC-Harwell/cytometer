@@ -1017,9 +1017,9 @@ print('Hand traced cells:')
 print('min = ' + str(np.min(df_manual_all['area_manual'])) + ' um^2')
 print('max = ' + str(np.max(df_manual_all['area_manual'])) + ' um^2')
 print('quartiles = ' + str(manual_quart) + ' um^2')
-print('min = ' + str(np.min(df_manual_all['area_manual']) / (xres * yres)) + ' pixel')
-print('max = ' + str(np.max(df_manual_all['area_manual']) / (xres * yres)) + ' pixel')
-print('quartiles = ' + str(manual_quart / (xres * yres)) + ' pixel')
+# print('min = ' + str(np.min(df_manual_all['area_manual']) / (xres * yres)) + ' pixel')
+# print('max = ' + str(np.max(df_manual_all['area_manual']) / (xres * yres)) + ' pixel')
+# print('quartiles = ' + str(manual_quart / (xres * yres)) + ' pixel')
 
 # cells where there's a manual and automatic segmentation reasonable overlap, even if it's poor
 idx_manual_auto_overlap = df_manual_all['dice_auto'] > 0.5  # this ignores NaNs
@@ -1670,8 +1670,11 @@ col_to_drop = df_manual_all.columns
 col_to_drop = col_to_drop[['wat_prop_' in x for x in col_to_drop]]
 df_manual_all = df_manual_all.drop(col_to_drop, axis=1)
 
+# WARNING! Here the PAT/MAT column is called "ko", but in other experiments we renamed it to "ko_parent"
+df_manual_all = df_manual_all.rename(columns={'ko': 'ko_parent'})
+
 ## extra files that were not used in the CNN training and segmentation, but that they were added so that we could have
-## respresentative ECDFs for animals that were undersampled
+## representative ECDFs for animals that were undersampled
 
 file_svg_list_extra = [
     os.path.join(training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg'),
@@ -1719,12 +1722,19 @@ for i, file_svg in enumerate(file_svg_list_extra):
     # append contours from this image to the total dataframe
     df_manual_all = df_manual_all.append(df_manual, ignore_index=True, sort=False)
 
-## boxplots of PAT vs MAT in male
+# number of cells in each stratum
 
 idx_f_mat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko_parent'] == 'MAT')
 idx_f_pat = np.logical_and(df_manual_all['sex'] == 'f', df_manual_all['ko_parent'] == 'PAT')
 idx_m_mat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko_parent'] == 'MAT')
 idx_m_pat = np.logical_and(df_manual_all['sex'] == 'm', df_manual_all['ko_parent'] == 'PAT')
+
+print('f PAT = ' + str(np.count_nonzero(idx_f_pat)))
+print('f MAT = ' + str(np.count_nonzero(idx_f_mat)))
+print('m PAT = ' + str(np.count_nonzero(idx_m_pat)))
+print('m MAT = ' + str(np.count_nonzero(idx_m_mat)))
+
+## boxplots of PAT vs MAT in male
 
 if DEBUG:
     plt.clf()
