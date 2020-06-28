@@ -221,6 +221,7 @@ DEBUG = False
 # data paths
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 klf14_training_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
+klf14_training_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
 klf14_training_non_overlap_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_non_overlap')
 klf14_training_augmented_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_augmented')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
@@ -240,6 +241,18 @@ file_svg_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
+# # HACK: This will replace the regular list of hand training files
+# # list of hand segmentations we had to add because a couple of mice were subsampled and didn't provide realistic cell
+# # populations
+# file_svg_list_extra = [
+#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg'),
+#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg'),
+#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006040_col_005272.svg'),
+#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_012680_col_023936.svg'),
+#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_017360_col_024712.svg')
+# ]
+# file_svg_list = file_svg_list_extra
+
 # correct home directory
 file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
@@ -251,7 +264,11 @@ n_im = len(file_svg_list)
 metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
-# loop the folds to get the ndpi files that correspond to testing of each fold
+# HACK: If file_svg_list_extra is used above, this block will not work but you don't need it
+# for the loop before that calculates the rows of Table MICE with the breakdown of
+# cells/other/background objects by mouse
+#
+# loop the folds to get the ndpi files that correspond to testing of each fold,
 ndpi_files_test_list = {}
 for i_fold in range(len(idx_test_all)):
     # list of .svg files for testing
