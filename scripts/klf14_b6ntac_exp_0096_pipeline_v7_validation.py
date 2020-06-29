@@ -651,6 +651,8 @@ t0 = time.time()
 df_manual_all = pd.DataFrame()
 df_auto_all = pd.DataFrame()
 
+# NOTE: Skip this loop is you already ran it, because its output is saved then, and you can just load it after the loop
+
 for i_fold in range(len(idx_test_all)):
 
     ''' Get the images/masks/classification that were not used for training of this particular fold '''
@@ -1873,24 +1875,24 @@ if DEBUG:
     plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_cell_area_male_pat_vs_mat.png'))
 
 # compute variability of area values for each quantile
-area_interval_f_pat = stats.mstats.hdquantiles(area_perc_f_pat, prob=[0.025, 0.5, 0.975], axis=0)
-area_interval_m_pat = stats.mstats.hdquantiles(area_perc_m_pat, prob=[0.025, 0.5, 0.975], axis=0)
-area_interval_f_mat = stats.mstats.hdquantiles(area_perc_f_mat, prob=[0.025, 0.5, 0.975], axis=0)
-area_interval_m_mat = stats.mstats.hdquantiles(area_perc_m_mat, prob=[0.025, 0.5, 0.975], axis=0)
+area_interval_f_pat = stats.mstats.hdquantiles(area_perc_f_pat, prob=[0.25, 0.5, 0.75], axis=0)
+area_interval_m_pat = stats.mstats.hdquantiles(area_perc_m_pat, prob=[0.25, 0.5, 0.75], axis=0)
+area_interval_f_mat = stats.mstats.hdquantiles(area_perc_f_mat, prob=[0.25, 0.5, 0.75], axis=0)
+area_interval_m_mat = stats.mstats.hdquantiles(area_perc_m_mat, prob=[0.25, 0.5, 0.75], axis=0)
 
 # PAT (females and males)
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e-3, 'C0', linewidth=3, label='Female PAT median')
+    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e-3, 'C0', linewidth=3, label='Female PAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_f_pat[0, :] * 1e-3, area_interval_f_pat[2, :] * 1e-3,
                      facecolor='C0', alpha=0.3)
-    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e-3, 'C0', linewidth=1, label='Female PAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e-3, 'C0', linewidth=1)
     plt.plot(quantiles, area_interval_f_pat[2, :] * 1e-3, 'C0', linewidth=1)
 
-    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e-3, 'C1', linewidth=3, label='Male PAT median')
+    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e-3, 'C1', linewidth=3, label='Male PAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_m_pat[0, :] * 1e-3, area_interval_m_pat[2, :] * 1e-3,
                      facecolor='C1', alpha=0.3)
-    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e-3, 'C1', linewidth=1, label='Male PAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e-3, 'C1', linewidth=1)
     plt.plot(quantiles, area_interval_m_pat[2, :] * 1e-3, 'C1', linewidth=1)
 
     plt.xlabel('Cell population quantile', fontsize=14)
@@ -1905,16 +1907,16 @@ if DEBUG:
 # MAT (females and males)
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e-3, 'C2', linewidth=3, label='Female MAT median')
+    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e-3, 'C2', linewidth=3, label='Female MAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_f_mat[0, :] * 1e-3, area_interval_f_mat[2, :] * 1e-3,
                      facecolor='C0', alpha=0.3)
-    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e-3, 'C2', linewidth=1, label='Female MAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e-3, 'C2', linewidth=1)
     plt.plot(quantiles, area_interval_f_mat[2, :] * 1e-3, 'C2', linewidth=1)
 
-    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e-3, 'C3', linewidth=3, label='Male MAT median')
+    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e-3, 'C3', linewidth=3, label='Male MAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_m_mat[0, :] * 1e-3, area_interval_m_mat[2, :] * 1e-3,
                      facecolor='C1', alpha=0.3)
-    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C3', linewidth=1, label='Male MAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C3', linewidth=1)
     plt.plot(quantiles, area_interval_m_mat[2, :] * 1e-3, 'C3', linewidth=1)
 
     plt.xlabel('Cell population quantile', fontsize=14)
@@ -1929,16 +1931,16 @@ if DEBUG:
 # Female (PAT and MAT)
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e-3, 'C0', linewidth=3, label='Female PAT median')
+    plt.plot(quantiles, area_interval_f_pat[1, :] * 1e-3, 'C0', linewidth=3, label='Female PAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_f_pat[0, :] * 1e-3, area_interval_f_pat[2, :] * 1e-3,
                      facecolor='C0', alpha=0.3)
-    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e-3, 'C0', linewidth=1, label='Female PAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_pat[0, :] * 1e-3, 'C0', linewidth=1)
     plt.plot(quantiles, area_interval_f_pat[2, :] * 1e-3, 'C0', linewidth=1)
 
-    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e-3, 'C2', linewidth=3, label='Female MAT median')
+    plt.plot(quantiles, area_interval_f_mat[1, :] * 1e-3, 'C2', linewidth=3, label='Female MAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_f_mat[0, :] * 1e-3, area_interval_f_mat[2, :] * 1e-3,
                      facecolor='C1', alpha=0.3)
-    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e-3, 'C2', linewidth=1, label='Female MAT 95%-interval')
+    plt.plot(quantiles, area_interval_f_mat[0, :] * 1e-3, 'C2', linewidth=1)
     plt.plot(quantiles, area_interval_f_mat[2, :] * 1e-3, 'C2', linewidth=1)
 
     plt.xlabel('Cell population quantile', fontsize=14)
@@ -1953,16 +1955,16 @@ if DEBUG:
 # Male (PAT and MAT)
 if DEBUG:
     plt.clf()
-    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e-3, 'C1', linewidth=3, label='Male PAT median')
+    plt.plot(quantiles, area_interval_m_pat[1, :] * 1e-3, 'C1', linewidth=3, label='Male PAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_m_pat[0, :] * 1e-3, area_interval_m_pat[2, :] * 1e-3,
                      facecolor='C0', alpha=0.3)
-    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e-3, 'C1', linewidth=1, label='Male PAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_pat[0, :] * 1e-3, 'C1', linewidth=1)
     plt.plot(quantiles, area_interval_m_pat[2, :] * 1e-3, 'C1', linewidth=1)
 
-    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e-3, 'C3', linewidth=3, label='Male MAT median')
+    plt.plot(quantiles, area_interval_m_mat[1, :] * 1e-3, 'C3', linewidth=3, label='Male MAT median & Q1-Q3 interval')
     plt.fill_between(quantiles, area_interval_m_mat[0, :] * 1e-3, area_interval_m_mat[2, :] * 1e-3,
                      facecolor='C1', alpha=0.3)
-    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C3', linewidth=1, label='Male MAT 95%-interval')
+    plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C3', linewidth=1)
     plt.plot(quantiles, area_interval_m_mat[2, :] * 1e-3, 'C3', linewidth=1)
 
     plt.xlabel('Cell population quantile', fontsize=14)
