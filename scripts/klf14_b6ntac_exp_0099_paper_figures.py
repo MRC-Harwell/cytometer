@@ -1844,13 +1844,13 @@ np.savez_compressed(filename_rough_mask_area, id_all=id_all, rough_mask_area_all
 filename_quantiles = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_area_quantiles_' + depot + '.npz')
 if os.path.isfile(filename_quantiles):
 
-    aux = np.load(filename_quantiles)
-    area_mean_all = aux['area_mean_all']
-    area_q_all = aux['area_q_all']
-    id_all = aux['id_all']
-    ko_all = aux['ko_all']
-    genotype_all = aux['genotype_all']
-    sex_all = aux['sex_all']
+    with np.load(filename_quantiles) as aux:
+        area_mean_all = aux['area_mean_all']
+        area_q_all = aux['area_q_all']
+        id_all = aux['id_all']
+        ko_all = aux['ko_all']
+        genotype_all = aux['genotype_all']
+        sex_all = aux['sex_all']
 
 else:
 
@@ -2032,38 +2032,37 @@ n_f_mat_het = area_q_f_mat_het.shape[0]
 n_m_mat_het = area_q_m_mat_het.shape[0]
 
 if DEBUG:
+    # Inguinal subcutaneous
     plt.clf()
 
     plt.subplot(121)
-    plt.plot(quantiles * 100, area_interval_f_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_f_pat_wt) + ' Female PAT WT')
-    plt.fill_between(quantiles * 100, area_interval_f_pat_wt[1, :] * 1e12 * 1e-3, area_interval_f_pat_wt[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles, area_interval_f_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_f_pat_wt) + ' WT')
+    plt.fill_between(quantiles, area_interval_f_pat_wt[1, :] * 1e12 * 1e-3, area_interval_f_pat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C0', alpha=0.3)
-    # plt.plot(quantiles, area_interval_f_pat_wt[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT WT 95%-interval')
-    # plt.plot(quantiles, area_interval_f_pat_wt[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
 
-    plt.plot(quantiles * 100, area_interval_f_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_f_pat_het) + ' Female PAT Het')
-    plt.fill_between(quantiles * 100, area_interval_f_pat_het[1, :] * 1e12 * 1e-3, area_interval_f_pat_het[3, :] * 1e12 * 1e-3,
-                     facecolor='C1', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_pat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_f_pat_het) + ' Het')
+    plt.fill_between(quantiles, area_interval_f_pat_het[1, :] * 1e12 * 1e-3, area_interval_f_pat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='k', alpha=0.3)
 
-    # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile (%)', fontsize=14)
-    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.title('Female PAT', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('White adipocyte area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='upper left', prop={'size': 12})
     plt.ylim(0, 15)
     plt.tight_layout()
 
     plt.subplot(122)
-    plt.plot(quantiles * 100, area_interval_f_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_f_mat_wt) + ' Female MAT WT')
-    plt.fill_between(quantiles * 100, area_interval_f_mat_wt[1, :] * 1e12 * 1e-3, area_interval_f_mat_wt[3, :] * 1e12 * 1e-3,
-                     facecolor='C2', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_mat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_f_mat_wt) + ' WT')
+    plt.fill_between(quantiles, area_interval_f_mat_wt[1, :] * 1e12 * 1e-3, area_interval_f_mat_wt[3, :] * 1e12 * 1e-3,
+                     facecolor='C0', alpha=0.3)
 
-    plt.plot(quantiles * 100, area_interval_f_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_f_mat_het) + ' Female MAT Het')
-    plt.fill_between(quantiles * 100, area_interval_f_mat_het[1, :] * 1e12 * 1e-3, area_interval_f_mat_het[3, :] * 1e12 * 1e-3,
-                     facecolor='C3', alpha=0.3)
+    plt.plot(quantiles, area_interval_f_mat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_f_mat_het) + ' Het')
+    plt.fill_between(quantiles, area_interval_f_mat_het[1, :] * 1e12 * 1e-3, area_interval_f_mat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='k', alpha=0.3)
 
-    # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile (%)', fontsize=14)
+    plt.title('Female MAT', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='upper left', prop={'size': 12})
     plt.ylim(0, 15)
@@ -2073,38 +2072,37 @@ if DEBUG:
     plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_female_pat_vs_mat_bands.png'))
 
 if DEBUG:
+    # Inguinal subcutaneous
     plt.clf()
 
     plt.subplot(121)
-    plt.plot(quantiles * 100, area_interval_m_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_pat_wt) + ' Male PAT WT')
-    plt.fill_between(quantiles * 100, area_interval_m_pat_wt[1, :] * 1e12 * 1e-3, area_interval_m_pat_wt[3, :] * 1e12 * 1e-3,
+    plt.plot(quantiles, area_interval_m_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_pat_wt) + ' Male PAT WT')
+    plt.fill_between(quantiles, area_interval_m_pat_wt[1, :] * 1e12 * 1e-3, area_interval_m_pat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C0', alpha=0.3)
-    # plt.plot(quantiles, area_interval_f_pat_wt[0, :] * 1e12 * 1e-3, 'C0:', linewidth=2, label='Female PAT WT 95%-interval')
-    # plt.plot(quantiles, area_interval_f_pat_wt[4, :] * 1e12 * 1e-3, 'C0:', linewidth=2)
 
-    plt.plot(quantiles * 100, area_interval_m_pat_het[2, :] * 1e12 * 1e-3, 'C1', linewidth=3, label=str(n_m_pat_het) + ' Male PAT Het')
-    plt.fill_between(quantiles * 100, area_interval_m_pat_het[1, :] * 1e12 * 1e-3, area_interval_m_pat_het[3, :] * 1e12 * 1e-3,
-                     facecolor='C1', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_pat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_m_pat_het) + ' Male PAT Het')
+    plt.fill_between(quantiles, area_interval_m_pat_het[1, :] * 1e12 * 1e-3, area_interval_m_pat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='k', alpha=0.3)
 
-    # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile (%)', fontsize=14)
-    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.title('Male PAT', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('White adipocyte area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='upper left', prop={'size': 12})
     plt.ylim(0, 16)
     plt.tight_layout()
 
     plt.subplot(122)
-    plt.plot(quantiles * 100, area_interval_m_mat_wt[2, :] * 1e12 * 1e-3, 'C2', linewidth=3, label=str(n_m_mat_wt) + ' Male MAT WT')
-    plt.fill_between(quantiles * 100, area_interval_m_mat_wt[1, :] * 1e12 * 1e-3, area_interval_m_mat_wt[3, :] * 1e12 * 1e-3,
-                     facecolor='C2', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_mat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_mat_wt) + ' Male MAT WT')
+    plt.fill_between(quantiles, area_interval_m_mat_wt[1, :] * 1e12 * 1e-3, area_interval_m_mat_wt[3, :] * 1e12 * 1e-3,
+                     facecolor='C0', alpha=0.3)
 
-    plt.plot(quantiles * 100, area_interval_m_mat_het[2, :] * 1e12 * 1e-3, 'C3', linewidth=3, label=str(n_m_mat_het) + ' Male MAT Het')
-    plt.fill_between(quantiles * 100, area_interval_m_mat_het[1, :] * 1e12 * 1e-3, area_interval_m_mat_het[3, :] * 1e12 * 1e-3,
-                     facecolor='C3', alpha=0.3)
+    plt.plot(quantiles, area_interval_m_mat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_m_mat_het) + ' Male MAT Het')
+    plt.fill_between(quantiles, area_interval_m_mat_het[1, :] * 1e12 * 1e-3, area_interval_m_mat_het[3, :] * 1e12 * 1e-3,
+                     facecolor='k', alpha=0.3)
 
-    # plt.title('Inguinal subcutaneous', fontsize=16)
-    plt.xlabel('Cell population quantile (%)', fontsize=14)
+    plt.title('Female PAT', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='upper left', prop={'size': 12})
     plt.ylim(0, 16)
@@ -2116,14 +2114,14 @@ if DEBUG:
 filename_pvals = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_pvals_' + depot + '.npz')
 if os.path.isfile(filename_pvals):
 
-    aux = np.load(filename_pvals)
-    pval_perc_f_pat2mat = aux['pval_perc_f_pat2mat']
-    pval_perc_m_pat2mat = aux['pval_perc_m_pat2mat']
-    pval_perc_f_pat_wt2het = aux['pval_perc_f_pat_wt2het']
-    pval_perc_f_mat_wt2het = aux['pval_perc_f_mat_wt2het']
-    pval_perc_m_pat_wt2het = aux['pval_perc_m_pat_wt2het']
-    pval_perc_m_mat_wt2het = aux['pval_perc_m_mat_wt2het']
-    permutation_sample_size = aux['permutation_sample_size']
+    with np.load(filename_pvals) as aux:
+        pval_perc_f_pat2mat = aux['pval_perc_f_pat2mat']
+        pval_perc_m_pat2mat = aux['pval_perc_m_pat2mat']
+        pval_perc_f_pat_wt2het = aux['pval_perc_f_pat_wt2het']
+        pval_perc_f_mat_wt2het = aux['pval_perc_f_mat_wt2het']
+        pval_perc_m_pat_wt2het = aux['pval_perc_m_pat_wt2het']
+        pval_perc_m_mat_wt2het = aux['pval_perc_m_mat_wt2het']
+        permutation_sample_size = aux['permutation_sample_size']
 
 else:
 

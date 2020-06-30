@@ -1895,8 +1895,8 @@ if DEBUG:
     plt.plot(quantiles, area_interval_m_pat[0, :] * 1e-3, 'C1', linewidth=1)
     plt.plot(quantiles, area_interval_m_pat[2, :] * 1e-3, 'C1', linewidth=1)
 
-    plt.xlabel('Cell population quantile', fontsize=14)
-    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('White adipocyte area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
@@ -1919,8 +1919,8 @@ if DEBUG:
     plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C3', linewidth=1)
     plt.plot(quantiles, area_interval_m_mat[2, :] * 1e-3, 'C3', linewidth=1)
 
-    plt.xlabel('Cell population quantile', fontsize=14)
-    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('White adipocyte area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
@@ -1943,8 +1943,8 @@ if DEBUG:
     plt.plot(quantiles, area_interval_f_mat[0, :] * 1e-3, 'C2', linewidth=1)
     plt.plot(quantiles, area_interval_f_mat[2, :] * 1e-3, 'C2', linewidth=1)
 
-    plt.xlabel('Cell population quantile', fontsize=14)
-    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('White adipocyte area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
@@ -1967,8 +1967,8 @@ if DEBUG:
     plt.plot(quantiles, area_interval_m_mat[0, :] * 1e-3, 'C3', linewidth=1)
     plt.plot(quantiles, area_interval_m_mat[2, :] * 1e-3, 'C3', linewidth=1)
 
-    plt.xlabel('Cell population quantile', fontsize=14)
-    plt.ylabel('Area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('White adipocyte area ($\cdot 10^3 \mu$m$^2$)', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='best', prop={'size': 12})
     plt.tight_layout()
