@@ -2195,7 +2195,7 @@ print('Male:')
 print(pval_perc_m_pat2mat)
 np.set_printoptions(precision=8)
 
-# multitest correction using Hochberg a.k.a. Simes-Hochberg method
+# multitest correction using Benjamini-Hochberg
 _, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='fdr_bh', alpha=0.05, returnsorted=False)
 _, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='fdr_bh', alpha=0.05, returnsorted=False)
 
@@ -2217,7 +2217,7 @@ print(pval_perc_m_pat_wt2het)
 print(pval_perc_m_mat_wt2het)
 np.set_printoptions(precision=8)
 
-# multitest correction using Hochberg a.k.a. Simes-Hochberg method
+# multitest correction using Benjamini-Hochberg
 _, pval_perc_f_pat_wt2het, _, _ = multipletests(pval_perc_f_pat_wt2het, method='fdr_bh', alpha=0.05, returnsorted=False)
 _, pval_perc_f_mat_wt2het, _, _ = multipletests(pval_perc_f_mat_wt2het, method='fdr_bh', alpha=0.05, returnsorted=False)
 _, pval_perc_m_pat_wt2het, _, _ = multipletests(pval_perc_m_pat_wt2het, method='fdr_bh', alpha=0.05, returnsorted=False)
