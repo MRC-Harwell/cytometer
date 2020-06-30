@@ -1991,9 +1991,9 @@ for i, q in enumerate(quantiles):
     pval_perc_f2m_mat[i] = permutation_test(x=area_perc_f_mat[:, i], y=area_perc_m_mat[:, i],
                                             func=func, method='exact', seed=None)
 
-# multitest correction using Hochberg a.k.a. Simes-Hochberg method
-_, pval_perc_f2m_pat, _, _ = multipletests(pval_perc_f2m_pat, method='simes-hochberg', alpha=0.05, returnsorted=False)
-_, pval_perc_f2m_mat, _, _ = multipletests(pval_perc_f2m_mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+# multitest correction using Benjamini-Hochberg method
+_, pval_perc_f2m_pat, _, _ = multipletests(pval_perc_f2m_pat, method='fdr_bh', alpha=0.05, returnsorted=False)
+_, pval_perc_f2m_mat, _, _ = multipletests(pval_perc_f2m_mat, method='fdr_bh', alpha=0.05, returnsorted=False)
 
 # plot the median difference and the population quantiles at which the difference is significant
 if DEBUG:
@@ -2042,9 +2042,9 @@ for i, q in enumerate(quantiles):
     pval_perc_m_pat2mat[i] = permutation_test(x=area_perc_m_pat[:, i], y=area_perc_m_mat[:, i],
                                               func=func, method='exact', seed=None)
 
-# multitest correction using Hochberg a.k.a. Simes-Hochberg method
-_, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
-_, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='simes-hochberg', alpha=0.05, returnsorted=False)
+# multitest correction using Benjamini-Hochberg
+_, pval_perc_f_pat2mat, _, _ = multipletests(pval_perc_f_pat2mat, method='fdr_bh', alpha=0.05, returnsorted=False)
+_, pval_perc_m_pat2mat, _, _ = multipletests(pval_perc_m_pat2mat, method='fdr_bh', alpha=0.05, returnsorted=False)
 
 # plot the median difference and the population quantiles at which the difference is significant
 if DEBUG:
