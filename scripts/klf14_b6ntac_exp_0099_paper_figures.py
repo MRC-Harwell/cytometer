@@ -2032,7 +2032,7 @@ n_f_mat_het = area_q_f_mat_het.shape[0]
 n_m_mat_het = area_q_m_mat_het.shape[0]
 
 if DEBUG:
-    # Inguinal subcutaneous
+    # plots of female median ECDF^-1 with quartile shaded area
     plt.clf()
 
     plt.subplot(121)
@@ -2072,15 +2072,15 @@ if DEBUG:
     plt.savefig(os.path.join(figures_dir, 'exp_0099_' + depot + '_cell_area_female_pat_vs_mat_bands.png'))
 
 if DEBUG:
-    # Inguinal subcutaneous
+    # plots of male median ECDF^-1 with quartile shaded area
     plt.clf()
 
     plt.subplot(121)
-    plt.plot(quantiles, area_interval_m_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_pat_wt) + ' Male PAT WT')
+    plt.plot(quantiles, area_interval_m_pat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_pat_wt) + ' WT')
     plt.fill_between(quantiles, area_interval_m_pat_wt[1, :] * 1e12 * 1e-3, area_interval_m_pat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C0', alpha=0.3)
 
-    plt.plot(quantiles, area_interval_m_pat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_m_pat_het) + ' Male PAT Het')
+    plt.plot(quantiles, area_interval_m_pat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_m_pat_het) + ' Het')
     plt.fill_between(quantiles, area_interval_m_pat_het[1, :] * 1e12 * 1e-3, area_interval_m_pat_het[3, :] * 1e12 * 1e-3,
                      facecolor='k', alpha=0.3)
 
@@ -2093,15 +2093,15 @@ if DEBUG:
     plt.tight_layout()
 
     plt.subplot(122)
-    plt.plot(quantiles, area_interval_m_mat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_mat_wt) + ' Male MAT WT')
+    plt.plot(quantiles, area_interval_m_mat_wt[2, :] * 1e12 * 1e-3, 'C0', linewidth=3, label=str(n_m_mat_wt) + ' WT')
     plt.fill_between(quantiles, area_interval_m_mat_wt[1, :] * 1e12 * 1e-3, area_interval_m_mat_wt[3, :] * 1e12 * 1e-3,
                      facecolor='C0', alpha=0.3)
 
-    plt.plot(quantiles, area_interval_m_mat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_m_mat_het) + ' Male MAT Het')
+    plt.plot(quantiles, area_interval_m_mat_het[2, :] * 1e12 * 1e-3, 'k', linewidth=3, label=str(n_m_mat_het) + ' Het')
     plt.fill_between(quantiles, area_interval_m_mat_het[1, :] * 1e12 * 1e-3, area_interval_m_mat_het[3, :] * 1e12 * 1e-3,
                      facecolor='k', alpha=0.3)
 
-    plt.title('Female PAT', fontsize=14)
+    plt.title('Male MAT', fontsize=14)
     plt.xlabel('Quantile', fontsize=14)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.legend(loc='upper left', prop={'size': 12})
