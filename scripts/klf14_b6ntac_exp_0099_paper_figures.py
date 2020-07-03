@@ -17,6 +17,9 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 
+# json_annotation_files_dict here needs to have the same files as in
+# klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
+
 # SQWAT: list of annotation files
 json_annotation_files_dict = {}
 json_annotation_files_dict['sqwat'] = [
