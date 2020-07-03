@@ -70,116 +70,168 @@ dilation_size = 25
 component_size_threshold = 1e6
 hole_size_treshold = 8000
 
+# json_annotation_files_dict here needs to have the same files as in
+# klf14_b6ntac_exp_0099_paper_figures.py
 
 # list of annotation files
 json_annotation_files = [
-    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_exp_0097_corrected.json'
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C2 - 2016-02-03 11.15.14_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C3 - 2016-02-03 11.19.28_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C2 - 2016-02-03 13.19.18_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C3 - 2016-02-03 13.25.12_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C2 - 2016-02-12 12.22.20_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C3 - 2016-02-12 12.29.22_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C2 - 2016-02-04 11.51.43_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C3 - 2016-02-04 11.56.51_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C2 - 2016-02-01 14.08.04_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C3 - 2016-02-01 14.14.08_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C2 - 2016-02-26 11.19.06_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C3 - 2016-02-26 11.24.28_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C2 - 2016-02-15 13.01.29_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C3 - 2016-02-15 12.57.56_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C2 - 2016-02-17 16.05.58_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C3 - 2016-02-17 16.53.30_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C2 - 2016-02-15 15.22.53_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C3 - 2016-02-15 15.26.39_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C2 - 2016-03-16 11.56.14_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C3 - 2016-03-16 12.05.08_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C2 - 2016-02-10 16.05.02_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C3 - 2016-02-10 15.58.00_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C2 - 2016-02-10 17.42.35_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C3 - 2016-02-10 17.47.13_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 C2 - 2016-02-02 09.17.36_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 C3 - 2016-02-02 09.22.47_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 C2 - 2016-03-16 14.51.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 C3 - 2016-03-16 14.59.33_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C2 - 2016-02-11 10.50.59_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C3 - 2016-02-11 10.57.24_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C2 - 2016-03-16 16.00.21_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C3 - 2016-03-16 16.06.30_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C2 - 2016-02-02 15.32.37_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C3 - 2016-02-02 15.38.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C1 - 2016-02-26 09.18.44_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C3 - 2016-02-26 09.29.11_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C2 - 2016-02-04 15.11.37_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C3 - 2016-02-04 15.18.41_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C2 - 2016-02-03 17.05.57_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C3 - 2016-02-03 17.12.44_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C2 - 2016-02-03 11.15.14_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2b  58-16 C3 - 2016-02-03 11.19.28_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C2 - 2016-02-03 13.19.18_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2d  60-16 C3 - 2016-02-03 13.25.12_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C2 - 2016-02-12 12.22.20_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1i PAT 104-16 C3 - 2016-02-12 12.29.22_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C2 - 2016-02-04 11.51.43_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2c  66-16 C3 - 2016-02-04 11.56.51_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C2 - 2016-02-01 14.08.04_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.1c  46-16 C3 - 2016-02-01 14.14.08_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C2 - 2016-02-26 11.19.06_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3d  224-16 C3 - 2016-02-26 11.24.28_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C2 - 2016-02-15 13.01.29_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1c PAT 108-16 C3 - 2016-02-15 12.57.56_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C2 - 2016-02-17 16.05.58_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-16.2d  214-16 C3 - 2016-02-17 16.53.30_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C2 - 2016-02-15 15.22.53_exp_0097_corrected.json',
-    'KLF14-B6NTAC-37.1d PAT 109-16 C3 - 2016-02-15 15.26.39_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C2 - 2016-03-16 11.56.14_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.2g  415-16 C3 - 2016-03-16 12.05.08_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C2 - 2016-02-10 16.05.02_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1a PAT 96-16 C3 - 2016-02-10 15.58.00_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C2 - 2016-02-10 17.42.35_exp_0097_corrected.json',
-    'KLF14-B6NTAC-36.1b PAT 97-16 C3 - 2016-02-10 17.47.13_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 C2 - 2016-02-02 09.17.36_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1a  50-16 C3 - 2016-02-02 09.22.47_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 C2 - 2016-03-16 14.51.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-36.3d  416-16 C3 - 2016-03-16 14.59.33_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C2 - 2016-02-11 10.50.59_exp_0097_corrected.json',
-    'KLF14-B6NTAC 36.1c PAT 98-16 C3 - 2016-02-11 10.57.24_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C2 - 2016-03-16 16.00.21_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.4a  417-16 C3 - 2016-03-16 16.06.30_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C2 - 2016-02-02 15.32.37_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.1e  54-16 C3 - 2016-02-02 15.38.38_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C1 - 2016-02-26 09.18.44_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.3b  223-16 C3 - 2016-02-26 09.29.11_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C2 - 2016-02-04 15.11.37_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-17.2f  68-16 C3 - 2016-02-04 15.18.41_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C2 - 2016-02-03 17.05.57_exp_0097_corrected.json',
-    'KLF14-B6NTAC-MAT-18.2g  63-16 C3 - 2016-02-03 17.12.44_exp_0097_corrected.json'
-]
+    'KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46.json',
+    'KLF14-B6NTAC-MAT-17.1a  44-16 C1 - 2016-02-01 11.14.17.json',
+    'KLF14-B6NTAC-MAT-17.1e  48-16 C1 - 2016-02-01 16.27.05.json',
+    'KLF14-B6NTAC-MAT-18.2a  57-16 C1 - 2016-02-03 09.10.17.json',
+    'KLF14-B6NTAC-PAT-37.3c  414-16 C1 - 2016-03-15 17.15.41.json',
+    'KLF14-B6NTAC-MAT-18.1d  53-16 C1 - 2016-02-02 14.32.03.json',
+    'KLF14-B6NTAC-MAT-17.2b  65-16 C1 - 2016-02-04 10.24.22.json',
+    'KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05.json',
+    'KLF14-B6NTAC 37.1a PAT 106-16 C1 - 2016-02-12 16.21.00.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06.json',
+    # 'KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26.json',
+    'KLF14-B6NTAC-MAT-17.2a  64-16 C1 - 2016-02-04 09.17.52.json',
+    'KLF14-B6NTAC-MAT-16.2f  216-16 C1 - 2016-02-18 10.28.27.json',
+    'KLF14-B6NTAC-MAT-17.1d  47-16 C1 - 2016-02-01 15.25.53.json',
+    'KLF14-B6NTAC-MAT-16.2e  215-16 C1 - 2016-02-18 09.19.26.json',
+    'KLF14-B6NTAC 36.1g PAT 102-16 C1 - 2016-02-11 17.20.14.json',
+    'KLF14-B6NTAC-37.1g PAT 112-16 C1 - 2016-02-16 13.33.09.json',
+    'KLF14-B6NTAC-38.1e PAT 94-16 C1 - 2016-02-10 12.13.10.json',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52.json',
+    'KLF14-B6NTAC-MAT-18.2f  62-16 C1 - 2016-02-03 15.46.15.json',
+    'KLF14-B6NTAC-MAT-18.1b  51-16 C1 - 2016-02-02 09.59.16.json',
+    'KLF14-B6NTAC-MAT-19.2c  220-16 C1 - 2016-02-18 17.03.38.json',
+    'KLF14-B6NTAC-MAT-18.1f  55-16 C1 - 2016-02-02 16.14.30.json',
+    'KLF14-B6NTAC-PAT-36.3b  412-16 C1 - 2016-03-15 14.37.55.json',
+    'KLF14-B6NTAC-MAT-16.2c  213-16 C1 - 2016-02-17 14.51.18.json',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32.json',
+    'KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56.json',
+    'KLF14-B6NTAC-MAT-18.1c  52-16 C1 - 2016-02-02 12.26.58.json',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52.json',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38.json',
+    'KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38.json',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00.json',
+    'KLF14-B6NTAC-MAT-18.2e  61-16 C1 - 2016-02-03 14.19.35.json',
+    'KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00.json',
+    'KLF14-B6NTAC-PAT-37.2a  406-16 C1 - 2016-03-14 12.01.56.json',
+    'KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33.json',
+    'KLF14-B6NTAC-37.1b PAT 107-16 C1 - 2016-02-15 11.43.31.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04.json',
+    'KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16.json',
+    'KLF14-B6NTAC-MAT-17.2d  67-16 C1 - 2016-02-04 12.34.32.json',
+    'KLF14-B6NTAC-MAT-18.3c  218-16 C1 - 2016-02-18 13.12.09.json',
+    'KLF14-B6NTAC-PAT-37.3a  413-16 C1 - 2016-03-15 15.54.12.json',
+    'KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31.json',
+    'KLF14-B6NTAC-37.1h PAT 113-16 C1 - 2016-02-16 15.14.09.json',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52.json',
+    'KLF14-B6NTAC-37.1e PAT 110-16 C1 - 2016-02-15 17.33.11.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54.json',
+    'KLF14-B6NTAC 36.1h PAT 103-16 C1 - 2016-02-12 10.15.22.json',
+    # 'KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04.json',
+    'KLF14-B6NTAC-MAT-16.2b  212-16 C1 - 2016-02-17 12.49.00.json',
+    'KLF14-B6NTAC-MAT-17.1f  49-16 C1 - 2016-02-01 17.51.46.json',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11.json',
+    'KLF14-B6NTAC-MAT-16.2a  211-16 C1 - 2016-02-17 11.46.42.json',
+    'KLF14-B6NTAC-38.1f PAT 95-16 C1 - 2016-02-10 14.41.44.json',
+    'KLF14-B6NTAC-PAT-36.3a  409-16 C1 - 2016-03-15 10.18.46.json',
+    'KLF14-B6NTAC-MAT-19.2b  219-16 C1 - 2016-02-18 15.41.38.json',
+    'KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50.json',
+    'KLF14-B6NTAC 36.1f PAT 101-16 C1 - 2016-02-11 15.23.06.json',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08.json',
+    'KLF14-B6NTAC-MAT-18.2c  59-16 C1 - 2016-02-03 11.56.52.json',
+    'KLF14-B6NTAC-PAT-37.2f  405-16 C1 - 2016-03-14 10.58.34.json',
+    'KLF14-B6NTAC-PAT-37.2e  408-16 C1 - 2016-03-14 16.23.30.json',
+    'KLF14-B6NTAC-MAT-19.2e  221-16 C1 - 2016-02-25 14.00.14.json',
+    # 'KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54.json',
+    # 'KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20.json',
+    'KLF14-B6NTAC-PAT-37.4b  419-16 C1 - 2016-03-17 10.22.54.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45.json',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41.json',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38.json',
+    'KLF14-B6NTAC-PAT-37.2h  418-16 C1 - 2016-03-16 17.01.17.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52.json',
+    'KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1).json',
+    'KLF14-B6NTAC-PAT 37.2b 410-16 C4 - 2020-02-14 10.27.23.json',
+    'KLF14-B6NTAC-PAT 37.2c 407-16 C4 - 2020-02-14 10.15.57.json',
+    # 'KLF14-B6NTAC-PAT 37.2d 411-16 C4 - 2020-02-14 10.34.10.json',
 
-# add more annotation files
-json_annotation_files = [
-    'KLF14-B6NTAC-PAT-36.3b  412-16 C1 - 2016-03-15 14.37.55_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.3a  413-16 C1 - 2016-03-15 15.54.12_exp_0097_corrected.json',
-    'KLF14-B6NTAC-PAT-37.3c  414-16 C1 - 2016-03-15 17.15.41_exp_0097_corrected.json'
+    'KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31.json',
+    'KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16.json',
+    'KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40.json',
+    'KLF14-B6NTAC 36.1d PAT 99-16 B1 - 2016-02-11 11.29.55.json',
+    'KLF14-B6NTAC 36.1e PAT 100-16 B1 - 2016-02-11 12.51.11.json',
+    'KLF14-B6NTAC 36.1f PAT 101-16 B1 - 2016-02-11 14.57.03.json',
+    'KLF14-B6NTAC 36.1g PAT 102-16 B1 - 2016-02-11 16.12.01.json',
+    'KLF14-B6NTAC 36.1h PAT 103-16 B1 - 2016-02-12 09.51.08.json',
+    # 'KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56.json',
+    'KLF14-B6NTAC 36.1j PAT 105-16 B1 - 2016-02-12 14.08.19.json',
+    'KLF14-B6NTAC 37.1a PAT 106-16 B1 - 2016-02-12 15.33.02.json',
+    'KLF14-B6NTAC-37.1b PAT 107-16 B1 - 2016-02-15 11.25.20.json',
+    'KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10.json',
+    'KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44.json',
+    'KLF14-B6NTAC-37.1e PAT 110-16 B1 - 2016-02-15 16.16.06.json',
+    'KLF14-B6NTAC-37.1g PAT 112-16 B1 - 2016-02-16 12.02.07.json',
+    'KLF14-B6NTAC-37.1h PAT 113-16 B1 - 2016-02-16 14.53.02.json',
+    'KLF14-B6NTAC-38.1e PAT 94-16 B1 - 2016-02-10 11.35.53.json',
+    'KLF14-B6NTAC-38.1f PAT 95-16 B1 - 2016-02-10 14.16.55.json',
+    'KLF14-B6NTAC-MAT-16.2a  211-16 B1 - 2016-02-17 11.21.54.json',
+    'KLF14-B6NTAC-MAT-16.2b  212-16 B1 - 2016-02-17 12.33.18.json',
+    'KLF14-B6NTAC-MAT-16.2c  213-16 B1 - 2016-02-17 14.01.06.json',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57.json',
+    'KLF14-B6NTAC-MAT-16.2e  215-16 B1 - 2016-02-17 17.14.16.json',
+    'KLF14-B6NTAC-MAT-16.2f  216-16 B1 - 2016-02-18 10.05.52.json',
+    # 'KLF14-B6NTAC-MAT-17.1a  44-16 B1 - 2016-02-01 09.19.20.json',
+    'KLF14-B6NTAC-MAT-17.1b  45-16 B1 - 2016-02-01 12.05.15.json',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30.json',
+    'KLF14-B6NTAC-MAT-17.1d  47-16 B1 - 2016-02-01 15.11.42.json',
+    'KLF14-B6NTAC-MAT-17.1e  48-16 B1 - 2016-02-01 16.01.09.json',
+    'KLF14-B6NTAC-MAT-17.1f  49-16 B1 - 2016-02-01 17.12.31.json',
+    'KLF14-B6NTAC-MAT-17.2a  64-16 B1 - 2016-02-04 08.57.34.json',
+    'KLF14-B6NTAC-MAT-17.2b  65-16 B1 - 2016-02-04 10.06.00.json',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28.json',
+    'KLF14-B6NTAC-MAT-17.2d  67-16 B1 - 2016-02-04 12.20.20.json',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40.json',
+    'KLF14-B6NTAC-MAT-17.2g  69-16 B1 - 2016-02-04 15.52.52.json',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06.json',
+    'KLF14-B6NTAC-MAT-18.1b  51-16 B1 - 2016-02-02 09.46.31.json',
+    'KLF14-B6NTAC-MAT-18.1c  52-16 B1 - 2016-02-02 11.24.31.json',
+    'KLF14-B6NTAC-MAT-18.1d  53-16 B1 - 2016-02-02 14.11.37.json',
+    # 'KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05.json',
+    'KLF14-B6NTAC-MAT-18.2a  57-16 B1 - 2016-02-03 08.54.27.json',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06.json',
+    'KLF14-B6NTAC-MAT-18.2c  59-16 B1 - 2016-02-03 11.41.32.json',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49.json',
+    'KLF14-B6NTAC-MAT-18.2e  61-16 B1 - 2016-02-03 14.02.25.json',
+    'KLF14-B6NTAC-MAT-18.2f  62-16 B1 - 2016-02-03 15.00.17.json',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37.json',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42.json',
+    'KLF14-B6NTAC-MAT-18.3c  218-16 B1 - 2016-02-18 12.51.46.json',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56.json',
+    'KLF14-B6NTAC-MAT-19.1a  56-16 B1 - 2016-02-02 16.57.46.json',
+    'KLF14-B6NTAC-MAT-19.2b  219-16 B1 - 2016-02-18 14.21.50.json',
+    'KLF14-B6NTAC-MAT-19.2c  220-16 B1 - 2016-02-18 16.40.48.json',
+    'KLF14-B6NTAC-MAT-19.2e  221-16 B1 - 2016-02-25 13.15.27.json',
+    'KLF14-B6NTAC-MAT-19.2f  217-16 B1 - 2016-02-18 11.23.22.json',
+    'KLF14-B6NTAC-MAT-19.2g  222-16 B1 - 2016-02-25 14.51.57.json',
+    'KLF14-B6NTAC-PAT-36.3a  409-16 B1 - 2016-03-15 09.24.54.json',
+    'KLF14-B6NTAC-PAT-36.3b  412-16 B1 - 2016-03-15 14.11.47.json',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04.json',
+    # 'KLF14-B6NTAC-PAT-37.2a  406-16 B1 - 2016-03-14 11.46.47.json',
+    'KLF14-B6NTAC-PAT-37.2b  410-16 B1 - 2016-03-15 11.12.01.json',
+    'KLF14-B6NTAC-PAT-37.2c  407-16 B1 - 2016-03-14 12.54.55.json',
+    'KLF14-B6NTAC-PAT-37.2d  411-16 B1 - 2016-03-15 12.01.13.json',
+    'KLF14-B6NTAC-PAT-37.2e  408-16 B1 - 2016-03-14 16.06.43.json',
+    'KLF14-B6NTAC-PAT-37.2f  405-16 B1 - 2016-03-14 09.49.45.json',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45.json',
+    'KLF14-B6NTAC-PAT-37.2h  418-16 B1 - 2016-03-16 16.42.16.json',
+    'KLF14-B6NTAC-PAT-37.3a  413-16 B1 - 2016-03-15 15.31.26.json',
+    'KLF14-B6NTAC-PAT-37.3c  414-16 B1 - 2016-03-15 16.49.22.json',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38.json',
+    'KLF14-B6NTAC-PAT-37.4b  419-16 B1 - 2016-03-17 09.10.42.json',
+    'KLF14-B6NTAC-PAT-38.1a  90-16 B1 - 2016-02-04 17.27.42.json',
+    'KLF14-B6NTAC-PAT-39.1h  453-16 B1 - 2016-03-17 11.15.50.json',
+    'KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06.json'
 ]
 
 # load svg files from manual dataset
@@ -197,7 +249,82 @@ metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 ########################################################################################################################
-## Colourmap for AIDA
+## Colourmap for AIDA (automatically segmented data)
+########################################################################################################################
+
+filename_corrected_areas = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_corrected_areas.npz')
+
+if os.path.isfile(filename_corrected_areas):
+
+    with np.load(filename_corrected_areas) as aux:
+        corrected_areas_f = aux['corrected_areas_f']
+        corrected_areas_m = aux['corrected_areas_m']
+
+else:
+
+    corrected_areas_f = []
+    corrected_areas_m = []
+    areas_all = []
+    for i, json_file in enumerate(json_annotation_files):
+
+        print('file ' + str(i) + '/' + str(len(json_annotation_files) - 1) + ': ' + os.path.basename(json_file))
+
+        # change file extension from .svg to .tif
+        file_ndpi = json_file.replace('.json', '.ndpi')
+        file_ndpi = os.path.join(data_dir, file_ndpi)
+
+        # open histology training image
+        im = openslide.OpenSlide(file_ndpi)
+
+        # pixel size
+        assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+        xres = 1e-2 / float(im.properties['tiff.XResolution'])
+        yres = 1e-2 / float(im.properties['tiff.YResolution'])
+
+        # create dataframe for this image
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                              values=[i,], values_tag='i',
+                                                              tags_to_keep=['id', 'ko_parent', 'sex'])
+
+        # mouse ID as a string
+        id = df_common['id'].values[0]
+        sex = df_common['sex'].values[0]
+        ko = df_common['ko_parent'].values[0]
+
+        # list of items (there's a contour in each item)
+        json_file = os.path.join(annotations_dir, json_file)
+        contours = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*')
+
+        # loop items (one contour per item)
+        for c in contours:
+
+            # compute cell area
+            area = Polygon(c).area * xres * yres  # (m^2)
+            if sex == 'f':
+                corrected_areas_f.append(area)
+            elif sex == 'm':
+                corrected_areas_m.append(area)
+
+        # save cell areas
+        corrected_areas_f = np.array(corrected_areas_f)
+        corrected_areas_m = np.array(corrected_areas_m)
+        np.savez(filename_corrected_areas, corrected_areas_f=corrected_areas_f, corrected_areas_m=corrected_areas_m)
+
+if DEBUG:
+    plt.clf()
+    plt.hist(corrected_areas_f * 1e12, histtype='step', bins=200, density=True, label='female')
+    plt.hist(corrected_areas_m * 1e12, histtype='step', bins=200, density=True, label='male')
+    plt.legend()
+
+    plt.clf()
+    plt.boxplot((manual_areas_f, corrected_areas_f * 1e12, manual_areas_m, corrected_areas_m * 1e12),
+                labels=('female\nhand traced', 'female\ncorrected', 'male\nhand traced', 'male\ncorrected'))
+    plt.ylim(-1500, 50000)
+    plt.ylabel('White adipocyte area $\mu m^2$', fontsize=14)
+    plt.tight_layout()
+
+########################################################################################################################
+## Colourmap for AIDA (manual data)
 ########################################################################################################################
 
 # loop files with hand traced contours
