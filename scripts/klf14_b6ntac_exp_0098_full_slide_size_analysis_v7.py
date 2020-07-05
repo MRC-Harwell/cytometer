@@ -256,15 +256,22 @@ filename_corrected_areas = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_corr
 
 if os.path.isfile(filename_corrected_areas):
 
-    with np.load(filename_corrected_areas) as aux:
-        corrected_areas_f = aux['corrected_areas_f']
-        corrected_areas_m = aux['corrected_areas_m']
+    with np.load(filename_corrected_areas, allow_pickle=True) as aux:
+        json_files_f = aux['json_files_f']
+        json_files_m = aux['json_files_m']
+        areas_auto_f = aux['areas_auto_f']
+        areas_auto_m = aux['areas_auto_m']
+        areas_corrected_f = aux['areas_corrected_f']
+        areas_corrected_m = aux['areas_corrected_m']
 
 else:
 
-    corrected_areas_f = []
-    corrected_areas_m = []
-    areas_all = []
+    json_files_f = []
+    json_files_m = []
+    areas_auto_f = []
+    areas_auto_m = []
+    areas_corrected_f = []
+    areas_corrected_m = []
     for i, json_file in enumerate(json_annotation_files):
 
         print('file ' + str(i) + '/' + str(len(json_annotation_files) - 1) + ': ' + os.path.basename(json_file))
@@ -278,8 +285,8 @@ else:
 
         # pixel size
         assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-        xres = 1e-2 / float(im.properties['tiff.XResolution'])
-        yres = 1e-2 / float(im.properties['tiff.YResolution'])
+        xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
+        yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
 
         # create dataframe for this image
         df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
@@ -291,34 +298,54 @@ else:
         sex = df_common['sex'].values[0]
         ko = df_common['ko_parent'].values[0]
 
-        # list of items (there's a contour in each item)
-        json_file = os.path.join(annotations_dir, json_file)
-        contours = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*')
+        # load list of contours in Auto and Corrected segmentations
+        json_file_auto = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0097_no_overlap.json'))
+        contours_auto = cytometer.data.aida_get_contours(json_file_auto, layer_name='White adipocyte.*')
+        json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0097_corrected.json'))
+        contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
 
         # loop items (one contour per item)
-        for c in contours:
-
+        areas_all = []
+        for c in contours_auto:
             # compute cell area
-            area = Polygon(c).area * xres * yres  # (m^2)
-            if sex == 'f':
-                corrected_areas_f.append(area)
-            elif sex == 'm':
-                corrected_areas_m.append(area)
+            area = Polygon(c).area * xres * yres  # (um^2)
+            areas_all.append(area)
+        if sex == 'f':
+            json_files_f.append(json_file)
+            areas_auto_f.append(np.array(areas_all))
+        elif sex == 'm':
+            json_files_m.append(json_file)
+            areas_auto_m.append(np.array(areas_all))
 
-        # save cell areas
-        corrected_areas_f = np.array(corrected_areas_f)
-        corrected_areas_m = np.array(corrected_areas_m)
-        np.savez(filename_corrected_areas, corrected_areas_f=corrected_areas_f, corrected_areas_m=corrected_areas_m)
+        areas_all = []
+        for c in contours_corrected:
+            # compute cell area
+            area = Polygon(c).area * xres * yres  # (um^2)
+            areas_all.append(area)
+        if sex == 'f':
+            areas_corrected_f.append(np.array(areas_all))
+        elif sex == 'm':
+            areas_corrected_m.append(np.array(areas_all))
+
+    # save cell areas
+    # corrected_areas_f = np.array(corrected_areas_f)
+    # corrected_areas_m = np.array(corrected_areas_m)
+    np.savez(filename_corrected_areas, json_files_f=json_files_f, json_files_m=json_files_m,
+             areas_auto_f=areas_auto_f, areas_auto_m=areas_auto_m,
+             areas_corrected_f=areas_corrected_f, areas_corrected_m=areas_corrected_m)
 
 if DEBUG:
     plt.clf()
-    plt.hist(corrected_areas_f * 1e12, histtype='step', bins=200, density=True, label='female')
-    plt.hist(corrected_areas_m * 1e12, histtype='step', bins=200, density=True, label='male')
+    plt.hist(np.concatenate(areas_auto_f), histtype='step', bins=200, density=True, label='Auto female')
+    plt.hist(np.concatenate(areas_auto_m), histtype='step', bins=200, density=True, label='Auto male')
+    plt.hist(np.concatenate(areas_corrected_f), histtype='step', bins=200, density=True, label='Corrected female')
+    plt.hist(np.concatenate(areas_corrected_m), histtype='step', bins=200, density=True, label='Corrected male')
     plt.legend()
 
     plt.clf()
-    plt.boxplot((manual_areas_f, corrected_areas_f * 1e12, manual_areas_m, corrected_areas_m * 1e12),
-                labels=('female\nhand traced', 'female\ncorrected', 'male\nhand traced', 'male\ncorrected'))
+    plt.boxplot((np.concatenate(areas_auto_f), np.concatenate(areas_auto_m),
+                 np.concatenate(areas_corrected_f), np.concatenate(areas_corrected_m)),
+                labels=('Auto\nfemale', 'Auto\nmale', 'Corrected\nfemale', 'Corrected\nmale'))
     plt.ylim(-1500, 50000)
     plt.ylabel('White adipocyte area $\mu m^2$', fontsize=14)
     plt.tight_layout()
