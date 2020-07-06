@@ -49,7 +49,7 @@ pip install git+https://www.github.com/keras-team/keras-contrib.git
 conda install -y matplotlib pillow 
 conda install -y scikit-image scikit-learn h5py 
 conda install -y nose pytest
-pip install opencv-python pysto openslide-python seaborn
+pip install opencv-python pysto openslide-python seaborn statannot
 pip install tifffile mahotas networkx svgpathtools receptivefield rpy2 mlxtend shapely ujson
 conda install -y pandas six statsmodels
 
