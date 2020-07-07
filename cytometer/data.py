@@ -575,18 +575,19 @@ def read_paths_from_svg_file(file, tag='Cell', add_offset_from_filename=False, m
     return paths_out
 
 
-def area2quantile(areas):
+def area2quantile(areas, quantiles=np.linspace(0.0, 1.0, 101)):
     """
     Return function to map from cell areas to quantiles.
 
     :param areas: Vector with random sample that is representative of area values in the population. The probability
     distribution and quantiles are computed from this random sample.
+    :param quantiles: (def np.linspace(0.0, 1.0, 101)) Quantiles values in [0.0, 1.0] at which the function will be
+    linearly interpolated.
     :return:
     * f: scipy.interpolate.interpolate.interp1d interpolation function that maps areas values to [0.0, 1.0]. Area values
     outside the range are mapped to 0.0 (smaller) or 1.0 (larger).
     """
 
-    quantiles = np.linspace(0.0, 1.0, 101)
     areas_by_quantiles = scipy.stats.mstats.hdquantiles(areas, prob=quantiles)
     f_area2quantile = scipy.interpolate.interp1d(areas_by_quantiles.data, quantiles, bounds_error=False,
                                                fill_value=(0.0, 1.0))
