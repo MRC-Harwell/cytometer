@@ -36,6 +36,8 @@ import cytometer.data
 import itertools
 from shapely.geometry import Polygon
 import scipy
+import seaborn as sns
+import statannot
 
 LIMIT_GPU_MEM = False
 
@@ -249,6 +251,54 @@ metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 ########################################################################################################################
+## Hand traced cell areas, to compared against automatically segmented areas
+########################################################################################################################
+
+# loop files with hand traced contours
+manual_areas_f = []
+manual_areas_m = []
+for i, file_svg in enumerate(file_svg_list):
+
+    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+    # change file extension from .svg to .tif
+    file_tif = file_svg.replace('.svg', '.tif')
+
+    # open histology training image
+    im = Image.open(file_tif)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                       minimum_npoints=3)
+
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
+                                                          values=[i,], values_tag='i',
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko_parent'].values[0]
+
+    # compute cell area
+    if sex == 'f':
+        manual_areas_f.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
+    elif sex == 'm':
+        manual_areas_m.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
+    else:
+        raise ValueError('Wrong sex value')
+
+
+manual_areas_f = list(itertools.chain.from_iterable(manual_areas_f))
+manual_areas_m = list(itertools.chain.from_iterable(manual_areas_m))
+
+########################################################################################################################
 ## Colourmap for AIDA (automatically segmented data)
 ########################################################################################################################
 
@@ -334,6 +384,80 @@ else:
              areas_auto_f=areas_auto_f, areas_auto_m=areas_auto_m,
              areas_corrected_f=areas_corrected_f, areas_corrected_m=areas_corrected_m)
 
+# create dataframe for seaborn.boxplot()
+df_all = pd.DataFrame()
+df_all['Area'] = manual_areas_f
+df_all['Sex'] = 'Female'
+df_all['Method'] = 'Hand Traced'
+
+df = pd.DataFrame()
+df['Area'] = manual_areas_m
+df['Sex'] = 'Male'
+df['Method'] = 'Hand Traced'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_auto_f)
+df['Sex'] = 'Female'
+df['Method'] = 'Auto'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_auto_m)
+df['Sex'] = 'Male'
+df['Method'] = 'Auto'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_corrected_f)
+df['Sex'] = 'Female'
+df['Method'] = 'Corrected'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_corrected_m)
+df['Sex'] = 'Male'
+df['Method'] = 'Corrected'
+df_all = pd.concat((df_all, df))
+
+if DEBUG:
+    plt.clf()
+    plt.hist(np.concatenate(areas_auto_f), histtype='step', bins=200, density=True, label='Auto female')
+    plt.hist(np.concatenate(areas_auto_m), histtype='step', bins=200, density=True, label='Auto male')
+    plt.hist(np.concatenate(areas_corrected_f), histtype='step', bins=200, density=True, label='Corrected female')
+    plt.hist(np.concatenate(areas_corrected_m), histtype='step', bins=200, density=True, label='Corrected male')
+    plt.tick_params(labelsize=14)
+    plt.legend()
+
+    # boxplots of Auto vs. Corrected
+    plt.clf()
+    sns.boxplot(x='Sex', y='Area', data=df_all, hue='Method')
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Sex', fontsize=14)
+    plt.ylabel('White adipocyte area ($\mu m^2$)', fontsize=14)
+    plt.tight_layout()
+
+
+# inspect outliers in Corrected
+q = np.linspace(0, 1, 1001)
+quant_corrected_f = stats.mstats.hdquantiles(np.concatenate(areas_corrected_f), prob=q, axis=0)
+quant_corrected_m = stats.mstats.hdquantiles(np.concatenate(areas_corrected_m), prob=q, axis=0)
+
+if DEBUG:
+    plt.clf()
+    plt.plot(q, quant_corrected_f)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile', fontsize=14)
+    plt.ylabel('White adipocyte area $\mu m^2$', fontsize=14)
+    plt.tight_layout()
+
+# clean outliers from the Corrected data, in dataframe and in vectors of vectors
+max_cell_size = 22500
+df_all = df_all.loc[df_all['Area'] <= max_cell_size]
+
+areas_corrected_f = [x[x <= max_cell_size] for x in areas_corrected_f]
+areas_corrected_m = [x[x <= max_cell_size] for x in areas_corrected_m]
+
 if DEBUG:
     plt.clf()
     plt.hist(np.concatenate(areas_auto_f), histtype='step', bins=200, density=True, label='Auto female')
@@ -342,66 +466,29 @@ if DEBUG:
     plt.hist(np.concatenate(areas_corrected_m), histtype='step', bins=200, density=True, label='Corrected male')
     plt.legend()
 
+    # boxplots of Auto vs. Corrected
     plt.clf()
-    plt.boxplot((np.concatenate(areas_auto_f), np.concatenate(areas_auto_m),
-                 np.concatenate(areas_corrected_f), np.concatenate(areas_corrected_m)),
-                labels=('Auto\nfemale', 'Auto\nmale', 'Corrected\nfemale', 'Corrected\nmale'))
-    plt.ylim(-1500, 50000)
-    plt.ylabel('White adipocyte area $\mu m^2$', fontsize=14)
+    ax = sns.boxplot(x='Sex', y='Area', data=df_all, hue='Method')
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Sex', fontsize=14)
+    plt.ylabel('White adipocyte area ($\mu m^2$)', fontsize=14)
     plt.tight_layout()
 
-########################################################################################################################
-## Colourmap for AIDA (manual data)
-########################################################################################################################
-
-# loop files with hand traced contours
-manual_areas_f = []
-manual_areas_m = []
-for i, file_svg in enumerate(file_svg_list):
-
-    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
-
-    # change file extension from .svg to .tif
-    file_tif = file_svg.replace('.svg', '.tif')
-
-    # open histology training image
-    im = Image.open(file_tif)
-
-    # read pixel size information
-    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
-    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
-
-    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
-    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
-    contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
-                                                       minimum_npoints=3)
-
-    # create dataframe for this image
-    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
-                                                          values=[i,], values_tag='i',
-                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
-
-    # mouse ID as a string
-    id = df_common['id'].values[0]
-    sex = df_common['sex'].values[0]
-    ko = df_common['ko_parent'].values[0]
-
-    # compute cell area
-    if sex == 'f':
-        manual_areas_f.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
-    elif sex == 'm':
-        manual_areas_m.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
-    else:
-        raise ValueError('Wrong sex value')
-
-
-manual_areas_f = list(itertools.chain.from_iterable(manual_areas_f))
-manual_areas_m = list(itertools.chain.from_iterable(manual_areas_m))
+    statannot.add_stat_annotation(ax,
+                                  x='Sex', y='Area', data=df_all, hue='Method',
+                                  box_pairs=[(('Female', 'Hand Traced'), ('Female', 'Auto')),
+                                             (('Female', 'Hand Traced'), ('Female', 'Corrected')),
+                                             (('Male', 'Hand Traced'), ('Male', 'Auto')),
+                                             (('Male', 'Hand Traced'), ('Male', 'Corrected'))
+                                             ],
+                                  test='Mann-Whitney', comparisons_correction='bonferroni',
+                                  text_format='star', loc='inside', verbose=2)
+    plt.tight_layout()
 
 # compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
 # to area quantiles
-f_area2quantile_f = cytometer.data.area2quantile(manual_areas_f)
-f_area2quantile_m = cytometer.data.area2quantile(manual_areas_m)
+f_area2quantile_f = cytometer.data.area2quantile(np.concatenate(areas_corrected_f))
+f_area2quantile_m = cytometer.data.area2quantile(np.concatenate(areas_corrected_m))
 
 # load AIDA's colourmap
 cm = cytometer.data.aida_colourmap()
@@ -410,14 +497,13 @@ cm = cytometer.data.aida_colourmap()
 ## Annotation file loop
 ########################################################################################################################
 
-
 # loop annotations files
 for i_file, json_file in enumerate(json_annotation_files):
 
     print('File: ' + str(i_file) + ': JSON annotations file: ' + os.path.basename(json_file))
 
     # name of corresponding .ndpi file
-    ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
+    ndpi_file = json_file.replace('.json', '.ndpi')
     kernel_file = os.path.splitext(ndpi_file)[0]
 
     # add path to file
@@ -429,8 +515,8 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     # pixel size
     assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-    xres = 1e-2 / float(im.properties['tiff.XResolution'])
-    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+    xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
+    yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
 
     # change pixel size to downsampled size
     xres *= downsample_factor
@@ -477,7 +563,7 @@ for i_file, json_file in enumerate(json_annotation_files):
             plt.fill(c[:, 0], c[:, 1], fill=False, color='r')
 
         # compute cell area
-        area = Polygon(c).area * xres * yres  # (m^2)
+        area = Polygon(c).area * xres * yres  # (um^2)
         areas_all.append(area)
 
         # compute centroid of contour
@@ -490,7 +576,7 @@ for i_file, json_file in enumerate(json_annotation_files):
     # convert mask
     areas_mask = np.array(areas_mask, dtype=np.bool)
 
-    areas_all = np.array(areas_all) * 1e12
+    areas_all = np.array(areas_all)
 
     # interpolate scattered area data to regular grid
     idx = areas_mask
