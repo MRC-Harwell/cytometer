@@ -485,10 +485,19 @@ if DEBUG:
                                   text_format='star', loc='inside', verbose=2)
     plt.tight_layout()
 
-# compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
-# to area quantiles
-f_area2quantile_f = cytometer.data.area2quantile(np.concatenate(areas_corrected_f))
-f_area2quantile_m = cytometer.data.area2quantile(np.concatenate(areas_corrected_m))
+# file that contains quantile-to-area functions
+filename_area2quantile = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
+
+if os.path.isfile(filename_area2quantile):
+    with np.load(filename_area2quantile) as aux:
+        f_area2quantile_f = aux['f_area2quantile_f']
+        f_area2quantile_m = aux['f_area2quantile_m']
+else:
+    # compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
+    # to area quantiles
+    f_area2quantile_f = cytometer.data.area2quantile(np.concatenate(areas_corrected_f), quantiles=np.linspace(0.0, 1.0, 1001))
+    f_area2quantile_m = cytometer.data.area2quantile(np.concatenate(areas_corrected_m), quantiles=np.linspace(0.0, 1.0, 1001))
+    np.savez(filename_area2quantile, f_area2quantile_f=f_area2quantile_f, f_area2quantile_m=f_area2quantile_m)
 
 # load AIDA's colourmap
 cm = cytometer.data.aida_colourmap()
