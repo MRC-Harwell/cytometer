@@ -75,6 +75,9 @@ hole_size_treshold = 8000
 # json_annotation_files_dict here needs to have the same files as in
 # klf14_b6ntac_exp_0099_paper_figures.py
 
+# NOTE: This list has the base filenames that map to the .ndpi files. However, the script later modifies these filenames
+# to add the '_exp_0097_corrected.json' suffix, so that corrected segmentations are loaded.
+
 # list of annotation files
 json_annotation_files = [
     'KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31.json',
