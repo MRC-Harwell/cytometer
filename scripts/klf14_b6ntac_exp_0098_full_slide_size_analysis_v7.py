@@ -503,7 +503,7 @@ else:
 cm = cytometer.data.aida_colourmap()
 
 ########################################################################################################################
-## Annotation file loop
+## File loop to read annotations
 ########################################################################################################################
 
 # loop annotations files
@@ -548,8 +548,11 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.subplot(212)
         plt.imshow(lores_istissue0)
 
+    # load list of contours in Auto and Corrected segmentations
+    json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0097_corrected.json'))
+
     # list of items (there's a contour in each item)
-    contours = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*')
+    contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
 
     # init array for interpolated quantiles
     quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
@@ -563,7 +566,7 @@ for i_file, json_file in enumerate(json_annotation_files):
     centroids_all = []
 
     # loop items (one contour per item)
-    for c in contours:
+    for c in contours_corrected:
 
         # convert to downsampled coordinates
         c = np.array(c) / downsample_factor
