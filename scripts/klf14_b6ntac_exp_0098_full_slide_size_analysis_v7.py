@@ -254,7 +254,7 @@ metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 ########################################################################################################################
-## Hand traced cell areas, to compared against automatically segmented areas
+## Hand traced cell areas
 ########################################################################################################################
 
 # loop files with hand traced contours
@@ -300,6 +300,145 @@ for i, file_svg in enumerate(file_svg_list):
 
 manual_areas_f = list(itertools.chain.from_iterable(manual_areas_f))
 manual_areas_m = list(itertools.chain.from_iterable(manual_areas_m))
+
+########################################################################################################################
+## Automatic segmentation areas, but only from full slides where the hand tracing came from
+########################################################################################################################
+
+# from
+# ['/path/to/files/klf14_b6ntac_training/KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_019220_col_061724.svg', ...]
+# to
+# ['KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_019220_col_061724.svg', ...]
+file_training_full_slide_svg_list = [os.path.basename(file) for file in file_svg_list]
+
+# to
+# ['KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11', ...]
+file_training_full_slide_svg_list = [file.split('_')[0] for file in file_training_full_slide_svg_list]
+
+# remove duplicates
+file_training_full_slide_svg_list = list(dict.fromkeys(file_training_full_slide_svg_list))
+
+# loop files
+areas_auto_training_slides_f = []
+areas_auto_training_slides_m = []
+areas_corrected_training_slides_f = []
+areas_corrected_training_slides_m = []
+for i_file, file in enumerate(file_training_full_slide_svg_list):
+
+    print('file ' + str(i_file) + '/' + str(len(file_training_full_slide_svg_list) - 1) + ': ' + file)
+
+    # get corresponding .ndpi file
+    file_ndpi = os.path.join(data_dir, file + '.ndpi')
+
+    # open histology training image
+    im = openslide.OpenSlide(file_ndpi)
+
+    # pixel size
+    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
+    yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
+
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file),
+                                                          values=[i, ], values_tag='i',
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko_parent'].values[0]
+
+    # load list of contours in Auto and Corrected segmentations
+    json_file_auto = os.path.join(annotations_dir, file + '_exp_0097_no_overlap.json')
+    contours_auto = cytometer.data.aida_get_contours(json_file_auto, layer_name='White adipocyte.*')
+    json_file_corrected = os.path.join(annotations_dir, file + '_exp_0097_corrected.json')
+    contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
+
+    # loop items (one contour per item)
+    areas_all = []
+    for c in contours_auto:
+        # compute cell area
+        area = Polygon(c).area * xres * yres  # (um^2)
+        areas_all.append(area)
+    if sex == 'f':
+        areas_auto_training_slides_f.append(np.array(areas_all))
+    elif sex == 'm':
+        areas_auto_training_slides_m.append(np.array(areas_all))
+
+    areas_all = []
+    for c in contours_corrected:
+        # compute cell area
+        area = Polygon(c).area * xres * yres  # (um^2)
+        areas_all.append(area)
+    if sex == 'f':
+        areas_corrected_training_slides_f.append(np.array(areas_all))
+    elif sex == 'm':
+        areas_corrected_training_slides_m.append(np.array(areas_all))
+
+# create dataframe for seaborn.boxplot()
+df_all = pd.DataFrame()
+df_all['Area'] = manual_areas_f
+df_all['Sex'] = 'Female'
+df_all['Method'] = 'Hand Traced'
+
+df = pd.DataFrame()
+df['Area'] = manual_areas_m
+df['Sex'] = 'Male'
+df['Method'] = 'Hand Traced'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_auto_training_slides_f)
+df['Sex'] = 'Female'
+df['Method'] = 'Auto'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_auto_training_slides_m)
+df['Sex'] = 'Male'
+df['Method'] = 'Auto'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_corrected_training_slides_f)
+df['Sex'] = 'Female'
+df['Method'] = 'Corrected'
+df_all = pd.concat((df_all, df))
+
+df = pd.DataFrame()
+df['Area'] = np.concatenate(areas_corrected_training_slides_m)
+df['Sex'] = 'Male'
+df['Method'] = 'Corrected'
+df_all = pd.concat((df_all, df))
+
+# clean outliers from the Corrected data, in dataframe and in vectors of vectors
+max_cell_size = 22500
+df_all = df_all.loc[df_all['Area'] <= max_cell_size]
+
+areas_corrected_training_slides_f = [x[x <= max_cell_size] for x in areas_corrected_training_slides_f]
+areas_corrected_training_slides_m = [x[x <= max_cell_size] for x in areas_corrected_training_slides_m]
+
+# boxplots of Auto vs. Corrected
+plt.clf()
+ax = sns.boxplot(x='Sex', y='Area', data=df_all, hue='Method')
+plt.tick_params(labelsize=14)
+plt.xlabel('Sex', fontsize=14)
+plt.ylabel('White adipocyte area ($\mu m^2$)', fontsize=14)
+plt.tight_layout()
+
+statannot.add_stat_annotation(ax,
+                              x='Sex', y='Area', data=df_all, hue='Method',
+                              box_pairs=[(('Female', 'Hand Traced'), ('Female', 'Auto')),
+                                         (('Female', 'Hand Traced'), ('Female', 'Corrected')),
+                                         (('Male', 'Hand Traced'), ('Male', 'Auto')),
+                                         (('Male', 'Hand Traced'), ('Male', 'Corrected'))
+                                         ],
+                              test='Mann-Whitney', comparisons_correction='bonferroni',
+                              text_format='star', loc='inside', verbose=2)
+plt.tight_layout()
+
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_training_slides_area_boxplots.png'))
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_training_slides_area_boxplots.svg'))
 
 ########################################################################################################################
 ## Colourmap for AIDA (automatically segmented data)
@@ -441,7 +580,7 @@ if DEBUG:
     plt.tight_layout()
 
 
-# inspect outliers in Corrected
+# inspect outliers in Corrected (very slow)
 q = np.linspace(0, 1, 1001)
 quant_corrected_f = stats.mstats.hdquantiles(np.concatenate(areas_corrected_f), prob=q, axis=0)
 quant_corrected_m = stats.mstats.hdquantiles(np.concatenate(areas_corrected_m), prob=q, axis=0)
@@ -469,24 +608,27 @@ if DEBUG:
     plt.hist(np.concatenate(areas_corrected_m), histtype='step', bins=200, density=True, label='Corrected male')
     plt.legend()
 
-    # boxplots of Auto vs. Corrected
-    plt.clf()
-    ax = sns.boxplot(x='Sex', y='Area', data=df_all, hue='Method')
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Sex', fontsize=14)
-    plt.ylabel('White adipocyte area ($\mu m^2$)', fontsize=14)
-    plt.tight_layout()
+# boxplots of Auto vs. Corrected
+plt.clf()
+ax = sns.boxplot(x='Sex', y='Area', data=df_all, hue='Method')
+plt.tick_params(labelsize=14)
+plt.xlabel('Sex', fontsize=14)
+plt.ylabel('White adipocyte area ($\mu m^2$)', fontsize=14)
+plt.tight_layout()
 
-    statannot.add_stat_annotation(ax,
-                                  x='Sex', y='Area', data=df_all, hue='Method',
-                                  box_pairs=[(('Female', 'Hand Traced'), ('Female', 'Auto')),
-                                             (('Female', 'Hand Traced'), ('Female', 'Corrected')),
-                                             (('Male', 'Hand Traced'), ('Male', 'Auto')),
-                                             (('Male', 'Hand Traced'), ('Male', 'Corrected'))
-                                             ],
-                                  test='Mann-Whitney', comparisons_correction='bonferroni',
-                                  text_format='star', loc='inside', verbose=2)
-    plt.tight_layout()
+statannot.add_stat_annotation(ax,
+                              x='Sex', y='Area', data=df_all, hue='Method',
+                              box_pairs=[(('Female', 'Hand Traced'), ('Female', 'Auto')),
+                                         (('Female', 'Hand Traced'), ('Female', 'Corrected')),
+                                         (('Male', 'Hand Traced'), ('Male', 'Auto')),
+                                         (('Male', 'Hand Traced'), ('Male', 'Corrected'))
+                                         ],
+                              test='Mann-Whitney', comparisons_correction='bonferroni',
+                              text_format='star', loc='inside', verbose=2)
+plt.tight_layout()
+
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_area_boxplots.png'))
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_area_boxplots.svg'))
 
 # file that contains quantile-to-area functions
 filename_area2quantile = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
