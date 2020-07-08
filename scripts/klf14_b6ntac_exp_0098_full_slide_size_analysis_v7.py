@@ -379,36 +379,36 @@ for i_file, file in enumerate(file_training_full_slide_svg_list):
 df_all = pd.DataFrame()
 df_all['Area'] = manual_areas_f
 df_all['Sex'] = 'Female'
-df_all['Method'] = 'Hand Traced'
+df_all['Method'] = 'Hand traced'
 
 df = pd.DataFrame()
 df['Area'] = manual_areas_m
 df['Sex'] = 'Male'
-df['Method'] = 'Hand Traced'
+df['Method'] = 'Hand traced'
 df_all = pd.concat((df_all, df))
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_auto_training_slides_f)
 df['Sex'] = 'Female'
-df['Method'] = 'Auto'
+df['Method'] = 'Auto training'
 df_all = pd.concat((df_all, df))
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_auto_training_slides_m)
 df['Sex'] = 'Male'
-df['Method'] = 'Auto'
+df['Method'] = 'Auto training'
 df_all = pd.concat((df_all, df))
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_corrected_training_slides_f)
 df['Sex'] = 'Female'
-df['Method'] = 'Corrected'
+df['Method'] = 'Corrected training'
 df_all = pd.concat((df_all, df))
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_corrected_training_slides_m)
 df['Sex'] = 'Male'
-df['Method'] = 'Corrected'
+df['Method'] = 'Corrected training'
 df_all = pd.concat((df_all, df))
 
 # clean outliers from the Corrected data, in dataframe and in vectors of vectors
@@ -428,10 +428,10 @@ plt.tight_layout()
 
 statannot.add_stat_annotation(ax,
                               x='Sex', y='Area', data=df_all, hue='Method',
-                              box_pairs=[(('Female', 'Hand Traced'), ('Female', 'Auto')),
-                                         (('Female', 'Hand Traced'), ('Female', 'Corrected')),
-                                         (('Male', 'Hand Traced'), ('Male', 'Auto')),
-                                         (('Male', 'Hand Traced'), ('Male', 'Corrected'))
+                              box_pairs=[(('Female', 'Hand traced'), ('Female', 'Auto training')),
+                                         (('Female', 'Hand traced'), ('Female', 'Corrected training')),
+                                         (('Male', 'Hand traced'), ('Male', 'Auto training')),
+                                         (('Male', 'Hand traced'), ('Male', 'Corrected training'))
                                          ],
                               test='Mann-Whitney', comparisons_correction='bonferroni',
                               text_format='star', loc='inside', verbose=2)
@@ -441,7 +441,7 @@ plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_correct
 plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_training_slides_area_boxplots.svg'))
 
 ########################################################################################################################
-## Colourmap for AIDA (automatically segmented data)
+## Colourmap for AIDA (using all automatically segmented data)
 ########################################################################################################################
 
 filename_corrected_areas = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_corrected_areas.npz')
@@ -526,40 +526,29 @@ else:
              areas_auto_f=areas_auto_f, areas_auto_m=areas_auto_m,
              areas_corrected_f=areas_corrected_f, areas_corrected_m=areas_corrected_m)
 
-# create dataframe for seaborn.boxplot()
-df_all = pd.DataFrame()
-df_all['Area'] = manual_areas_f
-df_all['Sex'] = 'Female'
-df_all['Method'] = 'Hand Traced'
-
-df = pd.DataFrame()
-df['Area'] = manual_areas_m
-df['Sex'] = 'Male'
-df['Method'] = 'Hand Traced'
-df_all = pd.concat((df_all, df))
-
+# add DeepCytometer data from all frames to the dataframe
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_auto_f)
 df['Sex'] = 'Female'
-df['Method'] = 'Auto'
+df['Method'] = 'Auto all'
 df_all = pd.concat((df_all, df))
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_auto_m)
 df['Sex'] = 'Male'
-df['Method'] = 'Auto'
+df['Method'] = 'Auto all'
 df_all = pd.concat((df_all, df))
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_corrected_f)
 df['Sex'] = 'Female'
-df['Method'] = 'Corrected'
+df['Method'] = 'Corrected all'
 df_all = pd.concat((df_all, df))
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_corrected_m)
 df['Sex'] = 'Male'
-df['Method'] = 'Corrected'
+df['Method'] = 'Corrected all'
 df_all = pd.concat((df_all, df))
 
 if DEBUG:
@@ -610,7 +599,9 @@ if DEBUG:
 
 # boxplots of Auto vs. Corrected
 plt.clf()
-ax = sns.boxplot(x='Sex', y='Area', data=df_all, hue='Method')
+ax = sns.boxplot(x='Sex', y='Area', data=df_all, hue='Method',
+                 hue_order=('Hand traced', 'Auto training', 'Auto all', 'Corrected training', 'Corrected all'),
+                 palette='muted', fliersize=1)
 plt.tick_params(labelsize=14)
 plt.xlabel('Sex', fontsize=14)
 plt.ylabel('White adipocyte area ($\mu m^2$)', fontsize=14)
@@ -618,17 +609,23 @@ plt.tight_layout()
 
 statannot.add_stat_annotation(ax,
                               x='Sex', y='Area', data=df_all, hue='Method',
-                              box_pairs=[(('Female', 'Hand Traced'), ('Female', 'Auto')),
-                                         (('Female', 'Hand Traced'), ('Female', 'Corrected')),
-                                         (('Male', 'Hand Traced'), ('Male', 'Auto')),
-                                         (('Male', 'Hand Traced'), ('Male', 'Corrected'))
+                              hue_order=('Hand traced', 'Auto training', 'Auto all', 'Corrected training', 'Corrected all'),
+                              box_pairs=[(('Female', 'Hand traced'), ('Female', 'Auto training')),
+                                         (('Female', 'Hand traced'), ('Female', 'Corrected training')),
+                                         (('Male', 'Hand traced'), ('Male', 'Auto training')),
+                                         (('Male', 'Hand traced'), ('Male', 'Corrected training')),
+                                         (('Female', 'Auto training'), ('Female', 'Auto all')),
+                                         (('Female', 'Corrected training'), ('Female', 'Corrected all')),
+                                         (('Male', 'Auto training'), ('Male', 'Auto all')),
+                                         (('Male', 'Corrected training'), ('Male', 'Corrected all')),
                                          ],
                               test='Mann-Whitney', comparisons_correction='bonferroni',
                               text_format='star', loc='inside', verbose=2)
+plt.legend(loc='lower left', bbox_to_anchor=(1.0, 0.0))
 plt.tight_layout()
 
-plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_area_boxplots.png'))
-plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_area_boxplots.svg'))
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_boxplots_comparing_manual_auto_corrected_populations_in_training_set_or_all_slides.png'))
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_boxplots_comparing_manual_auto_corrected_populations_in_training_set_or_all_slides.svg'))
 
 # file that contains quantile-to-area functions
 filename_area2quantile = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
