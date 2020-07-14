@@ -239,11 +239,28 @@ json_annotation_files = [
     'KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06.json'
 ]
 
+########################################################################################################################
+## Hand traced cell areas
+########################################################################################################################
+
 # load svg files from manual dataset
 saved_kfolds_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
 with open(saved_kfolds_filename, 'rb') as f:
     aux = pickle.load(f)
 file_svg_list = aux['file_list']# load list of images, and indices for training vs. testing indices
+
+## extra files that were not used in the CNN training and segmentation, but that they were added so that we could have
+## representative ECDFs for animals that were undersampled
+file_svg_list_extra = [
+    os.path.join(training_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg'),
+    os.path.join(training_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg'),
+    os.path.join(training_dir, 'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006040_col_005272.svg'),
+    os.path.join(training_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_012680_col_023936.svg'),
+    os.path.join(training_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_017360_col_024712.svg')
+]
+
+# add extra files
+file_svg_list += file_svg_list_extra
 
 # correct home directory in file paths
 file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/users/rittscher/rcasero', home,
@@ -252,10 +269,6 @@ file_svg_list = cytometer.data.change_home_directory(list(file_svg_list), '/user
 # CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
-
-########################################################################################################################
-## Hand traced cell areas
-########################################################################################################################
 
 # loop files with hand traced contours
 manual_areas_f = []
@@ -435,6 +448,7 @@ statannot.add_stat_annotation(ax,
                                          ],
                               test='Mann-Whitney', comparisons_correction='bonferroni',
                               text_format='star', loc='inside', verbose=2)
+plt.legend(loc='center left')
 plt.tight_layout()
 
 plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_manual_auto_corrected_training_slides_area_boxplots.png'))
@@ -568,11 +582,11 @@ if DEBUG:
     plt.ylabel('White adipocyte area ($\mu m^2$)', fontsize=14)
     plt.tight_layout()
 
-
-# inspect outliers in Corrected (very slow)
-q = np.linspace(0, 1, 1001)
-quant_corrected_f = stats.mstats.hdquantiles(np.concatenate(areas_corrected_f), prob=q, axis=0)
-quant_corrected_m = stats.mstats.hdquantiles(np.concatenate(areas_corrected_m), prob=q, axis=0)
+if DEBUG:
+    # inspect outliers in Corrected (very slow)
+    q = np.linspace(0, 1, 1001)
+    quant_corrected_f = stats.mstats.hdquantiles(np.concatenate(areas_corrected_f), prob=q, axis=0)
+    quant_corrected_m = stats.mstats.hdquantiles(np.concatenate(areas_corrected_m), prob=q, axis=0)
 
 if DEBUG:
     plt.clf()
@@ -793,6 +807,8 @@ for i_file, json_file in enumerate(json_annotation_files):
     plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0098_cell_segmentation.png'),
                 bbox_inches='tight')
 
+## Colourmaps for hand traced data
+
 # colourmap plot
 a = np.array([[0,1]])
 plt.figure(figsize=(9, 1.5))
@@ -829,3 +845,47 @@ plt.ylabel('Density', fontsize=14)
 plt.yticks([])
 plt.tight_layout()
 plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_manual_m.png'), bbox_inches='tight')
+
+## Colourmaps for all slides Corrected data
+
+# plot area distributions
+plt.clf()
+aq_f = stats.mstats.hdquantiles(np.concatenate(areas_corrected_f) * 1e-3, prob=np.linspace(0, 1, 11), axis=0)
+for a in aq_f:
+    plt.plot([a, a], [0, 0.25], 'k', linewidth=3)
+plt.hist(np.concatenate(areas_corrected_f) * 1e-3, histtype='stepfilled', bins=50, density=True, linewidth=4, zorder=0)
+plt.tick_params(labelsize=14)
+plt.xlabel('White adipocyte area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+plt.yticks([])
+plt.ylabel('Density', fontsize=14)
+plt.tight_layout()
+plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_corrected_all_f.png'), bbox_inches='tight')
+
+# plot area distributions
+plt.clf()
+aq_m = stats.mstats.hdquantiles(np.concatenate(areas_corrected_m) * 1e-3, prob=np.linspace(0, 1, 11), axis=0)
+for a in aq_m:
+    plt.plot([a, a], [0, 0.17], 'k', linewidth=3)
+plt.hist(np.concatenate(areas_corrected_m) * 1e-3, histtype='stepfilled', bins=50, density=True, linewidth=4, zorder=0)
+plt.tick_params(labelsize=14)
+plt.xlabel('White adipocyte area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+plt.yticks([])
+plt.ylabel('Density', fontsize=14)
+plt.tight_layout()
+plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_corrected_all_m.png'), bbox_inches='tight')
+
+# colourmap plot
+a = np.array([[0,1]])
+plt.figure(figsize=(9, 1.75))
+img = plt.imshow(a, cmap=cm)
+plt.gca().set_visible(False)
+cax = plt.axes([0.1, 0.4, 0.8, 0.4])
+cbar = plt.colorbar(orientation='horizontal', cax=cax)
+# for q in np.linspace(0, 1, 11):
+#     plt.plot([q, q], [0, 1.0], 'k', linewidth=3)
+cbar.ax.tick_params(labelsize=14)
+cbar.set_ticks(np.linspace(0, 1, 11))
+plt.title('Quantile colour map', rotation=0, fontsize=14)
+cbar.ax.set_xlabel('Quantile', fontsize=14)
+plt.tight_layout()
+plt.savefig(os.path.join(figures_dir, 'exp_0098_aida_colourmap.png'), bbox_inches='tight')
