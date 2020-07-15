@@ -602,17 +602,22 @@ fpr_target = np.interp(thr_target, thr[::-1], fpr[::-1])
 # tpr_target = np.interp(fpr_target, fpr, tpr)
 # thr_target = np.interp(fpr_target, fpr, thr)
 
-if DEBUG:
-    plt.clf()
-    plt.plot(fpr, tpr)
-    plt.scatter(fpr_target, tpr_target, color='C0', s=100,
-                label='Object score thr. =  %0.2f, FPR = %0.0f%%, TPR = %0.0f%%'
-                      % (thr_target, fpr_target * 100, tpr_target * 100))
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Pixel WAT False Positive Rate (FPR)', fontsize=14)
-    plt.ylabel('Pixel WAT True Positive Rate (TPR)', fontsize=14)
-    plt.legend(loc="lower right", prop={'size': 12})
-    plt.tight_layout()
+# plot ROC curve for the Tissue classifier (computer pixel-wise for the object-classification error)
+plt.clf()
+plt.plot(fpr, tpr)
+plt.scatter(fpr_target, tpr_target, color='C0', s=100,
+            label='$Z_{obj} \geq$ %0.2f, FPR = %0.0f%%, TPR = %0.0f%%'
+                  % (thr_target, fpr_target * 100, tpr_target * 100))
+plt.tick_params(labelsize=14)
+plt.xlabel('Pixel WAT False Positive Rate (FPR)', fontsize=14)
+plt.ylabel('Pixel WAT True Positive Rate (TPR)', fontsize=14)
+plt.legend(loc="lower right", prop={'size': 12})
+plt.tight_layout()
+
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pipeline_roc_tissue_cnn_pixelwise.svg'),
+            bbox_inches='tight', pad_inches=0)
+plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pipeline_roc_tissue_cnn_pixelwise.png'),
+            bbox_inches='tight', pad_inches=0)
 
 '''
 ************************************************************************************************************************
