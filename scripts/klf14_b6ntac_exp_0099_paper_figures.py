@@ -805,6 +805,7 @@ import cytometer.utils
 import cytometer.model_checkpoint_parallel
 import tensorflow as tf
 
+import skimage
 from PIL import Image, ImageDraw
 import math
 
@@ -938,6 +939,7 @@ if DEBUG:
     plt.imshow(test_dataset['im'][i, :, :, :])
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
@@ -945,6 +947,7 @@ if DEBUG:
     plt.imshow(test_dataset['dmap'][i, :, :, 0])
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, 'dmap_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
@@ -952,6 +955,7 @@ if DEBUG:
     plt.imshow(pred_dmap[i, :, :, 0])
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, 'pred_dmap_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
@@ -969,6 +973,7 @@ if DEBUG:
     plt.imshow(test_dataset['contour'][i, :, :, 0])
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, 'contour_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
@@ -976,6 +981,7 @@ if DEBUG:
     plt.imshow(pred_contour[i, :, :, 0])
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, 'pred_contour_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
@@ -994,6 +1000,7 @@ if DEBUG:
     plt.contour(pred_class[i, :, :, 0] > 0.5, colors='r', linewidhts=3)
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, 'pred_class_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
@@ -1001,10 +1008,11 @@ if DEBUG:
     plt.imshow(pred_class[i, :, :, 0] > 0.5)
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, 'pred_class_thresh_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
-## create classifier ground truth
+## plot of classifier ground truth
 
 # print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
 
@@ -1098,6 +1106,7 @@ if DEBUG:
     plt.imshow(aux)
     plt.axis('off')
     plt.tight_layout()
+
     plt.savefig(os.path.join(figures_dir, 'class_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
                 bbox_inches='tight')
 
@@ -1126,6 +1135,21 @@ if DEBUG:
     plt.clf()
     plt.imshow(labels)
 
+if DEBUG:
+    plt.clf()
+    plt.imshow(labels)
+
+    plt.clf()
+    aux = skimage.segmentation.find_boundaries(labels, mode='thick')
+    kernel = np.ones((3, 3), np.uint8)
+    aux = cv2.dilate(aux.astype(np.uint8), kernel=kernel, iterations=1)
+    plt.imshow(aux)
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'watershed_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
 # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask,
 # are fully surrounded by another label or are not white adipose tissue
 labels, todo_edge = cytometer.utils.clean_segmentation(
@@ -1140,6 +1164,18 @@ if DEBUG:
     plt.contour(labels, levels=np.unique(labels), colors='k')
     plt.contourf(labels == 0)
 
+    plt.clf()
+    aux = skimage.segmentation.find_boundaries(labels, mode='thick')
+    kernel = np.ones((3, 3), np.uint8)
+    aux = cv2.dilate(aux.astype(np.uint8), kernel=kernel, iterations=1)
+    plt.imshow(aux)
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'cleaned_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+                bbox_inches='tight')
+
+
 # split image into individual labels
 im_array = np.expand_dims(im_array, axis=0)
 labels = np.expand_dims(labels, axis=0)
@@ -1150,7 +1186,7 @@ window_mask = None
     = cytometer.utils.one_image_per_label_v2((labels, im_array, labels_class, cell_seg_gtruth_106.astype(np.uint8)),
                                              resize_to=(correction_window_len, correction_window_len),
                                              resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
-                                             only_central_label=True, return_bbox=False)
+                                             only_central_label=True, return_bbox=True)
 
 # load correction model
 saved_model_filename = os.path.join(saved_models_dir, correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
@@ -1199,6 +1235,72 @@ window_labels_corrected = cytometer.utils.correct_segmentation(
     correction_model=correction_model, model_type='-1_1',
     smoothing=correction_smoothing,
     batch_size=batch_size)
+
+if DEBUG:
+    # plot input to and output from Correction CNN examples
+    for j in [13, 15, 18]:
+        plt.clf()
+        plt.imshow(window_im[j, :, :, :])
+        plt.contour(window_labels[j, ...], colors='g', linewidths=4)
+        plt.axis('off')
+        plt.tight_layout()
+
+        plt.savefig(
+            os.path.join(figures_dir, 'correction_input_j_' + str(j) + '_'
+                         + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+            bbox_inches='tight')
+        plt.savefig(
+            os.path.join(figures_dir, 'correction_input_j_' + str(j) + '_'
+                         + os.path.basename(im_test_file_list[i]).replace('.tif', '.svg')),
+            bbox_inches='tight')
+
+        plt.clf()
+        plt.imshow(window_im[j, :, :, :])
+        plt.contour(window_labels_corrected[j, ...], colors='r', linewidths=4)
+        plt.axis('off')
+        plt.tight_layout()
+
+        plt.savefig(
+            os.path.join(figures_dir, 'correction_output_j_' + str(j) + '_'
+                         + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+            bbox_inches='tight')
+        plt.savefig(
+            os.path.join(figures_dir, 'correction_output_j_' + str(j) + '_'
+                         + os.path.basename(im_test_file_list[i]).replace('.tif', '.svg')),
+            bbox_inches='tight')
+
+# convert overlap labels in cropped images to contours (points), and add cropping window offset so that the
+# contours are in the tile-window coordinates
+offset_xy = np.array(index_list)[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
+contours = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
+                                           scaling_factor_xy=scaling_factor_list)
+contours_corrected = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
+                                                     scaling_factor_xy=scaling_factor_list)
+
+# crop contours that overflow the edges
+for j in range(len(contours_corrected)):
+    contours_corrected[j] = np.clip(contours_corrected[j], a_min=0, a_max=1000)
+
+
+if DEBUG:
+
+        # plot corrected overlapping contours all together
+        ax = plt.clf()
+        plt.imshow(labels[0, :, :] * 0)
+        for j in range(len(contours_corrected)):
+            plt.fill(contours_corrected[j][:, 1], contours_corrected[j][:, 0],
+                     edgecolor=(0.993248, 0.906157, 0.143936, 1.0), fill=False, lw=1.5)
+        plt.axis('off')
+        plt.tight_layout()
+
+        plt.savefig(
+            os.path.join(figures_dir,
+                         'corrected_contours_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.png')),
+            bbox_inches='tight')
+        plt.savefig(
+            os.path.join(figures_dir,
+                         'corrected_contours_' + os.path.basename(im_test_file_list[i]).replace('.tif', '.svg')),
+            bbox_inches='tight')
 
 if DEBUG:
     j = 0
