@@ -99,8 +99,7 @@ esac
 
 # create or update environment for development with Keras
 ~/Software/python_setup/bin/install_keras_environment.sh -e cytometer_tensorflow -b tensorflow
-
-conda activate cytometer_tensorflow
+source activate cytometer_tensorflow
 
 # install other python packages
 pip install git+https://www.github.com/keras-team/keras-contrib.git  # tested with version 2.0.8
