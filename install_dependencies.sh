@@ -111,8 +111,3 @@ pip install opencv-python==4.1.0.25 pysto==1.4.1 openslide-python==1.1.1 seaborn
 pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.3 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
 pip install mlxtend==0.17.0 ujson==1.35
 conda install -y pandas==0.24.2 six==1.12.0 statsmodels==0.10.1
-
-########################################################################
-## python environment for DeepCell
-
-#~/Software/python_setup/bin/install_deepcell_environment.sh
