@@ -26,11 +26,16 @@
 # exit immediately on errors that are not inside an if test, etc.
 set -e
 
+########################################################################
 # configuration constants
+
 MINICONDA_VERSION=3
+PYTHON_VERSION=3.6
+CONDA_LOCAL_ENV=cytometer_tensorflow
+BACKEND=tensorflow
 
 ########################################################################
-## python environment for cytometer
+## Ubuntu packages and other binaries that the python local environment is going to need
 
 # install OpenSlide library
 sudo apt install -y openslide-tools
@@ -42,30 +47,61 @@ sudo apt install -y dvipng
 # install GNU R with lme4 module (generilised linear mixed models)
 sudo apt install -y r-base r-cran-lme4
 
-# download or update code from python_setup repository
-if [[ -d ~/Software/python_setup ]]
-then
-    tput setaf 1; echo Updating python_setup from github; tput sgr0
-    pushd ~/Software/python_setup/
-    git pull
-    popd
-else
-    tput setaf 1; echo Cloning python_setup from github; tput sgr0
-    pushd ~/Software/
-    git clone https://rcasero@github.com/rcasero/python_setup.git
-    popd
-fi
+########################################################################
+## install Miniconda so that we can use the conda local environment tools,
+## and install python packages with pip and conda
 
 # install Miniconda
 mkdir -p ~/Downloads
-~/Software/python_setup/bin/install_miniconda.sh ${MINICONDA_VERSION}
+
+if [[ -d "${HOME}/Software/miniconda${MINICONDA_VERSION}" ]];
+then
+    /usr/bin/tput setaf 1; echo "** Conda ${MINICONDA_VERSION} package manager already installed"; /usr/bin/tput sgr0
+else
+    /usr/bin/tput setaf 1; echo "** Installing conda ${MINICONDA_VERSION} package manager"; /usr/bin/tput sgr0
+    mkdir -p ~/Dowloads
+    pushd ~/Downloads
+    # download installer
+    if [[ ! -e "Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh" ]];
+    then
+	wget https://repo.continuum.io/miniconda/Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh
+    fi
+    # install conda
+    chmod u+x Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh
+    ./Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh -b -p "$HOME"/Software/miniconda${MINICONDA_VERSION}
+    set +e
+    isInBashrc=`grep  -c "export PATH=${HOME}/Software/miniconda${MINICONDA_VERSION}/bin" ~/.bashrc`
+    set -e
+    if [[ "$isInBashrc" -eq 0 ]];
+    then
+	echo "Adding ${HOME}/Software/miniconda${MINICONDA_VERSION}/bin to PATH in ~/.bashrc"
+	echo "
+# added by pysto/tools/install_miniconda.sh
+export PATH=${HOME}/Software/miniconda${MINICONDA_VERSION}/bin:\"\$PATH\"" >> ~/.bashrc
+	source ~/.bashrc
+    else
+	echo "${HOME}/Software/miniconda${VERSION}/bin already in PATH in ~/.bashrc"
+    fi
+    popd
+fi
+
 export PATH=${HOME}/Software/miniconda${MINICONDA_VERSION}/bin:${PATH}
 
-UBUNTU_VERSION=`lsb_release -r | tr -d [:blank:] | sed -e "s/^Release://"`
-echo UBUNTU_VERSION=$UBUNTU_VERSION
+########################################################################
+## nVidia drivers and CUDA
 
-# install nVidia drivers and CUDA
-case "$UBUNTU_VERSION"
+tput setaf 1; echo "** Install CUDA"; tput sgr0
+
+# find out which Ubuntu version this machine is using
+UBUNTU_VERSION=`lsb_release -r | tr -d [:blank:] | sed -e "s/^Release://"`
+if [[ -z "$UBUNTU_VERSION" ]]; then
+    echo "Ubuntu version could not be found"
+    exit 1
+else
+    echo UBUNTU_VERSION=${UBUNTU_VERSION}
+fi
+
+case ${UBUNTU_VERSION}
 in
     16.04)
         wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-ubuntu1604.pin
@@ -97,9 +133,77 @@ in
         ;;
 esac
 
-# create or update environment for development with Keras
-~/Software/python_setup/bin/install_keras_environment.sh -e cytometer_tensorflow -b tensorflow
-source activate cytometer_tensorflow
+########################################################################
+## create python local environment for cytometer
+
+# if the environment doesn't exist, we create a new one. If it does,
+# we add the python packages to it
+
+# check whether the environment already exists
+if [[ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -w ${CONDA_LOCAL_ENV})" ]]; then
+    tput setaf 1; echo "** Create conda local environment: ${CONDA_LOCAL_ENV}"; tput sgr0
+    conda create -y --name ${CONDA_LOCAL_ENV} python=${PYTHON_VERSION}
+else
+    tput setaf 1; echo "** Conda local environment already exists: ${CONDA_LOCAL_ENV}"; tput sgr0
+fi
+
+########################################################################
+## install keras python packages in the local environment
+
+tput setaf 1; echo "** Install keras python packages in the local conda environment"; tput sgr0
+
+# switch to the local environment
+source activate ${CONDA_LOCAL_ENV}
+
+# check that the variable with the path to the local environment is
+# set. Note that different versions of conda use different variable
+# names for the path
+if [[ ! -v CONDA_PREFIX ]];
+then
+    if [[ ! -v CONDA_ENV_PATH ]];
+    then
+	    echo "Error! Neither CONDA_PREFIX nor CONDA_ENV_PATH set in this local environment: ${CONDA_LOCAL_ENV}"
+	    exit 1
+    else
+	    CONDA_PREFIX=${CONDA_ENV_PATH}
+    fi
+fi
+
+echo "** Dependencies for Tensorflow backend"
+pip install tensorflow-gpu==1.13.1 #pyyaml==5.1.1
+
+# install my own Keras 2.2 version modified to accept partial training data
+pip install git+https://github.com/rcasero/keras.git
+
+NVIDIA_DRIVER_VERSION=`nvidia-smi --query-gpu=driver_version --format=csv,noheader --id=0`
+
+# table of CUDA version vs. nVidia driver version
+# https://docs.nvidia.com/deeplearning/sdk/cudnn-support-matrix/index.html
+case ${NVIDIA_DRIVER_VERSION}
+in
+    450.*)  # CUDA 11.0.x
+        # we should be installing a package built for cuda11, but it's not available
+        conda install -y cudnn==7.6.5=cuda10.2_0
+        ;;
+    *)
+        echo "cudnn version for detected nVidia driver version (v. *${NVIDIA_DRIVER_VERSION}*) is unknown"
+        exit 1
+        ;;
+esac
+
+# install dependencies for Keras
+conda install -y h5py==2.9.0        # to save Keras models to disk
+conda install -y graphviz==2.40.1   # used by visualization utilities to plot model graphs
+pip install cython==0.29.10         # dependency of mkl-random/mkl-fft via pydot
+pip install pydot==1.4.1            # used by visualization utilities to plot model graphs
+
+# for tests
+pip install pytest==4.6.3
+
+########################################################################
+## install cytometer python dependencies packages in the local environment
+
+tput setaf 1; echo "** Install cytometer python dependencies in the local conda environment"; tput sgr0
 
 # install other python packages
 pip install git+https://www.github.com/keras-team/keras-contrib.git  # tested with version 2.0.8
