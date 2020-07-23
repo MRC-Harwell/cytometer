@@ -100,31 +100,62 @@ else
     echo UBUNTU_VERSION=${UBUNTU_VERSION}
 fi
 
+## CUDA Toolkit 11
+#case ${UBUNTU_VERSION}
+#in
+#    16.04)
+#        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-ubuntu1604.pin
+#        sudo mv cuda-ubuntu1604.pin /etc/apt/preferences.d/cuda-repository-pin-600
+#        sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
+#        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/ /"
+#        sudo apt-get update
+#        sudo apt-get -y install cuda
+#        ;;
+#    18.04)
+#        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+#        sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+#        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+#        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+#        sudo apt-get update
+#        sudo apt-get -y install cuda
+#        ;;
+#    20.04)
+#        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
+#        sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
+#        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
+#        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+#        sudo apt-get update
+#        sudo apt-get -y install cuda
+#        ;;
+#    *)
+#        echo "Error: Ubuntu version not recognised: $UBUNTU_VERSION"
+#        exit 1
+#        ;;
+#esac
+
+# CUDA Toolkit 10.2
 case ${UBUNTU_VERSION}
 in
-    16.04)
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-ubuntu1604.pin
-        sudo mv cuda-ubuntu1604.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
-        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/ /"
-        sudo apt-get update
-        sudo apt-get -y install cuda
-        ;;
     18.04)
+        pushd ~/Downloads
         wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
         sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
         sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
         sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
         sudo apt-get update
-        sudo apt-get -y install cuda
+        sudo apt-get -y install cuda-10-2
+        popd
         ;;
     20.04)
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
-        sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
-        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+        tput setaf 1; echo "  ** Warning! CUDA 11 packages are not available for Ubuntu 20.04, so we are going to use the Ubuntu 18.04 ones"; tput sgr0
+        pushd ~/Downloads
+        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+        sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
         sudo apt-get update
-        sudo apt-get -y install cuda
+        sudo apt-get -y install cuda-10-2
+        popd
         ;;
     *)
         echo "Error: Ubuntu version not recognised: $UBUNTU_VERSION"
@@ -169,7 +200,7 @@ then
 fi
 
 echo "** Dependencies for Tensorflow backend"
-pip install tensorflow-gpu==1.13.1 #pyyaml==5.1.1
+pip install tensorflow-gpu==2.2.0
 
 # install my own Keras 2.2 version modified to accept partial training data
 pip install git+https://${USER}@github.com/rcasero/keras.git
@@ -180,12 +211,12 @@ NVIDIA_DRIVER_VERSION=`nvidia-smi --query-gpu=driver_version --format=csv,nohead
 # https://docs.nvidia.com/deeplearning/sdk/cudnn-support-matrix/index.html
 case ${NVIDIA_DRIVER_VERSION}
 in
-    450.*)  # CUDA 11.0.x
-        # we should be installing a package built for cuda11, but it's not available
+    450.*)  # CUDA 10.2, 11.0
+
         conda install -y cudnn==7.6.5=cuda10.2_0
         ;;
     *)
-        echo "cudnn version for detected nVidia driver version (v. *${NVIDIA_DRIVER_VERSION}*) is unknown"
+        echo "cudnn version for detected nVidia driver version (v. *${NVIDIA_DRIVER_VERSION}*) not implemented"
         exit 1
         ;;
 esac
@@ -193,11 +224,8 @@ esac
 # install dependencies for Keras
 conda install -y h5py==2.9.0        # to save Keras models to disk
 conda install -y graphviz==2.40.1   # used by visualization utilities to plot model graphs
-pip install cython==0.29.10         # dependency of mkl-random/mkl-fft via pydot
+pip install cython==0.29.21         # dependency of mkl-random/mkl-fft via pydot
 pip install pydot==1.4.1            # used by visualization utilities to plot model graphs
-
-# for tests
-pip install pytest==4.6.3
 
 ########################################################################
 ## install cytometer python dependencies packages in the local environment
@@ -207,13 +235,13 @@ tput setaf 1; echo "** Install cytometer python dependencies in the local conda 
 # install other python packages
 pip install git+https://www.github.com/keras-team/keras-contrib.git  # tested with version 2.0.8
 conda install -y matplotlib==3.1.0 pillow==6.0.0
-conda install -y scikit-image==0.15.0 scikit-learn==0.21.2 h5py==2.9.0
+conda install -y scikit-image==0.15.0 scikit-learn==0.21.2
 conda install -y nose==1.3.7 pytest==5.4.3
 pip install setuptools==45.0.0
 pip install opencv-python==4.1.0.25 pysto==1.4.1 openslide-python==1.1.1 seaborn==0.10.0 statannot==0.2.3
 pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.3 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
 pip install mlxtend==0.17.0 ujson==1.35
-conda install -y pandas==0.24.2 six==1.12.0 statsmodels==0.10.1
+conda install -y pandas==1.0.5 shapely==1.7.0 six==1.12.0 statsmodels==0.10.1
 
 ########################################################################
 ## Install AIDA
