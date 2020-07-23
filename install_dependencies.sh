@@ -54,8 +54,7 @@ sudo apt install -y r-base r-cran-lme4
 # install Miniconda
 mkdir -p ~/Downloads
 
-if [[ -d "${HOME}/Software/miniconda${MINICONDA_VERSION}" ]];
-then
+if [[ -d "${HOME}/Software/miniconda${MINICONDA_VERSION}" ]]; then
     /usr/bin/tput setaf 1; echo "** Conda ${MINICONDA_VERSION} package manager already installed"; /usr/bin/tput sgr0
 else
     /usr/bin/tput setaf 1; echo "** Installing conda ${MINICONDA_VERSION} package manager"; /usr/bin/tput sgr0
@@ -173,7 +172,7 @@ echo "** Dependencies for Tensorflow backend"
 pip install tensorflow-gpu==1.13.1 #pyyaml==5.1.1
 
 # install my own Keras 2.2 version modified to accept partial training data
-pip install git+https://github.com/rcasero/keras.git
+pip install git+https://${USER}@github.com/rcasero/keras.git
 
 NVIDIA_DRIVER_VERSION=`nvidia-smi --query-gpu=driver_version --format=csv,noheader --id=0`
 
@@ -215,3 +214,34 @@ pip install opencv-python==4.1.0.25 pysto==1.4.1 openslide-python==1.1.1 seaborn
 pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.3 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
 pip install mlxtend==0.17.0 ujson==1.35
 conda install -y pandas==0.24.2 six==1.12.0 statsmodels==0.10.1
+
+########################################################################
+## Install AIDA
+
+tput setaf 1; echo "** Install AIDA"; tput sgr0
+
+cd ${HOME}/Software
+if [[ -d "${HOME}/Software/AIDA" ]]; then
+    echo "** AIDA already in ${HOME}/Software/AIDA"
+else
+    echo "** Cloning AIDA from github"
+    git clone https://${USER}@github.com/alanaberdeen/AIDA.git
+fi
+
+# fix bug
+cd ${HOME}/Software/AIDA
+sed -i 's/cp aidaLocal/cp -r aidaLocal/g' package.json
+
+# AIDA dependencies and build
+sudo snap install node --classic --channel=12
+cd ${HOME}/Software/AIDA
+npm install
+cd ${HOME}/Software/AIDA/aidaLocal
+npm install
+cd ${HOME}/Software/AIDA
+npm run-script build
+
+# create data
+mkdir -p ${HOME}/Data/cytometer_data/aida_data
+cd ${HOME}/Software/AIDA/dist
+ln -s ${HOME}/Data/cytometer_data/aida_data data
