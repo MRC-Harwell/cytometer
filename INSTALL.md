@@ -45,23 +45,10 @@ drive.
 
 # Dependencies and local conda environments
 
-This is the [compatibility table between cuDNN and CUDA versions](https://docs.nvidia.com/deeplearning/sdk/cudnn-support-matrix/index.html)
+1. Make `install_dependencies.sh` executable
 
-| **cuDNN**     | **CUDA**      |
-| ------------- |---------------|
-| v7.0.5        | 9.1           |
-| v7.0.5        | 9.0           |
-| v7.0.5        | 8.0           |
-| v7.0.4        | 9.0           |
-| v7.0.4        | 8.0           |
-| v6.0          | 8.0           |
-| v6.0          | 8.0           |
-| v6.0          | 7.5           |
-| v5.1          | 8.0           |
-| v5.1          | 7.5           |
-
-1. Install dependencies and set up the local conda environments running the 
-shell script [`install_dependencies.sh`](http://phobos/r.casero/cytometer/blob/master/install_dependencies.sh).
+        chmox +x install_dependencies.sh
+1. Run `install_dependencies.sh` to install dependencies and local conda environment
 
         ./install_dependencies.sh
 1. Install latest cuDNN
@@ -76,14 +63,7 @@ shell script [`install_dependencies.sh`](http://phobos/r.casero/cytometer/blob/m
         cd cytometer
 2. Double-check that you don't have a local install of cuDNN in the local environment
 
-This will create two local environments:
-* `cytometer`: for the code of this project.
-* `DeepCell`: for experiments with the DeepCell architectures by D. Van Valen 
-(Keras 1 / Theano). **Note:** This environment does not work with current versions
-of the NVIDIA drivers. It's become too old to coexist with a master version of 
-Keras, NVIDIA drivers, etc.
-   * Installed with [`install_deepcell_environment.sh`](https://github.com/rcasero/pysto/blob/master/tools/install_deepcell_environment.sh)
-
+This will create a local environment, `cytometer_tensorflow`.
 
 ## Notes on Ubuntu dependencies
 
