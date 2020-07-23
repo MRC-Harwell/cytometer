@@ -234,6 +234,8 @@ sed -i 's/cp aidaLocal/cp -r aidaLocal/g' package.json
 
 # AIDA dependencies and build
 sudo snap install node --classic --channel=12
+sudo apt install libvips-tools
+
 cd ${HOME}/Software/AIDA
 npm install
 cd ${HOME}/Software/AIDA/aidaLocal
