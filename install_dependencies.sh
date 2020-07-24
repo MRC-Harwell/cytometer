@@ -147,7 +147,8 @@ in
         popd
         ;;
     20.04)
-        tput setaf 1; echo "  ** Warning! CUDA 11 packages are not available for Ubuntu 20.04, so we are going to use the Ubuntu 18.04 ones"; tput sgr0
+        # CUDA 10.2
+        tput setaf 1; echo "  ** Warning! CUDA packages are not available for Ubuntu 20.04, so we are going to use the Ubuntu 18.04 ones"; tput sgr0
         pushd ~/Downloads
         wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
         sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -222,7 +223,7 @@ in
 esac
 
 # install dependencies for Keras
-conda install -y h5py==2.9.0        # to save Keras models to disk
+conda install -y h5py==2.10.0       # to save Keras models to disk
 conda install -y graphviz==2.40.1   # used by visualization utilities to plot model graphs
 pip install cython==0.29.21         # dependency of mkl-random/mkl-fft via pydot
 pip install pydot==1.4.1            # used by visualization utilities to plot model graphs
@@ -234,14 +235,14 @@ tput setaf 1; echo "** Install cytometer python dependencies in the local conda 
 
 # install other python packages
 pip install git+https://www.github.com/keras-team/keras-contrib.git  # tested with version 2.0.8
-conda install -y matplotlib==3.1.0 pillow==6.0.0
-conda install -y scikit-image==0.15.0 scikit-learn==0.21.2
+conda install -y matplotlib==3.2.2 pillow==7.2.0
+conda install -y scikit-image==0.15.0 scikit-learn==0.23.1
 conda install -y nose==1.3.7 pytest==5.4.3
-pip install setuptools==45.0.0
+pip install setuptools==49.2.0
 pip install opencv-python==4.1.0.25 pysto==1.4.1 openslide-python==1.1.1 seaborn==0.10.0 statannot==0.2.3
-pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.3 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
+pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.4 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
 pip install mlxtend==0.17.0 ujson==1.35
-conda install -y pandas==1.0.5 shapely==1.7.0 six==1.12.0 statsmodels==0.10.1
+conda install -y pandas==1.0.5 shapely==1.7.0 six==1.12.0 statsmodels==0.11.1
 
 ########################################################################
 ## Install AIDA
