@@ -90,14 +90,11 @@ import time
 import openslide
 import numpy as np
 import matplotlib.pyplot as plt
-# import glob
 from cytometer.utils import rough_foreground_mask, bspline_resample
 import PIL
-# import tensorflow as tf
-# import keras
+# import tensorflow.compat.v1 as tf
+# tf.disable_v2_behavior()
 from keras import backend as K
-# from skimage.measure import regionprops
-# import shutil
 import itertools
 from shapely.geometry import Polygon
 import scipy.stats
@@ -164,6 +161,11 @@ ndpi_files_list = [
     'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55.ndpi',
 ]
 
+# load colour modes of the KLF14 training dataset
+with np.load(klf14_training_colour_histogram_file) as data:
+    mode_r_klf14 = data['mode_r']
+    mode_g_klf14 = data['mode_g']
+    mode_b_klf14 = data['mode_b']
 
 ########################################################################################################################
 ## Colourmap for AIDA
@@ -323,12 +325,6 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.contour(lores_istissue0, colors='k')
             plt.subplot(212)
             plt.imshow(lores_istissue0)
-
-    # load colour modes of the KLF14 training dataset
-    with np.load(klf14_training_colour_histogram_file) as data:
-        mode_r_klf14 = data['mode_r']
-        mode_g_klf14 = data['mode_g']
-        mode_b_klf14 = data['mode_b']
 
     # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the KLF14
     # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
