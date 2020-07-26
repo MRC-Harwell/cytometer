@@ -65,7 +65,7 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v8:
 """
 
 # script name to identify this experiment
-experiment_id = 'rreb1_tm1b_exp_0003_full_slide_pipeline_v7.py'
+experiment_id = 'rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py'
 
 # cross-platform home directory
 from pathlib import Path
