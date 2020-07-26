@@ -168,7 +168,7 @@ then
 fi
 
 echo "** Dependencies for Tensorflow backend"
-pip install tensorflow-gpu==2.2.0
+pip install tensorflow-gpu==1.15.0
 
 # install my own Keras 2.2 version modified to accept partial training data
 pip install git+https://${USER}@github.com/rcasero/keras.git
