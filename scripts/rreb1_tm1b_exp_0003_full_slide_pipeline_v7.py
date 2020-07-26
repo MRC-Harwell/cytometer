@@ -1,5 +1,5 @@
 """
-Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7:
+Processing full slides of RREB1-TM1B_B6N-IC with pipeline v8:
 
  * data generation
    * training images (*0076*)
@@ -17,7 +17,7 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7:
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
 
- 2) Upload the AIDA project directory to ~/Software too.
+ 2) Run ./install_dependencies.sh in cytometer.
 
  3) Mount the network share //scan-srv2/cox on ~/scan_srv2_cox with CIFS so that we have access to Roger and Liz's .ndpi
     files. You can do it by creating an empty directory
@@ -41,7 +41,8 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7:
     cd ~/Software/cytometer/tools
     ./rebb1_full_histology_ndpi_to_dzi.sh
 
- 5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data.
+ 5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data in
+    ~/Data/cytometer_data/klf14/saved_models.
 
  6) To monitor the segmentation as it's being processed, you need to have AIDA running
 
@@ -64,7 +65,7 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7:
 """
 
 # script name to identify this experiment
-experiment_id = 'rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py'
+experiment_id = 'rreb1_tm1b_exp_0003_full_slide_pipeline_v7.py'
 
 # cross-platform home directory
 from pathlib import Path
