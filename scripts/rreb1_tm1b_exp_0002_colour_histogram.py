@@ -58,7 +58,7 @@ training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
-annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
 rreb1_data_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace')
 
 # saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'

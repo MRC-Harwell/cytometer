@@ -1,5 +1,5 @@
 """
-Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7:
+Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7 (modfied with colour correction):
 
  * data generation
    * training images (*0076*)
@@ -12,6 +12,9 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v7:
  * classifier (*0095*)
  * segmentation correction (*0089*) networks"
  * validation (*0096*)
+
+Difference with pipeline v7:
+  * Constants added to colour channels so that the medians match the training data.
 
  Requirements for this script to work:
 
@@ -114,7 +117,7 @@ data_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace')
 figures_dir = os.path.join(experiment_root_data_dir, 'figures')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
 results_dir = os.path.join(experiment_root_data_dir, 'results')
-annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
 
 # although we don't need k-folds here, we need this file to load the list of SVG contours that we compute the AIDA
