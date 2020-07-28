@@ -13,6 +13,12 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v8:
  * segmentation correction (*0089*) networks"
  * validation (*0096*)
 
+Difference with pipeline v7:
+  * Constants added to colour channels so that the medians match the training data.
+
+Difference with rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py:
+  *
+
  Requirements for this script to work:
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
@@ -109,13 +115,19 @@ import scipy.stats
 DEBUG = False
 SAVE_FIGS = False
 
-pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN models
 experiment_root_data_dir = os.path.join(home, 'Data/cytometer_data/rreb1')
-data_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace')
-figures_dir = os.path.join(experiment_root_data_dir, 'figures')
+histology_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace/RREB1 Feb19')
+rreb1_figures_dir = os.path.join(experiment_root_data_dir, 'figures')
+area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
 results_dir = os.path.join(experiment_root_data_dir, 'results')
-annotations_dir = os.path.join(home, 'Software/AIDA/dist/data/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
+
+# file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
+filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
+
+# file with RGB modes from all training data
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
 
 # although we don't need k-folds here, we need this file to load the list of SVG contours that we compute the AIDA
@@ -159,7 +171,7 @@ batch_size = 16
 
 # list of NDPI files to process
 ndpi_files_list = [
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a 1132-18 G1 - 2019-02-20 09.56.50.ndpi',
 ]
 
 # load colour modes of the KLF14 training dataset
@@ -169,48 +181,19 @@ with np.load(klf14_training_colour_histogram_file) as data:
     mode_b_klf14 = data['mode_b']
 
 ########################################################################################################################
-## Colourmap for AIDA
+## Colourmap for AIDA, based on KLF14 automatically segmented data
 ########################################################################################################################
 
-# TODO: load a pre-computed colourmap, instead of having to compute cell sizes every time
+if os.path.isfile(filename_area2quantile):
+    with np.load(filename_area2quantile, allow_pickle=True) as aux:
+        f_area2quantile_f = aux['f_area2quantile_f']
+        f_area2quantile_m = aux['f_area2quantile_m']
+else:
+    raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
+                            ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
 
-# list of SVG contours
-saved_kfolds_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
-with open(saved_kfolds_filename, 'rb') as f:
-    aux = pickle.load(f)
-file_svg_list = aux['file_list']
-file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
-file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
-
-# loop files with hand traced contours
-manual_areas_all = []
-for i, file_svg in enumerate(file_svg_list):
-
-    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
-
-    # change file extension from .svg to .tif
-    file_tif = file_svg.replace('.svg', '.tif')
-
-    # open histology training image
-    im = PIL.Image.open(file_tif)
-
-    # read pixel size information
-    xres = 0.0254 / im.info['dpi'][0]  # m
-    yres = 0.0254 / im.info['dpi'][1]  # m
-
-    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
-    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
-    contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
-                                                       minimum_npoints=3)
-
-    # compute cell area
-    manual_areas_all.append([Polygon(c).area * xres * yres for c in contours])  # (um^2)
-
-manual_areas_all = list(itertools.chain.from_iterable(manual_areas_all))
-
-# compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
-# to area quantiles
-f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
+# load AIDA's colourmap
+cm = cytometer.data.aida_colourmap()
 
 ########################################################################################################################
 ## Segmentation loop
@@ -221,7 +204,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': ' + ndpi_file)
 
     # make full path to ndpi file
-    ndpi_file = os.path.join(data_dir, ndpi_file)
+    ndpi_file = os.path.join(histology_dir, ndpi_file)
 
     # check whether there's a lock on this file
     lock_file = os.path.basename(ndpi_file).replace('.ndpi', '.lock')
