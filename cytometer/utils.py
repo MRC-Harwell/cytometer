@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import six
 import matplotlib.pyplot as plt
-from PIL import Image, TiffImagePlugin
+from PIL import Image, ImageEnhance, TiffImagePlugin
 from statistics import mode
 from scipy.interpolate import RectBivariateSpline, splev
 from scipy.ndimage import median_filter
@@ -133,7 +133,7 @@ def paint_labels(labels, paint_labs, paint_values):
 
 def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
                           component_size_threshold=1e6, hole_size_treshold=8000, std_k=1.0,
-                          return_im=False):
+                          return_im=False, enhance_contrast=None):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
     by OpenSlice. The objects are darker than the background.
@@ -157,6 +157,9 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     :param std_k: (def 1.0) Constant to set the threshold for initial segmentation of foreground pixels.
     foreground = image < colour_mode - std_k * colour_std
     :param return_im: (def False) Whether to return also the downsampled image in filename.
+    :param enhance_contrast: (def 1.0) Scalar with the contrast enhancement factor, from PIL.ImageEnhance.Contrast().
+    enhance_contrast=0.0 returns a gray image with no contrast. enhance_contrast=1.0 returns the original image.
+    enhance_contrast<1.0 decreases the contrast. enhance_contrast>1.0 increases the contrast.
     :return:
     seg: downsampled segmentation mask.
     [im_downsampled]: if return_im=True, this is the downsampled image in filename.
@@ -200,6 +203,11 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
         plt.clf()
         plt.subplot(211)
         plt.imshow(im_downsampled)
+
+    # contrast enhancement
+    if enhance_contrast != 1.0:
+        enhancer = ImageEnhance.Contrast(Image.fromarray(im_downsampled))
+        im_downsampled = np.array(enhancer.enhance(enhance_contrast))
 
     # reshape image to matrix with one column per colour channel
     im_downsampled_mat = im_downsampled.copy()
