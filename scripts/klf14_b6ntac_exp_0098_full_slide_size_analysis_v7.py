@@ -11,10 +11,8 @@ home = str(Path.home())
 
 import os
 import sys
-import ujson
 import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
-import cytometer.utils
 import tensorflow as tf
 from PIL import Image, ImageDraw
 import pandas as pd
@@ -31,7 +29,6 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import openslide
 import numpy as np
 import matplotlib.pyplot as plt
-from cytometer.utils import rough_foreground_mask
 import cytometer.data
 import itertools
 from shapely.geometry import Polygon
@@ -66,11 +63,11 @@ metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper
 # k-folds file
 saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
-# rough_foreground_mask() parameters
-downsample_factor = 8.0
-dilation_size = 25
-component_size_threshold = 1e6
-hole_size_treshold = 8000
+# # rough_foreground_mask() parameters
+# downsample_factor = 8.0
+# dilation_size = 25
+# component_size_threshold = 1e6
+# hole_size_treshold = 8000
 
 # json_annotation_files_dict here needs to have the same files as in
 # klf14_b6ntac_exp_0099_paper_figures.py
@@ -645,7 +642,7 @@ plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_boxplots_comparing_
 filename_area2quantile = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
 if os.path.isfile(filename_area2quantile):
-    with np.load(filename_area2quantile) as aux:
+    with np.load(filename_area2quantile, allow_pickle=True) as aux:
         f_area2quantile_f = aux['f_area2quantile_f']
         f_area2quantile_m = aux['f_area2quantile_m']
 else:
