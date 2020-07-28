@@ -7,7 +7,7 @@
 #    ./rebb1_full_histology_ndpi_to_dzi.sh
 
 ndpi_dir=$HOME/scan_srv2_cox/"Liz Bentley"/Grace/'RREB1 Feb19'
-dzi_dir=$HOME/Software/AIDA/dist/data/images
+dzi_dir=$HOME/Data/cytometer_data/aida_data_Rreb1_tm1b/images
 
 ndpi_list=(
 'RREB1-TM1B-B6N-IC-1.1a 1132-18 G1 - 2019-02-20 09.56.50.ndpi'
@@ -78,11 +78,21 @@ ndpi_list=(
 
 for ndpi_file in "${ndpi_list[@]}"
 do
+  if [[ -f "$ndpi_dir"/"$ndpi_file" ]]; then
+    echo "NDPI file found: $ndpi_file"
+  else
+    tput setaf 1; echo "--> NDPI file not found: $ndpi_file"; tput sgr0
+    continue
+  fi
+
+  # create output DeepZoom file from input NDPI filename
   dzi_file=${ndpi_file%.ndpi}
-  if [ ! -f "$dzi_dir"/"$dzi_file".dzi ]; then
-    echo "Processing: " "$ndpi_file"
+  #echo DZI_FILE = "$dzi_dir"/"$dzi_file".dzi
+
+  if [[ ! -f "$dzi_dir"/"$dzi_file".dzi ]]; then
+    echo -e "\tConverting NDPI to DeepZoom..."
     vips dzsave "$ndpi_dir"/"$ndpi_file" "$dzi_dir"/"$dzi_file"
   else
-    echo "Skipping: " "$ndpi_file"
+    echo -e "\tSkipping... DeepZoom already exists"
   fi
 done

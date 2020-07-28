@@ -7,7 +7,7 @@
 #    ./klf14_full_histology_ndpi_to_dzi.sh
 
 ndpi_dir=$HOME/scan_srv2_cox/"Maz Yon"
-dzi_dir=$HOME/Software/AIDA/dist/data/images
+dzi_dir=$HOME/Data/cytometer_data/aida_data_Klf14/images
 
 ndpi_list=(
 'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52.ndpi'
@@ -184,11 +184,21 @@ ndpi_list=(
 
 for ndpi_file in "${ndpi_list[@]}"
 do
-  dzi_file=${ndpi_file%.ndpi}
-  if [ ! -f "$dzi_dir"/"$dzi_file".dzi ]; then
-    echo "Processing: " "$ndpi_file"
-    vips dzsave "$ndpi_dir"/"$ndpi_file" "$dzi_dir"/"$dzi_file"
+  if [[ -f "$ndpi_dir"/"$ndpi_file" ]]; then
+    echo "NDPI file found: $ndpi_file"
   else
-    echo "Skipping: " "$ndpi_file"
+    tput setaf 1; echo "--> NDPI file not found: $ndpi_file"; tput sgr0
+    continue
+  fi
+
+  # create output DeepZoom file from input NDPI filename
+  dzi_file=${ndpi_file%.ndpi}
+  #echo DZI_FILE = "$dzi_dir"/"$dzi_file".dzi
+
+  if [[ ! -f "$dzi_dir"/"$dzi_file".dzi ]]; then
+    echo -e "\tConverting NDPI to DeepZoom..."
+    #vips dzsave "$ndpi_dir"/"$ndpi_file" "$dzi_dir"/"$dzi_file"
+  else
+    echo -e "\tSkipping... DeepZoom already exists"
   fi
 done
