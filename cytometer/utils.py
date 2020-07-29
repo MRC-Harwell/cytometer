@@ -158,11 +158,14 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     foreground = image < colour_mode - std_k * colour_std
     :param return_im: (def False) Whether to return also the downsampled image in filename.
     :param enhance_contrast: (def 1.0) Scalar with the contrast enhancement factor, from PIL.ImageEnhance.Contrast().
+    This allows to internally enhance the image contrast before segmenting the foreground. Note that the returned image
+    is not enhanced.
     enhance_contrast=0.0 returns a gray image with no contrast. enhance_contrast=1.0 returns the original image.
     enhance_contrast<1.0 decreases the contrast. enhance_contrast>1.0 increases the contrast.
     :return:
     seg: downsampled segmentation mask.
-    [im_downsampled]: if return_im=True, this is the downsampled image in filename.
+    [im_downsampled]: if return_im=True, this is the downsampled image in filename. This is the image without contrast
+    enhancement applied to it.
     """
 
     if isinstance(filename, six.string_types):  # filename provided
@@ -205,6 +208,7 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
         plt.imshow(im_downsampled)
 
     # contrast enhancement
+    im_downsampled_bak = im_downsampled.copy()
     if enhance_contrast != 1.0:
         enhancer = ImageEnhance.Contrast(Image.fromarray(im_downsampled))
         im_downsampled = np.array(enhancer.enhance(enhance_contrast))
@@ -256,7 +260,7 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
         plt.imshow(seg)
 
     if return_im:
-        return seg, im_downsampled
+        return seg, im_downsampled_bak
     else:
         return seg
 
@@ -2640,6 +2644,8 @@ def segmentation_pipeline6(im,
     """
     White adipocyte segmentation pipeline v6 using convolution neural networks (CNNs).
 
+    Confusingly enough, this is the segmentation version we use for klf14_b6ntac_exp_0097_full_slide_pipeline_v7.py.
+
     1. This function segments an H&E histology image of white adipose tissue (WAT) into non-overlapping objects. For
     this, it uses
       * A dmap CNN that estimates a distance transformation of the histology (distance from each pixel to the closest
@@ -2873,6 +2879,261 @@ def segmentation_pipeline6(im,
 
     return labels[0, ...], labels_class[0, ...], todo_edge, \
            window_im, window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, \
+           index_list, scaling_factor_list
+
+# dmap_model=dmap_model_file
+# contour_model=contour_model_file
+# correction_model=correction_model_file
+# classifier_model=classifier_model_file
+# mask=istissue_tile
+# return_bbox=True
+# return_bbox_coordinates='xy'
+
+def segmentation_pipeline_v8(tile,
+                             dmap_model, contour_model, classifier_model, correction_model=None,
+                             min_cell_area=1500, max_cell_area=100e3, mask=None, min_mask_overlap=0.8,
+                             phagocytosis=True,
+                             min_class_prop=1.0,
+                             correction_window_len=401, correction_smoothing=11,
+                             batch_size=None, return_bbox=False, return_bbox_coordinates='rc'):
+    """
+    White adipocyte segmentation pipeline using convolution neural networks (CNNs) for DeepCytometer v8.
+
+    Note: We skipped v7 of this function, so that we catch up with the DeepCytometer numbering.
+
+    1. This function segments an H&E histology image of white adipose tissue (WAT) into non-overlapping objects. For
+    this, it uses
+      * A dmap CNN that estimates a distance transformation of the histology (distance from each pixel to the closest
+        membrane).
+      * A contour CNN that computes the valleys in the distance transformation. These contours are a compromise to
+        separate adjacent cells as if they don't overlap.
+
+    2. The segmentation is cleaned removing labels that
+      * touch the edges of the segmentation;
+      * are smaller than a certain size;
+      * don't overlap enough with a binary mask;
+      * are completely surrounded by another label;
+      * are outside of a mask, if provided.
+
+    3. A classifier CNN assigns a score z to each pixel (z<=0.5: other type of tissue, z>0.5: WAT).
+
+    4. Each label is scaled to the same size and cropped.
+
+    5. A correction CNN and morphological operators then correct each individual segmentation, to account for cell
+       overlap.
+
+    :param tile: (row, col, 3) np.array with H&E white adipose tissue histology.
+    :param dmap_model: Keras fully convolutional NN: Cytometer project experiment 0086.
+    Input: (n, row, col, 3) histology.
+    Output: (n, row, col) distance transformation.
+    :param contour_model: Keras fully convolutional NN: Cytometer project experiment 0091.
+    Input: output from dmap_model.
+    Output: (n, row, col) contour detection.
+    :param classifier_model: Keras fully convolutional NN: Cytometer project experiment 0088.
+    Input: (n, row, col, 3) histology.
+    Output: (n, row, col) pixel type score z (z<=0.5: other type of tissue, z>0.5: WAT).
+    :param correction_model: Keras fully convolutional NN: Cytometer project experiment 0089.
+    Input: (n', row', col', 3) cropped histology with cell in the middle. The image is multiplied by a cell segmentation
+    mask where the mask is +1 inside the segmentation, and -1 outside the segmentation.
+    Output: (n', row', col') pixel scores z' (z'<-0.5: pixel is segmented and shouldn't, z'>0.5: pixel is not segmented
+    and should).
+    :param min_cell_area: Scalar size in pixels of the minimum acceptable object size. This size refers to the input
+    image, before scaling for correction. (See clean_segmentation().)
+    :param max_cell_area: Scalar size in pixels of the maximum acceptable object size. This size refers to the input
+    image, before scaling for correction. (See clean_segmentation().)
+    :param mask: (def None) (row, col) np.array. Rough binary mask of tissue. Objects substantially outside this mask
+    will be discarded. By default, no mask is used. (See clean_segmentation().)
+    :param min_mask_overlap: (def 0.8) Scalar. Remove labels that don't have at least min_mask_overlap of their pixels
+    within the mask. (See clean_segmentation().)
+    :param phagocytosis: (def True). Boolean to remove labels that are completely surrounded by another label. (See
+    clean_segmentation().)
+    :param min_class_prop: (def 1.0). Only objects with >= min_class_prop pixels of class True are accepted. E.g. if
+    min_class_prop=0.5, only those objects with 50% valid pixels are accepted.
+    :param correction_window_len: (def 401) Scalar such that (correction_window_len, correction_window_len) is the final
+    size of the croppings after resizing. (See one_image_per_label_v2().)
+    :param correction_smoothing: (def 11) Size of the smoothing kernel for each corrected segmentation. (See
+    correct_segmentation().)
+    :param batch_size: (def None) Scalar batch_size passed to keras correction model. Maximum number of images processed
+    at the same time by the GPUs. A larger number produces faster processing, but it also requires larger GPU memory. If
+    batch_size is None, then batch_size is the number of images for the correction model.
+    :param return_bbox: (def False) If True, return the four coordinates of the bounding box in the index_list output
+    argument as (r0, c0, rend, cend).
+    :param return_bbox_coordinates: (def 'rc') Type of bbox_coordinates: 'rc': (row, col). 'xy': (x, y).
+    :return:
+      * labels: (row, col) np.array (np.int32). Integer labels for non-overlap segmentation. All pixels with the same
+        label belong to the same object.
+      * labels_class: (row, col) np.array (np.bool). Pixel-wise boolean classification as "Other type of tissue" (False)
+        or "White Adipocyte Tissue" (True).
+      * todo_edge: (row, col) np.array (np.bool). Pixels-wise boolean classification of pixels that belong to cells on
+        the edge that need to be processed in the next iteration.
+      * window_im: (num_cells, correction_window_len, correction_window_len, 3) np.array (np.uint8).
+      * window_labels: (num_cells, correction_window_len, correction_window_len) np.array (np.uint8). Non-overlap
+        segmentation of cropped histology.
+      * window_labels_corrected: (num_cells, correction_window_len, correction_window_len) np.array (np.uint8).
+        Corrected segmentation of cropped histology.
+      * window_labels_class: (num_cells, correction_window_len, correction_window_len) np.array (np.bool). Pixel-wise
+        boolean classification of cropped histology. "Other type of tissue" (False) or "White Adipocyte Tissue" (True).
+      * index_list: np.array where each row is [i, lab], where i is the image index, and lab is the segmentation label
+        of each crop.
+        If input return_bbox=True and return_bbox_coordinates=='rc', then each row is [i, lab, r0, c0, rend, cend] where
+        [r0, c0, rend, cend] are the coordinates that define the bounding box. (Note that the coordinates can be
+        negative because the bounding box may fall outside the image).
+        If input return_bbox=True and return_bbox_coordinates=='rc', then each row is [i, lab, x0, y0, xend, yend].
+      * scaling_factor_list: List of tuples (sr, sc), where sr, sc are the scaling factor applied to rows and columns.
+    """
+
+    # format im to what the CNNs expect
+    if type(tile) != np.ndarray:
+        raise TypeError('im expected to be np.ndarray')
+    if tile.ndim != 3:
+        raise ValueError('im expected to have shape (row, col, num_channel)')
+    tile_type = tile.dtype
+    if tile_type == np.uint8:
+        tile = tile.astype(np.float32)
+        tile /= 255
+
+    if DEBUG:
+        plt.clf()
+        plt.imshow(tile)
+        if mask is not None:
+            plt.contour(mask, colors='k')
+        plt.axis('off')
+
+    # segment histology
+    labels, labels_class, _ \
+        = segment_dmap_contour_v6(tile,
+                                  contour_model=contour_model, dmap_model=dmap_model, classifier_model=classifier_model,
+                                  border_dilation=0, batch_size=batch_size)
+    labels = labels[0, :, :]
+    labels_class = labels_class[0, :, :, 0]
+
+    if DEBUG:
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(tile)
+            if mask is not None:
+                plt.contour(mask, colors='k')
+            plt.axis('off')
+            plt.title('Histology', fontsize=14)
+
+            plt.subplot(222)
+            plt.cla()
+            plt.imshow(labels)
+            plt.axis('off')
+            plt.title('Segmentation', fontsize=14)
+
+            plt.subplot(223)
+            plt.cla()
+            plt.imshow(tile)
+            plt.contour(labels, levels=np.unique(labels), colors='C0')
+            if mask is not None:
+                plt.contour(mask, levels=np.unique(labels), colors='k')
+            plt.axis('off')
+            plt.title('Segmentation on histology', fontsize=14)
+
+            plt.subplot(224)
+            plt.cla()
+            plt.imshow(labels_class.astype(np.uint8))
+            plt.axis('off')
+            plt.title('Tissue class', fontsize=14)
+
+    # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask,
+    # are fully surrounded by another label or are not white adipose tissue
+    labels, todo_edge = clean_segmentation(labels, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
+                                           remove_edge_labels=True, mask=mask, min_mask_overlap=min_mask_overlap,
+                                           phagocytosis=phagocytosis,
+                                           labels_class=labels_class, min_class_prop=min_class_prop)
+
+    if DEBUG:
+        plt.subplot(222)
+        plt.cla()
+        plt.imshow(tile)
+        plt.contour(labels, levels=np.unique(labels), colors='C0')
+        if mask is not None:
+            plt.contour(mask, levels=np.unique(labels), colors='k')
+        plt.axis('off')
+        plt.title('Cleaned segmentation', fontsize=14)
+
+    # check that there's at least one segmented object
+    labels_unique = np.unique(labels)
+    labels_unique = labels_unique[labels_unique != 0]
+    if len(labels_unique) == 0:
+        window_tile = np.array([])
+        window_labels = np.array([])
+        window_labels_corrected = np.array([])
+        window_labels_class = np.array([])
+        index_list = []
+        scaling_factor_list = []
+        return labels[0, ...], labels_class[0, ...], todo_edge, \
+               window_tile, window_labels, window_labels_corrected, window_labels_class, \
+               index_list, scaling_factor_list
+
+    # split image into individual labels
+    labels = np.expand_dims(labels, axis=0)
+    tile = np.expand_dims(tile, axis=0)
+    if mask is not None:
+        mask = np.expand_dims(mask, axis=0)
+    labels_class = np.expand_dims(labels_class, axis=0)
+    if mask is None:
+        window_mask = None
+        (window_labels, window_tile, window_labels_class), index_list, scaling_factor_list \
+            = one_image_per_label_v2((labels, tile, labels_class),
+                                     resize_to=(correction_window_len, correction_window_len),
+                                     resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST),
+                                     only_central_label=True, return_bbox=return_bbox)
+    else:
+        (window_labels, window_tile, window_mask, window_labels_class), index_list, scaling_factor_list \
+            = one_image_per_label_v2((labels, tile, mask, labels_class),
+                                     resize_to=(correction_window_len, correction_window_len),
+                                     resample=(Image.NEAREST, Image.LINEAR, Image.NEAREST, Image.NEAREST),
+                                     only_central_label=True, return_bbox=return_bbox)
+
+    if DEBUG:
+        for j in range(window_tile.shape[0]):
+            plt.clf()
+            plt.imshow(window_tile[j, :, :, :])
+            plt.contour(window_labels[j, :, :], colors='C0')
+            if window_mask is not None:
+                plt.contour(window_mask[j, :, :], colors='k')
+            plt.title('j = ' + str(j), fontsize=14)
+            plt.axis('off')
+            plt.pause(1)
+
+    # correct segmentations
+    if correction_model is not None:
+        window_labels_corrected = correct_segmentation(im=window_tile, seg=window_labels,
+                                                       correction_model=correction_model, model_type='-1_1',
+                                                       smoothing=correction_smoothing,
+                                                       batch_size=batch_size)
+    else:
+        window_labels_corrected = None
+
+    if DEBUG:
+        for j in range(window_tile.shape[0]):
+            plt.clf()
+            plt.imshow(window_tile[j, :, :, :])
+            plt.contour(window_labels[j, :, :], colors='C0')
+            plt.contour(window_labels_corrected[j, :, :], colors='C1')
+            if window_mask is not None:
+                plt.contour(window_mask[j, :, :], colors='k')
+            plt.title('j = ' + str(j), fontsize=14)
+            plt.axis('off')
+            plt.pause(1)
+
+    # convert cropped histology back to histology dtype
+    if tile_type == np.uint8:
+        window_tile *= 255
+        window_tile = window_tile.astype(tile_type)
+
+    if return_bbox:
+        if return_bbox_coordinates == 'rc':
+            index_list = np.vstack(index_list)
+        elif return_bbox_coordinates == 'xy':
+            index_list = np.vstack(index_list)
+            index_list[:, [2, 3, 4, 5]] = index_list[:, [3, 2, 5, 4]]
+
+    return labels[0, ...], labels_class[0, ...], todo_edge, \
+           window_tile, window_labels.astype(np.uint8), window_labels_corrected, window_labels_class, \
            index_list, scaling_factor_list
 
 
