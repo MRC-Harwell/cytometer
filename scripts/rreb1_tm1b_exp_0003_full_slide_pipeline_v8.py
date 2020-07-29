@@ -14,7 +14,8 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v8:
  * validation (*0096*)
 
 Difference with pipeline v7:
-  * Constants added to colour channels so that the medians match the training data.
+  * Contrast enhancement to compute rough tissue mask
+  * Colour correction to match the median colour of the training data for segmentation
 
 Difference with rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py:
   *
@@ -80,7 +81,6 @@ home = str(Path.home())
 import os
 from pathlib import Path
 import sys
-import pickle
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 import cytometer.data
@@ -99,11 +99,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from cytometer.utils import rough_foreground_mask, bspline_resample
 import PIL
-# import tensorflow.compat.v1 as tf
-# tf.disable_v2_behavior()
 from keras import backend as K
-import itertools
-from shapely.geometry import Polygon
 import scipy.stats
 
 # # limit GPU memory used
@@ -150,6 +146,8 @@ downsample_factor = 8.0
 dilation_size = 25
 component_size_threshold = 50e3
 hole_size_treshold = 8000
+std_k = 1.00
+enhance_contrast = 4.0
 
 # contour parameters
 contour_downsample_factor = 0.1
@@ -230,7 +228,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # name of file to save annotations to
     annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097_no_overlap.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097_auto.json')
 
     annotations_corrected_file = os.path.basename(ndpi_file)
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
@@ -241,9 +239,6 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     rough_mask_file = rough_mask_file.replace('.ndpi', '_rough_mask.npz')
     rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
 
-    # check whether we continue previous execution, or we start a new one
-    continue_previous = os.path.isfile(rough_mask_file)
-
     # open full resolution histology slide
     im = openslide.OpenSlide(ndpi_file)
 
@@ -251,6 +246,9 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     assert(im.properties['tiff.ResolutionUnit'] == 'centimeter')
     xres = 1e-2 / float(im.properties['tiff.XResolution'])
     yres = 1e-2 / float(im.properties['tiff.YResolution'])
+
+    # check whether we continue previous execution, or we start a new one
+    continue_previous = os.path.isfile(rough_mask_file)
 
     # if the rough mask has been pre-computed, just load it
     if continue_previous:
@@ -272,8 +270,20 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
                                                                 dilation_size=dilation_size,
                                                                 component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold, std_k=1.00,
-                                                                return_im=True)
+                                                                hole_size_treshold=hole_size_treshold, std_k=std_k,
+                                                                return_im=True, enhance_contrast=enhance_contrast)
+
+        if DEBUG:
+            enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(im_downsampled))
+            im_downsampled_enhanced = np.array(enhancer.enhance(enhance_contrast))
+            plt.clf()
+            plt.subplot(211)
+            plt.imshow(im_downsampled_enhanced)
+            plt.axis('off')
+            plt.subplot(212)
+            plt.imshow(im_downsampled_enhanced)
+            plt.contour(lores_istissue0)
+            plt.axis('off')
 
         # segmentation copy, to keep track of what's left to do
         lores_istissue = lores_istissue0.copy()
@@ -356,27 +366,23 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.title('Yellow: Tissue. Purple: Background')
             plt.axis('off')
 
-        # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
-        # reload the models every time
-        K.clear_session()
-
         # segment histology, split into individual objects, and apply segmentation correction
         labels, labels_class, todo_edge, \
         window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
-            = cytometer.utils.segmentation_pipeline6(tile,
-                                                     dmap_model=dmap_model_file,
-                                                     contour_model=contour_model_file,
-                                                     correction_model=correction_model_file,
-                                                     classifier_model=classifier_model_file,
-                                                     min_cell_area=min_cell_area,
-                                                     mask=istissue_tile,
-                                                     min_mask_overlap=min_mask_overlap,
-                                                     phagocytosis=phagocytosis,
-                                                     min_class_prop=min_class_prop,
-                                                     correction_window_len=correction_window_len,
-                                                     correction_smoothing=correction_smoothing,
-                                                     return_bbox=True, return_bbox_coordinates='xy',
-                                                     batch_size=batch_size)
+            = cytometer.utils.segmentation_pipeline_v8(im=tile,
+                                                       dmap_model=dmap_model_file,
+                                                       contour_model=contour_model_file,
+                                                       correction_model=correction_model_file,
+                                                       classifier_model=classifier_model_file,
+                                                       min_cell_area=min_cell_area,
+                                                       mask=istissue_tile,
+                                                       min_mask_overlap=min_mask_overlap,
+                                                       phagocytosis=phagocytosis,
+                                                       min_class_prop=min_class_prop,
+                                                       correction_window_len=correction_window_len,
+                                                       correction_smoothing=correction_smoothing,
+                                                       return_bbox=True, return_bbox_coordinates='xy',
+                                                       batch_size=batch_size)
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
@@ -541,5 +547,9 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
                             time_step_all=time_step_all)
+
+        # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
+        # reload the models every time
+        K.clear_session()
 
     # end of "keep extracting histology windows until we have finished"
