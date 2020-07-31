@@ -16,6 +16,8 @@ Processing full slides of RREB1-TM1B_B6N-IC with pipeline v8:
 Difference with pipeline v7:
   * Contrast enhancement to compute rough tissue mask
   * Colour correction to match the median colour of the training data for segmentation
+  * All segmented objects are saved, together with the white adipocyte probability score. That way, we can decide later
+    which ones we want to keep, and which ones we want to reject.
 
 Difference with rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py:
   *
@@ -158,8 +160,8 @@ block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
 block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
 
 # segmentation parameters
-min_cell_area = 1500
-max_cell_area = 100e3
+min_cell_area = 200  # pixel
+max_cell_area = 200e3  # pixel
 min_mask_overlap = 0.8
 phagocytosis = True
 min_class_prop = 0.5
@@ -169,7 +171,70 @@ batch_size = 16
 
 # list of NDPI files to process
 ndpi_files_list = [
-    'RREB1-TM1B-B6N-IC-1.1a 1132-18 G1 - 2019-02-20 09.56.50.ndpi',
+'RREB1-TM1B-B6N-IC-1.1a 1132-18 G1 - 2019-02-20 09.56.50.ndpi',
+'RREB1-TM1B-B6N-IC-1.1a 1132-18 M1 - 2019-02-20 09.48.06.ndpi',
+'RREB1-TM1B-B6N-IC-1.1a  1132-18 P1 - 2019-02-20 09.29.29.ndpi',
+'RREB1-TM1B-B6N-IC-1.1a  1132-18 S1 - 2019-02-20 09.21.24.ndpi',
+'RREB1-TM1B-B6N-IC-1.1b 1133-18 G1 - 2019-02-20 12.31.18.ndpi',
+'RREB1-TM1B-B6N-IC-1.1b 1133-18 M1 - 2019-02-20 12.15.25.ndpi',
+'RREB1-TM1B-B6N-IC-1.1b 1133-18 P3 - 2019-02-20 11.51.52.ndpi',
+'RREB1-TM1B-B6N-IC-1.1b 1133-18 S1 - 2019-02-20 11.31.44.ndpi',
+'RREB1-TM1B-B6N-IC-1.1c  1129-18 G1 - 2019-02-19 14.10.46.ndpi',
+'RREB1-TM1B-B6N-IC-1.1c  1129-18 M2 - 2019-02-19 13.58.32.ndpi',
+'RREB1-TM1B-B6N-IC-1.1c  1129-18 P1 - 2019-02-19 12.41.11.ndpi',
+'RREB1-TM1B-B6N-IC-1.1c  1129-18 S1 - 2019-02-19 12.28.03.ndpi',
+'RREB1-TM1B-B6N-IC-1.1e 1134-18 G2 - 2019-02-20 14.43.06.ndpi',
+'RREB1-TM1B-B6N-IC-1.1e 1134-18 P1 - 2019-02-20 13.59.56.ndpi',
+'RREB1-TM1B-B6N-IC-1.1f  1130-18 G1 - 2019-02-19 15.51.35.ndpi',
+'RREB1-TM1B-B6N-IC-1.1f  1130-18 M2 - 2019-02-19 15.38.01.ndpi',
+'RREB1-TM1B-B6N-IC-1.1f  1130-18 S1 - 2019-02-19 14.39.24.ndpi',
+'RREB1-TM1B-B6N-IC-1.1g  1131-18 G1 - 2019-02-19 17.10.06.ndpi',
+'RREB1-TM1B-B6N-IC-1.1g  1131-18 M1 - 2019-02-19 16.53.58.ndpi',
+'RREB1-TM1B-B6N-IC-1.1g  1131-18 P1 - 2019-02-19 16.37.30.ndpi',
+'RREB1-TM1B-B6N-IC-1.1g  1131-18 S1 - 2019-02-19 16.21.16.ndpi',
+'RREB1-TM1B-B6N-IC-1.1h 1135-18 G3 - 2019-02-20 15.46.52.ndpi',
+'RREB1-TM1B-B6N-IC-1.1h 1135-18 M1 - 2019-02-20 15.30.26.ndpi',
+'RREB1-TM1B-B6N-IC-1.1h 1135-18 P1 - 2019-02-20 15.06.59.ndpi',
+'RREB1-TM1B-B6N-IC-1.1h 1135-18 S1 - 2019-02-20 14.56.47.ndpi',
+'RREB1-TM1B-B6N-IC-2.1a  1128-18 G1 - 2019-02-19 12.04.29.ndpi',
+'RREB1-TM1B-B6N-IC-2.1a  1128-18 M2 - 2019-02-19 11.26.46.ndpi',
+'RREB1-TM1B-B6N-IC-2.1a  1128-18 P1 - 2019-02-19 11.01.39.ndpi',
+'RREB1-TM1B-B6N-IC-2.1a  1128-18 S1 - 2019-02-19 11.59.16.ndpi',
+'RREB1-TM1B-B6N-IC-2.2a 1124-18 G1 - 2019-02-18 10.15.04.ndpi',
+'RREB1-TM1B-B6N-IC-2.2a 1124-18 M3 - 2019-02-18 10.12.54.ndpi',
+'RREB1-TM1B-B6N-IC-2.2a 1124-18 P2 - 2019-02-18 09.39.46.ndpi',
+'RREB1-TM1B-B6N-IC-2.2a 1124-18 S1 - 2019-02-18 09.09.58.ndpi',
+'RREB1-TM1B-B6N-IC-2.2b 1125-18 G1 - 2019-02-18 12.35.37.ndpi',
+'RREB1-TM1B-B6N-IC-2.2b 1125-18 P1 - 2019-02-18 11.16.21.ndpi',
+'RREB1-TM1B-B6N-IC-2.2b 1125-18 S1 - 2019-02-18 11.06.53.ndpi',
+'RREB1-TM1B-B6N-IC-2.2d 1137-18 S1 - 2019-02-21 10.59.23.ndpi',
+'RREB1-TM1B-B6N-IC-2.2e 1126-18 G1 - 2019-02-18 14.58.55.ndpi',
+'RREB1-TM1B-B6N-IC-2.2e 1126-18 M1- 2019-02-18 14.50.13.ndpi',
+'RREB1-TM1B-B6N-IC-2.2e 1126-18 P1 - 2019-02-18 14.13.24.ndpi',
+'RREB1-TM1B-B6N-IC-2.2e 1126-18 S1 - 2019-02-18 14.05.58.ndpi',
+'RREB1-TM1B-B6N-IC-5.1a 0066-19 G1 - 2019-02-21 15.26.24.ndpi',
+'RREB1-TM1B-B6N-IC-5.1a 0066-19 M1 - 2019-02-21 15.04.14.ndpi',
+'RREB1-TM1B-B6N-IC-5.1a 0066-19 P1 - 2019-02-21 14.39.43.ndpi',
+'RREB1-TM1B-B6N-IC-5.1a 0066-19 S1 - 2019-02-21 14.04.12.ndpi',
+'RREB1-TM1B-B6N-IC-5.1b 0067-19 P1 - 2019-02-21 16.32.24.ndpi',
+'RREB1-TM1B-B6N-IC-5.1b 0067-19 S1 - 2019-02-21 16.00.37.ndpi',
+'RREB1-TM1B-B6N-IC-5.1b 67-19 G1 - 2019-02-21 17.29.31.ndpi',
+'RREB1-TM1B-B6N-IC-5.1b 67-19 M1 - 2019-02-21 17.04.37.ndpi',
+'RREB1-TM1B-B6N-IC-5.1c  68-19 G2 - 2019-02-22 09.43.59.ndpi',
+'RREB1-TM1B-B6N-IC- 5.1c 68 -19 M2 - 2019-02-22 09.27.30.ndpi',
+'RREB1-TM1B-B6N-IC -5.1c 68 -19 peri3 - 2019-02-22 09.08.26.ndpi',
+'RREB1-TM1B-B6N-IC- 5.1c 68 -19 sub2 - 2019-02-22 08.39.12.ndpi',
+'RREB1-TM1B-B6N-IC-5.1d  69-19 G2 - 2019-02-22 15.13.08.ndpi',
+'RREB1-TM1B-B6N-IC-5.1d  69-19 M1 - 2019-02-22 14.39.12.ndpi',
+'RREB1-TM1B-B6N-IC-5.1d  69-19 Peri1 - 2019-02-22 12.00.19.ndpi',
+'RREB1-TM1B-B6N-IC-5.1d  69-19 sub1 - 2019-02-22 11.44.13.ndpi',
+'RREB1-TM1B-B6N-IC-5.1e  70-19 G3 - 2019-02-25 10.34.30.ndpi',
+'RREB1-TM1B-B6N-IC-5.1e  70-19 M1 - 2019-02-25 09.53.00.ndpi',
+'RREB1-TM1B-B6N-IC-5.1e  70-19 P2 - 2019-02-25 09.27.06.ndpi',
+'RREB1-TM1B-B6N-IC-5.1e  70-19 S1 - 2019-02-25 08.51.26.ndpi',
+'RREB1-TM1B-B6N-IC-7.1a  71-19 G1 - 2019-02-25 12.27.06.ndpi',
+'RREB1-TM1B-B6N-IC-7.1a  71-19 P1 - 2019-02-25 11.31.30.ndpi',
+'RREB1-TM1B-B6N-IC-7.1a  71-19 S1 - 2019-02-25 11.03.59.ndpi'
 ]
 
 # load colour modes of the KLF14 training dataset
@@ -228,11 +293,11 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # name of file to save annotations to
     annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097_auto.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0003_auto.json')
 
     annotations_corrected_file = os.path.basename(ndpi_file)
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
-    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0097_corrected.json')
+    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0003_corrected.json')
 
     # name of file to save rough mask, current mask, and time steps
     rough_mask_file = os.path.basename(ndpi_file)
@@ -332,7 +397,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
 
         time_prev = time.time()
 
-        # next step (it starts from 0)
+        # next step (it starts from 1 here, because step 0 is the rough mask computation)
         step += 1
 
         # get indices for the next histology window to process
@@ -369,20 +434,28 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         # segment histology, split into individual objects, and apply segmentation correction
         labels, labels_class, todo_edge, \
         window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
-            = cytometer.utils.segmentation_pipeline_v8(im=tile,
-                                                       dmap_model=dmap_model_file,
-                                                       contour_model=contour_model_file,
-                                                       correction_model=correction_model_file,
-                                                       classifier_model=classifier_model_file,
-                                                       min_cell_area=min_cell_area,
-                                                       mask=istissue_tile,
-                                                       min_mask_overlap=min_mask_overlap,
-                                                       phagocytosis=phagocytosis,
-                                                       min_class_prop=min_class_prop,
-                                                       correction_window_len=correction_window_len,
-                                                       correction_smoothing=correction_smoothing,
-                                                       return_bbox=True, return_bbox_coordinates='xy',
-                                                       batch_size=batch_size)
+            = cytometer.utils.segmentation_pipeline6(im=tile,
+                                                     dmap_model=dmap_model_file,
+                                                     contour_model=contour_model_file,
+                                                     correction_model=correction_model_file,
+                                                     classifier_model=classifier_model_file,
+                                                     min_cell_area=0,
+                                                     max_cell_area=np.inf,
+                                                     mask=istissue_tile,
+                                                     min_mask_overlap=min_mask_overlap,
+                                                     phagocytosis=phagocytosis,
+                                                     min_class_prop=0.0,
+                                                     correction_window_len=correction_window_len,
+                                                     correction_smoothing=correction_smoothing,
+                                                     return_bbox=True, return_bbox_coordinates='xy',
+                                                     batch_size=batch_size)
+
+
+        # compute the "white adipocyte" probability for each object
+        window_white_adipocyte_prob = np.sum(window_labels * window_labels_class, axis=(1, 2)) \
+                                      / np.sum(window_labels, axis=(1, 2))
+        window_white_adipocyte_prob_corrected = np.sum(window_labels_corrected * window_labels_class, axis=(1, 2)) \
+                                                / np.sum(window_labels_corrected, axis=(1, 2))
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
@@ -429,17 +502,17 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.title('Full res tissue mask', fontsize=16)
             plt.axis('off')
             plt.subplot(223)
-            plt.imshow(todo_edge)
+            plt.imshow(todo_edge.astype(np.uint8))
             plt.title('Full res left over tissue', fontsize=16)
             plt.axis('off')
             plt.subplot(224)
-            plt.imshow(lores_todo_edge)
+            plt.imshow(lores_todo_edge.astype(np.uint8))
             plt.title('Low res left over tissue', fontsize=16)
             plt.axis('off')
             plt.tight_layout()
 
-        # convert overlap labels in cropped images to contours (points), and add cropping window offset so that the
-        # contours are in the tile-window coordinates
+        # convert labels in cropped images to contours (points), and add cropping window offset so that the
+        # contours are in the whole slide coordinates
         offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
         contours = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
                                                    scaling_factor_xy=scaling_factor_list)
@@ -495,11 +568,14 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             lores_contours_corrected[j][:, 1] += first_row
 
         # convert non-overlap contours to AIDA items
-        contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile, xres=xres, yres=yres)
+        # TODO: check whether the mouse is male or female, and use corresponding f_area2quantile
+        contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile_m.item(),
+                                                          cell_prob=window_white_adipocyte_prob,
+                                                          xres=xres, yres=yres)
         rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
         rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
 
-        if step == 0:
+        if step == 1:
             # in the first step, overwrite previous annotations file, or create new one
             cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='w')
             cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
@@ -509,9 +585,11 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
 
         # convert corrected contours to AIDA items
-        contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile, xres=xres, yres=yres)
+        contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
+                                                                    cell_prob=window_white_adipocyte_prob_corrected,
+                                                                    xres=xres, yres=yres)
 
-        if step == 0:
+        if step == 1:
             # in the first step, overwrite previous annotations file, or create new one
             cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='w')
             cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
@@ -549,7 +627,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                             time_step_all=time_step_all)
 
         # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
-        # reload the models every time
+        # reload the models every time, but that's not too slow
         K.clear_session()
 
     # end of "keep extracting histology windows until we have finished"
