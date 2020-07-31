@@ -133,7 +133,7 @@ def paint_labels(labels, paint_labs, paint_values):
 
 def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
                           component_size_threshold=1e6, hole_size_treshold=8000, std_k=1.0,
-                          return_im=False, enhance_contrast=None):
+                          return_im=False, enhance_contrast=None, ignore_white_threshold=None):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
     by OpenSlice. The objects are darker than the background.
@@ -162,6 +162,10 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     is not enhanced.
     enhance_contrast=0.0 returns a gray image with no contrast. enhance_contrast=1.0 returns the original image.
     enhance_contrast<1.0 decreases the contrast. enhance_contrast>1.0 increases the contrast.
+    :param ignore_white_threshold: (def None) Scalar. If not None, pixels with colour
+    (ignore_white_threshold, ignore_white_threshold, ignore_white_threshold) or whiter will be ignored in terms of
+    computing the background mode. For example, ignore_white_threshold=253 will ignore colours (253, 253, 253),
+    (253, 253, 254), (253, 254, 254), etc, (255, 255, 255).
     :return:
     seg: downsampled segmentation mask.
     [im_downsampled]: if return_im=True, this is the downsampled image in filename. This is the image without contrast
@@ -217,6 +221,11 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     im_downsampled_mat = im_downsampled.copy()
     im_downsampled_mat = im_downsampled_mat.reshape((im_downsampled_mat.shape[0] * im_downsampled_mat.shape[1],
                                                      im_downsampled_mat.shape[2]))
+
+    if ignore_white_threshold is not None:
+        # remove pixels as white or whiter than the threshold
+        idx = np.prod(im_downsampled_mat >= ignore_white_threshold, axis=1) == 0
+        im_downsampled_mat = im_downsampled_mat[idx, :]
 
     # background colour
     background_colour = []
