@@ -223,11 +223,16 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
                                                      im_downsampled_mat.shape[2]))
 
     if ignore_white_threshold is not None:
-        # remove pixels as white or whiter than the threshold
-        idx = np.prod(im_downsampled_mat >= ignore_white_threshold, axis=1) == 0
-        im_downsampled_mat = im_downsampled_mat[idx, :]
+        # mask where there are no white pixels
+        non_white_mask = np.prod(im_downsampled_bak >= ignore_white_threshold, axis=2) == 0
 
-    # background colour
+        # reshape mask to matrix with one column per colour channel
+        non_white_mask = non_white_mask.reshape((non_white_mask.shape[0] * non_white_mask.shape[1],))
+
+        # remove pixels in the white mask
+        im_downsampled_mat = im_downsampled_mat[non_white_mask, :]
+
+    # background colour mode and typical variability
     background_colour = []
     for i in range(3):
         background_colour += [mode(im_downsampled_mat[:, i]), ]
