@@ -648,7 +648,7 @@ def aida_colourmap():
     return ListedColormap(cm, name='quantiles_aida')
 
 
-def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0, yres=1.0):
+def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0, yres=1.0, cell_prob=None):
     """
     Create list of contour items for AIDA.
 
@@ -660,17 +660,20 @@ def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0,
     cm is a string, currently only 'quantiles_aida' is accepted.
     :param xres: (def 1.0) Pixel size in the x-coordinate.
     :param yres: (def 1.0) Pixel size in the y-coordinate.
+    :param cell_prob: (def None) Vector with one value per contour. This value is interpreted as the probability of the
+    object being a cell.
     :return: List of dictionaries, each one with the structure of a contour object.
     """
 
 
-    def aida_contour_item(contour, rgb_colour):
+    def aida_contour_item(contour, rgb_colour, cell_prob=None):
         """
         Create an object that describes a closed contour in AIDA. The user provides the coordinates of the contour
         points and the colour for the contour.
 
         :param contour: np.array or list of points of a contour: [[x0, y0], [x1, y1], ...]
         :param rgb_colour: (r, g, b) or (r, g, b, alpha). RGB colour for this contour.
+        :param cell_prob: (def None) Scalar in [0.0, 1.0] with the probability of the contour being a cell.
         :return: item: dictionary with the structure of the contour object.
         """
 
@@ -680,6 +683,7 @@ def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0,
         # convert RGB to HSL
         hls_colour = colorsys.rgb_to_hls(rgb_colour[0], rgb_colour[1], rgb_colour[2])
 
+        # create the item object
         item = {
             'class': '',
             'type': 'path',
@@ -701,6 +705,9 @@ def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0,
             'closed': True
         }
 
+        if cell_prob is not None:
+            item['cell_prob'] = cell_prob
+
         return item
 
     ## main function
@@ -718,7 +725,12 @@ def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0,
     q = f_area2quantile(areas)
 
     # create the list of contour objects (each item is a contour object)
-    items = [aida_contour_item(contour=contours[i], rgb_colour=cm(q[i])) for i in range(len(contours))]
+    if cell_prob is None:
+        items = [aida_contour_item(contour=contours[i], rgb_colour=cm(q[i]))
+                 for i in range(len(contours))]
+    else:
+        items = [aida_contour_item(contour=contours[i], rgb_colour=cm(q[i]), cell_prob=cell_prob[i])
+                 for i in range(len(contours))]
 
     return items
 
