@@ -336,7 +336,8 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                                                 dilation_size=dilation_size,
                                                                 component_size_threshold=component_size_threshold,
                                                                 hole_size_treshold=hole_size_treshold, std_k=std_k,
-                                                                return_im=True, enhance_contrast=enhance_contrast)
+                                                                return_im=True, enhance_contrast=enhance_contrast,
+                                                                ignore_white_threshold=253)
 
         if DEBUG:
             enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(im_downsampled))
