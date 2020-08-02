@@ -2823,7 +2823,7 @@ def segmentation_pipeline6(im,
         window_labels_class = np.array([])
         index_list = []
         scaling_factor_list = []
-        return labels[0, ...], labels_class[0, ...], todo_edge, \
+        return labels, labels_class, todo_edge, \
                window_im, window_labels, window_labels_corrected, window_labels_class, \
                index_list, scaling_factor_list
 
