@@ -365,7 +365,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
                             time_step_all=time_step_all)
 
-        # end computing the rough foreground mask
+        # end "computing the rough foreground mask"
 
     # checkpoint: here the rough tissue mask has either been loaded or computed
     time_step = time_step_all[-1]
@@ -453,160 +453,170 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
 
 
         # compute the "white adipocyte" probability for each object
-        window_white_adipocyte_prob = np.sum(window_labels * window_labels_class, axis=(1, 2)) \
-                                      / np.sum(window_labels, axis=(1, 2))
-        window_white_adipocyte_prob_corrected = np.sum(window_labels_corrected * window_labels_class, axis=(1, 2)) \
-                                                / np.sum(window_labels_corrected, axis=(1, 2))
+        if len(window_labels) > 0:
+            window_white_adipocyte_prob = np.sum(window_labels * window_labels_class, axis=(1, 2)) \
+                                          / np.sum(window_labels, axis=(1, 2))
+            window_white_adipocyte_prob_corrected = np.sum(window_labels_corrected * window_labels_class, axis=(1, 2)) \
+                                                    / np.sum(window_labels_corrected, axis=(1, 2))
+        else:
+            window_white_adipocyte_prob = np.array([])
+            window_white_adipocyte_prob_corrected = np.array([])
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
-        if len(index_list) == 0:
+        if len(index_list) == 0:  # empty segmentation
+
             lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
-            continue
 
-        if DEBUG:
-            j = 4
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(tile[:, :, :])
-            plt.title('Histology', fontsize=16)
-            plt.axis('off')
-            plt.subplot(222)
-            plt.imshow(tile[:, :, :])
-            plt.contour(labels, levels=np.unique(labels), colors='C0')
-            plt.contourf(todo_edge, colors='C2', levels=[0.5, 1])
-            plt.title('Full segmentation', fontsize=16)
-            plt.axis('off')
-            plt.subplot(212)
-            plt.imshow(window_im[j, :, :, :])
-            plt.contour(window_labels[j, :, :], colors='C0')
-            plt.contour(window_labels_corrected[j, :, :], colors='C1')
-            plt.title('Crop around object and corrected segmentation', fontsize=16)
-            plt.axis('off')
-            plt.tight_layout()
+        else:  # there's at least one object in the segmentation
 
-        # downsample "to do" mask so that the rough tissue segmentation can be updated
-        lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
-        lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
-                                                  lores_last_row - lores_first_row),
-                                                 resample=PIL.Image.NEAREST)
-        lores_todo_edge = np.array(lores_todo_edge)
+            if DEBUG:
+                j = 4
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(tile[:, :, :])
+                plt.title('Histology', fontsize=16)
+                plt.axis('off')
+                plt.subplot(222)
+                plt.imshow(tile[:, :, :])
+                plt.contour(labels, levels=np.unique(labels), colors='C0')
+                plt.contourf(todo_edge, colors='C2', levels=[0.5, 1])
+                plt.title('Full segmentation', fontsize=16)
+                plt.axis('off')
+                plt.subplot(212)
+                plt.imshow(window_im[j, :, :, :])
+                plt.contour(window_labels[j, :, :], colors='C0')
+                plt.contour(window_labels_corrected[j, :, :], colors='C1')
+                plt.title('Crop around object and corrected segmentation', fontsize=16)
+                plt.axis('off')
+                plt.tight_layout()
 
-        if DEBUG:
-            plt.clf()
-            plt.subplot(221)
-            plt.imshow(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col])
-            plt.title('Low res tissue mask', fontsize=16)
-            plt.axis('off')
-            plt.subplot(222)
-            plt.imshow(istissue_tile)
-            plt.title('Full res tissue mask', fontsize=16)
-            plt.axis('off')
-            plt.subplot(223)
-            plt.imshow(todo_edge.astype(np.uint8))
-            plt.title('Full res left over tissue', fontsize=16)
-            plt.axis('off')
-            plt.subplot(224)
-            plt.imshow(lores_todo_edge.astype(np.uint8))
-            plt.title('Low res left over tissue', fontsize=16)
-            plt.axis('off')
-            plt.tight_layout()
+            # downsample "to do" mask so that the rough tissue segmentation can be updated
+            lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
+            lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
+                                                      lores_last_row - lores_first_row),
+                                                     resample=PIL.Image.NEAREST)
+            lores_todo_edge = np.array(lores_todo_edge)
 
-        # convert labels in cropped images to contours (points), and add cropping window offset so that the
-        # contours are in the whole slide coordinates
-        offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
-        contours = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
-                                                   scaling_factor_xy=scaling_factor_list)
-        contours_corrected = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
-                                                             scaling_factor_xy=scaling_factor_list)
+            if DEBUG:
+                plt.clf()
+                plt.subplot(221)
+                plt.imshow(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col])
+                plt.title('Low res tissue mask', fontsize=16)
+                plt.axis('off')
+                plt.subplot(222)
+                plt.imshow(istissue_tile)
+                plt.title('Full res tissue mask', fontsize=16)
+                plt.axis('off')
+                plt.subplot(223)
+                plt.imshow(todo_edge.astype(np.uint8))
+                plt.title('Full res left over tissue', fontsize=16)
+                plt.axis('off')
+                plt.subplot(224)
+                plt.imshow(lores_todo_edge.astype(np.uint8))
+                plt.title('Low res left over tissue', fontsize=16)
+                plt.axis('off')
+                plt.tight_layout()
 
-        if DEBUG:
-            # no overlap
-            plt.clf()
-            plt.imshow(tile)
+            # convert labels in cropped images to contours (points), and add cropping window offset so that the
+            # contours are in the whole slide coordinates
+            offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
+            contours = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
+                                                       scaling_factor_xy=scaling_factor_list)
+            contours_corrected = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
+                                                                 scaling_factor_xy=scaling_factor_list)
+
+            if DEBUG:
+                # no overlap
+                plt.clf()
+                plt.imshow(tile)
+                for j in range(len(contours)):
+                    plt.fill(contours[j][:, 0], contours[j][:, 1], edgecolor='C0', fill=False)
+                    # plt.text(contours[j][0, 0], contours[j][0, 1], str(j))
+
+                # overlap
+                plt.clf()
+                plt.imshow(tile)
+                for j in range(len(contours_corrected)):
+                    plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C0', fill=False)
+                    # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
+
+            # downsample contours for AIDA annotations file
+            lores_contours = []
+            for c in contours:
+                lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
+                lores_contours.append(lores_c)
+
+            lores_contours_corrected = []
+            for c in contours_corrected:
+                lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
+                lores_contours_corrected.append(lores_c)
+
+            if DEBUG:
+                # no overlap
+                plt.clf()
+                plt.imshow(tile)
+                for j in range(len(contours)):
+                    plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C1', fill=False)
+
+                # overlap
+                plt.clf()
+                plt.imshow(tile)
+                for j in range(len(contours_corrected)):
+                    plt.fill(lores_contours_corrected[j][:, 0], lores_contours_corrected[j][:, 1], edgecolor='C1', fill=False)
+
+            # add tile offset, so that contours are in full slide coordinates
             for j in range(len(contours)):
-                plt.fill(contours[j][:, 0], contours[j][:, 1], edgecolor='C0', fill=False)
-                # plt.text(contours[j][0, 0], contours[j][0, 1], str(j))
+                lores_contours[j][:, 0] += first_col
+                lores_contours[j][:, 1] += first_row
 
-            # overlap
-            plt.clf()
-            plt.imshow(tile)
             for j in range(len(contours_corrected)):
-                plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C0', fill=False)
-                # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
+                lores_contours_corrected[j][:, 0] += first_col
+                lores_contours_corrected[j][:, 1] += first_row
 
-        # downsample contours for AIDA annotations file
-        lores_contours = []
-        for c in contours:
-            lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
-            lores_contours.append(lores_c)
+            # convert non-overlap contours to AIDA items
+            # TODO: check whether the mouse is male or female, and use corresponding f_area2quantile
+            contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile_m.item(),
+                                                              cell_prob=window_white_adipocyte_prob,
+                                                              xres=xres, yres=yres)
+            rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
+            rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
 
-        lores_contours_corrected = []
-        for c in contours_corrected:
-            lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
-            lores_contours_corrected.append(lores_c)
+            if step == 1:
+                # in the first step, overwrite previous annotations file, or create new one
+                cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='w')
+                cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
+            else:
+                # in next steps, add contours to previous layer
+                cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='append_to_last_layer')
+                cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
 
-        if DEBUG:
-            # no overlap
-            plt.clf()
-            plt.imshow(tile)
-            for j in range(len(contours)):
-                plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C1', fill=False)
+            # convert corrected contours to AIDA items
+            contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
+                                                                        cell_prob=window_white_adipocyte_prob_corrected,
+                                                                        xres=xres, yres=yres)
 
-            # overlap
-            plt.clf()
-            plt.imshow(tile)
-            for j in range(len(contours_corrected)):
-                plt.fill(lores_contours_corrected[j][:, 0], lores_contours_corrected[j][:, 1], edgecolor='C1', fill=False)
+            if step == 1:
+                # in the first step, overwrite previous annotations file, or create new one
+                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='w')
+                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
+            else:
+                # in next steps, add contours to previous layer
+                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='append_to_last_layer')
+                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
 
-        # add tile offset, so that contours are in full slide coordinates
-        for j in range(len(contours)):
-            lores_contours[j][:, 0] += first_col
-            lores_contours[j][:, 1] += first_row
+            # update the tissue segmentation mask with the current window
+            if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
+                # if the mask remains identical, wipe out the whole window, as otherwise we'd have an
+                # infinite loop
+                lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+            else:
+                # if the mask has been updated, use it to update the total tissue segmentation
+                lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
 
-        for j in range(len(contours_corrected)):
-            lores_contours_corrected[j][:, 0] += first_col
-            lores_contours_corrected[j][:, 1] += first_row
-
-        # convert non-overlap contours to AIDA items
-        # TODO: check whether the mouse is male or female, and use corresponding f_area2quantile
-        contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile_m.item(),
-                                                          cell_prob=window_white_adipocyte_prob,
-                                                          xres=xres, yres=yres)
-        rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
-        rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
-
-        if step == 1:
-            # in the first step, overwrite previous annotations file, or create new one
-            cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='w')
-            cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
-        else:
-            # in next steps, add contours to previous layer
-            cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='append_to_last_layer')
-            cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
-
-        # convert corrected contours to AIDA items
-        contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
-                                                                    cell_prob=window_white_adipocyte_prob_corrected,
-                                                                    xres=xres, yres=yres)
-
-        if step == 1:
-            # in the first step, overwrite previous annotations file, or create new one
-            cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='w')
-            cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
-        else:
-            # in next steps, add contours to previous layer
-            cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='append_to_last_layer')
-            cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
-
-        # update the tissue segmentation mask with the current window
-        if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
-            # if the mask remains identical, wipe out the whole window, as otherwise we'd have an
-            # infinite loop
-            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
-        else:
-            # if the mask has been updated, use it to update the total tissue segmentation
-            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
+        # end of "if len(index_list) == 0:"
+        # Thus, regardless of whether there were any objects in the segmentation or not, here we continue the execution
+        # of the program
 
         perc_completed = 100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100
         perc_completed_all.append(perc_completed)
