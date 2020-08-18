@@ -1,5 +1,5 @@
 """
-Processing full slides of RREB1-TM1B_B6N-IC with pipeline v8:
+Processing full slides of Grace Yu's RREB1-TM1B_B6N-IC with pipeline v8:
 
  * data generation
    * training images (*0076*)
@@ -318,14 +318,13 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # if the rough mask has been pre-computed, just load it
     if continue_previous:
 
-        aux = np.load(rough_mask_file)
-        lores_istissue = aux['lores_istissue']
-        lores_istissue0 = aux['lores_istissue0']
-        im_downsampled = aux['im_downsampled']
-        step = aux['step']
-        perc_completed_all = list(aux['perc_completed_all'])
-        time_step_all = list(aux['time_step_all'])
-        del aux
+        with np.load(rough_mask_file) as aux:
+            lores_istissue = aux['lores_istissue']
+            lores_istissue0 = aux['lores_istissue0']
+            im_downsampled = aux['im_downsampled']
+            step = aux['step']
+            perc_completed_all = list(aux['perc_completed_all'])
+            time_step_all = list(aux['time_step_all'])
 
     else:
 
@@ -429,7 +428,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.imshow(tile)
             plt.imshow(istissue_tile, alpha=0.5)
             plt.contour(istissue_tile, colors='k')
-            plt.title('Yellow: Tissue. Purple: Background')
+            plt.title('Yellow: Tissue mask. Purple: Background')
             plt.axis('off')
 
         # segment histology, split into individual objects, and apply segmentation correction
