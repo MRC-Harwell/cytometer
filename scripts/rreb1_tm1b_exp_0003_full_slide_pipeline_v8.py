@@ -103,6 +103,7 @@ from cytometer.utils import rough_foreground_mask, bspline_resample
 import PIL
 from keras import backend as K
 import scipy.stats
+from shapely.geometry import Polygon
 
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
@@ -158,6 +159,7 @@ bspline_k = 1
 # block_split() parameters in downsampled image
 block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
 block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
+window_overlap_fraction_max = 0.9
 
 # segmentation parameters
 min_cell_area = 200  # pixel
@@ -322,9 +324,13 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             lores_istissue = aux['lores_istissue']
             lores_istissue0 = aux['lores_istissue0']
             im_downsampled = aux['im_downsampled']
-            step = aux['step']
+            step = aux['step'].item()
             perc_completed_all = list(aux['perc_completed_all'])
             time_step_all = list(aux['time_step_all'])
+            prev_first_row = aux['prev_first_row'].item()
+            prev_last_row = aux['prev_last_row'].item()
+            prev_first_col = aux['prev_first_col'].item()
+            prev_last_col = aux['prev_last_col'].item()
 
     else:
 
@@ -358,10 +364,13 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         perc_completed_all = [float(0.0),]
         time_step = time.time() - time_prev
         time_step_all = [time_step,]
+        (prev_first_row, prev_last_row, prev_first_col, prev_last_col) = (0, 0, 0, 0)
 
         # save to the rough mask file
         np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
+                            prev_first_row=prev_first_row, prev_last_row=prev_last_row,
+                            prev_first_col=prev_first_col, prev_last_col=prev_last_col,
                             time_step_all=time_step_all)
 
         # end "computing the rough foreground mask"
@@ -406,6 +415,27 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
                                                     max_window_size=fullres_box_size,
                                                     border=np.round((receptive_field-1)/2))
+
+        # overlap between current and previous window, as a fraction of current window area
+        current_window = Polygon([(first_col, first_row), (last_col, first_row),
+                                  (last_col, last_row), (first_col, last_row)])
+        prev_window = Polygon([(prev_first_col, prev_first_row), (prev_last_col, prev_first_row),
+                               (prev_last_col, prev_last_row), (prev_first_col, prev_last_row)])
+        window_overlap_fraction = current_window.intersection(prev_window).area / current_window.area
+
+        # check that we are not trying to process almost the same window
+        if window_overlap_fraction > window_overlap_fraction_max:
+            # if we are trying to process almost the same window as in the previous step, what's probably happening is
+            # that we have some big labels on the edges that are not white adipocytes, and the segmentation algorithm is
+            # also finding one or more spurious labels within the window. That prevents the whole lores_istissue window
+            # from being wiped out, and the big edge labels keep the window selection being almost the same. Thus, we
+            # wipe it out and move to another tissue area
+            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+            continue
+
+        else:
+            # remember processed window for next step
+            (prev_first_row, prev_last_row, prev_first_col, prev_last_col) = (first_row, last_row, first_col, last_col)
 
         # load window from full resolution slide
         tile = im.read_region(location=(first_col, first_row), level=0,
@@ -634,7 +664,9 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         # save to the rough mask file
         np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
-                            time_step_all=time_step_all)
+                            time_step_all=time_step_all,
+                            prev_first_row=prev_first_row, prev_last_row=prev_last_row,
+                            prev_first_col=prev_first_col, prev_last_col=prev_last_col)
 
         # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
         # reload the models every time, but that's not too slow
