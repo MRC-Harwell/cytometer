@@ -1,5 +1,5 @@
 """
-Processing full slides of Grace Yu's RREB1-TM1B_B6N-IC with pipeline v8:
+Processing full slides of Silvia Corrochano's FUS-DELTA-DBA-B6-IC with pipeline v8:
 
  * data generation
    * training images (*0076*)
@@ -18,9 +18,10 @@ Difference with pipeline v7:
   * Colour correction to match the median colour of the training data for segmentation
   * All segmented objects are saved, together with the white adipocyte probability score. That way, we can decide later
     which ones we want to keep, and which ones we want to reject.
+  * If a processing window overlaps the previous one by 90% or more, we wipe it out.
 
-Difference with rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py:
-  *
+Difference with rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py:
+  * Only the images it is applied to.
 
  Requirements for this script to work:
 
@@ -28,27 +29,27 @@ Difference with rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py:
 
  2) Run ./install_dependencies.sh in cytometer.
 
- 3) Mount the network share //scan-srv2/cox on ~/scan_srv2_cox with CIFS so that we have access to Roger and Liz's .ndpi
-    files. You can do it by creating an empty directory
+ 3) Mount the network share //walter/AAcevedo_images on ~/AAcevedo_images with CIFS so that we have access to Silvia's
+    .ndpi files. You can do it by creating an empty directory
 
-    mkdir ~/scan_srv2_cox
+    mkdir ~/AAcevedo_images
 
-    and adding a line like this to /etc/fstab in the server.
+    and adding a line like this to /etc/fstab in the server (adjusting the uid and gid to your own).
 
-    //scan-srv2/cox on /home/rcasero/scan_srv2_cox type cifs (rw,nosuid,nodev,noexec,relatime,vers=default,sec=ntlmv2,cache=strict,username=r.casero,domain=MRCH,uid=1003,forceuid,gid=1003,forcegid,addr=10.100.0.229,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,rsize=4194304,wsize=4194304,bsize=1048576,echo_interval=60,actimeo=1,user)
+    //walter/AAcevedo_images          /home/rcasero/AAcevedo_images          cifs    credentials=/home/rcasero/.smbcredentials,vers=1.0,domain=mrch,sec=ntlmv2,uid=1005,gid=1005,user 0 0
 
     Then
 
-    mount ~/scan_srv2_cox
+    mount ~/AAcevedo_images
 
  4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
-    ~/Software/cytometer/tools/rebb1_full_histology_ndpi_to_dzi.sh
+    ~/Software/cytometer/tools/fus_delta_full_histology_ndpi_to_dzi.sh
 
     and run
 
     cd ~/Software/cytometer/tools
-    ./rebb1_full_histology_ndpi_to_dzi.sh
+    ./fus_delta_full_histology_ndpi_to_dzi.sh
 
  5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data in
     ~/Data/cytometer_data/klf14/saved_models.
@@ -61,7 +62,7 @@ Difference with rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py:
     You also need to create a soft link per .dzi file to the annotations you want to visualise for that file, whether
     the non-overlapping ones, or the corrected ones. E.g.
 
-    ln -s 'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55_exp_0097_corrected.json' 'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55_exp_0097.json'
+    ln -s 'FUS-DELTA-DBA-B6-IC-13.3a  1276-18 1 - 2018-12-03 12.18.01.ndpi_exp_0001_corrected.json' 'FUS-DELTA-DBA-B6-IC-13.3a  1276-18 1 - 2018-12-03 12.18.01.ndpi'
 
     Then you can use a browser to open the AIDA web interface by visiting the URL (note that you need to be on the MRC
     VPN, or connected from inside the office to get access to the titanrtx server)
@@ -74,7 +75,7 @@ Difference with rreb1_tm1b_exp_0001_full_slide_pipeline_v7.py:
 """
 
 # script name to identify this experiment
-experiment_id = 'rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py'
+experiment_id = 'fus_delta_exp_0001_full_slide_pipeline_v8.py'
 
 # cross-platform home directory
 from pathlib import Path
@@ -115,24 +116,16 @@ DEBUG = False
 SAVE_FIGS = False
 
 pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN models
-experiment_root_data_dir = os.path.join(home, 'Data/cytometer_data/rreb1')
-histology_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace/RREB1 Feb19')
-rreb1_figures_dir = os.path.join(experiment_root_data_dir, 'figures')
+histology_dir = os.path.join(home, 'AAcevedo_images/FUS-DELTA-DBA-B6/Histology scans/iWAT scans')
 area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
-results_dir = os.path.join(experiment_root_data_dir, 'results')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Fus_Delta/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
 # file with RGB modes from all training data
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
-
-# although we don't need k-folds here, we need this file to load the list of SVG contours that we compute the AIDA
-# colourmap from
-# TODO: just save a cell size - colour function, instead of having to recompute it every time
-saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # model names
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
@@ -173,70 +166,59 @@ batch_size = 16
 
 # list of NDPI files to process
 ndpi_files_list = [
-'RREB1-TM1B-B6N-IC-1.1a 1132-18 G1 - 2019-02-20 09.56.50.ndpi',
-'RREB1-TM1B-B6N-IC-1.1a 1132-18 M1 - 2019-02-20 09.48.06.ndpi',
-'RREB1-TM1B-B6N-IC-1.1a  1132-18 P1 - 2019-02-20 09.29.29.ndpi',
-'RREB1-TM1B-B6N-IC-1.1a  1132-18 S1 - 2019-02-20 09.21.24.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 G1 - 2019-02-20 12.31.18.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 M1 - 2019-02-20 12.15.25.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 P3 - 2019-02-20 11.51.52.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 S1 - 2019-02-20 11.31.44.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 G1 - 2019-02-19 14.10.46.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 M2 - 2019-02-19 13.58.32.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 P1 - 2019-02-19 12.41.11.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 S1 - 2019-02-19 12.28.03.ndpi',
-'RREB1-TM1B-B6N-IC-1.1e 1134-18 G2 - 2019-02-20 14.43.06.ndpi',
-'RREB1-TM1B-B6N-IC-1.1e 1134-18 P1 - 2019-02-20 13.59.56.ndpi',
-'RREB1-TM1B-B6N-IC-1.1f  1130-18 G1 - 2019-02-19 15.51.35.ndpi',
-'RREB1-TM1B-B6N-IC-1.1f  1130-18 M2 - 2019-02-19 15.38.01.ndpi',
-'RREB1-TM1B-B6N-IC-1.1f  1130-18 S1 - 2019-02-19 14.39.24.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 G1 - 2019-02-19 17.10.06.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 M1 - 2019-02-19 16.53.58.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 P1 - 2019-02-19 16.37.30.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 S1 - 2019-02-19 16.21.16.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 G3 - 2019-02-20 15.46.52.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 M1 - 2019-02-20 15.30.26.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 P1 - 2019-02-20 15.06.59.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 S1 - 2019-02-20 14.56.47.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 G1 - 2019-02-19 12.04.29.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 M2 - 2019-02-19 11.26.46.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 P1 - 2019-02-19 11.01.39.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 S1 - 2019-02-19 11.59.16.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 G1 - 2019-02-18 10.15.04.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 M3 - 2019-02-18 10.12.54.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 P2 - 2019-02-18 09.39.46.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 S1 - 2019-02-18 09.09.58.ndpi',
-'RREB1-TM1B-B6N-IC-2.2b 1125-18 G1 - 2019-02-18 12.35.37.ndpi',
-'RREB1-TM1B-B6N-IC-2.2b 1125-18 P1 - 2019-02-18 11.16.21.ndpi',
-'RREB1-TM1B-B6N-IC-2.2b 1125-18 S1 - 2019-02-18 11.06.53.ndpi',
-'RREB1-TM1B-B6N-IC-2.2d 1137-18 S1 - 2019-02-21 10.59.23.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 G1 - 2019-02-18 14.58.55.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 M1- 2019-02-18 14.50.13.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 P1 - 2019-02-18 14.13.24.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 S1 - 2019-02-18 14.05.58.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 G1 - 2019-02-21 15.26.24.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 M1 - 2019-02-21 15.04.14.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 P1 - 2019-02-21 14.39.43.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 S1 - 2019-02-21 14.04.12.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 0067-19 P1 - 2019-02-21 16.32.24.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 0067-19 S1 - 2019-02-21 16.00.37.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 67-19 G1 - 2019-02-21 17.29.31.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 67-19 M1 - 2019-02-21 17.04.37.ndpi',
-'RREB1-TM1B-B6N-IC-5.1c  68-19 G2 - 2019-02-22 09.43.59.ndpi',
-'RREB1-TM1B-B6N-IC- 5.1c 68 -19 M2 - 2019-02-22 09.27.30.ndpi',
-'RREB1-TM1B-B6N-IC -5.1c 68 -19 peri3 - 2019-02-22 09.08.26.ndpi',
-'RREB1-TM1B-B6N-IC- 5.1c 68 -19 sub2 - 2019-02-22 08.39.12.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 G2 - 2019-02-22 15.13.08.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 M1 - 2019-02-22 14.39.12.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 Peri1 - 2019-02-22 12.00.19.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 sub1 - 2019-02-22 11.44.13.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 G3 - 2019-02-25 10.34.30.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 M1 - 2019-02-25 09.53.00.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 P2 - 2019-02-25 09.27.06.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 S1 - 2019-02-25 08.51.26.ndpi',
-'RREB1-TM1B-B6N-IC-7.1a  71-19 G1 - 2019-02-25 12.27.06.ndpi',
-'RREB1-TM1B-B6N-IC-7.1a  71-19 P1 - 2019-02-25 11.31.30.ndpi',
-'RREB1-TM1B-B6N-IC-7.1a  71-19 S1 - 2019-02-25 11.03.59.ndpi'
+'FUS-DELTA-DBA-B6-IC 14.4a WF1 1052-18 - 2018-09-18 10.08.42.ndpi',
+'FUS-DELTA-DBA-B6-IC 14.4a WF2 1052-18 - 2018-09-18 10.12.56.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3a  1276-18 1 - 2018-12-03 12.18.01.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3a  1276-18 2 - 2018-12-03 12.22.52.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3a  1276-18 3 - 2018-12-03 12.27.21.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3b  1273-18 1 - 2018-12-03 11.11.51.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3b  1273-18 2 - 2018-12-03 11.17.25.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3b  1273-18 3 - 2018-12-03 11.22.28.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3c  1274-18 1 - 2018-12-03 11.27.49.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3c  1274-18 2 - 2018-12-03 11.32.18.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.3c  1274-18 3 - 2018-12-03 11.36.56.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.4a  1285-18 1 - 2018-12-04 10.23.00.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.4a  1285-18 2 - 2018-12-04 10.28.45.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.4a  1285-18 3 - 2018-12-04 10.34.10.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.4c  1286-18 1 - 2018-12-04 10.40.01.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.4c  1286-18 2 - 2018-12-04 10.43.30.ndpi',
+'FUS-DELTA-DBA-B6-IC-13.4c  1286-18 3 - 2018-12-04 10.47.03.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.2a  1287-18 1 - 2018-12-04 11.24.57.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.2a  1287-18 2 - 2018-12-04 11.28.34.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.2a  1287-18 3 - 2018-12-04 11.31.57.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.2b  1282-18 1 - 2018-12-03 16.31.18.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.2b  1282-18 2 - 2018-12-03 16.35.50.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.2b  1282-18 3 - 2018-12-03 16.41.01.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3a  1271-18 1 - 2018-12-03 10.18.57.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3a  1271-18 2 - 2018-12-03 10.23.49.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3a  1271-18 3 - 2018-12-03 10.28.18.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3b  1277-18 1 - 2018-12-03 14.35.52.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3b  1277-18 2 - 2018-12-03 14.40.04.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3b  1277-18 3 - 2018-12-03 14.44.04.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3c  1279-18 1 - 2018-12-03 15.34.30.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3c  1279-18 2 - 2018-12-03 15.40.01.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3c  1279-18 3 - 2018-12-03 15.45.23.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3d  1283-18 1 - 2018-12-04 09.36.48.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3d  1283-18 2 - 2018-12-04 09.41.57.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.3d  1283-18 3 - 2018-12-04 09.46.20.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4b  1284-18 1 - 2018-12-04 09.51.13.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4b  1284-18 2 - 2018-12-04 09.56.04.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4b  1284-18 3 - 2018-12-04 10.00.57.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4c  1272-18 1 - 2018-12-03 10.32.48.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4c  1272-18 2 - 2018-12-03 10.37.19.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4c  1272-18 3 - 2018-12-03 10.42.03.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4f  1280-18 1 - 2018-12-03 15.50.33.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4f  1280-18 2 - 2018-12-03 15.56.08.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4f  1280-18 3 - 2018-12-03 16.01.52.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4g  1281-18 1 - 2018-12-03 16.14.50.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4g  1281-18 2 - 2018-12-03 16.20.21.ndpi',
+'FUS-DELTA-DBA-B6-IC-14.4g  1281-18 3 - 2018-12-03 16.25.37.ndpi',
+'FUS-DELTA-DBA-B6-IC-15.2f  1275-18 1 - 2018-12-03 11.58.30.ndpi',
+'FUS-DELTA-DBA-B6-IC-15.2f  1275-18 2 - 2018-12-03 12.05.43.ndpi',
+'FUS-DELTA-DBA-B6-IC-15.2f  1275-18 3 - 2018-12-03 12.11.46.ndpi',
+'FUS-DELTA-DBA-B6-IC-15.2g  1278-18 1 - 2018-12-03 14.48.11.ndpi',
+'FUS-DELTA-DBA-B6-IC-15.2g  1278-18 2 - 2018-12-03 14.53.36.ndpi',
+'FUS-DELTA-DBA-B6-IC-15.2g  1278-18 3 - 2018-12-03 14.58.55.ndpi'
 ]
 
 # load colour modes of the KLF14 training dataset
