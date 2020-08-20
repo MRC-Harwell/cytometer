@@ -115,12 +115,9 @@ DEBUG = False
 SAVE_FIGS = False
 
 pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN models
-experiment_root_data_dir = os.path.join(home, 'Data/cytometer_data/rreb1')
 histology_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace/RREB1 Feb19')
-rreb1_figures_dir = os.path.join(experiment_root_data_dir, 'figures')
 area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
-results_dir = os.path.join(experiment_root_data_dir, 'results')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
@@ -128,11 +125,6 @@ filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_
 
 # file with RGB modes from all training data
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
-
-# although we don't need k-folds here, we need this file to load the list of SVG contours that we compute the AIDA
-# colourmap from
-# TODO: just save a cell size - colour function, instead of having to recompute it every time
-saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # model names
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
