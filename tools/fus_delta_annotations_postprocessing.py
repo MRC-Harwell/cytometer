@@ -1,6 +1,6 @@
 """
-This script aggregates all the cells in each '*_exp_0097_corrected.json' file and saves them to a
-'*_exp_0097_refined.json', then creates a soft links to it that will be read by AIDA so that we can refine the
+This script aggregates all the cells in each '*_exp_0001_corrected.json' file and saves them to a
+'*_exp_0001_refined.json', then creates a soft links to it that will be read by AIDA so that we can refine the
 segmentation by hand.
 """
 
