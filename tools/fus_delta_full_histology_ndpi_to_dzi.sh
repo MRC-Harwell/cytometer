@@ -7,7 +7,7 @@
 #    ./fus_delta_full_histology_ndpi_to_dzi.sh
 
 ndpi_dir=${HOME}/AAcevedo_images/FUS-DELTA-DBA-B6/"Histology scans"/"iWAT scans"
-dzi_dir=${HOME}/Data/cytometer_data/aida_data_Rreb1_tm1b/images
+dzi_dir=${HOME}/Data/cytometer_data/aida_data_Fus_Delta/images
 
 ndpi_list=(
 #'FUS-DELTA-DBA-B6-IC 14.4a BF1 1052-18 - 2018-09-18 10.16.32.ndpi'
