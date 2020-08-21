@@ -9,12 +9,7 @@ home = str(Path.home())
 
 import os
 import glob
-import shutil
 import cytometer.data
-import pickle
-import itertools
-from shapely.geometry import Polygon
-import PIL
 import openslide
 import numpy as np
 
