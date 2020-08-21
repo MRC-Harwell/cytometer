@@ -20,14 +20,15 @@ annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/a
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
-# list of annotations
-auto_annotation_files_list = os.path.join(annotations_dir, '*_exp_0003_auto.json')
-auto_annotation_files_list = glob.glob(auto_annotation_files_list)
-corrected_annotation_files_list = os.path.join(annotations_dir, '*_exp_0003_corrected.json')
-corrected_annotation_files_list = glob.glob(corrected_annotation_files_list)
+# suffixes of annotation filenames
+auto_filename_suffix = '_exp_0003_auto.json'
+corrected_filename_suffix = '_exp_0003_corrected.json'
 
-# variables
-overwrite_existing_aggregate_files = False
+# list of annotations
+auto_annotation_files_list = os.path.join(annotations_dir, '*' + auto_filename_suffix)
+auto_annotation_files_list = glob.glob(auto_annotation_files_list)
+corrected_annotation_files_list = os.path.join(annotations_dir, '*' + corrected_filename_suffix)
+corrected_annotation_files_list = glob.glob(corrected_annotation_files_list)
 
 ########################################################################################################################
 ## Colourmap for AIDA
@@ -63,8 +64,8 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
         aggregated_annotation_file = annotation_file.replace('.json', '_aggregated.json')
 
         # name of the original .ndpi file
-        ndpi_file = os.path.basename(annotation_file).replace('_exp_0003_auto.json', '.ndpi')
-        ndpi_file = ndpi_file.replace('_exp_0003_corrected.json', '.ndpi')
+        ndpi_file = os.path.basename(annotation_file).replace(auto_filename_suffix, '.ndpi')
+        ndpi_file = ndpi_file.replace(corrected_filename_suffix, '.ndpi')
         ndpi_file = os.path.join(histology_dir, ndpi_file)
 
         im = openslide.OpenSlide(ndpi_file)
