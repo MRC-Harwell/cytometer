@@ -103,26 +103,29 @@ fi
 # CUDA Toolkit 10.2
 case ${UBUNTU_VERSION}
 in
-    18.04)
-        pushd ~/Downloads
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-        sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
-        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
-        sudo apt-get update
-        sudo apt-get -y install cuda-10-2
-        popd
-        ;;
     20.04)
-        # CUDA 10.2
+        # Set up nVidia repositories
+        # https://www.tensorflow.org/install/gpu#install_cuda_with_apt
         tput setaf 1; echo "  ** Warning! CUDA packages are not available for Ubuntu 20.04, so we are going to use the Ubuntu 18.04 ones"; tput sgr0
         pushd ~/Downloads
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-        sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-repo-ubuntu1804_10.2.89-1_amd64.deb
         sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
-        sudo add-apt-repository "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
-        sudo apt-get update
-        sudo apt-get -y install cuda-10-2
+        sudo dpkg -i cuda-repo-ubuntu1804_10.2.89-1_amd64.deb
+        sudo apt update
+        wget http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
+        sudo apt install ./nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
+        sudo apt update
+        # Install NVIDIA driver
+        sudo apt-get install --no-install-recommends nvidia-driver-450
+        # Install development and runtime libraries (~4GB)
+        sudo apt-get install --no-install-recommends \
+            cuda-10-2 \
+            libcudnn7=7.6.5.32-1+cuda10.2  \
+            libcudnn7-dev=7.6.5.32-1+cuda10.2
+        # Install TensorRT. Requires that libcudnn7 is installed above.
+        sudo apt-get install -y --no-install-recommends libnvinfer6=6.0.1-1+cuda10.2 \
+            libnvinfer-dev=6.0.1-1+cuda10.2 \
+            libnvinfer-plugin6=6.0.1-1+cuda10.2
         popd
         ;;
     *)
@@ -179,7 +182,7 @@ NVIDIA_DRIVER_VERSION=`nvidia-smi --query-gpu=driver_version --format=csv,nohead
 # https://docs.nvidia.com/deeplearning/sdk/cudnn-support-matrix/index.html
 case ${NVIDIA_DRIVER_VERSION}
 in
-    450.*)  # CUDA 10.2, 11.0
+    450.*)  # CUDA 10.2
 
         conda install -y cudnn==7.6.5=cuda10.2_0
         ;;
@@ -196,12 +199,60 @@ pip install cython==0.29.21         # dependency of mkl-random/mkl-fft via pydot
 pip install pydot==1.4.1            # used by visualization utilities to plot model graphs
 
 ########################################################################
+## fix bug: missing dynamic libraries link
+#
+# With CUDA 10.2, tensorflow-gpu 1.15.0, the basic GPU test
+#
+# import tensorflow as tf
+# tf.test.is_gpu_available()
+#
+# gives the errors
+#
+# 2020-08-25 12:18:42.705540: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcudart.so.10.0'; dlerror: libcudart.so.10.0: cannot open shared object file: No such file or directory
+# 2020-08-25 12:18:42.705741: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcublas.so.10.0'; dlerror: libcublas.so.10.0: cannot open shared object file: No such file or directory
+# 2020-08-25 12:18:42.705847: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcufft.so.10.0'; dlerror: libcufft.so.10.0: cannot open shared object file: No such file or directory
+# 2020-08-25 12:18:42.705948: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcurand.so.10.0'; dlerror: libcurand.so.10.0: cannot open shared object file: No such file or directory
+# 2020-08-25 12:18:42.706053: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcusolver.so.10.0'; dlerror: libcusolver.so.10.0: cannot open shared object file: No such file or directory
+# 2020-08-25 12:18:42.706150: W tensorflow/stream_executor/platform/default/dso_loader.cc:55] Could not load dynamic library 'libcusparse.so.10.0'; dlerror: libcusparse.so.10.0: cannot open shared object file: No such file or directory
+# 2020-08-25 12:18:42.737947: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+# 2020-08-25 12:18:42.737987: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1641] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+# Skipping registering GPU devices...
+#
+# The problem is that the required libraries have slightly newer versions.
+#
+# We can fix the problem by creating symlinks with the expected library names to the lightly newer versions of the
+# libraries
+
+case ${UBUNTU_VERSION}
+in
+    20.04)
+
+        # list of missing libraries
+        source_missing_libraries=('libcudart.so.10.0' 'libcublas.so.10.0' 'libcufft.so.10.0' 'libcurand.so.10.0' 'libcusolver.so.10.0' 'libcusparse.so.10.0')
+        target_missing_libraries=('libcudart.so.10.2' 'libcublas.so.10' 'libcufft.so.10' 'libcurand.so.10' 'libcusolver.so.10' 'libcusparse.so.10')
+
+        # loop array indices
+        for i in "${!missing_libraries[@]}"; do
+
+            source_missing_library=${HOME}/Software/miniconda3/envs/cytometer_tensorflow/lib/${source_missing_libraries[i]}
+            target_missing_library=${target_missing_libraries[i]}
+
+            # create symlinks
+            if [[ -f ${source_missing_library} ]]; then
+                echo "Link from ${source_missing_library} to ${target_missing_library} already exists"
+            else
+                echo "Creating link from ${source_missing_library} to ${target_missing_library}"
+                ln -s ${target_missing_library} ${source_missing_library}
+            fi
+        done
+
+########################################################################
 ## install cytometer python dependencies packages in the local environment
 
 tput setaf 1; echo "** Install cytometer python dependencies in the local conda environment"; tput sgr0
 
 # install other python packages
-pip install git+https://www.github.com/keras-team/keras-contrib.git  # tested with version 2.0.8
+pip install git+https://www.github.com/keras-team/keras-contrib.git
 conda install -y matplotlib==3.2.2 pillow==7.2.0
 conda install -y scikit-image==0.15.0 scikit-learn==0.23.1
 conda install -y nose==1.3.7 pytest==5.4.3
