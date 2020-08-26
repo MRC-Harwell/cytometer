@@ -84,7 +84,8 @@ home = str(Path.home())
 import os
 from pathlib import Path
 import sys
-sys.path.extend([os.path.join(home, 'Software/cytometer')])
+if os.path.join(home, 'Software/cytometer') not in sys.path:
+    sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 import cytometer.data
 
