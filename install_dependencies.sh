@@ -126,6 +126,9 @@ in
         sudo apt-get install -y --no-install-recommends libnvinfer6=6.0.1-1+cuda10.2 \
             libnvinfer-dev=6.0.1-1+cuda10.2 \
             libnvinfer-plugin6=6.0.1-1+cuda10.2
+        # prevent these last packages from being upgraded, as cuda 11 is available but we don't want it because it's
+        # not compatible with our chosen version of tensorflow
+        sudo apt-mark hold libnvinfer-dev libnvinfer-plugin7 libnvinfer7
         popd
         ;;
     *)
@@ -232,7 +235,7 @@ in
         target_missing_libraries=('libcudart.so.10.2' 'libcublas.so.10' 'libcufft.so.10' 'libcurand.so.10' 'libcusolver.so.10' 'libcusparse.so.10')
 
         # loop array indices
-        for i in "${!missing_libraries[@]}"; do
+        for i in "${!source_missing_libraries[@]}"; do
 
             source_missing_library=${HOME}/Software/miniconda3/envs/cytometer_tensorflow/lib/${source_missing_libraries[i]}
             target_missing_library=${target_missing_libraries[i]}
@@ -245,6 +248,8 @@ in
                 ln -s ${target_missing_library} ${source_missing_library}
             fi
         done
+        ;;
+esac
 
 ########################################################################
 ## install cytometer python dependencies packages in the local environment
@@ -256,7 +261,7 @@ pip install git+https://www.github.com/keras-team/keras-contrib.git
 conda install -y matplotlib==3.2.2 pillow==7.2.0
 conda install -y scikit-image==0.15.0 scikit-learn==0.23.1
 conda install -y nose==1.3.7 pytest==5.4.3
-pip install setuptools==49.2.0
+pip install setuptools==45
 pip install opencv-python==4.1.0.25 pysto==1.4.1 openslide-python==1.1.1 seaborn==0.10.0 statannot==0.2.3
 pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.4 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
 pip install mlxtend==0.17.0 ujson==1.35
