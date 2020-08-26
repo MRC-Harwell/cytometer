@@ -8,6 +8,9 @@ from pathlib import Path
 home = str(Path.home())
 
 import os
+import sys
+sys.path.extend([os.path.join(home, 'Software/cytometer')])
+
 import glob
 import cytometer.data
 import openslide
