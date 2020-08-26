@@ -284,11 +284,11 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # name of file to save annotations to
     annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0003_auto.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0001_auto.json')
 
     annotations_corrected_file = os.path.basename(ndpi_file)
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
-    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0003_corrected.json')
+    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0001_corrected.json')
 
     # name of file to save rough mask, current mask, and time steps
     rough_mask_file = os.path.basename(ndpi_file)
@@ -596,7 +596,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             # TODO: check whether the mouse is male or female, and use corresponding f_area2quantile
             contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile_m.item(),
                                                               cell_prob=window_white_adipocyte_prob,
-                                                              xres=xres, yres=yres)
+                                                              xres=xres*1e6, yres=yres*1e6)
             rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
             rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
 
@@ -612,7 +612,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             # convert corrected contours to AIDA items
             contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
                                                                         cell_prob=window_white_adipocyte_prob_corrected,
-                                                                        xres=xres, yres=yres)
+                                                                        xres=xres*1e6, yres=yres*1e6)
 
             if step == 1:
                 # in the first step, overwrite previous annotations file, or create new one
