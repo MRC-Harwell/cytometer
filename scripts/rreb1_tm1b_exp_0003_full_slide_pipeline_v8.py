@@ -106,6 +106,12 @@ from keras import backend as K
 import scipy.stats
 from shapely.geometry import Polygon
 
+import tensorflow as tf
+if tf.test.is_gpu_available():
+    print('GPU available')
+else:
+    raise SystemError('GPU is not available')
+
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
 # config = tf.ConfigProto()
