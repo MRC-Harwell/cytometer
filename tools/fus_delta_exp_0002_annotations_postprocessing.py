@@ -1,6 +1,6 @@
 """
-This script aggregates all the cells in each '*_exp_0001_[auto | corrected].json' file and saves them to a
-'*_exp_0001_[auto | corrected]_aggregate.json', then creates a soft links to it that will be read by AIDA.
+This script aggregates all the cells in each '*_exp_0002_auto.json' file and saves them to a
+'*_exp_0002_auto_aggregate.json', then creates a soft links to it that will be read by AIDA.
 """
 
 # cross-platform home directory
@@ -24,14 +24,11 @@ annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Fus_Delta/an
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
 # suffixes of annotation filenames
-auto_filename_suffix = '_exp_0001_auto.json'
-corrected_filename_suffix = '_exp_0001_corrected.json'
+auto_filename_suffix = '_exp_0002_auto.json'
 
 # list of annotations
 auto_annotation_files_list = os.path.join(annotations_dir, '*' + auto_filename_suffix)
 auto_annotation_files_list = glob.glob(auto_annotation_files_list)
-corrected_annotation_files_list = os.path.join(annotations_dir, '*' + corrected_filename_suffix)
-corrected_annotation_files_list = glob.glob(corrected_annotation_files_list)
 
 ########################################################################################################################
 ## Colourmap for AIDA
@@ -68,7 +65,6 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
 
         # name of the original .ndpi file
         ndpi_file = os.path.basename(annotation_file).replace(auto_filename_suffix, '.ndpi')
-        ndpi_file = ndpi_file.replace(corrected_filename_suffix, '.ndpi')
         ndpi_file = os.path.join(histology_dir, ndpi_file)
 
         im = openslide.OpenSlide(ndpi_file)
@@ -106,4 +102,3 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
 
 # create aggreagated annotation files for auto segmentations, and link to them
 process_annotations(auto_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=True)
-process_annotations(corrected_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=False)
