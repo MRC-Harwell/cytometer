@@ -256,8 +256,8 @@ else:
     raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
                             ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
 
-# load AIDA's colourmap
-cm = cytometer.data.aida_colourmap()
+# # load AIDA's colourmap
+# cm = cytometer.data.aida_colourmap()
 
 ########################################################################################################################
 ## Segmentation loop
