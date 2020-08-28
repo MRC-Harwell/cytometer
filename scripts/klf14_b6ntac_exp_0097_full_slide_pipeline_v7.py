@@ -26,7 +26,8 @@ from pathlib import Path
 import sys
 import pickle
 import ujson
-sys.path.extend([os.path.join(home, 'Software/cytometer')])
+if os.path.join(home, 'Software/cytometer') not in sys.path:
+    sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import cytometer.utils
 import cytometer.data
 
@@ -45,13 +46,18 @@ import matplotlib.pyplot as plt
 import glob
 from cytometer.utils import rough_foreground_mask, bspline_resample
 import PIL
-import tensorflow as tf
 import keras
 from keras import backend as K
 from skimage.measure import regionprops
 import shutil
 import itertools
 from shapely.geometry import Polygon
+
+import tensorflow as tf
+if tf.test.is_gpu_available():
+    print('GPU available')
+else:
+    raise SystemError('GPU is not available')
 
 # # limit GPU memory used
 # from keras.backend.tensorflow_backend import set_session
@@ -388,10 +394,10 @@ f_area2quantile = cytometer.data.area2quantile(manual_areas_all)
 
 # DEBUG: i_file = 0; ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 # for i_file, ndpi_file_kernel in reversed(list(enumerate(ndpi_files_test_list))):
-for i_file in list(range(193, 196)):
+for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
 
-    # name of the slice to analyse
-    ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
+    # # name of the slice to analyse
+    # ndpi_file_kernel = list(ndpi_files_test_list.keys())[i_file]
 
     # fold  where the current .ndpi image was not used for training
     i_fold = ndpi_files_test_list[ndpi_file_kernel]
