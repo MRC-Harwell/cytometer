@@ -148,7 +148,7 @@ fullres_box_size = np.array([2751, 2751])
 receptive_field = np.array([131, 131])
 
 # rough_foreground_mask() parameters
-downsample_factor = 16.00271396740329
+downsample_factor = 16
 dilation_size = 25
 component_size_threshold = 50e3
 hole_size_treshold = 8000
