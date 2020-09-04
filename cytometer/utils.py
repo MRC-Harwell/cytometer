@@ -213,7 +213,7 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
 
     # contrast enhancement
     im_downsampled_bak = im_downsampled.copy()
-    if enhance_contrast != 1.0:
+    if (enhance_contrast is not None) and (enhance_contrast != 1.0):
         enhancer = ImageEnhance.Contrast(Image.fromarray(im_downsampled))
         im_downsampled = np.array(enhancer.enhance(enhance_contrast))
 
