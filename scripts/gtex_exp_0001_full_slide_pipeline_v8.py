@@ -96,10 +96,11 @@ import cytometer.data
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
+import warnings
 import time
 import openslide
 import numpy as np
@@ -148,7 +149,7 @@ fullres_box_size = np.array([2751, 2751])
 receptive_field = np.array([131, 131])
 
 # rough_foreground_mask() parameters
-downsample_factor = 16
+downsample_factor_goal = 16  # approximate value, that may vary a bit in each histology file
 dilation_size = 25
 component_size_threshold = 50e3
 hole_size_treshold = 8000
@@ -161,8 +162,8 @@ contour_downsample_factor = 0.1
 bspline_k = 1
 
 # block_split() parameters in downsampled image
-block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
-block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
+block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor_goal)
+block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor_goal).astype(np.int)
 window_overlap_fraction_max = 0.9
 
 # segmentation parameters
@@ -1244,13 +1245,21 @@ for i_file, histo_file in enumerate(histo_files_list):
 
         time_prev = time.time()
 
+        # true downsampled factor as reported by histology file
+        level_actual = np.abs(np.array(im.level_downsamples) - downsample_factor_goal).argmin()
+        downsample_factor_actual = im.level_downsamples[level_actual]
+        if np.abs(downsample_factor_actual - downsample_factor_goal) > 1:
+            warnings.warn('The histology file has no downsample level close enough to the target downsample level')
+            continue
+
         # compute the rough foreground mask of tissue vs. background
-        lores_istissue0, im_downsampled = rough_foreground_mask(histo_file, downsample_factor=downsample_factor,
-                                                                dilation_size=dilation_size,
-                                                                component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold, std_k=std_k,
-                                                                return_im=True, enhance_contrast=enhance_contrast,
-                                                                ignore_white_threshold=ignore_white_threshold)
+        lores_istissue0, im_downsampled = \
+            rough_foreground_mask(histo_file, downsample_factor=downsample_factor_actual,
+                                  dilation_size=dilation_size,
+                                  component_size_threshold=component_size_threshold,
+                                  hole_size_treshold=hole_size_treshold, std_k=std_k,
+                                  return_im=True, enhance_contrast=enhance_contrast,
+                                  ignore_white_threshold=ignore_white_threshold)
 
         if DEBUG:
             enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(im_downsampled))
@@ -1320,7 +1329,7 @@ for i_file, histo_file in enumerate(histo_files_list):
         # get indices for the next histology window to process
         (first_row, last_row, first_col, last_col), \
         (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
-            cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
+            cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor_actual,
                                                     max_window_size=fullres_box_size,
                                                     border=np.round((receptive_field-1)/2))
 
@@ -1571,7 +1580,7 @@ for i_file, histo_file in enumerate(histo_files_list):
 
         # save to the rough mask file
         np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
-                            im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
+                            im_downsampled=im_downsampled, step=step, perc_completed_all=   perc_completed_all,
                             time_step_all=time_step_all,
                             prev_first_row=prev_first_row, prev_last_row=prev_last_row,
                             prev_first_col=prev_first_col, prev_last_col=prev_last_col)
