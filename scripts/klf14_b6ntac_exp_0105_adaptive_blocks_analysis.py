@@ -22,6 +22,7 @@ DEBUG = False
 histology_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
@@ -223,6 +224,9 @@ plt.xlabel('Processed area with uniform tiling ($\cdot 10^9$ pixel$^2$)', fontsi
 plt.ylabel('Processed area with adaptive tiling\n($\cdot 10^9$ pixel$^2$)', fontsize=14)
 plt.tick_params(labelsize=14)
 plt.tight_layout()
+
+plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0105_uniform_vs_adaptive_tiling.png'),
+            bbox_inches='tight')
 
 print('Processed area adaptive / uniform ratio: '
       + str(np.mean(np.array(area_all_adaptive_images) / np.array(area_all_uniform_images)))
