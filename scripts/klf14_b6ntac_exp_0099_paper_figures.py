@@ -389,7 +389,9 @@ print('m MAT: mean = ' + str(np.mean(weight_m_mat)) + ', std = ' + str(np.std(we
 print('m PAT: mean = ' + str(np.mean(weight_m_pat)) + ', std = ' + str(np.std(weight_m_pat)))
 
 ########################################################################################################################
-## Plots of get_next_roi_to_process()
+## Plots of get_next_roi_to_process(): Adaptive Block Algorithm
+#
+# Note: the quantitative comparison versus uniform tiling is provided in klf14_b6ntac_exp_0105_adaptive_blocks_analysis.py
 ########################################################################################################################
 
 import pickle
