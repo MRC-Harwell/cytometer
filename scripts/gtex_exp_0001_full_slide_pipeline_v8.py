@@ -26,6 +26,10 @@ Difference with rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py:
 Difference with fus_delta_exp_0001_full_slide_pipeline_v8.py:
   * Change to GTEx data.
 
+You can run this script limiting it to one GPU with:
+
+    export CUDA_VISIBLE_DEVICES=0 && python gtex_exp_0001_full_slide_pipeline_v8.py
+
  Requirements for this script to work:
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
@@ -96,8 +100,12 @@ import cytometer.data
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # limit number of GPUs
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+if 'CUDA_VISIBLE_DEVICES' not in os.environ.keys():
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+if 'CUDA_VISIBLE_DEVICES' in os.environ.keys():
+    print('Limiting visible CUDA devices to: ' + os.environ['CUDA_VISIBLE_DEVICES'])
 
+# force tensorflow environment
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
 import warnings
@@ -1226,6 +1234,13 @@ for i_file, histo_file in enumerate(histo_files_list):
     # check whether we continue previous execution, or we start a new one
     continue_previous = os.path.isfile(rough_mask_file)
 
+    # true downsampled factor as reported by histology file
+    level_actual = np.abs(np.array(im.level_downsamples) - downsample_factor_goal).argmin()
+    downsample_factor_actual = im.level_downsamples[level_actual]
+    if np.abs(downsample_factor_actual - downsample_factor_goal) > 1:
+        warnings.warn('The histology file has no downsample level close enough to the target downsample level')
+        continue
+
     # if the rough mask has been pre-computed, just load it
     if continue_previous:
 
@@ -1244,13 +1259,6 @@ for i_file, histo_file in enumerate(histo_files_list):
     else:
 
         time_prev = time.time()
-
-        # true downsampled factor as reported by histology file
-        level_actual = np.abs(np.array(im.level_downsamples) - downsample_factor_goal).argmin()
-        downsample_factor_actual = im.level_downsamples[level_actual]
-        if np.abs(downsample_factor_actual - downsample_factor_goal) > 1:
-            warnings.warn('The histology file has no downsample level close enough to the target downsample level')
-            continue
 
         # compute the rough foreground mask of tissue vs. background
         lores_istissue0, im_downsampled = \
@@ -1310,6 +1318,9 @@ for i_file, histo_file in enumerate(histo_files_list):
             plt.contour(lores_istissue0, colors='k')
             plt.subplot(212)
             plt.imshow(lores_istissue0)
+
+            plt.cla()
+            plt.imshow(lores_istissue)
 
     # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the KLF14
     # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
@@ -1417,7 +1428,7 @@ for i_file, histo_file in enumerate(histo_files_list):
         else:  # there's at least one object in the segmentation
 
             if DEBUG:
-                j = 4
+                j = 0
                 plt.clf()
                 plt.subplot(221)
                 plt.imshow(tile[:, :, :])
