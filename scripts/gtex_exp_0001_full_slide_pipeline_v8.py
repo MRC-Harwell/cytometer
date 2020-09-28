@@ -1398,7 +1398,7 @@ for i_file, histo_file in enumerate(histo_files_list):
                                                      correction_model=correction_model_file,
                                                      classifier_model=classifier_model_file,
                                                      min_cell_area=0,
-                                                     max_cell_area=np.inf,
+                                                     max_cell_area=max_cell_area,
                                                      mask=istissue_tile,
                                                      min_mask_overlap=min_mask_overlap,
                                                      phagocytosis=phagocytosis,
