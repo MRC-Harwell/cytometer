@@ -2063,7 +2063,7 @@ def clean_segmentation(labels,
             labels_class = np.expand_dims(labels_class, axis=0)
 
     is_removed_edge_label = np.zeros(shape=labels.shape, dtype=np.bool)
-    for i in range(labels.shape[0]):
+    for i in range(labels.shape[0]):  # loop label images
 
         if DEBUG:
             plt.clf()
@@ -2157,18 +2157,6 @@ def clean_segmentation(labels,
             plt.subplot(223)
             plt.imshow(labels[i, :, :])
 
-        # remove edge segmentations, because in general they correspond to incomplete objects
-        if remove_edge_labels:
-            labels_edge = edge_labels(labels[i, :, :])
-            is_removed_edge_label[i, :, :] = np.isin(labels[i, :, :], test_elements=labels_edge)  # bool of pixels on edge cells
-            aux = labels[i, :, :]
-            aux[is_removed_edge_label[i, :, :]] = 0
-
-        if DEBUG:
-            plt.subplot(224)
-            plt.imshow(labels[i, :, :])
-            plt.contour(is_removed_edge_label[i, :, :], colors='w')
-
         # remove large objects
         if max_cell_area < np.inf:
             aux = labels[i, :, :]
@@ -2178,9 +2166,21 @@ def clean_segmentation(labels,
                     aux[aux == p.label] = 0
 
         if DEBUG:
-            plt.subplot(223)
+            plt.subplot(224)
             plt.cla()
             plt.imshow(labels[i, :, :])
+
+        # remove edge segmentations, because in general they correspond to incomplete objects
+        if remove_edge_labels:
+            labels_edge = edge_labels(labels[i, :, :])
+            is_removed_edge_label[i, :, :] = np.isin(labels[i, :, :], test_elements=labels_edge)  # bool of pixels on edge cells
+            aux = labels[i, :, :]
+            aux[is_removed_edge_label[i, :, :]] = 0
+
+        if DEBUG:
+            plt.subplot(223)
+            plt.imshow(labels[i, :, :])
+            plt.contour(is_removed_edge_label[i, :, :], colors='w')
 
     # remove dummy dimension if the input was 2D
     if labels_is2d:
