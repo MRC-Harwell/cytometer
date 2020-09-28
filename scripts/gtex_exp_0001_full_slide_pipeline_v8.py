@@ -82,7 +82,7 @@ You can run this script limiting it to one GPU with:
 """
 
 # script name to identify this experiment
-experiment_id = 'gtex_exp_0001_full_slide_pipeline_v8.py'
+experiment_id = 'gtex_exp_0001_full_slide_pipeline_v8'
 
 # cross-platform home directory
 from pathlib import Path
