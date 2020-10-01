@@ -115,8 +115,8 @@ in
         wget http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
         sudo apt install ./nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
         sudo apt update
-        # Install NVIDIA driver
-        sudo apt-get install --no-install-recommends nvidia-driver-450
+        # Install NVIDIA driver (not needed, cuda-10-2 installs it as a dependency)
+        # sudo apt-get install --no-install-recommends nvidia-driver-455
         # Install development and runtime libraries (~4GB)
         sudo apt-get install --no-install-recommends \
             cuda-10-2 \
