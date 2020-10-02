@@ -1,5 +1,5 @@
 """
-Processing full slides of GTEx WAT histology with pipeline v8:
+Processing full slides of KLF14 WAT histology with pipeline v8:
 
  * data generation
    * training images (*0076*)
@@ -26,9 +26,12 @@ Difference with rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py:
 Difference with fus_delta_exp_0001_full_slide_pipeline_v8.py:
   * Change to GTEx data.
 
+Differences with gtex_exp_0001_full_slide_pipeline_v8.py:
+  * Change to KLF14 data.
+
 You can run this script limiting it to one GPU with:
 
-    export CUDA_VISIBLE_DEVICES=0 && python gtex_exp_0001_full_slide_pipeline_v8.py
+    export CUDA_VISIBLE_DEVICES=0 && python klf14_b6ntac_exp_0106_full_slide_pipeline_v8.py
 
  Requirements for this script to work:
 
@@ -36,27 +39,27 @@ You can run this script limiting it to one GPU with:
 
  2) Run ./install_dependencies.sh in cytometer.
 
- 3) Mount the network share//jesse.mrch.har.mrc.ac.uk/mousedata on ~/jesse_mousedata with CIFS so that we have access to
-    GTEx .svs (TIFF) files. You can do it by creating an empty directory
+ 3) Mount the network share //scan-srv2/cox/"Maz Yon" on ~/scan_srv2_cox with CIFS so that we have access to
+    KLF14 .ndpi files. You can do it by creating an empty directory
 
-    mkdir ~/jesse_mousedata
+    mkdir ~/scan_srv2_cox
 
     and adding a line like this to /etc/fstab in the server (adjusting the uid and gid to your own).
 
-    //jesse.mrch.har.mrc.ac.uk/mousedata          /home/rcasero/jesse_mousedata          cifs    credentials=/home/rcasero/.smbcredentials,vers=3.0,domain=mrch,sec=ntlmv2,uid=1005,gid=1005,user 0 0
+    //scan-srv2/cox /home/rcasero/scan_srv2_cox cifs credentials=/home/rcasero/.smbcredentials,vers=3.0,domain=MRCH,sec=ntlmv2,uid=1003,gid=1003,user 0 0
 
     Then
 
-    mount ~/jesse_mousedata
+    mount ~/scan_srv2_cox
 
- 4) Convert the .svs files to AIDA .dzi files, so that we can see the results of the segmentation.
+ 4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
-    ~/Software/cytometer/tools/TODO
+    ~/Software/cytometer/tools/klf14_full_histology_ndpi_to_dzi.sh
 
     and run
 
     cd ~/Software/cytometer/tools
-    ./TODO
+    ./klf14_full_histology_ndpi_to_dzi.sh
 
  5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data in
     ~/Data/cytometer_data/klf14/saved_models.
@@ -69,7 +72,7 @@ You can run this script limiting it to one GPU with:
     You also need to create a soft link per .dzi file to the annotations you want to visualise for that file, whether
     the non-overlapping ones, or the corrected ones. E.g.
 
-    ln -s 'FUS-DELTA-DBA-B6-IC-13.3a  1276-18 1 - 2018-12-03 12.18.01.ndpi_exp_0001_corrected.json' 'FUS-DELTA-DBA-B6-IC-13.3a  1276-18 1 - 2018-12-03 12.18.01.ndpi'
+    ln -s 'KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38_exp_0106_corrected.json' 'KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38.ndpi'
 
     Then you can use a browser to open the AIDA web interface by visiting the URL (note that you need to be on the MRC
     VPN, or connected from inside the office to get access to the titanrtx server)
@@ -82,7 +85,7 @@ You can run this script limiting it to one GPU with:
 """
 
 # script name to identify this experiment
-experiment_id = 'gtex_exp_0001_full_slide_pipeline_v8.py'
+experiment_id = 'klf14_b6ntac_exp_0106_full_slide_pipeline_v8'
 
 # cross-platform home directory
 from pathlib import Path
@@ -111,6 +114,7 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import warnings
 import time
 import openslide
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from cytometer.utils import rough_foreground_mask, bspline_resample
@@ -135,16 +139,20 @@ DEBUG = False
 SAVE_FIGS = False
 
 pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN models
-histology_dir = os.path.join(home, 'jesse_mousedata/GTEx')
+histology_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+histology_ext = '.ndpi'
 area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_GTEx/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
 # file with RGB modes from all training data
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
+
+# k-folds file
+saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # model names
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
@@ -161,7 +169,7 @@ downsample_factor_goal = 16  # approximate value, that may vary a bit in each hi
 dilation_size = 25
 component_size_threshold = 50e3
 hole_size_treshold = 8000
-std_k = 1.00
+std_k = 0.25
 enhance_contrast = 4.0
 ignore_white_threshold = 253
 
@@ -184,989 +192,198 @@ correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
 
-# list of NDPI files to process
-histo_files_list = [
-"GTEX-1117F-0225.svs",
-"GTEX-111CU-1825.svs",
-"GTEX-111FC-0225.svs",
-"GTEX-111FC-1425.svs",
-"GTEX-111VG-2325.svs",
-"GTEX-111YS-2425.svs",
-"GTEX-1122O-2025.svs",
-"GTEX-1128S-2125.svs",
-"GTEX-113IC-0225.svs",
-"GTEX-113JC-2525.svs",
-"GTEX-117XS-2425.svs",
-"GTEX-117YW-2325.svs",
-"GTEX-117YX-2225.svs",
-"GTEX-1192W-2425.svs",
-"GTEX-1192X-0125.svs",
-"GTEX-11DXW-0325.svs",
-"GTEX-11DXX-2325.svs",
-"GTEX-11DXY-2525.svs",
-"GTEX-11DXZ-2225.svs",
-"GTEX-11DYG-0225.svs",
-"GTEX-11DZ1-0225.svs",
-"GTEX-11EI6-0225.svs",
-"GTEX-11EM3-2325.svs",
-"GTEX-11EMC-2825.svs",
-"GTEX-11EQ8-0225.svs",
-"GTEX-11EQ9-2525.svs",
-"GTEX-11GS4-2625.svs",
-"GTEX-11GSO-2325.svs",
-"GTEX-11GSP-2625.svs",
-"GTEX-11H98-0225.svs",
-"GTEX-11I78-2625.svs",
-"GTEX-11ILO-0225.svs",
-"GTEX-11LCK-1125.svs",
-"GTEX-11NSD-2125.svs",
-"GTEX-11NUK-0325.svs",
-"GTEX-11NV4-0225.svs",
-"GTEX-11O72-0225.svs",
-"GTEX-11OC5-0225.svs",
-"GTEX-11OF3-2425.svs",
-"GTEX-11ONC-2525.svs",
-"GTEX-11P7K-2025.svs",
-"GTEX-11P81-2425.svs",
-"GTEX-11P82-1725.svs",
-"GTEX-11PRG-0625.svs",
-"GTEX-11TT1-2425.svs",
-"GTEX-11TTK-0225.svs",
-"GTEX-11TUW-2625.svs",
-"GTEX-11UD1-0225.svs",
-"GTEX-11UD2-0125.svs",
-"GTEX-11VI4-1825.svs",
-"GTEX-11WQC-2425.svs",
-"GTEX-11WQK-0625.svs",
-"GTEX-11XUK-2125.svs",
-"GTEX-11ZTS-0225.svs",
-"GTEX-11ZTT-2525.svs",
-"GTEX-11ZU8-2425.svs",
-"GTEX-11ZUS-0725.svs",
-"GTEX-11ZVC-2625.svs",
-"GTEX-1211K-2225.svs",
-"GTEX-12126-0425.svs",
-"GTEX-1212Z-2425.svs",
-"GTEX-12584-0225.svs",
-"GTEX-12696-2525.svs",
-"GTEX-1269C-2725.svs",
-"GTEX-12BJ1-2325.svs",
-"GTEX-12C56-1625.svs",
-"GTEX-12KS4-0425.svs",
-"GTEX-12WS9-0225.svs",
-"GTEX-12WSA-0325.svs",
-"GTEX-12WSB-0225.svs",
-"GTEX-12WSC-0225.svs",
-"GTEX-12WSD-0225.svs",
-"GTEX-12WSE-0625.svs",
-"GTEX-12WSF-0225.svs",
-"GTEX-12WSG-2925.svs",
-"GTEX-12WSH-2625.svs",
-"GTEX-12WSI-2425.svs",
-"GTEX-12WSJ-2125.svs",
-"GTEX-12WSK-2525.svs",
-"GTEX-12WSL-2425.svs",
-"GTEX-12WSM-0225.svs",
-"GTEX-12WSN-2425.svs",
-"GTEX-12ZZW-0225.svs",
-"GTEX-12ZZX-0225.svs",
-"GTEX-12ZZY-0325.svs",
-"GTEX-12ZZZ-0525.svs",
-"GTEX-13111-1725.svs",
-"GTEX-13112-2725.svs",
-"GTEX-13113-1825.svs",
-"GTEX-1313W-0225.svs",
-"GTEX-1314G-1625.svs",
-"GTEX-131XE-2425.svs",
-"GTEX-131XF-2225.svs",
-"GTEX-131XG-2425.svs",
-"GTEX-131XH-2325.svs",
-"GTEX-131XW-0525.svs",
-"GTEX-131YS-0225.svs",
-"GTEX-132AR-0225.svs",
-"GTEX-132NY-0425.svs",
-"GTEX-132Q8-0325.svs",
-"GTEX-132QS-2525.svs",
-"GTEX-1339X-2525.svs",
-"GTEX-133LE-1925.svs",
-"GTEX-1399Q-0625.svs",
-"GTEX-1399R-2625.svs",
-"GTEX-1399S-2525.svs",
-"GTEX-1399T-2725.svs",
-"GTEX-1399U-2425.svs",
-"GTEX-139D8-0325.svs",
-"GTEX-139T4-0125.svs",
-"GTEX-139T6-2125.svs",
-"GTEX-139T8-0225.svs",
-"GTEX-139TS-2725.svs",
-"GTEX-139TT-0225.svs",
-"GTEX-139TU-0225.svs",
-"GTEX-139UC-2625.svs",
-"GTEX-139UW-2725.svs",
-"GTEX-139YR-2425.svs",
-"GTEX-13CF2-2625.svs",
-"GTEX-13CF3-2325.svs",
-"GTEX-13CIG-0125.svs",
-"GTEX-13CZU-1825.svs",
-"GTEX-13CZV-0125.svs",
-"GTEX-13D11-2325.svs",
-"GTEX-13FH7-2225.svs",
-"GTEX-13FHO-0325.svs",
-"GTEX-13FHP-0225.svs",
-"GTEX-13FLV-2725.svs",
-"GTEX-13FLW-2525.svs",
-"GTEX-13FTW-2525.svs",
-"GTEX-13FTX-1925.svs",
-"GTEX-13FTY-0625.svs",
-"GTEX-13FTZ-1925.svs",
-"GTEX-13FXS-0125.svs",
-"GTEX-13G51-2625.svs",
-"GTEX-13IVO-0225.svs",
-"GTEX-13JUV-2825.svs",
-"GTEX-13JVG-0225.svs",
-"GTEX-13N11-2625.svs",
-"GTEX-13N1W-0225.svs",
-"GTEX-13N2G-2725.svs",
-"GTEX-13NYB-2625.svs",
-"GTEX-13NYC-0425.svs",
-"GTEX-13NYS-0225.svs",
-"GTEX-13NZ8-0925.svs",
-"GTEX-13NZ9-0525.svs",
-"GTEX-13NZA-0125.svs",
-"GTEX-13NZB-2425.svs",
-"GTEX-13O1R-0225.svs",
-"GTEX-13O21-1525.svs",
-"GTEX-13O3O-0225.svs",
-"GTEX-13O3P-0225.svs",
-"GTEX-13O3Q-2325.svs",
-"GTEX-13O61-2425.svs",
-"GTEX-13OVG-2025.svs",
-"GTEX-13OVH-0225.svs",
-"GTEX-13OVI-1325.svs",
-"GTEX-13OVJ-0325.svs",
-"GTEX-13OVK-2125.svs",
-"GTEX-13OVL-0325.svs",
-"GTEX-13OW5-0225.svs",
-"GTEX-13OW6-0525.svs",
-"GTEX-13OW7-0225.svs",
-"GTEX-13OW8-1225.svs",
-"GTEX-13PDP-0225.svs",
-"GTEX-13PL6-0225.svs",
-"GTEX-13PL7-0925.svs",
-"GTEX-13PLJ-0125.svs",
-"GTEX-13PVQ-0225.svs",
-"GTEX-13PVR-2425.svs",
-"GTEX-13QBU-2525.svs",
-"GTEX-13QIC-2425.svs",
-"GTEX-13QJ3-0425.svs",
-"GTEX-13QJC-2825.svs",
-"GTEX-13RTJ-2525.svs",
-"GTEX-13RTK-1525.svs",
-"GTEX-13RTL-0225.svs",
-"GTEX-13S7M-0225.svs",
-"GTEX-13S86-2125.svs",
-"GTEX-13SLW-0225.svs",
-"GTEX-13SLX-0425.svs",
-"GTEX-13U4I-0225.svs",
-"GTEX-13VXT-0225.svs",
-"GTEX-13VXU-0225.svs",
-"GTEX-13W3W-2525.svs",
-"GTEX-13W46-0325.svs",
-"GTEX-13X6H-2225.svs",
-"GTEX-13X6I-0725.svs",
-"GTEX-13X6J-0225.svs",
-"GTEX-13X6K-0225.svs",
-"GTEX-13YAN-0425.svs",
-"GTEX-1445S-0425.svs",
-"GTEX-144FL-0225.svs",
-"GTEX-144GL-0225.svs",
-"GTEX-144GM-1925.svs",
-"GTEX-144GN-2225.svs",
-"GTEX-144GO-1625.svs",
-"GTEX-145LS-0225.svs",
-"GTEX-145LT-1825.svs",
-"GTEX-145LU-0225.svs",
-"GTEX-145LV-2225.svs",
-"GTEX-145ME-1925.svs",
-"GTEX-145MF-0525.svs",
-"GTEX-145MG-0125.svs",
-"GTEX-145MH-0225.svs",
-"GTEX-145MI-0425.svs",
-"GTEX-145MN-2625.svs",
-"GTEX-145MO-0425.svs",
-"GTEX-146FH-0225.svs",
-"GTEX-146FQ-0225.svs",
-"GTEX-146FR-1825.svs",
-"GTEX-14753-0325.svs",
-"GTEX-1477Z-1925.svs",
-"GTEX-147F3-0625.svs",
-"GTEX-147F4-0525.svs",
-"GTEX-147GR-0425.svs",
-"GTEX-147JS-0425.svs",
-"GTEX-148VI-1725.svs",
-"GTEX-148VJ-0225.svs",
-"GTEX-1497J-2325.svs",
-"GTEX-14A5H-0525.svs",
-"GTEX-14A5I-0225.svs",
-"GTEX-14A6H-2525.svs",
-"GTEX-14ABY-0325.svs",
-"GTEX-14AS3-2025.svs",
-"GTEX-14ASI-0225.svs",
-"GTEX-14B4R-1625.svs",
-"GTEX-14BIL-0225.svs",
-"GTEX-14BIM-0125.svs",
-"GTEX-14BIN-0725.svs",
-"GTEX-14BMU-2125.svs",
-"GTEX-14BMV-0225.svs",
-"GTEX-14C38-0325.svs",
-"GTEX-14C39-2525.svs",
-"GTEX-14C5O-0225.svs",
-"GTEX-14DAQ-0225.svs",
-"GTEX-14DAR-1925.svs",
-"GTEX-14E1K-2125.svs",
-"GTEX-14E6C-0225.svs",
-"GTEX-14E6D-0225.svs",
-"GTEX-14E6E-1925.svs",
-"GTEX-14E7W-0225.svs",
-"GTEX-14H4A-1025.svs",
-"GTEX-14ICK-0325.svs",
-"GTEX-14ICL-2025.svs",
-"GTEX-14JFF-0225.svs",
-"GTEX-14JG1-0525.svs",
-"GTEX-14JG6-2325.svs",
-"GTEX-14JIY-0525.svs",
-"GTEX-14LLW-0225.svs",
-"GTEX-14LZ3-0325.svs",
-"GTEX-14PHW-0225.svs",
-"GTEX-14PHX-2425.svs",
-"GTEX-14PHY-2425.svs",
-"GTEX-14PII-0325.svs",
-"GTEX-14PJ2-0225.svs",
-"GTEX-14PJ3-1925.svs",
-"GTEX-14PJ4-2225.svs",
-"GTEX-14PJ5-1725.svs",
-"GTEX-14PJ6-2225.svs",
-"GTEX-14PJM-0325.svs",
-"GTEX-14PJN-2025.svs",
-"GTEX-14PJO-0225.svs",
-"GTEX-14PJP-0225.svs",
-"GTEX-14PK6-2025.svs",
-"GTEX-14PKU-2125.svs",
-"GTEX-14PKV-0425.svs",
-"GTEX-14PN3-2525.svs",
-"GTEX-14PN4-0225.svs",
-"GTEX-14PQA-0125.svs",
-"GTEX-14XAO-2125.svs",
-"GTEX-15CHC-2225.svs",
-"GTEX-15CHQ-0225.svs",
-"GTEX-15CHR-2325.svs",
-"GTEX-15CHS-0225.svs",
-"GTEX-15D1Q-0225.svs",
-"GTEX-15D79-0225.svs",
-"GTEX-15DCD-0225.svs",
-"GTEX-15DCE-0325.svs",
-"GTEX-15DCZ-0225.svs",
-"GTEX-15DDE-0225.svs",
-"GTEX-15DYW-0225.svs",
-"GTEX-15DZA-1925.svs",
-"GTEX-15EO6-0625.svs",
-"GTEX-15EOM-0225.svs",
-"GTEX-15ER7-0425.svs",
-"GTEX-15ETS-0425.svs",
-"GTEX-15EU6-0825.svs",
-"GTEX-15F5U-1725.svs",
-"GTEX-15FZZ-2225.svs",
-"GTEX-15G19-0225.svs",
-"GTEX-15G1A-2225.svs",
-"GTEX-15RIE-2325.svs",
-"GTEX-15RIF-2025.svs",
-"GTEX-15RIG-0325.svs",
-"GTEX-15RJ7-2325.svs",
-"GTEX-15RJE-0225.svs",
-"GTEX-15SB6-1625.svs",
-"GTEX-15SDE-2425.svs",
-"GTEX-15SHU-0225.svs",
-"GTEX-15SHV-2325.svs",
-"GTEX-15SHW-0425.svs",
-"GTEX-15SKB-0225.svs",
-"GTEX-15SZO-0225.svs",
-"GTEX-15TU5-0325.svs",
-"GTEX-15UF6-0925.svs",
-"GTEX-15UF7-2125.svs",
-"GTEX-15UKP-0525.svs",
-"GTEX-169BO-1425.svs",
-"GTEX-16A39-1925.svs",
-"GTEX-16AAH-2025.svs",
-"GTEX-16BQI-0525.svs",
-"GTEX-16GPK-0225.svs",
-"GTEX-16MT8-0525.svs",
-"GTEX-16MT9-0525.svs",
-"GTEX-16MTA-2125.svs",
-"GTEX-16NFA-2225.svs",
-"GTEX-16NGA-1825.svs",
-"GTEX-16NPV-0225.svs",
-"GTEX-16NPX-0325.svs",
-"GTEX-16XZY-2525.svs",
-"GTEX-16XZZ-0225.svs",
-"GTEX-16YQH-0225.svs",
-"GTEX-16Z82-0325.svs",
-"GTEX-178AV-2125.svs",
-"GTEX-17EUY-0525.svs",
-"GTEX-17EVP-0425.svs",
-"GTEX-17EVQ-0325.svs",
-"GTEX-17F96-1725.svs",
-"GTEX-17F97-0425.svs",
-"GTEX-17F98-1125.svs",
-"GTEX-17F9E-0125.svs",
-"GTEX-17F9Y-0325.svs",
-"GTEX-17GQL-2425.svs",
-"GTEX-17HG3-2325.svs",
-"GTEX-17HGU-0325.svs",
-"GTEX-17HHE-1925.svs",
-"GTEX-17HHY-0225.svs",
-"GTEX-17HII-0325.svs",
-"GTEX-17JCI-0225.svs",
-"GTEX-17KNJ-2225.svs",
-"GTEX-17MF6-0225.svs",
-"GTEX-17MFQ-1825.svs",
-"GTEX-183FY-0325.svs",
-"GTEX-183WM-0225.svs",
-"GTEX-18464-0225.svs",
-"GTEX-18465-0225.svs",
-"GTEX-18A66-0325.svs",
-"GTEX-18A67-0225.svs",
-"GTEX-18A6Q-0225.svs",
-"GTEX-18A7A-0325.svs",
-"GTEX-18A7B-0225.svs",
-"GTEX-18D9A-2025.svs",
-"GTEX-18D9B-0625.svs",
-"GTEX-18D9U-0725.svs",
-"GTEX-18QFQ-0225.svs",
-"GTEX-19HZE-0225.svs",
-"GTEX-1A32A-0225.svs",
-"GTEX-1A3MV-2125.svs",
-"GTEX-1A3MW-0225.svs",
-"GTEX-1A3MX-0225.svs",
-"GTEX-1A8FM-0125.svs",
-"GTEX-1A8G6-0525.svs",
-"GTEX-1A8G7-0225.svs",
-"GTEX-1AMEY-1425.svs",
-"GTEX-1AMFI-2125.svs",
-"GTEX-1AX8Y-2125.svs",
-"GTEX-1AX8Z-0225.svs",
-"GTEX-1AX9I-0225.svs",
-"GTEX-1AX9J-0325.svs",
-"GTEX-1AX9K-2425.svs",
-"GTEX-1AYCT-2225.svs",
-"GTEX-1AYD5-2325.svs",
-"GTEX-1B8KE-2525.svs",
-"GTEX-1B8KZ-1925.svs",
-"GTEX-1B8L1-2625.svs",
-"GTEX-1B8SF-0525.svs",
-"GTEX-1B8SG-0225.svs",
-"GTEX-1B932-0225.svs",
-"GTEX-1B933-0525.svs",
-"GTEX-1B97I-1725.svs",
-"GTEX-1B97J-1625.svs",
-"GTEX-1B98T-0225.svs",
-"GTEX-1B996-0125.svs",
-"GTEX-1BAJH-0425.svs",
-"GTEX-1C2JI-2225.svs",
-"GTEX-1C475-1925.svs",
-"GTEX-1C4CL-0425.svs",
-"GTEX-1C64N-0225.svs",
-"GTEX-1C64O-0225.svs",
-"GTEX-1C6VQ-0225.svs",
-"GTEX-1C6VR-2625.svs",
-"GTEX-1C6VS-0425.svs",
-"GTEX-1C6WA-0225.svs",
-"GTEX-1CAMQ-0125.svs",
-"GTEX-1CAMR-1825.svs",
-"GTEX-1CAMS-0325.svs",
-"GTEX-1CAV2-2325.svs",
-"GTEX-1CB4E-1825.svs",
-"GTEX-1CB4F-0525.svs",
-"GTEX-1CB4G-0325.svs",
-"GTEX-1CB4H-0325.svs",
-"GTEX-1CB4I-0425.svs",
-"GTEX-1CB4J-1125.svs",
-"GTEX-1E1VI-0225.svs",
-"GTEX-1E2YA-0225.svs",
-"GTEX-1EH9U-0225.svs",
-"GTEX-1EKGG-0125.svs",
-"GTEX-1EKGG-0126.svs",
-"GTEX-1EMGI-0225.svs",
-"GTEX-1EN7A-0225.svs",
-"GTEX-1EU9M-0325.svs",
-"GTEX-1EWIQ-0225.svs",
-"GTEX-1EX96-1425.svs",
-"GTEX-1F48J-0225.svs",
-"GTEX-1F52S-0225.svs",
-"GTEX-1F5PK-2525.svs",
-"GTEX-1F5PL-0125.svs",
-"GTEX-1F6I4-0225.svs",
-"GTEX-1F6IF-0625.svs",
-"GTEX-1F6RS-0225.svs",
-"GTEX-1F75A-0225.svs",
-"GTEX-1F75B-0225.svs",
-"GTEX-1F75I-0425.svs",
-"GTEX-1F75W-0225.svs",
-"GTEX-1F7RK-0225.svs",
-"GTEX-1F88E-0525.svs",
-"GTEX-1F88F-2625.svs",
-"GTEX-1FIGZ-1625.svs",
-"GTEX-1GF9U-2225.svs",
-"GTEX-1GF9V-0225.svs",
-"GTEX-1GF9W-0425.svs",
-"GTEX-1GF9X-1925.svs",
-"GTEX-1GMR2-2525.svs",
-"GTEX-1GMR3-2025.svs",
-"GTEX-1GMR8-0225.svs",
-"GTEX-1GMRU-0225.svs",
-"GTEX-1GN1U-0225.svs",
-"GTEX-1GN1V-0225.svs",
-"GTEX-1GN1W-0625.svs",
-"GTEX-1GN2E-0325.svs",
-"GTEX-1GN73-0325.svs",
-"GTEX-1GPI6-0225.svs",
-"GTEX-1GPI7-0225.svs",
-"GTEX-1GTWX-0225.svs",
-"GTEX-1GZ2Q-0325.svs",
-"GTEX-1GZ4H-1825.svs",
-"GTEX-1GZ4I-0225.svs",
-"GTEX-1GZHY-0425.svs",
-"GTEX-1H11D-0125.svs",
-"GTEX-1H1CY-2625.svs",
-"GTEX-1H1DE-2025.svs",
-"GTEX-1H1DF-0225.svs",
-"GTEX-1H1DG-0225.svs",
-"GTEX-1H1E6-2025.svs",
-"GTEX-1H1ZS-0525.svs",
-"GTEX-1H23P-0225.svs",
-"GTEX-1H2FU-0225.svs",
-"GTEX-1H3NZ-0225.svs",
-"GTEX-1H3O1-0525.svs",
-"GTEX-1H3VE-0225.svs",
-"GTEX-1H3VY-0225.svs",
-"GTEX-1H4P4-0225.svs",
-"GTEX-1HB9E-0425.svs",
-"GTEX-1HBPH-0525.svs",
-"GTEX-1HBPI-1425.svs",
-"GTEX-1HBPM-0325.svs",
-"GTEX-1HBPN-0725.svs",
-"GTEX-1HC8U-2525.svs",
-"GTEX-1HCU6-0225.svs",
-"GTEX-1HCU7-0325.svs",
-"GTEX-1HCU8-0725.svs",
-"GTEX-1HCU9-1625.svs",
-"GTEX-1HCUA-2225.svs",
-"GTEX-1HCVE-0225.svs",
-"GTEX-1HFI6-0325.svs",
-"GTEX-1HFI7-2025.svs",
-"GTEX-1HGF4-2525.svs",
-"GTEX-1HKZK-0425.svs",
-"GTEX-1HR98-0225.svs",
-"GTEX-1HR9M-0225.svs",
-"GTEX-1HSEH-0225.svs",
-"GTEX-1HSGN-0125.svs",
-"GTEX-1HSKV-0325.svs",
-"GTEX-1HSMO-0225.svs",
-"GTEX-1HSMP-0225.svs",
-"GTEX-1HSMQ-1425.svs",
-"GTEX-1HT8W-0225.svs",
-"GTEX-1HUB1-0325.svs",
-"GTEX-1I19N-0425.svs",
-"GTEX-1I1CD-0225.svs",
-"GTEX-1I1GP-2325.svs",
-"GTEX-1I1GQ-0225.svs",
-"GTEX-1I1GR-0225.svs",
-"GTEX-1I1GS-0225.svs",
-"GTEX-1I1GT-0525.svs",
-"GTEX-1I1GU-2325.svs",
-"GTEX-1I1GV-0425.svs",
-"GTEX-1I1HK-0225.svs",
-"GTEX-1I4MK-2025.svs",
-"GTEX-1I6K6-0225.svs",
-"GTEX-1I6K7-0225.svs",
-"GTEX-1ICG6-2625.svs",
-"GTEX-1ICLY-0225.svs",
-"GTEX-1ICLZ-0225.svs",
-"GTEX-1IDFM-0225.svs",
-"GTEX-1IDJC-2125.svs",
-"GTEX-1IDJD-1225.svs",
-"GTEX-1IDJE-2525.svs",
-"GTEX-1IDJF-0225.svs",
-"GTEX-1IDJH-0425.svs",
-"GTEX-1IDJI-0325.svs",
-"GTEX-1IDJU-2525.svs",
-"GTEX-1IDJV-0325.svs",
-"GTEX-1IE54-0225.svs",
-"GTEX-1IGQW-0225.svs",
-"GTEX-1IKJJ-0225.svs",
-"GTEX-1IKK5-0525.svs",
-"GTEX-1IKOE-0225.svs",
-"GTEX-1IKOH-0325.svs",
-"GTEX-1IL2U-0325.svs",
-"GTEX-1IL2V-0225.svs",
-"GTEX-1IOXB-0225.svs",
-"GTEX-1IY9M-0225.svs",
-"GTEX-1J1OQ-0325.svs",
-"GTEX-1J1R8-2225.svs",
-"GTEX-1J8EW-0225.svs",
-"GTEX-1J8JJ-0325.svs",
-"GTEX-1J8Q2-0425.svs",
-"GTEX-1J8Q3-1525.svs",
-"GTEX-1J8QM-2325.svs",
-"GTEX-1JJ6O-0225.svs",
-"GTEX-1JJE9-1225.svs",
-"GTEX-1JJEA-0225.svs",
-"GTEX-1JK1U-2125.svs",
-"GTEX-1JKYN-1225.svs",
-"GTEX-1JKYR-0225.svs",
-"GTEX-1JMLX-0125.svs",
-"GTEX-1JMOU-1225.svs",
-"GTEX-1JMPY-1425.svs",
-"GTEX-1JMPZ-0325.svs",
-"GTEX-1JMQI-2025.svs",
-"GTEX-1JMQJ-0425.svs",
-"GTEX-1JMQK-0125.svs",
-"GTEX-1JMQL-0325.svs",
-"GTEX-1JN1M-0125.svs",
-"GTEX-1JN6P-0225.svs",
-"GTEX-1JN76-0225.svs",
-"GTEX-1K2DA-2125.svs",
-"GTEX-1K2DU-2425.svs",
-"GTEX-1K9T9-0225.svs",
-"GTEX-1KAFJ-2425.svs",
-"GTEX-1KANA-0825.svs",
-"GTEX-1KANB-0425.svs",
-"GTEX-1KANC-1925.svs",
-"GTEX-1KD4Q-0125.svs",
-"GTEX-1KD5A-0325.svs",
-"GTEX-1KWVE-1325.svs",
-"GTEX-1KXAM-2325.svs",
-"GTEX-1L5NE-2625.svs",
-"GTEX-1LB8K-0325.svs",
-"GTEX-1LBAC-0225.svs",
-"GTEX-1LC46-2125.svs",
-"GTEX-1LC47-0225.svs",
-"GTEX-1LG7Y-0425.svs",
-"GTEX-1LG7Z-2025.svs",
-"GTEX-1LGRB-2425.svs",
-"GTEX-1LH75-2525.svs",
-"GTEX-1LKK1-0125.svs",
-"GTEX-1LNCM-1325.svs",
-"GTEX-1LSNL-0525.svs",
-"GTEX-1LSNM-2025.svs",
-"GTEX-1LSVX-0125.svs",
-"GTEX-1LVA9-0225.svs",
-"GTEX-1LVAM-0225.svs",
-"GTEX-1LVAN-0125.svs",
-"GTEX-1LVAO-0225.svs",
-"GTEX-1M4P7-0325.svs",
-"GTEX-1M5QR-2125.svs",
-"GTEX-1MA7W-1925.svs",
-"GTEX-1MA7X-2125.svs",
-"GTEX-1MCC2-2325.svs",
-"GTEX-1MCQQ-0325.svs",
-"GTEX-1MCYP-1825.svs",
-"GTEX-1MGNQ-0225.svs",
-"GTEX-1MJIX-2325.svs",
-"GTEX-1MJK2-0525.svs",
-"GTEX-1MJK3-0225.svs",
-"GTEX-1MUQO-0525.svs",
-"GTEX-1N2DV-0125.svs",
-"GTEX-1N2DW-0325.svs",
-"GTEX-1N2EE-0525.svs",
-"GTEX-1N2EF-0625.svs",
-"GTEX-1N5O9-0225.svs",
-"GTEX-1N7R6-0325.svs",
-"GTEX-1NHNU-1125.svs",
-"GTEX-1NSGN-0225.svs",
-"GTEX-1NUQO-0125.svs",
-"GTEX-1NV5F-0125.svs",
-"GTEX-1NV8Z-0225.svs",
-"GTEX-1O97I-0225.svs",
-"GTEX-1O9I2-0625.svs",
-"GTEX-1OFPY-2325.svs",
-"GTEX-1OJC3-0225.svs",
-"GTEX-1OJC4-1725.svs",
-"GTEX-1OKEX-2225.svs",
-"GTEX-1OZHM-0325.svs",
-"GTEX-1P4AB-0225.svs",
-"GTEX-1PBJI-0425.svs",
-"GTEX-1PBJJ-0225.svs",
-"GTEX-1PDJ9-0425.svs",
-"GTEX-1PFEY-1625.svs",
-"GTEX-1PIEJ-0225.svs",
-"GTEX-1PIGE-0525.svs",
-"GTEX-1PIIG-0325.svs",
-"GTEX-1POEN-0225.svs",
-"GTEX-1PPGY-0325.svs",
-"GTEX-1PPH6-0325.svs",
-"GTEX-1PPH7-2425.svs",
-"GTEX-1PPH8-0625.svs",
-"GTEX-1PWST-0325.svs",
-"GTEX-1QAET-1125.svs",
-"GTEX-1QCLY-0525.svs",
-"GTEX-1QCLZ-0225.svs",
-"GTEX-1QEPI-0225.svs",
-"GTEX-1QL29-0225.svs",
-"GTEX-1QMI2-0125.svs",
-"GTEX-1QP28-0225.svs",
-"GTEX-1QP29-0725.svs",
-"GTEX-1QP2A-0225.svs",
-"GTEX-1QP66-1325.svs",
-"GTEX-1QP67-1725.svs",
-"GTEX-1QP6S-0125.svs",
-"GTEX-1QP9N-1525.svs",
-"GTEX-1QPFJ-0125.svs",
-"GTEX-1QW4Y-1625.svs",
-"GTEX-1R46S-0525.svs",
-"GTEX-1R7EU-0325.svs",
-"GTEX-1R7EV-1925.svs",
-"GTEX-1R9JW-2525.svs",
-"GTEX-1R9K4-0225.svs",
-"GTEX-1R9K5-0225.svs",
-"GTEX-1R9PM-2125.svs",
-"GTEX-1R9PN-1725.svs",
-"GTEX-1R9PO-2225.svs",
-"GTEX-1RAZA-0225.svs",
-"GTEX-1RAZQ-0625.svs",
-"GTEX-1RAZR-0225.svs",
-"GTEX-1RAZS-0225.svs",
-"GTEX-1RB15-2025.svs",
-"GTEX-1RDX4-0225.svs",
-"GTEX-1RMOY-2225.svs",
-"GTEX-1RNSC-0225.svs",
-"GTEX-1RNTQ-0225.svs",
-"GTEX-1RQED-0325.svs",
-"GTEX-1S3DN-2325.svs",
-"GTEX-1S5VW-0225.svs",
-"GTEX-1S5ZA-0225.svs",
-"GTEX-1S5ZU-0225.svs",
-"GTEX-1S82P-0225.svs",
-"GTEX-1S82U-1625.svs",
-"GTEX-1S82Z-1025.svs",
-"GTEX-1S831-0325.svs",
-"GTEX-1S83E-0225.svs",
-"GTEX-N7MS-0325.svs",
-"GTEX-NFK9-0325.svs",
-"GTEX-NL3G-0225.svs",
-"GTEX-NL3H-0225.svs",
-"GTEX-NL4W-0225.svs",
-"GTEX-NPJ7-0525.svs",
-"GTEX-NPJ8-0225.svs",
-"GTEX-O5YT-0225.svs",
-"GTEX-O5YU-0225.svs",
-"GTEX-O5YV-0225.svs",
-"GTEX-OHPJ-0325.svs",
-"GTEX-OHPK-0225.svs",
-"GTEX-OHPL-0225.svs",
-"GTEX-OHPM-0225.svs",
-"GTEX-OHPN-0225.svs",
-"GTEX-OIZF-0225.svs",
-"GTEX-OIZG-0825.svs",
-"GTEX-OIZH-0225.svs",
-"GTEX-OIZI-0225.svs",
-"GTEX-OOBJ-0225.svs",
-"GTEX-OOBK-0225.svs",
-"GTEX-OXRK-0325.svs",
-"GTEX-OXRL-0225.svs",
-"GTEX-OXRN-0225.svs",
-"GTEX-OXRO-0225.svs",
-"GTEX-OXRP-0225.svs",
-"GTEX-P44G-2325.svs",
-"GTEX-P44H-0325.svs",
-"GTEX-P4PP-0225.svs",
-"GTEX-P4PQ-0225.svs",
-"GTEX-P4QR-0425.svs",
-"GTEX-P4QS-0225.svs",
-"GTEX-P4QT-0225.svs",
-"GTEX-P78B-0225.svs",
-"GTEX-PLZ4-0225.svs",
-"GTEX-PLZ5-1825.svs",
-"GTEX-PLZ6-1325.svs",
-"GTEX-POMQ-2325.svs",
-"GTEX-POYW-0725.svs",
-"GTEX-PSDG-0325.svs",
-"GTEX-PVOW-0225.svs",
-"GTEX-PW2O-1625.svs",
-"GTEX-PWCY-1925.svs",
-"GTEX-PWN1-0225.svs",
-"GTEX-PWO3-1625.svs",
-"GTEX-PWOO-2225.svs",
-"GTEX-PX3G-0225.svs",
-"GTEX-Q2AG-0225.svs",
-"GTEX-Q2AH-1725.svs",
-"GTEX-Q2AI-1425.svs",
-"GTEX-Q734-1825.svs",
-"GTEX-QCQG-1825.svs",
-"GTEX-QDT8-0225.svs",
-"GTEX-QDVJ-1825.svs",
-"GTEX-QDVN-2125.svs",
-"GTEX-QEG4-0325.svs",
-"GTEX-QEG5-0325.svs",
-"GTEX-QEL4-0325.svs",
-"GTEX-QESD-1525.svs",
-"GTEX-QLQ7-1525.svs",
-"GTEX-QLQW-1225.svs",
-"GTEX-QMR6-0125.svs",
-"GTEX-QMRM-1725.svs",
-"GTEX-QV31-1325.svs",
-"GTEX-QV44-1826.svs",
-"GTEX-QVJO-0225.svs",
-"GTEX-QVUS-0125.svs",
-"GTEX-QXCU-2425.svs",
-"GTEX-R3RS-0225.svs",
-"GTEX-R45C-0225.svs",
-"GTEX-R53T-1625.svs",
-"GTEX-R55C-1625.svs",
-"GTEX-R55D-0325.svs",
-"GTEX-R55E-0225.svs",
-"GTEX-R55F-1425.svs",
-"GTEX-R55G-2425.svs",
-"GTEX-REY6-0325.svs",
-"GTEX-RM2N-1725.svs",
-"GTEX-RN5K-0125.svs",
-"GTEX-RN64-0225.svs",
-"GTEX-RNOR-0225.svs",
-"GTEX-RTLS-0225.svs",
-"GTEX-RU1J-1625.svs",
-"GTEX-RU72-1025.svs",
-"GTEX-RUSQ-1625.svs",
-"GTEX-RVPU-2325.svs",
-"GTEX-RVPV-1525.svs",
-"GTEX-RWS6-2225.svs",
-"GTEX-RWSA-0225.svs",
-"GTEX-S32W-2225.svs",
-"GTEX-S33H-1125.svs",
-"GTEX-S341-1625.svs",
-"GTEX-S3LF-0225.svs",
-"GTEX-S3XE-1625.svs",
-"GTEX-S4P3-1525.svs",
-"GTEX-S4Q7-1625.svs",
-"GTEX-S4UY-0225.svs",
-"GTEX-S4Z8-1725.svs",
-"GTEX-S7PM-0225.svs",
-"GTEX-S7SE-0225.svs",
-"GTEX-S7SF-1825.svs",
-"GTEX-S95S-1325.svs",
-"GTEX-SE5C-1725.svs",
-"GTEX-SIU7-1925.svs",
-"GTEX-SIU8-0225.svs",
-"GTEX-SJXC-0225.svs",
-"GTEX-SN8G-0225.svs",
-"GTEX-SNMC-1325.svs",
-"GTEX-SNOS-1425.svs",
-"GTEX-SSA3-0225.svs",
-"GTEX-SUCS-1825.svs",
-"GTEX-T2IS-0225.svs",
-"GTEX-T2YK-0625.svs",
-"GTEX-T5JC-0525.svs",
-"GTEX-T5JW-1725.svs",
-"GTEX-T6MN-0225.svs",
-"GTEX-T6MO-1725.svs",
-"GTEX-TKQ1-1125.svs",
-"GTEX-TKQ2-0725.svs",
-"GTEX-TMKS-0225.svs",
-"GTEX-TML8-2025.svs",
-"GTEX-TMMY-0325.svs",
-"GTEX-TMZS-0225.svs",
-"GTEX-TSE9-0225.svs",
-"GTEX-U3ZG-0225.svs",
-"GTEX-U3ZH-1825.svs",
-"GTEX-U3ZM-1025.svs",
-"GTEX-U3ZN-2625.svs",
-"GTEX-U412-0525.svs",
-"GTEX-U4B1-1725.svs",
-"GTEX-U8T8-0225.svs",
-"GTEX-U8XE-0425.svs",
-"GTEX-UJHI-1625.svs",
-"GTEX-UJMC-1725.svs",
-"GTEX-UPIC-1325.svs",
-"GTEX-UPJH-0425.svs",
-"GTEX-UPK5-0825.svs",
-"GTEX-UTHO-0425.svs",
-"GTEX-V1D1-2325.svs",
-"GTEX-V955-2325.svs",
-"GTEX-VJWN-0225.svs",
-"GTEX-VJYA-1325.svs",
-"GTEX-VUSG-2425.svs",
-"GTEX-VUSH-0225.svs",
-"GTEX-W5WG-2525.svs",
-"GTEX-W5X1-2625.svs",
-"GTEX-WCDI-0225.svs",
-"GTEX-WEY5-1925.svs",
-"GTEX-WFG7-2525.svs",
-"GTEX-WFG8-2325.svs",
-"GTEX-WFJO-1925.svs",
-"GTEX-WFON-2225.svs",
-"GTEX-WH7G-2225.svs",
-"GTEX-WHPG-2125.svs",
-"GTEX-WHSB-1725.svs",
-"GTEX-WHSE-0325.svs",
-"GTEX-WHWD-2125.svs",
-"GTEX-WI4N-1125.svs",
-"GTEX-WK11-0225.svs",
-"GTEX-WL46-0325.svs",
-"GTEX-WOFL-0225.svs",
-"GTEX-WOFM-1525.svs",
-"GTEX-WQUQ-0525.svs",
-"GTEX-WRHK-1525.svs",
-"GTEX-WRHU-2625.svs",
-"GTEX-WVJS-0225.svs",
-"GTEX-WVLH-0225.svs",
-"GTEX-WWTW-0225.svs",
-"GTEX-WWYW-0225.svs",
-"GTEX-WXYG-2425.svs",
-"GTEX-WY7C-2425.svs",
-"GTEX-WYBS-0225.svs",
-"GTEX-WYJK-0225.svs",
-"GTEX-WYVS-2225.svs",
-"GTEX-WZTO-0225.svs",
-"GTEX-X15G-2325.svs",
-"GTEX-X261-0225.svs",
-"GTEX-X3Y1-2225.svs",
-"GTEX-X4EO-0425.svs",
-"GTEX-X4EP-0225.svs",
-"GTEX-X4LF-1725.svs",
-"GTEX-X4XX-0225.svs",
-"GTEX-X4XY-0325.svs",
-"GTEX-X585-0325.svs",
-"GTEX-X5EB-2425.svs",
-"GTEX-X62O-0225.svs",
-"GTEX-X638-0225.svs",
-"GTEX-X88G-0225.svs",
-"GTEX-X8HC-0225.svs",
-"GTEX-XAJ8-0925.svs",
-"GTEX-XBEC-0325.svs",
-"GTEX-XBED-2325.svs",
-"GTEX-XBEW-0725.svs",
-"GTEX-XGQ4-2225.svs",
-"GTEX-XK95-0425.svs",
-"GTEX-XLM4-0225.svs",
-"GTEX-XMD1-0325.svs",
-"GTEX-XMD2-0225.svs",
-"GTEX-XMD3-0225.svs",
-"GTEX-XMK1-2225.svs",
-"GTEX-XOT4-0225.svs",
-"GTEX-XOTO-0225.svs",
-"GTEX-XPT6-1925.svs",
-"GTEX-XPVG-2725.svs",
-"GTEX-XQ3S-1625.svs",
-"GTEX-XQ8I-0525.svs",
-"GTEX-XUJ4-2525.svs",
-"GTEX-XUW1-0525.svs",
-"GTEX-XUYS-0225.svs",
-"GTEX-XUZC-1825.svs",
-"GTEX-XV7Q-2625.svs",
-"GTEX-XXEK-2425.svs",
-"GTEX-XYKS-2725.svs",
-"GTEX-Y111-0225.svs",
-"GTEX-Y114-2325.svs",
-"GTEX-Y3I4-2225.svs",
-"GTEX-Y3IK-2525.svs",
-"GTEX-Y5LM-2025.svs",
-"GTEX-Y5V5-2425.svs",
-"GTEX-Y5V6-2525.svs",
-"GTEX-Y8DK-0225.svs",
-"GTEX-Y8E4-0725.svs",
-"GTEX-Y8E5-0225.svs",
-"GTEX-Y8LW-1925.svs",
-"GTEX-Y9LG-2025.svs",
-"GTEX-YB5E-2125.svs",
-"GTEX-YB5K-2225.svs",
-"GTEX-YBZK-0525.svs",
-"GTEX-YEC3-1225.svs",
-"GTEX-YEC4-2425.svs",
-"GTEX-YECK-0225.svs",
-"GTEX-YF7O-2425.svs",
-"GTEX-YFC4-0225.svs",
-"GTEX-YFCO-2025.svs",
-"GTEX-YJ89-0225.svs",
-"GTEX-YJ8A-0525.svs",
-"GTEX-YJ8O-2425.svs",
-"GTEX-Z93S-0225.svs",
-"GTEX-Z93T-0225.svs",
-"GTEX-Z9EW-1825.svs",
-"GTEX-ZA64-1825.svs",
-"GTEX-ZAB4-0325.svs",
-"GTEX-ZAB5-1725.svs",
-"GTEX-ZAJG-0225.svs",
-"GTEX-ZAK1-0226.svs",
-"GTEX-ZAKK-0225.svs",
-"GTEX-ZC5H-0125.svs",
-"GTEX-ZDTS-0225.svs",
-"GTEX-ZDTT-2625.svs",
-"GTEX-ZDXO-2425.svs",
-"GTEX-ZDYS-2125.svs",
-"GTEX-ZE7O-0225.svs",
-"GTEX-ZE9C-2825.svs",
-"GTEX-ZEX8-2325.svs",
-"GTEX-ZF28-0225.svs",
-"GTEX-ZF29-2225.svs",
-"GTEX-ZF2S-2225.svs",
-"GTEX-ZF3C-0225.svs",
-"GTEX-ZG7Y-0425.svs",
-"GTEX-ZGAY-0625.svs",
-"GTEX-ZLFU-2625.svs",
-"GTEX-ZLV1-1825.svs",
-"GTEX-ZLWG-2225.svs",
-"GTEX-ZP4G-2325.svs",
-"GTEX-ZPCL-2125.svs",
-"GTEX-ZPIC-1825.svs",
-"GTEX-ZPU1-2425.svs",
-"GTEX-ZQG8-1525.svs",
-"GTEX-ZQUD-1125.svs",
-"GTEX-ZT9W-2325.svs",
-"GTEX-ZT9X-1925.svs",
-"GTEX-ZTPG-0225.svs",
-"GTEX-ZTSS-2025.svs",
-"GTEX-ZTTD-0225.svs",
-"GTEX-ZTX8-1525.svs",
-"GTEX-ZU9S-0325.svs",
-"GTEX-ZUA1-0225.svs",
-"GTEX-ZV68-0225.svs",
-"GTEX-ZV6S-2225.svs",
-"GTEX-ZV7C-2125.svs",
-"GTEX-ZVE1-0225.svs",
-"GTEX-ZVE2-0325.svs",
-"GTEX-ZVP2-1825.svs",
-"GTEX-ZVT2-2225.svs",
-"GTEX-ZVT3-0225.svs",
-"GTEX-ZVT4-0225.svs",
-"GTEX-ZVTK-0525.svs",
-"GTEX-ZVZO-0225.svs",
-"GTEX-ZVZP-2325.svs",
-"GTEX-ZVZQ-0425.svs",
-"GTEX-ZWKS-0225.svs",
-"GTEX-ZXES-2025.svs",
-"GTEX-ZXG5-0225.svs",
-"GTEX-ZY6K-2225.svs",
-"GTEX-ZYFC-0325.svs",
-"GTEX-ZYFD-0225.svs",
-"GTEX-ZYFG-2225.svs",
-"GTEX-ZYT6-0325.svs",
-"GTEX-ZYVF-0225.svs",
-"GTEX-ZYW4-0225.svs",
-"GTEX-ZYWO-2525.svs",
-"GTEX-ZYY3-0225.svs",
-"GTEX-ZZ64-1625.svs",
-"GTEX-ZZPT-0325.svs",
-"GTEX-ZZPU-2725.svs"
-]
+########################################################################################################################
+# dictionary of images and the folds they will be processing under
+########################################################################################################################
 
-# load colour modes of the KLF14 training dataset
+# files used for training and testing, all from SCWAT. Each slide is assigned to the same fold as used for training
+histo_files_list = {}
+histo_files_list['KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57'] = 0
+histo_files_list['KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04'] = 2
+histo_files_list['KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53'] = 2
+histo_files_list['KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45'] = 3
+histo_files_list['KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46'] = 3
+histo_files_list['KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08'] = 4
+histo_files_list['KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52'] = 4
+histo_files_list['KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38'] = 5
+histo_files_list['KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41'] = 6
+histo_files_list['KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11'] = 6
+histo_files_list['KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32'] = 7
+histo_files_list['KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52'] = 9
+
+# add GWAT slices not seen at training, from animals seen at training. We assign images to a fold so that an image won't
+# be segmented by a pipeline that has seen the same slides from the same animal at training)
+histo_files_list['KLF14-B6NTAC-MAT-18.2b  58-16 B1 - 2016-02-03 09.58.06'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-18.2d  60-16 B1 - 2016-02-03 12.56.49'] = 0
+histo_files_list['KLF14-B6NTAC 36.1i PAT 104-16 B1 - 2016-02-12 11.37.56'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-17.2c  66-16 B1 - 2016-02-04 11.14.28'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-17.1c  46-16 B1 - 2016-02-01 13.01.30'] = 2
+histo_files_list['KLF14-B6NTAC-MAT-18.3d  224-16 B1 - 2016-02-26 10.48.56'] = 2
+histo_files_list['KLF14-B6NTAC-37.1c PAT 108-16 B1 - 2016-02-15 12.33.10'] = 3
+histo_files_list['KLF14-B6NTAC-MAT-16.2d  214-16 B1 - 2016-02-17 15.43.57'] = 3
+histo_files_list['KLF14-B6NTAC-37.1d PAT 109-16 B1 - 2016-02-15 15.03.44'] = 4
+histo_files_list['KLF14-B6NTAC-PAT-37.2g  415-16 B1 - 2016-03-16 11.04.45'] = 4
+histo_files_list['KLF14-B6NTAC-36.1a PAT 96-16 B1 - 2016-02-10 15.32.31'] = 5
+histo_files_list['KLF14-B6NTAC-36.1b PAT 97-16 B1 - 2016-02-10 17.15.16'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-18.1a  50-16 B1 - 2016-02-02 08.49.06'] = 6
+histo_files_list['KLF14-B6NTAC-PAT-36.3d  416-16 B1 - 2016-03-16 14.22.04'] = 6
+histo_files_list['KLF14-B6NTAC-36.1c PAT 98-16 B1 - 2016-02-10 18.32.40'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-37.4a  417-16 B1 - 2016-03-16 15.25.38'] = 7
+histo_files_list['KLF14-B6NTAC-MAT-18.1e  54-16 B1 - 2016-02-02 15.06.05'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-18.3b  223-16 B1 - 2016-02-25 16.53.42'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-17.2f  68-16 B1 - 2016-02-04 14.01.40'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-18.2g  63-16 B1 - 2016-02-03 16.40.37'] = 9
+
+# add SCWAT slices not seen at training, from animals not seen at training. We randomly assign images to a fold
+# males
+histo_files_list['KLF14-B6NTAC 36.1d PAT 99-16 C1 - 2016-02-11 11.48.31'] = 3
+histo_files_list['KLF14-B6NTAC 36.1e PAT 100-16 C1 - 2016-02-11 14.06.56'] = 7
+histo_files_list['KLF14-B6NTAC 36.1f PAT 101-16 C1 - 2016-02-11 15.23.06'] = 5
+histo_files_list['KLF14-B6NTAC 36.1g PAT 102-16 C1 - 2016-02-11 17.20.14'] = 1
+histo_files_list['KLF14-B6NTAC 36.1h PAT 103-16 C1 - 2016-02-12 10.15.22'] = 4
+histo_files_list['KLF14-B6NTAC 36.1j PAT 105-16 C1 - 2016-02-12 14.33.33'] = 1
+histo_files_list['KLF14-B6NTAC-PAT-37.2h  418-16 C1 - 2016-03-16 17.01.17'] = 8
+histo_files_list['KLF14-B6NTAC-PAT-37.4b  419-16 C1 - 2016-03-17 10.22.54'] = 1
+histo_files_list['KLF14-B6NTAC-PAT-39.2d  454-16 C1 - 2016-03-17 14.33.38'] = 2
+histo_files_list['KLF14-B6NTAC-37.1h PAT 113-16 C1 - 2016-02-16 15.14.09'] = 5
+histo_files_list['KLF14-B6NTAC-38.1e PAT 94-16 C1 - 2016-02-10 12.13.10'] = 1
+histo_files_list['KLF14-B6NTAC-38.1f PAT 95-16 C1 - 2016-02-10 14.41.44'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-16.2b  212-16 C1 - 2016-02-17 12.49.00'] = 3
+histo_files_list['KLF14-B6NTAC-MAT-16.2c  213-16 C1 - 2016-02-17 14.51.18'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-16.2e  215-16 C1 - 2016-02-18 09.19.26'] = 4
+histo_files_list['KLF14-B6NTAC-MAT-16.2f  216-16 C1 - 2016-02-18 10.28.27'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-17.1e  48-16 C1 - 2016-02-01 16.27.05'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-17.1f  49-16 C1 - 2016-02-01 17.51.46'] = 6
+histo_files_list['KLF14-B6NTAC-MAT-17.2g  69-16 C1 - 2016-02-04 16.15.05'] = 6
+histo_files_list['KLF14-B6NTAC-MAT-18.1d  53-16 C1 - 2016-02-02 14.32.03'] = 7
+histo_files_list['KLF14-B6NTAC-MAT-18.1f  55-16 C1 - 2016-02-02 16.14.30'] = 4
+histo_files_list['KLF14-B6NTAC-MAT-18.2f  62-16 C1 - 2016-02-03 15.46.15'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-18.3c  218-16 C1 - 2016-02-18 13.12.09'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-19.1a  56-16 C1 - 2016-02-02 17.23.31'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-19.2f  217-16 C1 - 2016-02-18 11.48.16'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-19.2g  222-16 C1 - 2016-02-25 15.13.00'] = 8
+
+# females
+histo_files_list['KLF14-B6NTAC 37.1a PAT 106-16 C1 - 2016-02-12 16.21.00'] = 6
+histo_files_list['KLF14-B6NTAC-37.1b PAT 107-16 C1 - 2016-02-15 11.43.31'] = 4
+histo_files_list['KLF14-B6NTAC-37.1e PAT 110-16 C1 - 2016-02-15 17.33.11'] = 3
+histo_files_list['KLF14-B6NTAC-37.1g PAT 112-16 C1 - 2016-02-16 13.33.09'] = 9
+histo_files_list['KLF14-B6NTAC-PAT-36.3a  409-16 C1 - 2016-03-15 10.18.46'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-36.3b  412-16 C1 - 2016-03-15 14.37.55'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-37.2a  406-16 C1 - 2016-03-14 12.01.56'] = 3
+histo_files_list['KLF14-B6NTAC-PAT-37.2b  410-16 C1 - 2016-03-15 11.24.20'] = 8
+histo_files_list['KLF14-B6NTAC-PAT-37.2c  407-16 C1 - 2016-03-14 14.13.54'] = 0
+histo_files_list['KLF14-B6NTAC-PAT-37.2d  411-16 C1 - 2016-03-15 12.42.26'] = 9
+histo_files_list['KLF14-B6NTAC-PAT-37.2e  408-16 C1 - 2016-03-14 16.23.30'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-37.2f  405-16 C1 - 2016-03-14 10.58.34'] = 1
+histo_files_list['KLF14-B6NTAC-PAT-37.3a  413-16 C1 - 2016-03-15 15.54.12'] = 6
+histo_files_list['KLF14-B6NTAC-PAT-37.3c  414-16 C1 - 2016-03-15 17.15.41'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-39.1h  453-16 C1 - 2016-03-17 11.38.04'] = 6
+histo_files_list['KLF14-B6NTAC-MAT-16.2a  211-16 C1 - 2016-02-17 11.46.42'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-17.1a  44-16 C1 - 2016-02-01 11.14.17'] = 4
+histo_files_list['KLF14-B6NTAC-MAT-17.1b  45-16 C1 - 2016-02-01 12.23.50'] = 3
+histo_files_list['KLF14-B6NTAC-MAT-17.1d  47-16 C1 - 2016-02-01 15.25.53'] = 6
+histo_files_list['KLF14-B6NTAC-MAT-17.2a  64-16 C1 - 2016-02-04 09.17.52'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-17.2b  65-16 C1 - 2016-02-04 10.24.22'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-17.2d  67-16 C1 - 2016-02-04 12.34.32'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-18.1b  51-16 C1 - 2016-02-02 09.59.16'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-18.1c  52-16 C1 - 2016-02-02 12.26.58'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-18.2a  57-16 C1 - 2016-02-03 09.10.17'] = 6
+histo_files_list['KLF14-B6NTAC-MAT-18.2c  59-16 C1 - 2016-02-03 11.56.52'] = 2
+histo_files_list['KLF14-B6NTAC-MAT-18.2e  61-16 C1 - 2016-02-03 14.19.35'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-19.2b  219-16 C1 - 2016-02-18 15.41.38'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-19.2c  220-16 C1 - 2016-02-18 17.03.38'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-19.2e  221-16 C1 - 2016-02-25 14.00.14'] = 3
+
+# add GWAT slices not seen at training, from animals not seen at training. We randomly assign images to a fold
+histo_files_list['KLF14-B6NTAC 36.1d PAT 99-16 B1 - 2016-02-11 11.29.55'] = 9
+histo_files_list['KLF14-B6NTAC 36.1e PAT 100-16 B1 - 2016-02-11 12.51.11'] = 4
+histo_files_list['KLF14-B6NTAC 36.1f PAT 101-16 B1 - 2016-02-11 14.57.03'] = 9
+histo_files_list['KLF14-B6NTAC 36.1g PAT 102-16 B1 - 2016-02-11 16.12.01'] = 4
+histo_files_list['KLF14-B6NTAC 36.1h PAT 103-16 B1 - 2016-02-12 09.51.08'] = 0
+histo_files_list['KLF14-B6NTAC 36.1j PAT 105-16 B1 - 2016-02-12 14.08.19'] = 4
+histo_files_list['KLF14-B6NTAC 37.1a PAT 106-16 B1 - 2016-02-12 15.33.02'] = 2
+histo_files_list['KLF14-B6NTAC-37.1b PAT 107-16 B1 - 2016-02-15 11.25.20'] = 0
+histo_files_list['KLF14-B6NTAC-37.1e PAT 110-16 B1 - 2016-02-15 16.16.06'] = 1
+histo_files_list['KLF14-B6NTAC-37.1g PAT 112-16 B1 - 2016-02-16 12.02.07'] = 4
+histo_files_list['KLF14-B6NTAC-37.1h PAT 113-16 B1 - 2016-02-16 14.53.02'] = 3
+histo_files_list['KLF14-B6NTAC-38.1e PAT 94-16 B1 - 2016-02-10 11.35.53'] = 4
+histo_files_list['KLF14-B6NTAC-38.1f PAT 95-16 B1 - 2016-02-10 14.16.55'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-16.2a  211-16 B1 - 2016-02-17 11.21.54'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-16.2b  212-16 B1 - 2016-02-17 12.33.18'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-16.2c  213-16 B1 - 2016-02-17 14.01.06'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-16.2e  215-16 B1 - 2016-02-17 17.14.16'] = 4
+histo_files_list['KLF14-B6NTAC-MAT-16.2f  216-16 B1 - 2016-02-18 10.05.52'] = 4
+histo_files_list['KLF14-B6NTAC-MAT-17.1a  44-16 B1 - 2016-02-01 09.19.20'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-17.1b  45-16 B1 - 2016-02-01 12.05.15'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-17.1d  47-16 B1 - 2016-02-01 15.11.42'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-17.1e  48-16 B1 - 2016-02-01 16.01.09'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-17.1f  49-16 B1 - 2016-02-01 17.12.31'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-17.2a  64-16 B1 - 2016-02-04 08.57.34'] = 4
+histo_files_list['KLF14-B6NTAC-MAT-17.2b  65-16 B1 - 2016-02-04 10.06.00'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-17.2d  67-16 B1 - 2016-02-04 12.20.20'] = 4
+histo_files_list['KLF14-B6NTAC-MAT-17.2g  69-16 B1 - 2016-02-04 15.52.52'] = 0
+histo_files_list['KLF14-B6NTAC-MAT-18.1b  51-16 B1 - 2016-02-02 09.46.31'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-18.1c  52-16 B1 - 2016-02-02 11.24.31'] = 7
+histo_files_list['KLF14-B6NTAC-MAT-18.1d  53-16 B1 - 2016-02-02 14.11.37'] = 9
+histo_files_list['KLF14-B6NTAC-MAT-18.2a  57-16 B1 - 2016-02-03 08.54.27'] = 6
+histo_files_list['KLF14-B6NTAC-MAT-18.2c  59-16 B1 - 2016-02-03 11.41.32'] = 3
+histo_files_list['KLF14-B6NTAC-MAT-18.2e  61-16 B1 - 2016-02-03 14.02.25'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-18.2f  62-16 B1 - 2016-02-03 15.00.17'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-18.3c  218-16 B1 - 2016-02-18 12.51.46'] = 8
+histo_files_list['KLF14-B6NTAC-MAT-19.1a  56-16 B1 - 2016-02-02 16.57.46'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-19.2b  219-16 B1 - 2016-02-18 14.21.50'] = 5
+histo_files_list['KLF14-B6NTAC-MAT-19.2c  220-16 B1 - 2016-02-18 16.40.48'] = 1
+histo_files_list['KLF14-B6NTAC-MAT-19.2e  221-16 B1 - 2016-02-25 13.15.27'] = 2
+histo_files_list['KLF14-B6NTAC-MAT-19.2f  217-16 B1 - 2016-02-18 11.23.22'] = 7
+histo_files_list['KLF14-B6NTAC-MAT-19.2g  222-16 B1 - 2016-02-25 14.51.57'] = 9
+histo_files_list['KLF14-B6NTAC-PAT-36.3a  409-16 B1 - 2016-03-15 09.24.54'] = 8
+histo_files_list['KLF14-B6NTAC-PAT-36.3b  412-16 B1 - 2016-03-15 14.11.47'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-37.2a  406-16 B1 - 2016-03-14 11.46.47'] = 4
+histo_files_list['KLF14-B6NTAC-PAT-37.2b  410-16 B1 - 2016-03-15 11.12.01'] = 9
+histo_files_list['KLF14-B6NTAC-PAT-37.2c  407-16 B1 - 2016-03-14 12.54.55'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-37.2d  411-16 B1 - 2016-03-15 12.01.13'] = 9
+histo_files_list['KLF14-B6NTAC-PAT-37.2e  408-16 B1 - 2016-03-14 16.06.43'] = 1
+histo_files_list['KLF14-B6NTAC-PAT-37.2f  405-16 B1 - 2016-03-14 09.49.45'] = 9
+histo_files_list['KLF14-B6NTAC-PAT-37.2h  418-16 B1 - 2016-03-16 16.42.16'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-37.3a  413-16 B1 - 2016-03-15 15.31.26'] = 3
+histo_files_list['KLF14-B6NTAC-PAT-37.3c  414-16 B1 - 2016-03-15 16.49.22'] = 3
+histo_files_list['KLF14-B6NTAC-PAT-37.4b  419-16 B1 - 2016-03-17 09.10.42'] = 7
+histo_files_list['KLF14-B6NTAC-PAT-38.1a  90-16 B1 - 2016-02-04 17.27.42'] = 6
+histo_files_list['KLF14-B6NTAC-PAT-39.1h  453-16 B1 - 2016-03-17 11.15.50'] = 0
+histo_files_list['KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06'] = 7
+
+# add missing slice. Random fold
+histo_files_list['KLF14-B6NTAC-37.1f PAT 111-16 C2 - 2016-02-16 11.26 (1)'] = 5
+
+# add recut slices. Random fold
+histo_files_list['KLF14-B6NTAC-PAT 37.2b 410-16 C4 - 2020-02-14 10.27.23'] = 8
+histo_files_list['KLF14-B6NTAC-PAT 37.2c 407-16 C4 - 2020-02-14 10.15.57'] = 0
+histo_files_list['KLF14-B6NTAC-PAT 37.2d 411-16 C4 - 2020-02-14 10.34.10'] = 9
+
+if DEBUG:
+    for i, key in enumerate(histo_files_list.keys()):
+        print('File ' + str(i) + ': Fold ' + str(histo_files_list[key]) + ': ' + key)
+
+########################################################################################################################
+# target background colour and colourmap
+########################################################################################################################
+
+# statistical mode of the background colour (typical colour value) from the training dataset
 with np.load(klf14_training_colour_histogram_file) as data:
-    mode_r_klf14 = data['mode_r']
-    mode_g_klf14 = data['mode_g']
-    mode_b_klf14 = data['mode_b']
+    mode_r_target = data['mode_r']
+    mode_g_target = data['mode_g']
+    mode_b_target = data['mode_b']
 
-########################################################################################################################
-## Colourmap for AIDA, based on KLF14 automatically segmented data
-########################################################################################################################
-
+# colourmap for AIDA, based on KLF14 automatically segmented data
 if os.path.isfile(filename_area2quantile):
     with np.load(filename_area2quantile, allow_pickle=True) as aux:
         f_area2quantile_f = aux['f_area2quantile_f']
@@ -1175,33 +392,33 @@ else:
     raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
                             ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
 
-# # load AIDA's colourmap
-# cm = cytometer.data.aida_colourmap()
-
 ########################################################################################################################
 ## Segmentation loop
 ########################################################################################################################
 
-for i_file, histo_file in enumerate(histo_files_list):
+# DEBUG: i_file = 9; histo_file = list(histo_files_list.keys())[i_file]
+for i_file, histo_file in enumerate(histo_files_list.keys()):
 
-    print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': ' + histo_file)
+    # get fold for this image
+    i_fold = histo_files_list[histo_file]
 
-    # make full path to ndpi file
+    # add extension to file
+    histo_file += histology_ext
+
+    print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ' (fold ' + str(i_fold) + ')' + ': ' + histo_file)
+
+    # make full path to histo file
     histo_file = os.path.join(histology_dir, histo_file)
 
     # check whether there's a lock on this file
-    lock_file = os.path.basename(histo_file).replace('.svs', '.lock')
+    lock_file = os.path.basename(histo_file).replace(histology_ext, '.lock')
     lock_file = os.path.join(annotations_dir, lock_file)
     if os.path.isfile(lock_file):
         print('Lock on file, skipping')
         continue
     else:
-        # create an empty lock file to prevent other other instances of the script to process the same .ndpi file
+        # create an empty lock file to prevent other other instances of the script to process the same histo file
         Path(lock_file).touch()
-
-    # choose a random fold for this image
-    np.random.seed(i_file)
-    i_fold = np.random.randint(0, 10)
 
     contour_model_file = os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
@@ -1213,26 +430,26 @@ for i_file, histo_file in enumerate(histo_files_list):
     # name of file to save annotations to
     annotations_file = os.path.basename(histo_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0001_auto.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0106_auto.json')
 
     annotations_corrected_file = os.path.basename(histo_file)
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
-    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0001_corrected.json')
+    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0106_corrected.json')
 
     # name of file to save rough mask, current mask, and time steps
-    rough_mask_file = os.path.basename(histo_file)
-    rough_mask_file = rough_mask_file.replace('.svs', '_rough_mask.npz')
-    rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
+    coarse_mask_file = os.path.basename(histo_file)
+    coarse_mask_file = coarse_mask_file.replace(histology_ext, '_coarse_mask.npz')
+    coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
 
     # open full resolution histology slide
     im = openslide.OpenSlide(histo_file)
 
     # pixel size
-    xres = float(im.properties['aperio.MPP']) * 1e-6 # m/pixel
-    yres = float(im.properties['aperio.MPP']) * 1e-6 # m/pixel
+    xres = float(im.properties['openslide.mpp-x']) # um/pixel
+    yres = float(im.properties['openslide.mpp-y']) # um/pixel
 
     # check whether we continue previous execution, or we start a new one
-    continue_previous = os.path.isfile(rough_mask_file)
+    continue_previous = os.path.isfile(coarse_mask_file)
 
     # true downsampled factor as reported by histology file
     level_actual = np.abs(np.array(im.level_downsamples) - downsample_factor_goal).argmin()
@@ -1244,7 +461,7 @@ for i_file, histo_file in enumerate(histo_files_list):
     # if the rough mask has been pre-computed, just load it
     if continue_previous:
 
-        with np.load(rough_mask_file) as aux:
+        with np.load(coarse_mask_file) as aux:
             lores_istissue = aux['lores_istissue']
             lores_istissue0 = aux['lores_istissue0']
             im_downsampled = aux['im_downsampled']
@@ -1292,7 +509,7 @@ for i_file, histo_file in enumerate(histo_files_list):
         (prev_first_row, prev_last_row, prev_first_col, prev_last_col) = (0, 0, 0, 0)
 
         # save to the rough mask file
-        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
+        np.savez_compressed(coarse_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
                             prev_first_row=prev_first_row, prev_last_row=prev_last_row,
                             prev_first_col=prev_first_col, prev_last_col=prev_last_col,
@@ -1325,9 +542,9 @@ for i_file, histo_file in enumerate(histo_files_list):
     # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the KLF14
     # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
     # overcorrected
-    mode_r_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
-    mode_g_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
-    mode_b_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
+    mode_r_tile = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
+    mode_g_tile = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
+    mode_b_tile = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
 
     # keep extracting histology windows until we have finished
     while np.count_nonzero(lores_istissue) > 0:
@@ -1372,9 +589,9 @@ for i_file, histo_file in enumerate(histo_files_list):
         tile = tile[:, :, 0:3]
 
         # correct tint of the tile to match KLF14 training data
-        tile[:, :, 0] = tile[:, :, 0] + (mode_r_klf14 - mode_r_rrbe1)
-        tile[:, :, 1] = tile[:, :, 1] + (mode_g_klf14 - mode_g_rrbe1)
-        tile[:, :, 2] = tile[:, :, 2] + (mode_b_klf14 - mode_b_rrbe1)
+        tile[:, :, 0] = tile[:, :, 0] + (mode_r_target - mode_r_tile)
+        tile[:, :, 1] = tile[:, :, 1] + (mode_g_target - mode_g_tile)
+        tile[:, :, 2] = tile[:, :, 2] + (mode_b_target - mode_b_tile)
 
         # interpolate coarse tissue segmentation to full resolution
         istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
@@ -1484,16 +701,18 @@ for i_file, histo_file in enumerate(histo_files_list):
                                                                  scaling_factor_xy=scaling_factor_list)
 
             if DEBUG:
+                enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(tile))
+                tile_enhanced = np.array(enhancer.enhance(enhance_contrast))
                 # no overlap
                 plt.clf()
-                plt.imshow(tile)
+                plt.imshow(tile_enhanced)
                 for j in range(len(contours)):
                     plt.fill(contours[j][:, 0], contours[j][:, 1], edgecolor='C0', fill=False)
                     plt.text(contours[j][0, 0], contours[j][0, 1], str(j))
 
                 # overlap
                 plt.clf()
-                plt.imshow(tile)
+                plt.imshow(tile_enhanced)
                 for j in range(len(contours_corrected)):
                     plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C0', fill=False)
                     # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
@@ -1510,15 +729,17 @@ for i_file, histo_file in enumerate(histo_files_list):
                 lores_contours_corrected.append(lores_c)
 
             if DEBUG:
+                enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(tile))
+                tile_enhanced = np.array(enhancer.enhance(enhance_contrast))
                 # no overlap
                 plt.clf()
-                plt.imshow(tile)
+                plt.imshow(tile_enhanced)
                 for j in range(len(contours)):
-                    plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C1', fill=False)
+                    plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C0', fill=False)
 
                 # overlap
                 plt.clf()
-                plt.imshow(tile)
+                plt.imshow(tile_enhanced)
                 for j in range(len(contours_corrected)):
                     plt.fill(lores_contours_corrected[j][:, 0], lores_contours_corrected[j][:, 1], edgecolor='C1', fill=False)
 
@@ -1590,7 +811,7 @@ for i_file, histo_file in enumerate(histo_files_list):
               ', total time ' + "{0:.2f}".format(time_total) + ' s')
 
         # save to the rough mask file
-        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
+        np.savez_compressed(coarse_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
                             im_downsampled=im_downsampled, step=step, perc_completed_all=   perc_completed_all,
                             time_step_all=time_step_all,
                             prev_first_row=prev_first_row, prev_last_row=prev_last_row,
