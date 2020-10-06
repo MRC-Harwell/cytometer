@@ -9,6 +9,7 @@ import glob
 import warnings
 import pickle
 import ujson
+import time
 from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
@@ -794,7 +795,7 @@ def aida_rectangle_items(rectangles):
 
 
 def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0, ensure_ascii=False,
-                         double_precision=10):
+                         double_precision=10, number_of_attempts=1):
     """
     Create a new or update existing AIDA annotations file, adding new items.
     :param filename: String with path to .json annotations file.
@@ -808,6 +809,8 @@ def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0,
     :param ensure_ascii: (def False) Limits output to ASCII and escapes all extended characters above 127. Default is
     true. If your end format supports UTF-8 setting this option to false is highly recommended to save space.
     :param double_precision: (def 10) Controls how many decimals to encode for double or decimal values.
+    :param number_of_attempts: (def 1) Number of times we try to write the file if the server returns
+    ConnectionResetError.
     :return:
     * None
     """
@@ -885,9 +888,19 @@ def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0,
     else:
         raise NotImplementedError('mode not implemented: ' + mode)
 
-    # write annotations to file
-    with open(filename, 'w') as fp:
-        ujson.dump(annotations, fp, indent=indent, ensure_ascii=ensure_ascii, double_precision=double_precision)
+    # if we are trying to save to a network filesystem, the server hosting the filesystem may return a
+    # ConnectionResetError. Because this would corrupt the output file, we let the user try a couple of times, with
+    # with a little wait between tries
+    for attempt in range(number_of_attempts):
+        try:
+            # write annotations to file
+            with open(filename, 'w') as fp:
+                ujson.dump(annotations, fp, indent=indent, ensure_ascii=ensure_ascii, double_precision=double_precision)
+            break
+        except ConnectionResetError:
+            print('# ======> ConnectionResetError. Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
+            time.sleep(5)  # secs
+            pass
 
 
 def aida_get_contours(annotations, layer_name='.*'):

@@ -760,14 +760,15 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
             rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
             rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
 
+            # sometimes the network filesystem's server gives a ConnectionResetError. If that's the case, we try 
             if step == 1:
                 # in the first step, overwrite previous annotations file, or create new one
-                cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='w')
-                cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
+                cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='w', number_of_attempts=5)
+                cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer', number_of_attempts=5)
             else:
                 # in next steps, add contours to previous layer
-                cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='append_to_last_layer')
-                cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
+                cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='append_to_last_layer', number_of_attempts=5)
+                cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer', number_of_attempts=5)
 
             # convert corrected contours to AIDA items
             contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
@@ -776,12 +777,12 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
 
             if step == 1:
                 # in the first step, overwrite previous annotations file, or create new one
-                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='w')
-                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
+                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='w', number_of_attempts=5)
+                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer', number_of_attempts=5)
             else:
                 # in next steps, add contours to previous layer
-                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='append_to_last_layer')
-                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
+                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='append_to_last_layer', number_of_attempts=5)
+                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer', number_of_attempts=5)
 
             # update the tissue segmentation mask with the current window
             if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
