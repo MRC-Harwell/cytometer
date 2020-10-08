@@ -105,5 +105,5 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
                 os.symlink(os.path.basename(aggregated_annotation_file), symlink_name)
 
 # create aggreagated annotation files for auto segmentations, and link to them
-process_annotations(auto_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=True)
-process_annotations(corrected_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=False)
+#process_annotations(auto_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=True)
+process_annotations(corrected_annotation_files_list, overwrite_aggregated_annotation_file=False, create_symlink=True)
