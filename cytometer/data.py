@@ -903,7 +903,7 @@ def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0,
             pass
 
 
-def aida_get_contours(annotations, layer_name='.*'):
+def aida_get_contours(annotations, layer_name='.*', return_props=False):
     """
     Concatenate items as contours in an AIDA annotations file or dict. Only 'path' and 'rectangle' types implemented.
 
@@ -911,9 +911,12 @@ def aida_get_contours(annotations, layer_name='.*'):
     :param layer_name: (def '.*', which matches any name). Regular expression (see help for re module) that will be used
     as the pattern to march against the layer names. For example, layer_name='White adipocyte.*' will match any layer
     name like 'White adipocyte 0', 'White adipocyte 1', etc.
+    :param return_props: (def False). Return extra output variable with properties of contours.
     :return:
     * items: list of concatenated contours from selected layers. [contour_0, contour_1, ...] where
     contour_i = [[x0, y0], [x1, y1], ...].
+    * props: dictionary of contour properties. Currently, only implemented output is
+        props['cell_prob']
     """
 
     # if filename provided, load annotations
@@ -924,9 +927,10 @@ def aida_get_contours(annotations, layer_name='.*'):
             annotations = ujson.load(fp)
 
     if type(annotations) != dict:
-        raise TypeError('annotations should be type dict')
+        raise TypeError('annotations must be type dict')
 
     items = []
+    cell_prob = []
     for l in range(len(annotations['layers'])):
 
         # check whether the regular expression matches the layer name
@@ -938,6 +942,7 @@ def aida_get_contours(annotations, layer_name='.*'):
 
                     # add items to list of output items
                     items += [annotations['layers'][l]['items'][i]['segments'],]
+                    cell_prob += [annotations['layers'][l]['items'][i]['cell_prob'],]
 
                 elif annotations['layers'][l]['items'][i]['type'] == 'rectangle':
 
@@ -958,7 +963,10 @@ def aida_get_contours(annotations, layer_name='.*'):
                     warnings.warn('Unknown item type found: layer ' + str(l) + ', item ' + str(i) + ': '
                                   + annotations['layers'][l]['items'][i]['type'], SyntaxWarning)
 
-    return items
+    if return_props:
+        return items, {'cell_prob':cell_prob}
+    else:
+        return items
 
 
 def read_keras_training_output(filename, every_step=True):
