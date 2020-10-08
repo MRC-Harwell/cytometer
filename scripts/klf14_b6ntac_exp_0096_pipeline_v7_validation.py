@@ -592,6 +592,13 @@ else:
 fpr, tpr, thr = roc_curve(y_true=pixel_gtruth_class, y_score=pixel_gtruth_prop)
 roc_auc = auc(fpr, tpr)
 
+# calculate FPR and TPR for different thresholds
+fpr_interp = np.interp([0.5, 0.6, 0.7, 0.75, 0.8], thr[::-1], fpr[::-1])
+tpr_interp = np.interp([0.5, 0.6, 0.7, 0.75, 0.8], thr[::-1], tpr[::-1])
+print('thr: ' + str([0.5, 0.6, 0.7, 0.75, 0.8]))
+print('fpr: ' + str(fpr_interp))
+print('tpr: ' + str(tpr_interp))
+
 # we fix the min_class_prop threshold to what is used in the pipeline
 thr_target = 0.5
 tpr_target = np.interp(thr_target, thr[::-1], tpr[::-1])
