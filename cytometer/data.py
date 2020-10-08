@@ -227,7 +227,7 @@ def change_home_directory(file_list, home_path_from, home_path_to, check_isfile=
         file_without_home = p.sub('', file)
         file_list[i] = os.path.join(home_path_to, file_without_home)
         if check_isfile and not os.path.isfile(file_list[i]):
-            raise FileExistsError(os.path.isfile(file_list[i]))
+            raise FileExistsError(file_list[i])
     return file_list
 
 
