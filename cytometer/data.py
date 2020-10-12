@@ -930,7 +930,8 @@ def aida_get_contours(annotations, layer_name='.*', return_props=False):
         raise TypeError('annotations must be type dict')
 
     items = []
-    cell_prob = []
+    if return_props:
+        cell_prob = []
     for l in range(len(annotations['layers'])):
 
         # check whether the regular expression matches the layer name
@@ -942,7 +943,8 @@ def aida_get_contours(annotations, layer_name='.*', return_props=False):
 
                     # add items to list of output items
                     items += [annotations['layers'][l]['items'][i]['segments'],]
-                    cell_prob += [annotations['layers'][l]['items'][i]['cell_prob'],]
+                    if return_props:
+                        cell_prob += [annotations['layers'][l]['items'][i]['cell_prob'],]
 
                 elif annotations['layers'][l]['items'][i]['type'] == 'rectangle':
 
