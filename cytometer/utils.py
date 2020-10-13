@@ -33,6 +33,7 @@ from cytometer.models import change_input_size
 from cytometer.CDF_confidence import CDF_error_DKW_band, CDF_error_beta
 from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
 from statsmodels.stats.multitest import multipletests
+import shapely
 
 DEBUG = False
 
@@ -3813,3 +3814,30 @@ def boxplot_poi(bp):
         poi.append([bp_w0, bp_q1, bp_q2, bp_q3, bp_wend])
 
     return np.vstack(poi)
+
+
+def sphericity(poly):
+    """
+    Sphericity measure of a polygon, or degree to which an object approximates a sphere.
+
+            Sphericity = R_inscribed / R_circumscribing
+
+    where R_incribed, R_circumscribing are the minimum and maximum distances, respectively, from polygon vertices to the
+    polygon's centroid. Sphericity \in [0, 1], and it's maximum for a circle.
+
+    Note that the centroid could be outside a polygon, and the sphericity measure wouldn't make much sense, but we are
+    not checking for those cases.
+
+    :param poly: shapely.geometry.polygon.Polygon object describing a closed polygon (the last vertex is a repetition of
+    the first).
+    :return: float scalar with the sphericity measure for the polygon.
+    """
+
+    if type(poly) != shapely.geometry.polygon.Polygon:
+        raise TypeError('poly must be a shapely.geometry.polygon.Polygon')
+
+    # distance of each polygon point to polygon centroid
+    d = np.array([shapely.geometry.Point(p).distance(poly.centroid) for p in list(poly.exterior.coords[:-1])])
+
+    # sphericity measure
+    return d.min() / d.max()
