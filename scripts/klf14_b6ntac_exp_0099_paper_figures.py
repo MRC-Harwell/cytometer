@@ -389,6 +389,99 @@ print('m MAT: mean = ' + str(np.mean(weight_m_mat)) + ', std = ' + str(np.std(we
 print('m PAT: mean = ' + str(np.mean(weight_m_pat)) + ', std = ' + str(np.std(weight_m_pat)))
 
 ########################################################################################################################
+## Statistics of hand traced white adipocytes
+########################################################################################################################
+
+import shapely
+import cytometer.utils
+import scipy
+
+rectangle_sides_ratios = []
+areas = []
+perimeters = []
+sphericities = []
+# loop files with hand traced contours
+for i, file_svg in enumerate(file_svg_list):
+
+    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+    # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+    # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+    cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                            minimum_npoints=3)
+
+    # compute contour properties
+    for j, cell_contour in enumerate(cell_contours):
+        poly_cell = shapely.geometry.Polygon(cell_contour)
+        x, y = poly_cell.minimum_rotated_rectangle.exterior.coords.xy
+        edge_length = (shapely.geometry.Point(x[0], y[0]).distance(shapely.geometry.Point(x[1], y[1])),
+                       shapely.geometry.Point(x[1], y[1]).distance(shapely.geometry.Point(x[2], y[2])))
+        rectangle_sides_ratio = np.max(edge_length) / np.min(edge_length)
+        area = poly_cell.area
+        perimeter = poly_cell.length
+        inv_compactness = poly_cell.length ** 2 / (4 * np.pi * area)
+        sphericity = cytometer.utils.sphericity(poly_cell)
+
+        # if j == 58:
+        #     raise ValueError('foo: ' + str(j))
+        # if (inv_compactness) < 2.2 and (inv_compactness) > 2.15:
+        #     raise ValueError('foo: ' + str(j))
+
+        rectangle_sides_ratios.append(rectangle_sides_ratio)
+        areas.append(area)
+        perimeters.append(perimeter)
+        sphericities.append(sphericity)
+
+# compactness measure
+inv_compactnesses = list(np.array(perimeters)**2 / (4 * np.pi * np.array(areas)))
+
+print('Max rectangle sides ratio: ' + str(np.max(rectangle_sides_ratios)))
+print('Min area: ' + str(np.min(areas)))
+print('Max area: ' + str(np.max(areas)))
+print('Min perimeter: ' + str(np.min(perimeters)))
+print('Max perimeter: ' + str(np.max(perimeters)))
+print('Min sphericity: ' + str(np.min(sphericities)))
+print('Max sphericity: ' + str(np.max(sphericities)))
+print('Min inv_compactness: ' + str(np.min(inv_compactnesses)))
+print('Max inv_compactness: ' + str(np.max(inv_compactnesses)))
+
+if DEBUG:
+    plt.clf()
+    plt.hist(rectangle_sides_ratios, bins=100)
+
+    plt.clf()
+    plt.boxplot(rectangle_sides_ratios)
+    plt.ylabel('Rectangle sides ratio')
+    q = scipy.stats.mstats.hdquantiles(rectangle_sides_ratios, prob=[0.98], axis=0)
+    plt.plot([0.75, 1.25], [q, q], 'r', 'LineWidth', 2)
+    plt.xlim(0.5, 1.5)
+    plt.legend(['$Q_{98\%}$ = ' + '%.2f' %q])
+
+    plt.clf()
+    plt.boxplot(areas)
+    plt.ylabel('Pixel$^2$')
+    q = scipy.stats.mstats.hdquantiles(areas, prob=[0.98], axis=0)
+    plt.plot([0.75, 1.25], [q, q], 'r', 'LineWidth', 2)
+    plt.xlim(0.5, 1.5)
+    plt.legend(['$Q_{98\%}$ = ' + '%.0f' %q])
+
+    plt.clf()
+    plt.boxplot(inv_compactnesses)
+    plt.ylabel('Compatncess$^{-1}$ ratio')
+    q = scipy.stats.mstats.hdquantiles(inv_compactnesses, prob=[0.98], axis=0)
+    plt.plot([0.75, 1.25], [q, q], 'r', 'LineWidth', 2)
+    plt.xlim(0.5, 1.5)
+    plt.legend(['$Q_{98\%}$ = ' + '%.2f' %q])
+
+    plt.clf()
+    plt.boxplot(sphericities)
+    plt.ylabel('Sphericity')
+    q = scipy.stats.mstats.hdquantiles(sphericities, prob=[0.02], axis=0)
+    plt.plot([0.75, 1.25], [q, q], 'r', 'LineWidth', 2)
+    plt.xlim(0.5, 1.5)
+    plt.legend(['$Q_{2\%}$ = ' + '%.2f' %q])
+
+########################################################################################################################
 ## Plots of get_next_roi_to_process(): Adaptive Block Algorithm
 #
 # Note: the quantitative comparison versus uniform tiling is provided in klf14_b6ntac_exp_0105_adaptive_blocks_analysis.py
