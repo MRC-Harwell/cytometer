@@ -17,7 +17,7 @@ import openslide
 import numpy as np
 
 histology_dir = os.path.join(home, 'jesse_mousedata/GTEx')
-area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_GTEx/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
