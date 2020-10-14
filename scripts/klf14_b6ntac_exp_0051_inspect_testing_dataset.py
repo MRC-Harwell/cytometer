@@ -84,7 +84,7 @@ training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_traini
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 figures_dir = os.path.join(root_data_dir, 'figures_0050')
-metainfo_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
 saved_dmap_model_basename = 'klf14_b6ntac_exp_0035_cnn_dmap'
