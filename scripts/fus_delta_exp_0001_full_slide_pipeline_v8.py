@@ -124,7 +124,7 @@ SAVE_FIGS = False
 
 pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN models
 histology_dir = os.path.join(home, 'AAcevedo_images/FUS-DELTA-DBA-B6/Histology scans/iWAT scans')
-area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Fus_Delta/annotations')
 

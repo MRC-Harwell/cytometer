@@ -1,6 +1,6 @@
 """
-This script aggregates all the cells in each '*_exp_0003_[auto | corrected].json' file and saves them to a
-'*_exp_0003_[auto | corrected]_aggregate.json', then creates a soft links to it that will be read by AIDA.
+This script aggregates all the cells in each '*_exp_0106_[auto | corrected].json' file and saves them to a
+'*_exp_0106_[auto | corrected]_aggregate.json', then creates a soft links to it that will be read by AIDA.
 """
 
 # cross-platform home directory
@@ -18,8 +18,8 @@ import numpy as np
 import shapely
 import cytometer.utils
 
-histology_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace/RREB1 Feb19')
-area2quantile_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+histology_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py

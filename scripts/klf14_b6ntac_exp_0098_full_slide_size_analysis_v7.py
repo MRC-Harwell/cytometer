@@ -54,6 +54,7 @@ training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
 seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 # figures_dir = os.path.join(root_data_dir, 'figures')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v7')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
@@ -639,7 +640,7 @@ plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_boxplots_comparing_
 plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_boxplots_comparing_manual_auto_corrected_populations_in_training_set_or_all_slides.svg'))
 
 # file that contains quantile-to-area functions
-filename_area2quantile = os.path.join(figures_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
+filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
 if os.path.isfile(filename_area2quantile):
     with np.load(filename_area2quantile, allow_pickle=True) as aux:
