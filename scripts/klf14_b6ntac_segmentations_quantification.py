@@ -17,12 +17,17 @@ from statsmodels.distributions.empirical_distribution import ECDF
 import statsmodels.formula.api as smf
 import PIL
 
+# cross-platform home directory
+from pathlib import Path
+home = str(Path.home())
+
 DEBUG = False
 
-image_data_dir = '/home/rcasero/data/roger_data'
-root_data_dir = '/home/rcasero/Dropbox/klf14'
+root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+histo_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
+metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 
 ''' auxiliary functions for area computations from Gimp paths
 ========================================================================================================================
@@ -88,7 +93,7 @@ def extract_cell_contour_and_compute_area(file, x_res=1.0, y_res=1.0):
 '''
 
 # check that all histology files have the same pixel size
-for file in glob.glob(os.path.join(image_data_dir, '*.ndpi')):
+for file in glob.glob(os.path.join(histo_dir, '*.ndpi')):
     im = openslide.OpenSlide(file)
     print("Xres = " + str(1e-2 / float(im.properties['tiff.XResolution'])) + ', ' +
           "Yres = " + str(1e-2 / float(im.properties['tiff.YResolution'])))
@@ -108,7 +113,7 @@ else:
     raise ValueError('Only centimeter units implemented')
 
 # read CSV file with female/male labels for mice
-with open(os.path.join(root_data_dir, 'klf14_b6ntac_meta_info.csv'), 'r') as f:
+with open(os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv'), 'r') as f:
     reader = csv.DictReader(f, skipinitialspace=True)
     klf14_info = []
     for row in reader:
