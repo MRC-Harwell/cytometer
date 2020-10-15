@@ -428,7 +428,7 @@ for i_file, ndpi_file_kernel in enumerate(ndpi_files_test_list):
     # name of file to save annotations to
     annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097_no_overlap.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0097_auto.json')
 
     annotations_corrected_file = os.path.basename(ndpi_file)
     annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
