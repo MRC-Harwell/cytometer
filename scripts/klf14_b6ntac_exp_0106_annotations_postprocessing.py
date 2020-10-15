@@ -20,14 +20,14 @@ import cytometer.utils
 
 histology_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
 # suffixes of annotation filenames
-auto_filename_suffix = '_exp_0003_auto.json'
-corrected_filename_suffix = '_exp_0003_corrected.json'
+auto_filename_suffix = '_exp_0106_auto.json'
+corrected_filename_suffix = '_exp_0106_corrected.json'
 
 # list of annotations
 auto_annotation_files_list = os.path.join(annotations_dir, '*' + auto_filename_suffix)
@@ -76,6 +76,7 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
 
         # name of the original .ndpi file
         histo_file = os.path.basename(annotation_file).replace(auto_filename_suffix, '.ndpi')
+        histo_file = os.path.basename(histo_file).replace(corrected_filename_suffix, '.ndpi')
         histo_file = os.path.join(histology_dir, histo_file)
 
         im = openslide.OpenSlide(histo_file)
