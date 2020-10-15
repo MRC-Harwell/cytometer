@@ -28,7 +28,7 @@ figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
 
 # suffixes of annotation filenames
-auto_filename_suffix = '_exp_0097_no_overlap.json'
+auto_filename_suffix = '_exp_0097_auto.json'
 corrected_filename_suffix = '_exp_0097_corrected.json'
 
 # list of annotations

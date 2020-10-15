@@ -360,7 +360,7 @@ for i_file, file in enumerate(file_training_full_slide_svg_list):
     ko = df_common['ko_parent'].values[0]
 
     # load list of contours in Auto and Corrected segmentations
-    json_file_auto = os.path.join(annotations_dir, file + '_exp_0097_no_overlap.json')
+    json_file_auto = os.path.join(annotations_dir, file + '_exp_0097_auto.json')
     contours_auto = cytometer.data.aida_get_contours(json_file_auto, layer_name='White adipocyte.*')
     json_file_corrected = os.path.join(annotations_dir, file + '_exp_0097_corrected.json')
     contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
@@ -503,7 +503,7 @@ else:
         ko = df_common['ko_parent'].values[0]
 
         # load list of contours in Auto and Corrected segmentations
-        json_file_auto = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0097_no_overlap.json'))
+        json_file_auto = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0097_auto.json'))
         contours_auto = cytometer.data.aida_get_contours(json_file_auto, layer_name='White adipocyte.*')
         json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0097_corrected.json'))
         contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
