@@ -21,7 +21,6 @@ home = str(Path.home())
 import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
-import pickle
 
 # other imports
 import openslide
@@ -57,141 +56,35 @@ training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
 training_non_overlap_data_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_non_overlap')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
-saved_models_dir = os.path.join(root_data_dir, 'saved_models')
+saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
-rreb1_data_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace')
+rreb1_data_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace/RREB1 Feb19')
 
 # saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
 saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # list of new data NDPI files to process
 ndpi_files_list = [
-    'RREB1-TM1B-B6N-IC-1.1a  1132-18 G1 - 2018-11-16 14.58.55.ndpi',
+    'RREB1-TM1B-B6N-IC-1.1a 1132-18 G1 - 2019-02-20 09.56.50.ndpi'
 ]
 
-# load list of images, and indices for training vs. testing indices
-
-# original dataset used in pipelines up to v6 + extra "other" tissue images
-kfold_filename = os.path.join(saved_models_dir, saved_extra_kfolds_filename)
-with open(kfold_filename, 'rb') as f:
-    aux = pickle.load(f)
-file_svg_list = aux['file_list']
-idx_test_all = aux['idx_test']
-idx_train_all = aux['idx_train']
-
-# correct home directory
-file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
-file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
-
-# number of images
-n_im = len(file_svg_list)
-
-'''Colour histograms
-'''
-
-# bin edges and centers for the histograms
-xbins_edge = np.array(list(range(0, 256, 5)))
-xbins = (xbins_edge[0:-1] + xbins_edge[1:]) / 2
-
-# init list to keep histogram computations
-hist_r_all = []
-hist_g_all = []
-hist_b_all = []
-
-# loop files with hand traced contours
-plt.clf()
-for i, file_svg in enumerate(file_svg_list):
-
-    print('file ' + str(i) + '/' + str(len(file_svg_list) - 1))
-
-    # change file extension from .svg to .tif
-    file_tif = file_svg.replace('.svg', '.tif')
-
-    # open histology training image
-    im = Image.open(file_tif)
-
-    if DEBUG:
-        plt.clf()
-        plt.imshow(im)
-
-    # histograms for each channel
-    plt.subplot(131)
-    hist_r, _, _ = plt.hist(np.array(im.getchannel('R')).flatten(), bins=xbins_edge, histtype='step', density=True)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.title('Red', fontsize=16)
-    plt.xlabel('Intensity', fontsize=14)
-    plt.ylabel('$\sqrt{Density}$', fontsize=14)
-
-    plt.subplot(132)
-    hist_g, _, _ = plt.hist(np.array(im.getchannel('G')).flatten(), bins=xbins_edge, histtype='step', density=True)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.title('Green', fontsize=16)
-    plt.xlabel('Intensity', fontsize=14)
-
-    plt.subplot(133)
-    hist_b, _, _ = plt.hist(np.array(im.getchannel('B')).flatten(), bins=xbins_edge, histtype='step', density=True)
-    plt.tick_params(axis='both', which='major', labelsize=14)
-    plt.title('Blue', fontsize=16)
-    plt.xlabel('Intensity', fontsize=14)
-
-    hist_r_all.append(hist_r)
-    hist_g_all.append(hist_g)
-    hist_b_all.append(hist_b)
-
-# stack vectors into matrix
-hist_r_all = np.vstack(hist_r_all)
-hist_g_all = np.vstack(hist_g_all)
-hist_b_all = np.vstack(hist_b_all)
-
-# compute quatiles for each of the bins
-hist_r_q1, hist_r_q2, hist_r_q3 = scipy.stats.mstats.hdquantiles(hist_r_all, prob=[0.25, 0.5, 0.75], axis=0)
-hist_g_q1, hist_g_q2, hist_g_q3 = scipy.stats.mstats.hdquantiles(hist_g_all, prob=[0.25, 0.5, 0.75], axis=0)
-hist_b_q1, hist_b_q2, hist_b_q3 = scipy.stats.mstats.hdquantiles(hist_b_all, prob=[0.25, 0.5, 0.75], axis=0)
-
-# compute median histogram's mode for each channel
-mode_r = xbins[np.argmax(hist_r_q2)]
-mode_g = xbins[np.argmax(hist_g_q2)]
-mode_b = xbins[np.argmax(hist_b_q2)]
-
-# save colour histograms
+# load colour histograms
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
-np.savez(klf14_training_colour_histogram_file, xbins_edge=xbins_edge, xbins=xbins,
-         hist_r_q1=hist_r_q1, hist_r_q2=hist_r_q2, hist_r_q3=hist_r_q3,
-         hist_g_q1=hist_g_q1, hist_g_q2=hist_g_q2, hist_g_q3=hist_g_q3,
-         hist_b_q1=hist_b_q1, hist_b_q2=hist_b_q2, hist_b_q3=hist_b_q3,
-         mode_r=mode_r, mode_g=mode_g, mode_b=mode_b)
-
-# plot KLF14 training colour histograms
-plt.clf()
-
-plt.subplot(131)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.plot(xbins, np.sqrt(hist_r_q2), label='Training median')
-plt.fill_between(xbins, np.sqrt(hist_r_q2), np.sqrt(hist_r_q1), alpha=0.5, color='C0', label='Q1-Q3')
-plt.legend()
-plt.title('Red', fontsize=16)
-plt.xlabel('Intensity', fontsize=14)
-plt.ylabel('$\sqrt{Density}$', fontsize=14)
-
-plt.subplot(132)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.plot(xbins, np.sqrt(hist_g_q2), label='Training median')
-plt.fill_between(xbins, np.sqrt(hist_g_q2), np.sqrt(hist_g_q1), alpha=0.5, color='C0', label='Q1-Q3')
-plt.fill_between(xbins, np.sqrt(hist_g_q2), np.sqrt(hist_g_q3), alpha=0.5, color='C0')
-plt.legend()
-plt.title('Green', fontsize=16)
-plt.xlabel('Intensity', fontsize=14)
-
-plt.subplot(133)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.plot(xbins, np.sqrt(hist_b_q2), label='Training median')
-plt.fill_between(xbins, np.sqrt(hist_b_q2), np.sqrt(hist_b_q1), alpha=0.5, color='C0', label='Q1-Q3')
-plt.fill_between(xbins, np.sqrt(hist_b_q2), np.sqrt(hist_b_q3), alpha=0.5, color='C0')
-plt.legend()
-plt.title('Blue', fontsize=16)
-plt.xlabel('Intensity', fontsize=14)
-
-plt.tight_layout()
+with np.load(klf14_training_colour_histogram_file) as aux:
+    xbins_edge = aux['xbins_edge']
+    xbins = aux['xbins']
+    hist_r_q1 = aux['hist_r_q1']
+    hist_r_q2 = aux['hist_r_q2']
+    hist_r_q3 = aux['hist_r_q3']
+    hist_g_q1 = aux['hist_g_q1']
+    hist_g_q2 = aux['hist_g_q2']
+    hist_g_q3 = aux['hist_g_q3']
+    hist_b_q1 = aux['hist_b_q1']
+    hist_b_q2 = aux['hist_b_q2']
+    hist_b_q3 = aux['hist_b_q3']
+    mode_r = aux['mode_r']
+    mode_g = aux['mode_g']
+    mode_b = aux['mode_b']
 
 # load the NDPI file
 i_file = 0
@@ -216,21 +109,19 @@ xres = 1e-2 / float(im.properties['tiff.XResolution'])
 yres = 1e-2 / float(im.properties['tiff.YResolution'])
 
 # load coarse tissue mask
-aux = np.load(rough_mask_file)
-lores_istissue = aux['lores_istissue']
-lores_istissue0 = aux['lores_istissue0']
-im_downsampled = aux['im_downsampled']
-step = aux['step']
-perc_completed_all = list(aux['perc_completed_all'])
-time_step_all = list(aux['time_step_all'])
-del aux
+with np.load(rough_mask_file) as aux:
+    lores_istissue0 = aux['lores_istissue0']
+    im_downsampled = aux['im_downsampled']
+    step = aux['step']
+    perc_completed_all = list(aux['perc_completed_all'])
+    time_step_all = list(aux['time_step_all'])
 
 time_prev = time.time()
 
 # get indices for the next histology window to process
 (first_row, last_row, first_col, last_col), \
 (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
-    cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
+    cytometer.utils.get_next_roi_to_process(lores_istissue0, downsample_factor=downsample_factor,
                                             max_window_size=fullres_box_size,
                                             border=np.round((receptive_field - 1) / 2))
 
@@ -241,7 +132,7 @@ tile = np.array(tile)
 tile = tile[:, :, 0:3]
 
 # interpolate coarse tissue segmentation to full resolution
-istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
+istissue_tile = lores_istissue0[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
 istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
                                        resample=PIL.Image.NEAREST)
 
