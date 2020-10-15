@@ -315,15 +315,16 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
     a maximum size. If the window were to overflow the image, it gets cropped to the image size.
     :param border: (def (65, 65)) Vector with how many (rows, columns) of the output window are a border around
     the region of interest.
-    :return: (first_row, last_row, first_col, last_col). If the histology image is im, the ROI found is
+    :return:
+    * (first_row, last_row, first_col, last_col). If the histology image is im, the ROI found is
     im[first_row:last_row, first_col:last_col].
 
-    (lores_first_row, lores_last_row, lores_first_col, lores_last_col). ROI in the downsampled segmentation.
+    * (lores_first_row, lores_last_row, lores_first_col, lores_last_col). ROI in the downsampled segmentation.
     """
 
     if np.count_nonzero(seg) == 0:
         warnings.warn('Empty segmentation')
-        return 0, 0, 0, 0
+        return (0, 0, 0, 0), (0, 0, 0, 0)
 
     # convert to np.array so that we can use algebraic operators
     max_window_size = np.array(max_window_size)
