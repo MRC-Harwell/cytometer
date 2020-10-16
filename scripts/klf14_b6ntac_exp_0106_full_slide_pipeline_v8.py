@@ -92,7 +92,6 @@ from pathlib import Path
 home = str(Path.home())
 
 import os
-from pathlib import Path
 import sys
 if os.path.join(home, 'Software/cytometer') not in sys.path:
     sys.path.extend([os.path.join(home, 'Software/cytometer')])
@@ -138,6 +137,7 @@ else:
 DEBUG = False
 SAVE_FIGS = False
 
+# data paths
 histology_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 histology_ext = '.ndpi'
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
