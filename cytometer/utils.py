@@ -25,6 +25,7 @@ from skimage.filters import threshold_local
 from sklearn.preprocessing import minmax_scale
 from sklearn.metrics import confusion_matrix
 from mahotas.labeled import borders
+import pandas as pd
 import networkx as nx
 import keras.backend as K
 import keras
@@ -1137,6 +1138,80 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         return labels_all, class_pred, labels_borders_all
     else:
         return labels_all, labels_borders_all
+
+
+def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=False):
+    """
+    Match a set of test contours to a set of reference contours.
+
+    Each test contour is matched to the reference contour that overlaps with the best Dice coefficient.
+
+    :param contours_ref: List of reference contours. These are the ground truth or target contours.
+    :param contours_test: List of test contours. These are the contours that we want to match to the reference contours.
+    :param allow_repeat_ref: (def False). If True, multiple test contours can map to the same ref contour. If False
+    (default), only the match with the highest Dice coefficient is kept.
+    :return: pandas.DataFrame. Each row corresponds to two overlapping contours. Test contours that have no match are
+    not returned in the output
+    * test_idx: index corresponding to contours_test
+    * test_area: area of test contour
+    * ref_idx: index corresponding to contours_ref
+    * ref_area: area of ref contour
+    * dice: Dice coefficient = 2 * |A ∩ B| / (|A| + |B|)
+    * hausdorff: Hausdorff distance (maximum distance of a set to the nearest point in the other set)
+    """
+
+    if type(contours_ref) is not list:
+        raise TypeError('contours_ref must be a list')
+    if type(contours_test) is not list:
+        raise TypeError('contours_test must be a list')
+
+    # init output as structured array
+    df = pd.DataFrame(columns=['test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff'])
+
+    # if contours are given as list of points, convert to shapely polygons
+    if type(contours_ref[0]) in (list, np.ndarray):
+        contours_ref = [shapely.geometry.Polygon(x) for x in contours_ref]
+    if type(contours_test[0]) in (list, np.ndarray):
+        contours_test = [shapely.geometry.Polygon(x) for x in contours_test]
+
+    for i, contour_test in enumerate(contours_test):
+
+        df.loc[i, 'test_idx'] = i
+        df.loc[i, 'test_area'] = contour_test.area
+
+        # compute the Dice coefficient of current test contour with each of the reference contours
+        dices = []
+        ref_areas = []
+        for contour_ref in contours_ref:
+            intersection_area = contour_test.intersection(contour_ref).area
+            ref_area = contour_ref.area
+            ref_areas.append(ref_area)
+            dices.append(2 * intersection_area / (ref_area + df.loc[i, 'test_area']))
+
+        # find best match as the ref contour with the highest Dice coefficient
+        dices = np.array(dices)
+        if np.any(dices > 0):
+            best_match_idx = np.argmax(dices)
+            df.loc[i, 'ref_idx'] = best_match_idx
+            df.loc[i, 'ref_area'] = ref_areas[best_match_idx]
+            df.loc[i, 'dice'] = dices[best_match_idx]
+            df.loc[i, 'hausdorff'] = contour_test.hausdorff_distance(contours_ref[best_match_idx])
+
+    # drop rows with test contours that have no match
+    df.dropna(subset=['ref_idx'], inplace=True)
+
+    # if the same ref contour is matched to several test contours, only the best match is kept
+    if ~allow_repeat_ref:
+        # sort by ref_idx and Dice value, so that we have all the repeat refs are together
+        df.sort_values(['ref_idx', 'dice'], ascending=[True, False], inplace=True)
+
+        # remove the ref_idx duplicates, except for the first one, which will be the one with the largest Dice value
+        df.drop_duplicates(subset=['ref_idx'], keep='first', inplace=True)
+
+        # sort back by test_idx
+        df.sort_values(['test_idx'], ascending=[True], inplace=True, ignore_index=True)
+
+    return df
 
 
 def match_overlapping_labels(labels_ref, labels_test, allow_repeat_ref=False):
