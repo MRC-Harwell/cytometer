@@ -4,7 +4,7 @@ Segmentation validation of pipeline v7.
 Loop manual contours and find overlaps with automatically segmented contours. Compute cell areas and prop. of WAT
 pixels.
 
-Like klf14_b6ntac_exp_0096_pipeline_v7_validation but:
+Changes over klf14_b6ntac_exp_0096_pipeline_v7_validation:
 * Validation is done with new contours method match_overlapping_contours() instead of old labels method
   match_overlapping_labels().
 * Instead of going step by step with the pipeline, we use the whole segmentation_pipeline6() function.
@@ -27,10 +27,19 @@ import pickle
 import pandas as pd
 import PIL
 import matplotlib.pyplot as plt
+
+# limit number of GPUs
+if 'CUDA_VISIBLE_DEVICES' not in os.environ.keys():
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+if 'CUDA_VISIBLE_DEVICES' in os.environ.keys():
+    print('Limiting visible CUDA devices to: ' + os.environ['CUDA_VISIBLE_DEVICES'])
+
+# force tensorflow environment
+os.environ['KERAS_BACKEND'] = 'tensorflow'
+
 import cytometer.data
 import cytometer.utils
 
-os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
 
 DEBUG = False
@@ -100,8 +109,9 @@ for i_fold in range(n_folds):
     fold[idx_test_all[i_fold]] = i_fold
 
 # init dataframes to contain the comparison between hand traced and automatically segmented cells
-df_auto_all = pd.DataFrame(columns=['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff'])
-df_corrected_all = pd.DataFrame(columns=['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff'])
+dataframe_columns = ['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff']
+df_auto_all = pd.DataFrame(columns=dataframe_columns)
+df_corrected_all = pd.DataFrame(columns=dataframe_columns)
 
 for i, file_svg in enumerate(file_svg_list):
 
@@ -143,6 +153,7 @@ for i, file_svg in enumerate(file_svg_list):
                                                  classifier_model=classifier_model_filename,
                                                  min_cell_area=min_cell_area,
                                                  max_cell_area=max_cell_area,
+                                                 remove_edge_labels=False,
                                                  #mask=istissue_tile,
                                                  #min_mask_overlap=min_mask_overlap,
                                                  phagocytosis=phagocytosis,
@@ -173,13 +184,12 @@ for i, file_svg in enumerate(file_svg_list):
         for j in range(len(cells)):
             cell = np.array(cells[j])
             plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
+            plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
         for j in range(len(contours_auto)):
             plt.fill(contours_auto[j][:, 0], contours_auto[j][:, 1], edgecolor='C1', fill=False)
-            plt.text(contours_auto[j][0, 0], contours_auto[j][0, 1], str(j))
+            plt.text(np.mean(contours_auto[j][:, 0]), np.mean(contours_auto[j][:, 1]), str(j))
 
         # with overlap
-        plt.clf()
-        plt.imshow(tile_enhanced)
         plt.clf()
         plt.imshow(tile_enhanced)
         for j in range(len(cells)):
@@ -187,13 +197,13 @@ for i, file_svg in enumerate(file_svg_list):
             plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
         for j in range(len(contours_corrected)):
             plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C1', fill=False)
-            # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
+            plt.text(np.mean(contours_corrected[j][:, 0]), np.mean(contours_corrected[j][:, 1]), str(j))
 
     # match segmented contours to hand traced contours
     df_auto = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_auto,
-                                                         allow_repeat_ref=False)
+                                                         allow_repeat_ref=False, return_unmatched_refs=True)
     df_corrected = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_corrected,
-                                                              allow_repeat_ref=False)
+                                                              allow_repeat_ref=False, return_unmatched_refs=True)
 
     # aggregate results from this image into total dataframes
     df_auto['file_svg_idx'] = i
