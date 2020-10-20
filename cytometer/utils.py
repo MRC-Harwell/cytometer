@@ -2731,7 +2731,8 @@ def segmentation_pipeline2(im, contour_model, dmap_model, classifier_model, corr
 
 def segmentation_pipeline6(im,
                            dmap_model, contour_model, classifier_model, correction_model=None,
-                           min_cell_area=1500, max_cell_area=100e3, mask=None, min_mask_overlap=0.8, phagocytosis=True,
+                           min_cell_area=1500, max_cell_area=100e3, remove_edge_labels=True,
+                           mask=None, min_mask_overlap=0.8, phagocytosis=True,
                            min_class_prop=1.0,
                            correction_window_len=401, correction_smoothing=11,
                            batch_size=None, return_bbox=False, return_bbox_coordinates='rc'):
@@ -2784,6 +2785,8 @@ def segmentation_pipeline6(im,
     will be discarded. By default, no mask is used. (See clean_segmentation().)
     :param min_mask_overlap: (def 0.8) Scalar. Remove labels that don't have at least min_mask_overlap of their pixels
     within the mask. (See clean_segmentation().)
+    :param remove_edge_labels: (def True). Boolean to remove labels that touch the edges of the image. (See
+    clean_segmentation().)
     :param phagocytosis: (def True). Boolean to remove labels that are completely surrounded by another label. (See
     clean_segmentation().)
     :param min_class_prop: (def 1.0). Only objects with >= min_class_prop pixels of class True are accepted. E.g. if
@@ -2876,10 +2879,12 @@ def segmentation_pipeline6(im,
             plt.axis('off')
             plt.title('Tissue class', fontsize=14)
 
-    # remove labels that touch the edges, that are too small or too large, don't overlap enough with the tissue mask,
-    # are fully surrounded by another label or are not white adipose tissue
+    # remove labels that are too small or too large, don't overlap enough with the tissue mask,
+    # are fully surrounded by another label or are not white adipose tissue. We may also remove cells that touch the
+    # edge
     labels, todo_edge = clean_segmentation(labels, min_cell_area=min_cell_area, max_cell_area=max_cell_area,
-                                           remove_edge_labels=True, mask=mask, min_mask_overlap=min_mask_overlap,
+                                           remove_edge_labels=remove_edge_labels,
+                                           mask=mask, min_mask_overlap=min_mask_overlap,
                                            phagocytosis=phagocytosis,
                                            labels_class=labels_class, min_class_prop=min_class_prop)
 
