@@ -36,7 +36,7 @@ import scipy
 
 # limit number of GPUs
 if 'CUDA_VISIBLE_DEVICES' not in os.environ.keys():
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 if 'CUDA_VISIBLE_DEVICES' in os.environ.keys():
     print('Limiting visible CUDA devices to: ' + os.environ['CUDA_VISIBLE_DEVICES'])
 
@@ -255,7 +255,7 @@ for i, file_svg in enumerate(file_svg_list):
 
     # save dataframes to file
     df_auto_all.to_csv(dataframe_auto_filename, index=False)
-    df_auto_all.to_csv(dataframe_corrected_filename, index=False)
+    df_corrected_all.to_csv(dataframe_corrected_filename, index=False)
 
     # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
     # reload the models every time
