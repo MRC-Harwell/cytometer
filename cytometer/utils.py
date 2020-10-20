@@ -1168,6 +1168,9 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
     # init output as structured array
     df = pd.DataFrame(columns=['test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff'])
 
+    if (len(contours_test) == 0) or (len(contours_ref) == 0):
+        return df
+
     # if contours are given as list of points, convert to shapely polygons
     if type(contours_ref[0]) in (list, np.ndarray):
         contours_ref = [shapely.geometry.Polygon(x) for x in contours_ref]
@@ -2988,6 +2991,9 @@ def labels2contours(window_labels, offset_xy=None, scaling_factor_xy=None):
     :return:
     * contours: List of np.array (m_i, x, y). Each np.array contains the points of a contour.
     """
+
+    if len(window_labels) == 0:
+        return []
 
     if offset_xy is not None:
         if window_labels.shape[0] != offset_xy.shape[0] or offset_xy.shape[1] != 2:

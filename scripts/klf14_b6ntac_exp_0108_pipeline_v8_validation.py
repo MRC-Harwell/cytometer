@@ -150,7 +150,10 @@ for i, file_svg in enumerate(file_svg_list):
 
     # convert labels in single-cell images to contours (points), and add offset so that the contour coordinates are
     # referred to the whole image
-    offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
+    if len(index_list) == 0:
+        offset_xy = np.array([])
+    else:
+        offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
     contours_auto = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
                                                     scaling_factor_xy=scaling_factor_list)
     contours_corrected = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
@@ -195,6 +198,10 @@ for i, file_svg in enumerate(file_svg_list):
     df_auto_all = pd.concat([df_auto_all, df_auto], ignore_index=True)
     df_corrected_all = pd.concat([df_corrected_all, df_corrected], ignore_index=True)
 
+    # save dataframes to file
+    df_auto_all.to_csv(dataframe_auto_filename, index=False)
+    df_auto_all.to_csv(dataframe_corrected_filename, index=False)
+
     # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
     # reload the models every time
     K.clear_session()
@@ -206,6 +213,3 @@ if DEBUG:
     plt.clf()
     plt.scatter(df_corrected_all['ref_area'], df_corrected_all['test_area'] / df_corrected_all['ref_area'] - 1)
 
-# save dataframes to file
-df_auto_all.to_csv(dataframe_auto_filename, index=False)
-df_auto_all.to_csv(dataframe_corrected_filename, index=False)
