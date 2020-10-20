@@ -1,5 +1,15 @@
 """
-Segmentation validation of pipeline v7.
+Segmentation validation of pipeline v7 with 10-fold cross validation:
+ * data generation
+   * training images (*0076*)
+   * non-overlap training images (*0077*)
+   * augmented training images (*0078*)
+   * k-folds + extra "other" for classifier (*0094*)
+ * segmentation
+   * dmap (*0086*)
+   * contour from dmap (*0091*)
+ * classifier (*0095*)
+ * segmentation correction (*0089*) networks""
 
 Loop manual contours and find overlaps with automatically segmented contours. Compute cell areas and prop. of WAT
 pixels.
@@ -108,6 +118,10 @@ fold = -np.ones(shape=(n_im,))  # initialise with -1 values in case a training f
 for i_fold in range(n_folds):
     fold[idx_test_all[i_fold]] = i_fold
 
+########################################################################################################################
+## Find matches between hand traced contours and pipeline segmentations
+########################################################################################################################
+
 # init dataframes to contain the comparison between hand traced and automatically segmented cells
 dataframe_columns = ['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff']
 df_auto_all = pd.DataFrame(columns=dataframe_columns)
@@ -213,7 +227,7 @@ for i, file_svg in enumerate(file_svg_list):
 
     # save dataframes to file
     df_auto_all.to_csv(dataframe_auto_filename, index=False)
-    df_auto_all.to_csv(dataframe_corrected_filename, index=False)
+    df_corrected_all.to_csv(dataframe_corrected_filename, index=False)
 
     # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
     # reload the models every time
@@ -225,4 +239,3 @@ if DEBUG:
 
     plt.clf()
     plt.scatter(df_corrected_all['ref_area'], df_corrected_all['test_area'] / df_corrected_all['ref_area'] - 1)
-
