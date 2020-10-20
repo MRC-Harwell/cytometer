@@ -1,5 +1,22 @@
+"""
+Segmentation validation of pipeline v8.
+
+Loop manual contours and find overlaps with automatically segmented contours. Compute cell areas and prop. of WAT
+pixels.
+
+Changes over klf14_b6ntac_exp_0096_pipeline_v7_validation:
+* Validation is done with new contours method match_overlapping_contours() instead of old labels method
+  match_overlapping_labels().
+* Instead of going step by step with the pipeline, we use the whole segmentation_pipeline6() function.
+* Segmentation clean up has changed a bit to match the cleaning in v8.
+
+Changes over klf14_b6ntac_exp_0108_pipeline_v7_validation:
+* Add colour correction so that we have pipeline v8.
+"""
+
+
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0106_full_slide_pipeline_v7'
+experiment_id = 'klf14_b6ntac_exp_0109_pipeline_v8_validation'
 
 # cross-platform home directory
 from pathlib import Path
@@ -10,14 +27,25 @@ import sys
 if os.path.join(home, 'Software/cytometer') not in sys.path:
     sys.path.extend([os.path.join(home, 'Software/cytometer')])
 import numpy as np
+import openslide
 import pickle
 import pandas as pd
 import PIL
 import matplotlib.pyplot as plt
+import scipy
+
+# limit number of GPUs
+if 'CUDA_VISIBLE_DEVICES' not in os.environ.keys():
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+if 'CUDA_VISIBLE_DEVICES' in os.environ.keys():
+    print('Limiting visible CUDA devices to: ' + os.environ['CUDA_VISIBLE_DEVICES'])
+
+# force tensorflow environment
+os.environ['KERAS_BACKEND'] = 'tensorflow'
+
 import cytometer.data
 import cytometer.utils
 
-os.environ['KERAS_BACKEND'] = 'tensorflow'
 import keras.backend as K
 
 DEBUG = False
@@ -35,6 +63,9 @@ min_class_prop = 0.6
 correction_window_len = 401
 correction_smoothing = 11
 
+# downsampled slide parameters
+downsample_factor_goal = 16  # approximate value, that may vary a bit in each histology file
+
 # data paths
 histology_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 histology_ext = '.ndpi'
@@ -43,6 +74,9 @@ saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipelin
 annotations_dir = os.path.join(home, 'bit/cytometer_data/aida_data_Klf14_v8/annotations')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 paper_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+
+# file with RGB modes from all training data
+klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
 
 # k-folds file
 saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
@@ -57,15 +91,11 @@ correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_o
 dataframe_auto_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_auto.csv')
 dataframe_corrected_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_corrected.csv')
 
-'''
-************************************************************************************************************************
-Segmentation validation of pipeline v8.
-
-Loop manual contours and find overlaps with automatically segmented contours. Compute cell areas and prop. of WAT
-pixels.
-************************************************************************************************************************
-'''
-
+# statistical mode of the background colour (typical colour value) from the training dataset
+with np.load(klf14_training_colour_histogram_file) as data:
+    mode_r_target = data['mode_r']
+    mode_g_target = data['mode_g']
+    mode_b_target = data['mode_b']
 
 '''Load folds'''
 
@@ -97,8 +127,9 @@ for i_fold in range(n_folds):
     fold[idx_test_all[i_fold]] = i_fold
 
 # init dataframes to contain the comparison between hand traced and automatically segmented cells
-df_auto_all = pd.DataFrame(columns=['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff'])
-df_corrected_all = pd.DataFrame(columns=['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff'])
+dataframe_columns = ['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff']
+df_auto_all = pd.DataFrame(columns=dataframe_columns)
+df_corrected_all = pd.DataFrame(columns=dataframe_columns)
 
 for i, file_svg in enumerate(file_svg_list):
 
@@ -120,6 +151,30 @@ for i, file_svg in enumerate(file_svg_list):
         plt.clf()
         plt.imshow(im)
 
+    # open histology file the training file was extracted from
+    file_whole_slide = os.path.basename(file_svg).split('_row_')[0]
+    file_whole_slide = os.path.join(histology_dir, file_whole_slide + '.ndpi')
+    im_whole_slide = openslide.OpenSlide(file_whole_slide)
+
+    # get downsampled image
+    downsample_level = im_whole_slide.get_best_level_for_downsample(downsample_factor_goal)
+    im_downsampled = im_whole_slide.read_region(location=(0, 0), level=downsample_level,
+                                                size=im_whole_slide.level_dimensions[downsample_level])
+    im_downsampled = np.array(im_downsampled)
+    im_downsampled = im_downsampled[:, :, 0:3]
+
+    # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the KLF14
+    # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
+    # overcorrected
+    mode_r_tile = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
+    mode_g_tile = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
+    mode_b_tile = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
+
+    # correct tint of the tile to match KLF14 training data
+    im[:, :, 0] = im[:, :, 0] + (mode_r_target - mode_r_tile)
+    im[:, :, 1] = im[:, :, 1] + (mode_g_target - mode_g_tile)
+    im[:, :, 2] = im[:, :, 2] + (mode_b_target - mode_b_tile)
+
     # names of contour, dmap and tissue classifier models
     dmap_model_filename = \
         os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
@@ -140,6 +195,7 @@ for i, file_svg in enumerate(file_svg_list):
                                                  classifier_model=classifier_model_filename,
                                                  min_cell_area=min_cell_area,
                                                  max_cell_area=max_cell_area,
+                                                 remove_edge_labels=False,
                                                  #mask=istissue_tile,
                                                  #min_mask_overlap=min_mask_overlap,
                                                  phagocytosis=phagocytosis,
@@ -170,13 +226,12 @@ for i, file_svg in enumerate(file_svg_list):
         for j in range(len(cells)):
             cell = np.array(cells[j])
             plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
+            plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
         for j in range(len(contours_auto)):
             plt.fill(contours_auto[j][:, 0], contours_auto[j][:, 1], edgecolor='C1', fill=False)
-            plt.text(contours_auto[j][0, 0], contours_auto[j][0, 1], str(j))
+            plt.text(np.mean(contours_auto[j][:, 0]), np.mean(contours_auto[j][:, 1]), str(j))
 
         # with overlap
-        plt.clf()
-        plt.imshow(tile_enhanced)
         plt.clf()
         plt.imshow(tile_enhanced)
         for j in range(len(cells)):
@@ -184,13 +239,13 @@ for i, file_svg in enumerate(file_svg_list):
             plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
         for j in range(len(contours_corrected)):
             plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C1', fill=False)
-            # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
+            plt.text(np.mean(contours_corrected[j][:, 0]), np.mean(contours_corrected[j][:, 1]), str(j))
 
     # match segmented contours to hand traced contours
     df_auto = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_auto,
-                                                         allow_repeat_ref=False)
+                                                         allow_repeat_ref=False, return_unmatched_refs=True)
     df_corrected = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_corrected,
-                                                              allow_repeat_ref=False)
+                                                              allow_repeat_ref=False, return_unmatched_refs=True)
 
     # aggregate results from this image into total dataframes
     df_auto['file_svg_idx'] = i
