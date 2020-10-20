@@ -1140,7 +1140,7 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         return labels_all, labels_borders_all
 
 
-def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=False):
+def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=False, return_unmatched_refs=False):
     """
     Match a set of test contours to a set of reference contours.
 
@@ -1148,8 +1148,10 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
 
     :param contours_ref: List of reference contours. These are the ground truth or target contours.
     :param contours_test: List of test contours. These are the contours that we want to match to the reference contours.
-    :param allow_repeat_ref: (def False). If True, multiple test contours can map to the same ref contour. If False
+    :param allow_repeat_ref: (def False) If True, multiple test contours can map to the same ref contour. If False
     (default), only the match with the highest Dice coefficient is kept.
+    :param return_unmatched_refs: (def False) If True, the last rows of the output dataframe correspond to contours_ref
+    that have no correspondence in contours_test.
     :return: pandas.DataFrame. Each row corresponds to two overlapping contours. Test contours that have no match are
     not returned in the output
     * test_idx: index corresponding to contours_test
@@ -1204,7 +1206,7 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
     df.dropna(subset=['ref_idx'], inplace=True)
 
     # if the same ref contour is matched to several test contours, only the best match is kept
-    if ~allow_repeat_ref:
+    if not allow_repeat_ref:
         # sort by ref_idx and Dice value, so that we have all the repeat refs are together
         df.sort_values(['ref_idx', 'dice'], ascending=[True, False], inplace=True)
 
@@ -1213,6 +1215,12 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
 
         # sort back by test_idx
         df.sort_values(['test_idx'], ascending=[True], inplace=True, ignore_index=True)
+
+    if return_unmatched_refs:
+        # dataframe with hand traced contours that have no automatic correspondence
+        df_unmatched = pd.DataFrame(columns=df.columns)
+        df_unmatched['ref_idx'] = list(set(range(len(contours_ref))) - set(df['ref_idx']))
+        df_unmatched['ref_area'] = np.array(ref_areas)[np.array(df_unmatched['ref_idx'])]
 
     return df
 
