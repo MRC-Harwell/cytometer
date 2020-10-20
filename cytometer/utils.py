@@ -1220,7 +1220,8 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
         # dataframe with hand traced contours that have no automatic correspondence
         df_unmatched = pd.DataFrame(columns=df.columns)
         df_unmatched['ref_idx'] = list(set(range(len(contours_ref))) - set(df['ref_idx']))
-        df_unmatched['ref_area'] = np.array(ref_areas)[np.array(df_unmatched['ref_idx'])]
+        if len(df_unmatched['ref_idx']) > 0:
+            df_unmatched['ref_area'] = np.array(ref_areas)[np.array(df_unmatched['ref_idx'])]
 
     return df
 
