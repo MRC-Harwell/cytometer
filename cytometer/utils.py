@@ -1202,7 +1202,7 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
             df.loc[i, 'dice'] = dices[best_match_idx]
             df.loc[i, 'hausdorff'] = contour_test.hausdorff_distance(contours_ref[best_match_idx])
 
-    # drop rows with test contours that have no match
+    # drop rows with test contours that have no ref match
     df.dropna(subset=['ref_idx'], inplace=True)
 
     # if the same ref contour is matched to several test contours, only the best match is kept
@@ -1222,6 +1222,7 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
         df_unmatched['ref_idx'] = list(set(range(len(contours_ref))) - set(df['ref_idx']))
         if len(df_unmatched['ref_idx']) > 0:
             df_unmatched['ref_area'] = np.array(ref_areas)[np.array(df_unmatched['ref_idx'])]
+        df = df.append(df_unmatched, ignore_index=True)
 
     return df
 
