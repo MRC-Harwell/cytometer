@@ -528,7 +528,7 @@ seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 
 # k-folds file
@@ -1442,7 +1442,7 @@ import math
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -1613,7 +1613,7 @@ DEBUG = False
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
 times_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 
 # load filenames, number of blocks and time it took to segment them
@@ -1936,7 +1936,7 @@ import math
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -2475,7 +2475,7 @@ import re
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -3849,7 +3849,7 @@ import scipy.stats
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')

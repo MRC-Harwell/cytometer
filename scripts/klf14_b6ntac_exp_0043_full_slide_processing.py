@@ -50,7 +50,7 @@ seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 figures_dir = os.path.join(root_data_dir, 'figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
 training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 
 saved_contour_model_basename = 'klf14_b6ntac_exp_0034_cnn_contour'
