@@ -11,6 +11,8 @@ Validate pipeline v7 with 10-fold cross validation:
  * classifier (*0095*)
  * segmentation correction (*0089*) networks""
  * validation (0096)"
+
+Segmentation validation in this script: DEPRECATED by klf14_b6ntac_exp_0108_pipeline_v7_validation.py.
 """
 
 # script name to identify this experiment
@@ -629,6 +631,8 @@ plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pipeline_roc_tissue_cnn_pi
 '''
 ************************************************************************************************************************
 Segmentation validation with pipeline v7.
+
+DEPRECATED by klf14_b6ntac_exp_0108_pipeline_v7_validation.py.
 
 Loop manual contours and find overlaps with automatically segmented contours. Compute cell areas and prop. of WAT
 pixels.
