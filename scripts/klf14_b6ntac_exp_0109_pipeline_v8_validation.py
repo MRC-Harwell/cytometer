@@ -59,7 +59,7 @@ min_cell_area = 200  # pixel
 max_cell_area = 200e3  # pixel
 min_mask_overlap = 0.8
 phagocytosis = True
-min_class_prop = 0.6
+min_class_prop = 0.65
 correction_window_len = 401
 correction_smoothing = 11
 
