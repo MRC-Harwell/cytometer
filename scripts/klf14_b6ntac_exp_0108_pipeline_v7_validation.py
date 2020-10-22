@@ -124,7 +124,7 @@ for i_fold in range(n_folds):
 
 # init dataframes to contain the comparison between hand traced and automatically segmented cells
 dataframe_columns = ['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff']
-df_auto_all = pd.DataFrame(columns=dataframe_columns)
+df_all = pd.DataFrame(columns=dataframe_columns)
 df_corrected_all = pd.DataFrame(columns=dataframe_columns)
 
 for i, file_svg in enumerate(file_svg_list):
@@ -253,119 +253,144 @@ import more_itertools
 import itertools
 
 # load dataframes to file
-df_auto_all = pd.read_csv(dataframe_auto_filename)
-df_corrected_all = pd.read_csv(dataframe_corrected_filename)
+for output in ['auto', 'corrected']:
 
-# remove hand traced cells with no auto match, as we don't need those here
-df_auto_all.dropna(subset=['test_idx'], inplace=True)
+    if output == 'auto':
+        df_all = pd.read_csv(dataframe_auto_filename)
+    elif output == 'corrected':
+        df_all = pd.read_csv(dataframe_corrected_filename)
 
-# remove very low Dice indices, as those indicate overlap with a neighbour, rather than a proper segmentation
-df_auto_all = df_auto_all[df_auto_all['dice'] >= 0.5]
+    # remove hand traced cells with no auto match, as we don't need those here
+    df_all.dropna(subset=['test_idx'], inplace=True)
 
-# sort manual areas from smallest to largest
-df_auto_all.sort_values(by=['ref_area'], ascending=True, ignore_index=True, inplace=True)
+    # remove very low Dice indices, as those indicate overlap with a neighbour, rather than a proper segmentation
+    df_all = df_all[df_all['dice'] >= 0.5]
 
-# add area error for convenience
-df_auto_all['test_ref_area_diff'] = df_auto_all['test_area'] - df_auto_all['ref_area']
+    # sort manual areas from smallest to largest
+    df_all.sort_values(by=['ref_area'], ascending=True, ignore_index=True, inplace=True)
 
-# bin the points so that each bin has the same number of points (roughly)
-median_window_size = 150
-padding = [None] * (median_window_size - 6)
-idx_split = more_itertools.windowed(itertools.chain(padding, range(len(df_auto_all['ref_area'])), padding),
-                                    n=median_window_size)
-# the median of all the values in the bin is the "central" value for this bin that is used in plots
-x_bins = [scipy.stats.mstats.hdquantiles(df_auto_all['ref_area'][np.array(idx)[~np.equal(idx, None)].astype(np.int)],
-                                         prob=[0.50], axis=0).data[0] for idx in idx_split]
+    # compute area error for convenience
+    df_all['test_ref_area_diff'] = df_all['test_area'] - df_all['ref_area']
 
-idx_split = more_itertools.windowed(itertools.chain(padding, range(len(df_auto_all['test_ref_area_diff'])), padding),
-                                    n=median_window_size)
-y_bins_q2 = [scipy.stats.mstats.hdquantiles(df_auto_all['test_ref_area_diff'][np.array(idx)[~np.equal(idx, None)].astype(np.int)],
-                                            prob=[0.50], axis=0).data[0] for idx in idx_split]
+    # compute the quantile corresponding to each ref_area
+    ref_area_q = scipy.stats.mstats.hdquantiles(df_all['ref_area'], prob=np.linspace(0, 1, 1001))
+    f = scipy.interpolate.interp1d(ref_area_q, np.linspace(0, 1, 1001))
+    df_all['ref_area_quantile'] = f(df_all['ref_area'])
 
-idx_split = more_itertools.windowed(itertools.chain(padding, range(len(df_auto_all['test_ref_area_diff'])), padding),
-                                    n=median_window_size)
-y_bins_q2_std = [scipy.stats.mstats.hdquantiles_sd(df_auto_all['test_ref_area_diff'][np.array(idx)[~np.equal(idx, None)].astype(np.int)],
-                                                   prob=[0.50], axis=0).data[0] for idx in idx_split]
+    # # bin the points so that each bin has the same number of points (roughly)
+    # median_window_size = 150
+    # padding = [None] * (median_window_size - 6)
+    # ref_area_split = more_itertools.windowed(np.array(padding + list(df_all['ref_area']) + padding), n=median_window_size)
 
-x_bins = np.array(x_bins)
-y_bins_q2 = np.array(y_bins_q2)
-y_bins_q2_std = np.array(y_bins_q2_std)
+    # # the median of all the values in the bin is the "central" value for this bin that is used in plots
+    # x_bins = [np.mean(np.array(x)[~np.equal(x, None)]) for x in ref_area_split]
 
-# 95% confidence interval for the median estimate
-y_bins_ci_lo = y_bins_q2 - 1.96 * y_bins_q2_std
-y_bins_ci_hi = y_bins_q2 + 1.96 * y_bins_q2_std
-
-if DEBUG:
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+    X = np.atleast_2d(df_all['ref_area_quantile']).T
+    y = np.array(df_all['test_ref_area_diff'] / df_all['ref_area'])
+    kernel = RBF(0.1, (0.1/1000, 1))
+    gp = GaussianProcessRegressor(kernel=kernel, alpha=.1, n_restarts_optimizer=10)
+    gp.fit(X, y)
+    x = np.linspace(0, 1, 1001)
+    y_pred, sigma = gp.predict(x.reshape(-1, 1), return_std=True)
     plt.clf()
-    plt.plot([x_bins[0] * 1e-3, x_bins[-1] * 1e-3], [0, 0], 'k')
-    plt.plot(x_bins * 1e-3, 100 * (y_bins_q2 / x_bins - 1) , 'r')
+    plt.scatter(df_all['ref_area'], y * 100, s=2)
+    plt.plot(ref_area_q, y_pred * 100, 'r', linewidth=2)
+    plt.fill(np.concatenate([ref_area_q, ref_area_q[::-1]]),
+             np.concatenate([100 * (y_pred - 1.9600 * sigma),
+                             100 * (y_pred + 1.9600 * sigma)[::-1]]),
+             alpha=.5, fc='r', ec='None', label='95% confidence interval')
 
-if DEBUG:
+    idx_split = more_itertools.windowed(itertools.chain(padding, range(len(df_all['test_ref_area_diff'])), padding),
+                                        n=median_window_size)
+    y_bins_q2 = [scipy.stats.mstats.hdquantiles(df_all['test_ref_area_diff'][np.array(idx)[~np.equal(idx, None)].astype(np.int)],
+                                                prob=[0.50], axis=0).data[0] for idx in idx_split]
+
+    idx_split = more_itertools.windowed(itertools.chain(padding, range(len(df_all['test_ref_area_diff'])), padding),
+                                        n=median_window_size)
+    y_bins_q2_std = [scipy.stats.mstats.hdquantiles_sd(df_all['test_ref_area_diff'][np.array(idx)[~np.equal(idx, None)].astype(np.int)],
+                                                       prob=[0.50], axis=0).data[0] for idx in idx_split]
+
+    x_bins = np.array(x_bins)
+    y_bins_q2 = np.array(y_bins_q2)
+    y_bins_q2_std = np.array(y_bins_q2_std)
+
+    # 95% confidence interval for the median estimate
+    y_bins_ci_lo = y_bins_q2 - 1.96 * y_bins_q2_std
+    y_bins_ci_hi = y_bins_q2 + 1.96 * y_bins_q2_std
+
+    if DEBUG:
+        plt.clf()
+        plt.plot([x_bins[0] * 1e-3, x_bins[-1] * 1e-3], [0, 0], 'k')
+        plt.plot(x_bins * 1e-3, 100 * (y_bins_q2 / x_bins - 1) , 'r')
+
+    if DEBUG:
+        plt.clf()
+        plt.plot([x_bins[0] * 1e-3, x_bins[-1] * 1e-3], [0, 0], 'k')
+        plt.scatter(df_all['ref_area'] * 1e-3, df_all['test_ref_area_diff'] * 1e-3, s=1)
+        plt.fill_between(x_bins * 1e-3, y_bins_ci_lo * 1e-3, y_bins_ci_hi * 1e-3, facecolor='r', alpha=0.5)
+        plt.plot(x_bins * 1e-3, y_bins_q2 * 1e-3, 'r')
+        plt.tick_params(axis='both', which='major', labelsize=14)
+        plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
+        plt.ylabel('Area$_{auto}$ - Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
+        plt.xlim(x_bins[0] * 1e-3, x_bins[-1] * 1e-3)
+        plt.tight_layout()
+
+        plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error.svg'))
+        plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error.png'))
+
+        # zoom in
+        plt.xlim(-0.25, 14)
+        plt.ylim(-2.6, 2.5)
+        plt.tight_layout()
+
+        plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error_zoom.svg'))
+        plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error_zoom.png'))
+
+    # auto area: plot area error as ratio
+    df_ols = pd.DataFrame()
+    df_ols['area_manual_bins'] = x_bins
+    df_ols['area_auto_manual_diff_bins_q2'] = y_bins_q2
+    df_ols['area_auto_diff_ratio_bins_q2'] = df_ols['area_auto_manual_diff_bins_q2'] / df_ols['area_manual_bins']
+
+    # median of median error ratios for cells > 950 um^2
+    area_error_ratio_q2 = np.median(df_ols['area_auto_diff_ratio_bins_q2'][df_ols['area_manual_bins'] > 950])
+
+    # range of error ratios where we consider the error acceptable
+    area_error_ratio_q2_lo = area_error_ratio_q2 - 10 / 100
+    area_error_ratio_q2_hi = area_error_ratio_q2 + 10 / 100
+
+    # plot
     plt.clf()
-    plt.plot([x_bins[0] * 1e-3, x_bins[-1] * 1e-3], [0, 0], 'k')
-    plt.scatter(df_auto_all['ref_area'] * 1e-3, df_auto_all['test_ref_area_diff'] * 1e-3, s=1)
-    plt.fill_between(x_bins * 1e-3, y_bins_ci_lo * 1e-3, y_bins_ci_hi * 1e-3, facecolor='r', alpha=0.5)
-    plt.plot(x_bins * 1e-3, y_bins_q2 * 1e-3, 'r')
+    plt.scatter(df_all['ref_area'] * 1e-3,
+                df_all['test_ref_area_diff'] / df_all['ref_area'] * 100, s=1)
+    plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
+             [area_error_ratio_q2 * 100, area_error_ratio_q2 * 100], 'k', linewidth=2)
+    plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
+             [area_error_ratio_q2_lo * 100, area_error_ratio_q2_lo * 100], 'k--', linewidth=2)
+    plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
+             [area_error_ratio_q2_hi * 100, area_error_ratio_q2_hi * 100], 'k--', linewidth=2)
+    plt.plot(df_ols['area_manual_bins'] * 1e-3, df_ols['area_auto_diff_ratio_bins_q2'] * 100, 'r')
+    plt.fill_between(df_ols['area_manual_bins'] * 1e-3,
+                     y_bins_ci_lo / df_ols['area_manual_bins'] * 100, y_bins_ci_hi / df_ols['area_manual_bins'] * 100,
+                     facecolor='r', alpha=0.5)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
-    plt.ylabel('Area$_{auto}$ - Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
-    plt.xlim(x_bins[0] * 1e-3, x_bins[-1] * 1e-3)
+    plt.ylabel('Area$_{auto}$ / Area$_{ht}$ - 1 (%)', fontsize=14)
+    plt.xlim(-0.25, 11)
+    plt.ylim(-75, 100)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error.png'))
 
     # zoom in
-    plt.xlim(-0.25, 14)
-    plt.ylim(-2.6, 2.5)
+    plt.ylim(-22, 18)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error_zoom.svg'))
-    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error_zoom.png'))
-
-# auto area: plot area error as ratio
-df_ols = pd.DataFrame()
-df_ols['area_manual_bins'] = x_bins
-df_ols['area_auto_manual_diff_bins_q2'] = y_bins_q2
-df_ols['area_auto_diff_ratio_bins_q2'] = df_ols['area_auto_manual_diff_bins_q2'] / df_ols['area_manual_bins']
-
-# median of median error ratios for cells > 950 um^2
-area_error_ratio_q2 = np.median(df_ols['area_auto_diff_ratio_bins_q2'][df_ols['area_manual_bins'] > 950])
-
-# range of error ratios where we consider the error acceptable
-area_error_ratio_q2_lo = area_error_ratio_q2 - 10 / 100
-area_error_ratio_q2_hi = area_error_ratio_q2 + 10 / 100
-
-# plot
-plt.clf()
-plt.scatter(df_auto_all['ref_area'] * 1e-3,
-            df_auto_all['test_ref_area_diff'] / df_auto_all['ref_area'] * 100, s=1)
-plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
-         [area_error_ratio_q2 * 100, area_error_ratio_q2 * 100], 'k', linewidth=2)
-plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
-         [area_error_ratio_q2_lo * 100, area_error_ratio_q2_lo * 100], 'k--', linewidth=2)
-plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
-         [area_error_ratio_q2_hi * 100, area_error_ratio_q2_hi * 100], 'k--', linewidth=2)
-plt.plot(df_ols['area_manual_bins'] * 1e-3, df_ols['area_auto_diff_ratio_bins_q2'] * 100, 'r')
-plt.fill_between(df_ols['area_manual_bins'] * 1e-3,
-                 y_bins_ci_lo / df_ols['area_manual_bins'] * 100, y_bins_ci_hi / df_ols['area_manual_bins'] * 100,
-                 facecolor='r', alpha=0.5)
-plt.tick_params(axis='both', which='major', labelsize=14)
-plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
-plt.ylabel('Area$_{auto}$ / Area$_{ht}$ - 1 (%)', fontsize=14)
-plt.xlim(-0.25, 11)
-plt.ylim(-75, 100)
-plt.tight_layout()
-
-plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error.svg'))
-plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error.png'))
-
-# zoom in
-plt.ylim(-22, 18)
-plt.tight_layout()
-
-plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error_zoom.svg'))
-plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error_zoom.png'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error_zoom.svg'))
+    plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error_zoom.png'))
 
 # compute what proportion of cells are poorly segmented
 ecdf = sm.distributions.empirical_distribution.ECDF(df_manual_all['area_manual'])
