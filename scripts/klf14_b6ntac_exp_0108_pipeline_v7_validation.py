@@ -265,9 +265,6 @@ import scipy
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 
-xres = 0.45382265182511744
-yres = 0.4537821131239504
-
 ## Auxiliary function to load a dataframe with matched cell areas
 
 def load_dataframe(dataframe_filename):
@@ -283,10 +280,6 @@ def load_dataframe(dataframe_filename):
 
     # sort manual areas from smallest to largest
     df_all.sort_values(by=['ref_area'], ascending=True, ignore_index=True, inplace=True)
-
-    # convert areas from pixels to um^2
-    df_all['test_area'] *= xres * yres
-    df_all['ref_area'] *= xres * yres
 
     # compute area error for convenience
     df_all['test_ref_area_diff'] = df_all['test_area'] - df_all['ref_area']
