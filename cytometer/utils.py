@@ -1140,7 +1140,8 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
         return labels_all, labels_borders_all
 
 
-def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=False, return_unmatched_refs=False):
+def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=False, return_unmatched_refs=False,
+                               xres=1.0, yres=1.0):
     """
     Match a set of test contours to a set of reference contours.
 
@@ -1152,6 +1153,10 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
     (default), only the match with the highest Dice coefficient is kept.
     :param return_unmatched_refs: (def False) If True, the last rows of the output dataframe correspond to contours_ref
     that have no correspondence in contours_test.
+    :param xres: (def 1.0) Pixel size in the x-axis. Input coordinates will be scaled by this factor before areas are
+    computed.
+    :param yres: (def 1.0) Pixel size in the y-axis. Input coordinates will be scaled by this factor before areas are
+    computed.
     :return: pandas.DataFrame. Each row corresponds to two overlapping contours. Test contours that have no match are
     not returned in the output
     * test_idx: index corresponding to contours_test
@@ -1178,6 +1183,10 @@ def match_overlapping_contours(contours_ref, contours_test, allow_repeat_ref=Fal
         contours_ref = [shapely.geometry.Polygon(x) for x in contours_ref]
     if type(contours_test[0]) in (list, np.ndarray):
         contours_test = [shapely.geometry.Polygon(x) for x in contours_test]
+
+    # scale polygons from e.g. pixel to um units
+    contours_ref = [shapely.affinity.scale(x, xfact=xres, yfact=yres, origin=(0, 0)) for x in contours_ref]
+    contours_test = [shapely.affinity.scale(x, xfact=xres, yfact=yres, origin=(0, 0)) for x in contours_test]
 
     for i, contour_test in enumerate(contours_test):
 
