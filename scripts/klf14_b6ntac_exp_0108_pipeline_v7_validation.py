@@ -37,6 +37,7 @@ import pickle
 import pandas as pd
 import PIL
 import matplotlib.pyplot as plt
+import scipy
 
 # limit number of GPUs
 if 'CUDA_VISIBLE_DEVICES' not in os.environ.keys():
@@ -86,9 +87,8 @@ contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
 classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
-# files to save dataframes with segmentation validation to
-# dataframe_auto_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_auto.csv')
-# dataframe_corrected_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_corrected.csv')
+# files to save dataframes with segmentation validation to.
+# "v2" means that we are going to use "klf14_b6ntac_training_v2" as the hand traced contours
 dataframe_auto_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_auto_v2.csv')
 dataframe_corrected_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_corrected_v2.csv')
 
@@ -140,12 +140,6 @@ for i, file_svg in enumerate(file_svg_list):
     # load hand traced contours
     cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
                                                     minimum_npoints=3)
-    cells += cytometer.data.read_paths_from_svg_file(file_svg, tag='Edge Cell', add_offset_from_filename=False,
-                                                    minimum_npoints=3)
-    other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
-                                                             minimum_npoints=3) +\
-                     cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
-                                                             minimum_npoints=3)
 
     # load training image
     file_im = file_svg.replace('.svg', '.tif')
@@ -182,8 +176,6 @@ for i, file_svg in enumerate(file_svg_list):
                                                  min_cell_area=min_cell_area,
                                                  max_cell_area=max_cell_area,
                                                  remove_edge_labels=False,
-                                                 #mask=istissue_tile,
-                                                 #min_mask_overlap=min_mask_overlap,
                                                  phagocytosis=phagocytosis,
                                                  min_class_prop=min_class_prop,
                                                  correction_window_len=correction_window_len,
@@ -227,11 +219,14 @@ for i, file_svg in enumerate(file_svg_list):
             plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C1', fill=False)
             plt.text(np.mean(contours_corrected[j][:, 0]), np.mean(contours_corrected[j][:, 1]), str(j))
 
-    # match segmented contours to hand traced contours
+    # match segmented contours to hand traced contours.
+    # Note:
     df_auto = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_auto,
-                                                         allow_repeat_ref=False, return_unmatched_refs=True)
+                                                         allow_repeat_ref=False, return_unmatched_refs=True,
+                                                         xres=xres, yres=yres)
     df_corrected = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_corrected,
-                                                              allow_repeat_ref=False, return_unmatched_refs=True)
+                                                              allow_repeat_ref=False, return_unmatched_refs=True,
+                                                              xres=xres, yres=yres)
 
     # aggregate results from this image into total dataframes
     df_auto['file_svg_idx'] = i
