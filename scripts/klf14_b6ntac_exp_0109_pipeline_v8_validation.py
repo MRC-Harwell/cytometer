@@ -144,9 +144,17 @@ for i, file_svg in enumerate(file_svg_list):
 
     print('File ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
 
+    # HACK
+    if i < 60:
+        continue
+
     # load hand traced contours
     cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
                                                     minimum_npoints=3)
+
+    # no hand traced cells in this image
+    if len(cells) == 0:
+        continue
 
     # load training image
     file_im = file_svg.replace('.svg', '.tif')
