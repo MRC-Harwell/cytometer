@@ -264,7 +264,7 @@ conda install -y nose==1.3.7 pytest==5.4.3
 pip install setuptools==45
 pip install opencv-python==4.1.0.25 pysto==1.4.1 openslide-python==1.1.1 seaborn==0.10.0 statannot==0.2.3
 pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.4 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
-pip install mlxtend==0.17.0 ujson==1.35
+pip install mlxtend==0.17.0 ujson==1.35 rasterio==1.1.8
 conda install -y pandas==1.0.5 shapely==1.7.0 six==1.12.0 statsmodels==0.11.1
 
 ########################################################################
