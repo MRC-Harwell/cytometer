@@ -140,6 +140,8 @@ for i, file_svg in enumerate(file_svg_list):
     # load hand traced contours
     cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
                                                     minimum_npoints=3)
+    cells += cytometer.data.read_paths_from_svg_file(file_svg, tag='Edge Cell', add_offset_from_filename=False,
+                                                    minimum_npoints=3)
     other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
                                                              minimum_npoints=3) +\
                      cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
@@ -147,7 +149,13 @@ for i, file_svg in enumerate(file_svg_list):
 
     # load training image
     file_im = file_svg.replace('.svg', '.tif')
-    im = np.array(PIL.Image.open(file_im))
+    im = PIL.Image.open(file_im)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    im = np.array(im)
 
     if DEBUG:
         plt.clf()
@@ -247,7 +255,7 @@ if DEBUG:
     plt.scatter(df_corrected_all['ref_area'], df_corrected_all['test_area'] / df_corrected_all['ref_area'] - 1)
 
 ########################################################################################################################
-## median and CI of segmentation auto area error vs. hand traced area
+## Comparison of cell sizes: hand traced vs. auto vs. corrected
 ## Note: If we perform a sign test to see whether the median = 0, we would assume a binomial distribution of number of
 ## values < median, and with a Gaussian approximation to the binomial distribution, we'd be performing a normal null
 ## hypothesis test. which corresponds to a CI-95% of -1.96*std, +1.96*std around the median value.
@@ -258,15 +266,15 @@ import scipy
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 
-# load dataframes to file
-for output in ['auto', 'corrected']:
+xres = 0.45382265182511744
+yres = 0.4537821131239504
 
-    if output == 'auto':
-        df_all = pd.read_csv(dataframe_auto_filename)
-    elif output == 'corrected':
-        df_all = pd.read_csv(dataframe_corrected_filename)
-    else:
-        raise ValueError('Output must be "auto" or "corrected"')
+## Auxiliary function to load a dataframe with matched cell areas
+
+def load_dataframe(dataframe_filename):
+
+    # read dataframe
+    df_all = pd.read_csv(dataframe_filename)
 
     # remove hand traced cells with no auto match, as we don't need those here
     df_all.dropna(subset=['test_idx'], inplace=True)
@@ -277,12 +285,118 @@ for output in ['auto', 'corrected']:
     # sort manual areas from smallest to largest
     df_all.sort_values(by=['ref_area'], ascending=True, ignore_index=True, inplace=True)
 
+    # convert areas from pixels to um^2
+    df_all['test_area'] *= xres * yres
+    df_all['ref_area'] *= xres * yres
+
     # compute area error for convenience
     df_all['test_ref_area_diff'] = df_all['test_area'] - df_all['ref_area']
     df_all['test_ref_area_err'] = np.array(df_all['test_ref_area_diff'] / df_all['ref_area'])
 
-    # compute the quantile corresponding to each ref_area
-    quantiles = np.linspace(0, 1, 1001)
+    return df_all
+
+## Boxplots comparing cell populations in hand traced vs. pipeline segmentations
+
+df_auto_all = load_dataframe(dataframe_auto_filename)
+df_corrected_all = load_dataframe(dataframe_corrected_filename)
+
+plt.clf()
+bp = plt.boxplot((df_auto_all['ref_area'] / 1e3,
+                  df_auto_all['test_area'] / 1e3,
+                  df_corrected_all['test_area'] / 1e3),
+                 positions=[1, 2, 3], notch=True, labels=['Hand traced', 'Auto', 'Corrected'])
+
+# points of interest from the boxplots
+bp_poi = cytometer.utils.boxplot_poi(bp)
+
+plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual median
+plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
+plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
+plt.tick_params(axis="both", labelsize=14)
+plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+plt.ylim(-700 / 1e3, 10000 / 1e3)
+plt.tight_layout()
+
+# manual quartile values
+plt.text(1.20, bp_poi[0, 3] + .1, '%0.1f' % (bp_poi[0, 3]), fontsize=12, color='k')
+plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
+
+# auto quartile values
+plt.text(2.20, bp_poi[1, 3] + .1 - .3, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
+plt.text(2.20, bp_poi[1, 2] + .1 - .3, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+plt.text(2.20, bp_poi[1, 1] + .1 - .4, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
+
+# corrected quartile values
+plt.text(3.20, bp_poi[2, 3] + .1 - .1, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
+plt.text(3.20, bp_poi[2, 2] + .1 + .0, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
+plt.text(3.20, bp_poi[2, 1] + .1 + .0, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
+
+plt.savefig(os.path.join(figures_dir, 'exp_0108_area_boxplots_manual_dataset.svg'))
+plt.savefig(os.path.join(figures_dir, 'exp_0108_area_boxplots_manual_dataset.png'))
+
+# Wilcoxon sign-ranked tests of whether manual areas are significantly different to auto/corrected areas
+print('Manual mean ± std = ' + str(np.mean(df_auto_all['ref_area'])) + ' ± '
+      + str(np.std(df_auto_all['ref_area'])))
+print('Auto mean ± std = ' + str(np.mean(df_auto_all['test_area'])) + ' ± '
+      + str(np.std(df_auto_all['test_area'])))
+print('Corrected mean ± std = ' + str(np.mean(df_corrected_all['test_area'])) + ' ± '
+      + str(np.std(df_corrected_all['test_area'])))
+
+# Wilcoxon signed-rank test to check whether the medians are significantly different
+w, p = scipy.stats.wilcoxon(df_auto_all['ref_area'],
+                            df_auto_all['test_area'])
+print('Manual vs. auto, W = ' + str(w) + ', p = ' + str(p))
+
+w, p = scipy.stats.wilcoxon(df_corrected_all['ref_area'],
+                            df_corrected_all['test_area'])
+print('Manual vs. corrected, W = ' + str(w) + ', p = ' + str(p))
+
+
+# boxplots of area error
+plt.clf()
+bp = plt.boxplot(((df_auto_all['test_area'] / df_auto_all['ref_area'] - 1) * 100,
+                  (df_corrected_all['test_area'] / df_corrected_all['ref_area'] - 1) * 100),
+                 positions=[1, 2], notch=True, labels=['Auto vs.\nHand traced', 'Corrected vs.\nHand traced'])
+# bp = plt.boxplot((df_auto_all['test_area'] / 1e3 - df_auto_all['ref_area'] / 1e3,
+#                   df_corrected_all['test_area'] / 1e3 - df_corrected_all['ref_area'] / 1e3),
+#                  positions=[1, 2], notch=True, labels=['Auto -\nHand traced', 'Corrected -\nHand traced'])
+
+plt.plot([0.75, 2.25], [0, 0], 'k', 'linewidth', 2)
+plt.xlim(0.5, 2.5)
+# plt.ylim(-1.4, 1.1)
+
+plt.ylim(-40, 40)
+
+# points of interest from the boxplots
+bp_poi = cytometer.utils.boxplot_poi(bp)
+
+# manual quartile values
+plt.text(1.10, bp_poi[0, 2], '%0.2f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+plt.text(2.10, bp_poi[1, 2], '%0.2f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+
+plt.tick_params(axis="both", labelsize=14)
+plt.ylabel('Area$_{pipeline}$ / Area$_{ht} - 1$ ($\%$)', fontsize=14)
+plt.tight_layout()
+
+plt.savefig(os.path.join(figures_dir, 'exp_0108_area_error_boxplots_manual_dataset.svg'))
+plt.savefig(os.path.join(figures_dir, 'exp_0108_area_error_boxplots_manual_dataset.png'))
+
+## Segmentation error vs. cell size plots, with Gaussian process regression
+
+# load dataframes to file
+for output in ['auto', 'corrected']:
+
+    if output == 'auto':
+        df_all = load_dataframe(dataframe_auto_filename)
+    elif output == 'corrected':
+        df_all = load_dataframe(dataframe_corrected_filename)
+    else:
+        raise ValueError('Output must be "auto" or "corrected"')
+
+    # convert ref_area to quantiles
+    n_quantiles = 1001
+    quantiles = np.linspace(0, 1, n_quantiles)
     ref_area_q = scipy.stats.mstats.hdquantiles(df_all['ref_area'], prob=quantiles)
     f = scipy.interpolate.interp1d(ref_area_q, quantiles)
     df_all['ref_area_quantile'] = f(df_all['ref_area'])
@@ -301,6 +415,12 @@ for output in ['auto', 'corrected']:
            np.array(df_all['test_ref_area_err']))
     x = quantiles
     y_pred, sigma = gp.predict(x.reshape(-1, 1), return_std=True)
+
+    if DEBUG:
+        print('kernel: ' + str(gp.kernel))
+        for h in range(len(gp.kernel.hyperparameters)):
+            print('Gaussian process hyperparameter ' + str(h) + ': ' + str(10**gp.kernel.theta[h]) + ', '
+                  + str(gp.kernel.hyperparameters[h]))
 
     # plot segmentation errors
     plt.clf()
@@ -328,63 +448,7 @@ for output in ['auto', 'corrected']:
     plt.savefig(os.path.join(figures_dir, 'exp_0108_area_' + output + '_manual_error_zoom.svg'))
     plt.savefig(os.path.join(figures_dir, 'exp_0108_area_' + output + '_manual_error_zoom.png'))
 
-#     if DEBUG:
-#         plt.xlim(x_bins[0] * 1e-3, x_bins[-1] * 1e-3)
-#
-#
-#
-#         # zoom in
-#         plt.xlim(-0.25, 14)
-#         plt.ylim(-2.6, 2.5)
-#         plt.tight_layout()
-#
-#         plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error_zoom.svg'))
-#         plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_manual_error_zoom.png'))
-#
-#     # auto area: plot area error as ratio
-#     df_ols = pd.DataFrame()
-#     df_ols['area_manual_bins'] = x_bins
-#     df_ols['area_auto_manual_diff_bins_q2'] = y_bins_q2
-#     df_ols['area_auto_diff_ratio_bins_q2'] = df_ols['area_auto_manual_diff_bins_q2'] / df_ols['area_manual_bins']
-#
-#     # median of median error ratios for cells > 950 um^2
-#     area_error_ratio_q2 = np.median(df_ols['area_auto_diff_ratio_bins_q2'][df_ols['area_manual_bins'] > 950])
-#
-#     # range of error ratios where we consider the error acceptable
-#     area_error_ratio_q2_lo = area_error_ratio_q2 - 10 / 100
-#     area_error_ratio_q2_hi = area_error_ratio_q2 + 10 / 100
-#
-#     # plot
-#     plt.clf()
-#     plt.scatter(df_all['ref_area'] * 1e-3,
-#                 df_all['test_ref_area_diff'] / df_all['ref_area'] * 100, s=1)
-#     plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
-#              [area_error_ratio_q2 * 100, area_error_ratio_q2 * 100], 'k', linewidth=2)
-#     plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
-#              [area_error_ratio_q2_lo * 100, area_error_ratio_q2_lo * 100], 'k--', linewidth=2)
-#     plt.plot([df_ols['area_manual_bins'].iloc[0] * 1e-3, df_ols['area_manual_bins'].iloc[-1] * 1e-3],
-#              [area_error_ratio_q2_hi * 100, area_error_ratio_q2_hi * 100], 'k--', linewidth=2)
-#     plt.plot(df_ols['area_manual_bins'] * 1e-3, df_ols['area_auto_diff_ratio_bins_q2'] * 100, 'r')
-#     plt.fill_between(df_ols['area_manual_bins'] * 1e-3,
-#                      y_bins_ci_lo / df_ols['area_manual_bins'] * 100, y_bins_ci_hi / df_ols['area_manual_bins'] * 100,
-#                      facecolor='r', alpha=0.5)
-#     plt.tick_params(axis='both', which='major', labelsize=14)
-#     plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
-#     plt.ylabel('Area$_{auto}$ / Area$_{ht}$ - 1 (%)', fontsize=14)
-#     plt.xlim(-0.25, 11)
-#     plt.ylim(-75, 100)
-#     plt.tight_layout()
-#
-#     plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error.svg'))
-#     plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error.png'))
-#
-#     # zoom in
-#     plt.ylim(-22, 18)
-#     plt.tight_layout()
-#
-#     plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error_zoom.svg'))
-#     plt.savefig(os.path.join(saved_figures_dir, 'exp_0108_area_auto_diff_ratio_error_zoom.png'))
-#
+
 # # compute what proportion of cells are poorly segmented
 # ecdf = sm.distributions.empirical_distribution.ECDF(df_manual_all['area_manual'])
 # cell_area_threshold = 780
