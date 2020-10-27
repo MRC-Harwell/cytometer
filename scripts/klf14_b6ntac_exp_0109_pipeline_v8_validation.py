@@ -74,6 +74,7 @@ saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipelin
 annotations_dir = os.path.join(home, 'bit/cytometer_data/aida_data_Klf14_v8/annotations')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 paper_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+figures_dir = os.path.join(paper_dir, 'figures')
 
 # file with RGB modes from all training data
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
@@ -87,9 +88,10 @@ contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
 classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
-# files to save dataframes with segmentation validation to
-dataframe_auto_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_auto.csv')
-dataframe_corrected_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_corrected.csv')
+# files to save dataframes with segmentation validation to.
+# "v2" means that we are going to use "klf14_b6ntac_training_v2" as the hand traced contours
+dataframe_auto_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_auto_v2.csv')
+dataframe_corrected_filename = os.path.join(paper_dir, experiment_id + '_segmentation_validation_corrected_v2.csv')
 
 # statistical mode of the background colour (typical colour value) from the training dataset
 with np.load(klf14_training_colour_histogram_file) as data:
@@ -111,6 +113,9 @@ with open(saved_kfolds_filename, 'rb') as f:
 file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 
+# get v2 of the hand traced contours
+file_svg_list = [x.replace('/klf14_b6ntac_training/', '/klf14_b6ntac_training_v2/') for x in file_svg_list]
+
 # number of images
 n_im = len(file_svg_list)
 
@@ -126,6 +131,10 @@ fold = -np.ones(shape=(n_im,))  # initialise with -1 values in case a training f
 for i_fold in range(n_folds):
     fold[idx_test_all[i_fold]] = i_fold
 
+########################################################################################################################
+## Find matches between hand traced contours and pipeline segmentations
+########################################################################################################################
+
 # init dataframes to contain the comparison between hand traced and automatically segmented cells
 dataframe_columns = ['file_svg_idx', 'test_idx', 'test_area', 'ref_idx', 'ref_area', 'dice', 'hausdorff']
 df_auto_all = pd.DataFrame(columns=dataframe_columns)
@@ -138,39 +147,36 @@ for i, file_svg in enumerate(file_svg_list):
     # load hand traced contours
     cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
                                                     minimum_npoints=3)
-    other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
-                                                             minimum_npoints=3) +\
-                     cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
-                                                             minimum_npoints=3)
 
     # load training image
     file_im = file_svg.replace('.svg', '.tif')
-    im = np.array(PIL.Image.open(file_im))
+    im = PIL.Image.open(file_im)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    im = np.array(im)
 
     if DEBUG:
         plt.clf()
         plt.imshow(im)
 
-    # open histology file the training file was extracted from
+    # colour correction using the whole slide the training image was extracted from
     file_whole_slide = os.path.basename(file_svg).split('_row_')[0]
     file_whole_slide = os.path.join(histology_dir, file_whole_slide + '.ndpi')
     im_whole_slide = openslide.OpenSlide(file_whole_slide)
 
-    # get downsampled image
     downsample_level = im_whole_slide.get_best_level_for_downsample(downsample_factor_goal)
     im_downsampled = im_whole_slide.read_region(location=(0, 0), level=downsample_level,
                                                 size=im_whole_slide.level_dimensions[downsample_level])
     im_downsampled = np.array(im_downsampled)
     im_downsampled = im_downsampled[:, :, 0:3]
 
-    # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the KLF14
-    # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
-    # overcorrected
     mode_r_tile = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
     mode_g_tile = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
     mode_b_tile = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
 
-    # correct tint of the tile to match KLF14 training data
     im[:, :, 0] = im[:, :, 0] + (mode_r_target - mode_r_tile)
     im[:, :, 1] = im[:, :, 1] + (mode_g_target - mode_g_tile)
     im[:, :, 2] = im[:, :, 2] + (mode_b_target - mode_b_tile)
@@ -196,8 +202,6 @@ for i, file_svg in enumerate(file_svg_list):
                                                  min_cell_area=min_cell_area,
                                                  max_cell_area=max_cell_area,
                                                  remove_edge_labels=False,
-                                                 #mask=istissue_tile,
-                                                 #min_mask_overlap=min_mask_overlap,
                                                  phagocytosis=phagocytosis,
                                                  min_class_prop=min_class_prop,
                                                  correction_window_len=correction_window_len,
@@ -243,9 +247,11 @@ for i, file_svg in enumerate(file_svg_list):
 
     # match segmented contours to hand traced contours
     df_auto = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_auto,
-                                                         allow_repeat_ref=False, return_unmatched_refs=True)
+                                                         allow_repeat_ref=False, return_unmatched_refs=True,
+                                                         xres=xres, yres=yres)
     df_corrected = cytometer.utils.match_overlapping_contours(contours_ref=cells, contours_test=contours_corrected,
-                                                              allow_repeat_ref=False, return_unmatched_refs=True)
+                                                              allow_repeat_ref=False, return_unmatched_refs=True,
+                                                              xres=xres, yres=yres)
 
     # aggregate results from this image into total dataframes
     df_auto['file_svg_idx'] = i
