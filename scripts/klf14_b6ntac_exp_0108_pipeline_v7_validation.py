@@ -120,9 +120,10 @@ metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
 
 # associate a fold to each training file
-fold = -np.ones(shape=(n_im,))  # initialise with -1 values in case a training file has no fold associated to it
+fold = -np.ones(shape=(n_im,), dtype=np.int32)  # initialise with -1 values in case a training file has no fold associated to it
 for i_fold in range(n_folds):
     fold[idx_test_all[i_fold]] = i_fold
+del i_fold
 
 ########################################################################################################################
 ## Find matches between hand traced contours and pipeline segmentations
@@ -160,6 +161,7 @@ for i, file_svg in enumerate(file_svg_list):
         plt.imshow(im)
 
     # names of contour, dmap and tissue classifier models
+    i_fold = fold[i]
     dmap_model_filename = \
         os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     contour_model_filename = \
