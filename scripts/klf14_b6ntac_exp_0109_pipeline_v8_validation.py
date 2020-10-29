@@ -420,48 +420,45 @@ for output in ['auto', 'corrected']:
     f = scipy.interpolate.interp1d(ref_area_q, quantiles)
     df_all['ref_area_quantile'] = f(df_all['ref_area'])
 
-    # estimate the std of area errors, which will be used as a measure of noise for the Gaussian process. Then assign
-    # the value alpha=std**2 to each point within the bin, to later use in GaussianProcessRegressor
-    bin_std, bin_edges, binnumber = \
-        scipy.stats.binned_statistic(df_all['ref_area_quantile'], df_all['test_ref_area_err'], statistic='std', bins=100)
-    df_all['alpha'] = bin_std[binnumber - 1] ** 2
-
-    # Gaussian process regression of the segmentation errors
-    # kernel = C(1.0, (1e-3, 1e3)) * RBF(0.01, (0.01/1000, 1)) + C(1.0, (1e-3, 1e3))
-    kernel = C(1.0, (1e-2, 1e3)) * RBF(0.1, (0.1/1000, 1)) + C(1.0, (1e-2, 1e3))
-    gp = GaussianProcessRegressor(kernel=kernel, alpha=df_all['alpha'], n_restarts_optimizer=10)
-    gp.fit(np.atleast_2d(df_all['ref_area_quantile']).T,
-           np.array(df_all['test_ref_area_err']))
-    x = quantiles
-    y_pred, sigma = gp.predict(x.reshape(-1, 1), return_std=True)
-
-    if DEBUG:
-        print('kernel: ' + str(gp.kernel))
-        for h in range(len(gp.kernel.hyperparameters)):
-            print('Gaussian process hyperparameter ' + str(h) + ': ' + str(10**gp.kernel.theta[h]) + ', '
-                  + str(gp.kernel.hyperparameters[h]))
+    # rolling window of Q1, median and Q3 of error values
+    window = 100
+    df_err = df_all[['ref_area_quantile', 'test_ref_area_err']].copy()
+    def hdquantiles_aux(x, prob):
+        return scipy.stats.mstats.hdquantiles(x, prob=prob).data
+    df_err_q1 = df_err.rolling(window=window, min_periods=20, center=True, on='ref_area_quantile').\
+        apply(hdquantiles_aux, raw=True, kwargs={'prob': 0.25})
+    df_err_median = df_err.rolling(window=window, min_periods=20, center=True, on='ref_area_quantile').\
+        apply(hdquantiles_aux, raw=True, kwargs={'prob': 0.5})
+    df_err_q3 = df_err.rolling(window=window, min_periods=20, center=True, on='ref_area_quantile').\
+        apply(hdquantiles_aux, raw=True, kwargs={'prob': 0.75})
+    overall_median = hdquantiles_aux(np.array(df_all['test_ref_area_err']), prob=0.5)
 
     # plot segmentation errors
     plt.clf()
     plt.scatter(df_all['ref_area'] * 1e-3, np.array(df_all['test_ref_area_err']) * 100, s=2)
-    plt.plot(ref_area_q * 1e-3, y_pred * 100, 'r', linewidth=2)
-    plt.fill(np.concatenate([ref_area_q * 1e-3, ref_area_q[::-1] * 1e-3]),
-             np.concatenate([100 * (y_pred - 1.9600 * sigma),
-                             100 * (y_pred + 1.9600 * sigma)[::-1]]),
+    plt.fill(np.concatenate([df_all['ref_area'] * 1e-3, df_all['ref_area'][::-1] * 1e-3]),
+             np.concatenate([df_err_q1['test_ref_area_err'] * 100,
+                             df_err_q3['test_ref_area_err'][::-1] * 100]),
              alpha=.5, fc='r', ec='None', label='95% confidence interval')
+    plt.plot([0.224, 19], [overall_median * 100, overall_median * 100], 'g', linewidth=2)
+    plt.plot(df_all['ref_area'] * 1e-3, df_err_median['test_ref_area_err'] * 100, 'k', linewidth=2)
+    plt.plot(df_all['ref_area'] * 1e-3, df_err_q1['test_ref_area_err'] * 100, 'k', linewidth=2)
+    plt.plot(df_all['ref_area'] * 1e-3, df_err_q3['test_ref_area_err'] * 100, 'k', linewidth=2)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
     plt.ylabel('Area$_{' + output + '}$ / Area$_{ht} - 1$ (%)', fontsize=14)
+    plt.gca().set_xticks([0, 5, 10, 15, 20])
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error.svg'))
     plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error.png'))
 
     if output == 'auto':
-        plt.ylim(-14, 0)
+        plt.xlim(-0.05, 10)
+        plt.ylim(-25, 20)
     elif output == 'corrected':
-        plt.ylim(0, 8)
-
+        plt.xlim(-0.05, 10)
+        plt.ylim(-20, 50)
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error_zoom.svg'))
