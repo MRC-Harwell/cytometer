@@ -282,10 +282,6 @@ if DEBUG:
 
 ########################################################################################################################
 ## Comparison of cell sizes: hand traced vs. auto vs. corrected
-## Note: If we perform a sign test to see whether the median = 0, we would assume a binomial distribution of number of
-## values < median, and with a Gaussian approximation to the binomial distribution, we'd be performing a normal null
-## hypothesis test. which corresponds to a CI-95% of -1.96*std, +1.96*std around the median value.
-## https://youtu.be/dLTvZUrs-CI?t=463
 ########################################################################################################################
 
 import scipy
@@ -461,6 +457,12 @@ for output in ['auto', 'corrected']:
 
     plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error_zoom.svg'))
     plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error_zoom.png'))
+
+## Note: If we perform a sign test to see whether the median = 0, we would assume a binomial distribution of number of
+## values < median, and with a Gaussian approximation to the binomial distribution, we'd be performing a normal null
+## hypothesis test. which corresponds to a CI-95% of -1.96*std, +1.96*std around the median value.
+## https://youtu.be/dLTvZUrs-CI?t=463
+
 
 '''
 ************************************************************************************************************************
