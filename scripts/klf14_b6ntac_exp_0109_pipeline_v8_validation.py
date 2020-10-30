@@ -466,13 +466,23 @@ for output in ['auto', 'corrected']:
 
 '''
 ************************************************************************************************************************
-Object-wise classification validation (new way)
+Object-wise classification validation using overlapping hand traced objects.
 
-Here we label the pixels of the image as WAT/no-WAT/unlabelled according to ground truth.
+We label pixels in test images (file_svg_idx) according to their fold. Then we compute the white adipocyte pixel ratio 
+(class_score) per overlapping object (ref_idx). For the ROC curve, this is compared to the ground truth class of the 
+object (class_true).
 
-Then we count the proportion of WAT pixels in each hand traced contour. That value (e.g. 0.34) gets 
-assigned to each pixel inside. That's then used as scores that are compared to the ground truth labelling to for the
-ROC. 
+The contribution of each object to the ROC curve is weighted by its size (num_pixels[j] / sum(num_pixels)).
+
+        df_all
+              file_svg_idx  ref_idx  class_true  class_score  num_pixels
+        0                0        0           1     0.987869       13601
+        1                0        1           1     0.985146       34402
+        2                0        2           1     0.966768       16851
+        3                0        3           1     0.919322       21654
+        4                0        4           1     0.993414       18829
+
+ 
 ************************************************************************************************************************
 '''
 
@@ -481,155 +491,162 @@ import shapely.ops
 import rasterio.features
 import sklearn.metrics
 
-dataframe_columns = ['file_svg_idx', 'ref_idx', 'class_true', 'class_score', 'num_pixels']
-df_all = pd.DataFrame(columns=dataframe_columns)
+# output file with results
+classifier_validation_file = os.path.join(paper_dir, experiment_id + '_classifier_validation.csv')
 
-for i, file_svg in enumerate(file_svg_list):
+if os.path.isfile(classifier_validation_file):
 
-    print('File ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+    # load dataframe
+    df_all = pd.read_csv(classifier_validation_file)
 
-    # HACK
-    if i <= 98:
-        continue
+else:
 
-    # load hand traced contours
-    cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
-                                                    minimum_npoints=3)
-    other = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
-                                                    minimum_npoints=3)
-    other += cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
-                                                     minimum_npoints=3)
-    contours = cells + other
+    dataframe_columns = ['file_svg_idx', 'ref_idx', 'class_true', 'class_score', 'num_pixels']
+    df_all = pd.DataFrame(columns=dataframe_columns)
 
-    if (len(contours) == 0):
-        continue
+    for i, file_svg in enumerate(file_svg_list):
 
-    # load training image
-    file_im = file_svg.replace('.svg', '.tif')
-    im = PIL.Image.open(file_im)
+        print('File ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
 
-    # read pixel size information
-    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
-    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+        # load hand traced contours
+        cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                        minimum_npoints=3)
+        other = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                        minimum_npoints=3)
+        other += cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                         minimum_npoints=3)
+        contours = cells + other
 
-    im = np.array(im)
+        if (len(contours) == 0):
+            continue
 
-    if DEBUG:
-        plt.clf()
-        plt.imshow(im)
-        for j in range(len(cells)):
-            cell = np.array(cells[j])
-            plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
-            plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
+        # load training image
+        file_im = file_svg.replace('.svg', '.tif')
+        im = PIL.Image.open(file_im)
 
-    # make a list with the type of cell each contour is classified as
-    contour_type = [np.ones(shape=(len(cells),), dtype=np.uint8),  # 1: white-adipocyte
-                    np.zeros(shape=(len(other),), dtype=np.uint8)]  # 0: other/brown types of tissue
-    contour_type = np.concatenate(contour_type)
+        # read pixel size information
+        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
 
-    print('Cells: ' + str(len(cells)))
-    print('Other/Brown: ' + str(len(other)))
-
-    if DEBUG:
-        # rasterise mask of all cell pixels
-        cells = [shapely.geometry.Polygon(x) for x in cells]
-        other = [shapely.geometry.Polygon(x) for x in other]
-        cell_mask_ground_truth = rasterio.features.rasterize(cells, out_shape=im.shape[0:2], fill=0, default_value=1)
-        other_mask_ground_truth = rasterio.features.rasterize(other, out_shape=im.shape[0:2], fill=0, default_value=1)
-        all_mask_ground_truth = rasterio.features.rasterize(cells + other, out_shape=im.shape[0:2], fill=0,
-                                                            default_value=1)
-
-        plt.figure()
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(cell_mask_ground_truth)
-        plt.title('Cells')
-        plt.axis('off')
-        plt.subplot(222)
-        plt.imshow(other_mask_ground_truth)
-        plt.title('Other')
-        plt.axis('off')
-        plt.subplot(223)
-        plt.imshow(all_mask_ground_truth)
-        plt.title('Combined')
-        plt.axis('off')
-
-    # colour correction using the whole slide the training image was extracted from
-    file_whole_slide = os.path.basename(file_svg).split('_row_')[0]
-    file_whole_slide = os.path.join(histology_dir, file_whole_slide + '.ndpi')
-    im_whole_slide = openslide.OpenSlide(file_whole_slide)
-
-    downsample_level = im_whole_slide.get_best_level_for_downsample(downsample_factor_goal)
-    im_downsampled = im_whole_slide.read_region(location=(0, 0), level=downsample_level,
-                                                size=im_whole_slide.level_dimensions[downsample_level])
-    im_downsampled = np.array(im_downsampled)
-    im_downsampled = im_downsampled[:, :, 0:3]
-
-    mode_r_tile = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
-    mode_g_tile = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
-    mode_b_tile = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
-
-    im[:, :, 0] = im[:, :, 0] + (mode_r_target - mode_r_tile)
-    im[:, :, 1] = im[:, :, 1] + (mode_g_target - mode_g_tile)
-    im[:, :, 2] = im[:, :, 2] + (mode_b_target - mode_b_tile)
-
-    # pixel classification of histology image
-    i_fold = fold[i]
-    classifier_model_filename = \
-        os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-    classifier_model = keras.models.load_model(classifier_model_filename)
-    classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=(1,) + im.shape)
-
-    labels_class = classifier_model.predict(np.expand_dims(im.astype(np.float32) / 255.0, axis=0))
-    labels_class = labels_class[0, :, :, 0] > 0.5
-
-    if DEBUG:
-        plt.subplot(224)
-        plt.imshow(labels_class)
-        plt.title('Class prediction')
-        plt.axis('off')
-
-    # loop ground truth contours to compute the data used for the ROC curve
-    for j, contour in enumerate(contours):
-
-        # rasterise mask of all cell pixels
-        contour = shapely.geometry.Polygon(contour)
-        contour_raster = rasterio.features.rasterize([contour], out_shape=im.shape[0:2], fill=0, default_value=1)
-
-        # we are going to compute the ROC curve on pixels, so we need one ground truth / score pixel per pixel in the
-        # object
-        #
-        # the score is the proportion of WAT pixels within the contour
-        n_tot = np.count_nonzero(contour_raster)
-        n_wat_pixels = np.count_nonzero(labels_class[contour_raster == 1])
-        prop_wat_pixels = n_wat_pixels / n_tot
+        im = np.array(im)
 
         if DEBUG:
             plt.clf()
-            plt.imshow(labels_class)
-            plt.contour(contour_raster, levels=[0.5], colors='w')
-            plt.title('Class prediction: %.2f%%\n(ground truth %d)' % (prop_wat_pixels * 100, contour_type[j]))
+            plt.imshow(im)
+            for j in range(len(cells)):
+                cell = np.array(cells[j])
+                plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
+                plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
+            for j in range(len(other)):
+                x = np.array(other[j])
+                plt.fill(x[:, 0], x[:, 1], edgecolor='C2', fill=False)
+                plt.text(np.mean(x[:, 0]), np.mean(x[:, 1]), str(j))
+
+        # make a list with the type of cell each contour is classified as
+        contour_type = [np.ones(shape=(len(cells),), dtype=np.uint8),  # 1: white-adipocyte
+                        np.zeros(shape=(len(other),), dtype=np.uint8)]  # 0: other/brown types of tissue
+        contour_type = np.concatenate(contour_type)
+
+        print('Cells: ' + str(len(cells)))
+        print('Other/Brown: ' + str(len(other)))
+
+        if DEBUG:
+            # rasterise mask of all cell pixels
+            cells = [shapely.geometry.Polygon(x) for x in cells]
+            other = [shapely.geometry.Polygon(x) for x in other]
+            cell_mask_ground_truth = rasterio.features.rasterize(cells, out_shape=im.shape[0:2], fill=0, default_value=1)
+            other_mask_ground_truth = rasterio.features.rasterize(other, out_shape=im.shape[0:2], fill=0, default_value=1)
+            all_mask_ground_truth = rasterio.features.rasterize(cells + other, out_shape=im.shape[0:2], fill=0,
+                                                                default_value=1)
+
+            plt.figure()
+            plt.clf()
+            plt.subplot(221)
+            plt.imshow(cell_mask_ground_truth)
+            plt.title('Cells')
+            plt.axis('off')
+            plt.subplot(222)
+            plt.imshow(other_mask_ground_truth)
+            plt.title('Other')
+            plt.axis('off')
+            plt.subplot(223)
+            plt.imshow(all_mask_ground_truth)
+            plt.title('Combined')
             plt.axis('off')
 
-        # create dataframe for this contour
-        # 'file_svg_idx', 'ref_idx', 'class_true', 'class_score', 'num_pixels'
-        df = pd.DataFrame(columns=df_all.columns)
-        df['file_svg_idx'] = [i,]  # it's necessary to convert i to a list of one element, because otherwise df will be empty
-        df['ref_idx'] = j
-        df['class_true'] = contour_type[j]
-        df['class_score'] = prop_wat_pixels
-        df['num_pixels'] = n_tot
+        # colour correction using the whole slide the training image was extracted from
+        file_whole_slide = os.path.basename(file_svg).split('_row_')[0]
+        file_whole_slide = os.path.join(histology_dir, file_whole_slide + '.ndpi')
+        im_whole_slide = openslide.OpenSlide(file_whole_slide)
 
-        # concat to total dataframe
-        df_all = pd.concat([df_all, df], ignore_index=True)
+        downsample_level = im_whole_slide.get_best_level_for_downsample(downsample_factor_goal)
+        im_downsampled = im_whole_slide.read_region(location=(0, 0), level=downsample_level,
+                                                    size=im_whole_slide.level_dimensions[downsample_level])
+        im_downsampled = np.array(im_downsampled)
+        im_downsampled = im_downsampled[:, :, 0:3]
 
-    # save results so far
-    classifier_validation_file = os.path.join(paper_dir, experiment_id + '_classifier_validation.csv')
-    df_all.to_csv(classifier_validation_file, index=False)
+        mode_r_tile = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
+        mode_g_tile = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
+        mode_b_tile = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
 
-# load dataframe
-classifier_validation_file = os.path.join(paper_dir, experiment_id + '_classifier_validation.csv')
-df_all = pd.read_csv(classifier_validation_file)
+        im[:, :, 0] = im[:, :, 0] + (mode_r_target - mode_r_tile)
+        im[:, :, 1] = im[:, :, 1] + (mode_g_target - mode_g_tile)
+        im[:, :, 2] = im[:, :, 2] + (mode_b_target - mode_b_tile)
+
+        # pixel classification of histology image
+        i_fold = fold[i]
+        classifier_model_filename = \
+            os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+        classifier_model = keras.models.load_model(classifier_model_filename)
+        classifier_model = cytometer.utils.change_input_size(classifier_model, batch_shape=(1,) + im.shape)
+
+        labels_class = classifier_model.predict(np.expand_dims(im.astype(np.float32) / 255.0, axis=0))
+        labels_class = labels_class[0, :, :, 0] > 0.5
+
+        if DEBUG:
+            plt.subplot(224)
+            plt.imshow(labels_class)
+            plt.title('Class prediction')
+            plt.axis('off')
+
+        # loop ground truth contours to compute the data used for the ROC curve
+        for j, contour in enumerate(contours):
+
+            # rasterise mask of all cell pixels
+            contour = shapely.geometry.Polygon(contour)
+            contour_raster = rasterio.features.rasterize([contour], out_shape=im.shape[0:2], fill=0, default_value=1)
+
+            # we are going to compute the ROC curve on pixels, so we need one ground truth / score pixel per pixel in the
+            # object
+            #
+            # the score is the proportion of WAT pixels within the contour
+            n_tot = np.count_nonzero(contour_raster)
+            n_wat_pixels = np.count_nonzero(labels_class[contour_raster == 1])
+            prop_wat_pixels = n_wat_pixels / n_tot
+
+            if DEBUG:
+                plt.clf()
+                plt.imshow(labels_class)
+                plt.contour(contour_raster, levels=[0.5], colors='w')
+                plt.title('Class prediction: %.2f%%\n(ground truth %d)' % (prop_wat_pixels * 100, contour_type[j]))
+                plt.axis('off')
+
+            # create dataframe for this contour
+            # 'file_svg_idx', 'ref_idx', 'class_true', 'class_score', 'num_pixels'
+            df = pd.DataFrame(columns=df_all.columns)
+            df['file_svg_idx'] = [i,]  # it's necessary to convert i to a list of one element, because otherwise df will be empty
+            df['ref_idx'] = j
+            df['class_true'] = contour_type[j]
+            df['class_score'] = prop_wat_pixels
+            df['num_pixels'] = n_tot
+
+            # concat to total dataframe
+            df_all = pd.concat([df_all, df], ignore_index=True)
+
+        # save results so far
+        df_all.to_csv(classifier_validation_file, index=False)
+
+# data loaded or computed
 
 # pixel score thresholds
 # ROC curve
@@ -638,11 +655,12 @@ fpr, tpr, thr = sklearn.metrics.roc_curve(y_true=df_all['class_true'], y_score=d
 roc_auc = sklearn.metrics.auc(fpr, tpr)
 
 # calculate FPR and TPR for different thresholds
-fpr_interp = np.interp([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8], thr[::-1], fpr[::-1])
-tpr_interp = np.interp([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8], thr[::-1], tpr[::-1])
-print('thr: ' + str([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8]))
-print('FPR (%): ' + str(fpr_interp * 100))
-print('TPR (%): ' + str(tpr_interp * 100))
+fpr_interp = np.interp([0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65], thr[::-1], fpr[::-1])
+tpr_interp = np.interp([0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65], thr[::-1], tpr[::-1])
+print('thr: ' + str([0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65]))
+print('FPR (%): ' + str([f'{x:.2f}' for x in fpr_interp*100]))
+print('TPR (%): ' + str([f'{x:.2f}' for x in tpr_interp*100]))
+print('Area under the ROC: ' + str(roc_auc))
 
 # we fix the min_class_prop threshold to what is used in the pipeline
 thr_target = 0.5
@@ -650,14 +668,14 @@ tpr_target = np.interp(thr_target, thr[::-1], tpr[::-1])
 fpr_target = np.interp(thr_target, thr[::-1], fpr[::-1])
 
 # we fix the FPR (False Positive Rate) and interpolate the TPR (True Positive Rate) on the ROC curve
-fpr_target = 0.05
+fpr_target = 0.02
 tpr_target = np.interp(fpr_target, fpr, tpr)
 thr_target = np.interp(fpr_target, fpr, thr)
 
 # plot ROC curve for the Tissue classifier (computer pixel-wise for the object-classification error)
 plt.clf()
 plt.plot(fpr, tpr)
-plt.scatter(fpr_target, tpr_target, color='C0', s=100,
+plt.scatter(fpr_target, tpr_target, color='r', s=100, marker='x',
             label='$Z_{obj} \geq$ %0.2f, FPR = %0.0f%%, TPR = %0.0f%%'
                   % (thr_target, fpr_target * 100, tpr_target * 100))
 plt.tick_params(labelsize=14)
@@ -665,9 +683,8 @@ plt.xlabel('Pixel WAT False Positive Rate (FPR)', fontsize=14)
 plt.ylabel('Pixel WAT True Positive Rate (TPR)', fontsize=14)
 plt.legend(loc="lower right", prop={'size': 12})
 plt.tight_layout()
-#
-# plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pipeline_roc_tissue_cnn_pixelwise.svg'),
-#             bbox_inches='tight', pad_inches=0)
-# plt.savefig(os.path.join(saved_figures_dir, 'exp_0096_pipeline_roc_tissue_cnn_pixelwise.png'),
-#             bbox_inches='tight', pad_inches=0)
-#
+
+plt.savefig(os.path.join(figures_dir, 'exp_0109_pipeline_roc_tissue_cnn_pixelwise.svg'),
+            bbox_inches='tight', pad_inches=0)
+plt.savefig(os.path.join(figures_dir, 'exp_0109_pipeline_roc_tissue_cnn_pixelwise.png'),
+            bbox_inches='tight', pad_inches=0)
