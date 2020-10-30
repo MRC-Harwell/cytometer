@@ -36,7 +36,7 @@ corrected_annotation_files_list = os.path.join(annotations_dir, '*' + corrected_
 corrected_annotation_files_list = glob.glob(corrected_annotation_files_list)
 
 # parameters
-cell_prob_thr = 0.4  # threshold for objects to be accepted as cells
+cell_prob_thr = 0.5  # threshold for objects to be accepted as cells
 min_area = 203 / 2  # (pix^2) smaller objects are rejected
 max_area = 44879 * 3  # (pix^2) larger objects are rejected
 max_inv_compactness = 2.0  # objects less compact than this are rejected (= more compact^-1)
@@ -139,5 +139,5 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
     return
 
 # create aggreagated annotation files for auto segmentations, and link to them
-process_annotations(auto_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=True)
-process_annotations(corrected_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=False)
+process_annotations(auto_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=False)
+process_annotations(corrected_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=True)
