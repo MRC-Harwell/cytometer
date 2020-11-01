@@ -30,7 +30,7 @@ import networkx as nx
 import keras.backend as K
 import keras
 import tensorflow as tf
-from cytometer.models import change_input_size
+from cytometer.models import change_input_size, load_model_with_retries
 from cytometer.CDF_confidence import CDF_error_DKW_band, CDF_error_beta
 from statsmodels.distributions.empirical_distribution import ECDF, monotone_fn_inverter
 from statsmodels.stats.multitest import multipletests
@@ -998,11 +998,11 @@ def segment_dmap_contour_v6(im, dmap_model, contour_model, classifier_model=None
 
     # load models if they are provided as filenames
     if isinstance(dmap_model, six.string_types):
-        dmap_model = keras.models.load_model(dmap_model)
+        dmap_model = load_model_with_retries(dmap_model, number_of_attempts=5)
     if isinstance(contour_model, six.string_types):
-        contour_model = keras.models.load_model(contour_model)
+        contour_model = load_model_with_retries(contour_model, number_of_attempts=5)
     if isinstance(classifier_model, six.string_types):
-        classifier_model = keras.models.load_model(classifier_model)
+        classifier_model = load_model_with_retries(classifier_model, number_of_attempts=5)
 
     # set models' input layers to the appropriate sizes if necessary
     if dmap_model.input_shape[1:3] != im.shape[1:3]:
