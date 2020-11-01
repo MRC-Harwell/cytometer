@@ -14,6 +14,7 @@ from keras.regularizers import l2
 import keras.backend as K
 import keras.engine
 import numpy as np
+import time
 
 
 if K.image_data_format() == 'channels_first':
@@ -22,6 +23,43 @@ if K.image_data_format() == 'channels_first':
 elif K.image_data_format() == 'channels_last':
     default_input_shape = (None, None, 3)
     norm_axis = -1
+
+
+def load_model_with_retries(model, number_of_attempts=1, time_between_attempts=5):
+    """
+    Wrap keras.models.load_model in a loop so that if the loading fails due to some network filesystem errors, we wait a
+    few seconds and then retry to load the model.
+    :param model: string with filename containing a keras model.
+    :param number_of_attempts: (def 1) Number of times we try to load the model before giving up.
+    :param time_between_attempts: (def 5) Seconds between loading attempts.
+    :return: keras model.
+    """
+
+    # if we are trying to load from a network filesystem, the server hosting the filesystem may return some network
+    # error. Because we don't want the computation dying just because of that, we let the user try a couple of times,
+    # with a little wait between tries
+    for attempt in range(number_of_attempts):
+        try:
+            model = keras.models.load_model(model)
+            break
+        except ConnectionResetError:
+            print(
+                '# ======> ConnectionResetError. Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
+            time.sleep(time_between_attempts)  # secs
+            pass
+        except RuntimeError as e:
+            errno, strerror = e.args
+            if strerror == 'Bad file descriptor':
+                print(
+                    '# ======> RuntimeError (' + strerror + '). Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
+                time.sleep(time_between_attempts)  # secs
+                pass
+            else:
+                # this may be a legitimate RuntimeError that has nothing to do with the network filesystem, so we
+                # re-throw the exception
+                raise
+
+    return model
 
 
 def change_input_size(model, batch_shape):
