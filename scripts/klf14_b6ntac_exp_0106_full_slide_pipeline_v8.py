@@ -113,7 +113,6 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import warnings
 import time
 import openslide
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from cytometer.utils import rough_foreground_mask, bspline_resample
@@ -182,11 +181,11 @@ block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor_goal).asty
 window_overlap_fraction_max = 0.9
 
 # segmentation parameters
-min_cell_area = 200  # pixel
+min_cell_area = 0  # pixel; we want all small objects
 max_cell_area = 200e3  # pixel
 min_mask_overlap = 0.8
 phagocytosis = True
-min_class_prop = 0.5
+min_class_prop = 0.0  # we want all the objects
 correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
@@ -613,12 +612,12 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
                                                      contour_model=contour_model_file,
                                                      correction_model=correction_model_file,
                                                      classifier_model=classifier_model_file,
-                                                     min_cell_area=0,
+                                                     min_cell_area=min_cell_area,
                                                      max_cell_area=max_cell_area,
                                                      mask=istissue_tile,
                                                      min_mask_overlap=min_mask_overlap,
                                                      phagocytosis=phagocytosis,
-                                                     min_class_prop=0.0,
+                                                     min_class_prop=min_class_prop,
                                                      correction_window_len=correction_window_len,
                                                      correction_smoothing=correction_smoothing,
                                                      return_bbox=True, return_bbox_coordinates='xy',
