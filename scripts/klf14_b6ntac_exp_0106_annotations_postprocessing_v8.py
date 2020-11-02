@@ -95,8 +95,10 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
             for cell in cells:
                 poly_cell = shapely.geometry.Polygon(cell)
                 area = poly_cell.area
-                inv_compactness = poly_cell.length ** 2 / (4 * np.pi * area)
-
+                if area > 0:
+                    inv_compactness = poly_cell.length ** 2 / (4 * np.pi * area)
+                else:
+                    inv_compactness = np.nan
                 areas.append(area)
                 inv_compactnesses.append(inv_compactness)
 
@@ -140,4 +142,4 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
 
 # create aggreagated annotation files for auto segmentations, and link to them
 process_annotations(auto_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=False)
-process_annotations(corrected_annotation_files_list, overwrite_aggregated_annotation_file=True, create_symlink=True)
+process_annotations(corrected_annotation_files_list, overwrite_aggregated_annotation_file=False, create_symlink=True)
