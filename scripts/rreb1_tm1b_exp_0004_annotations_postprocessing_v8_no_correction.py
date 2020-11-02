@@ -34,7 +34,7 @@ auto_annotation_files_list = os.path.join(annotations_dir, '*' + auto_filename_s
 auto_annotation_files_list = glob.glob(auto_annotation_files_list)
 
 # parameters
-cell_prob_thr = 0.4  # threshold for objects to be accepted as cells
+cell_prob_thr = 0.5  # threshold for objects to be accepted as cells
 min_area = 203 / 2  # (pix^2) smaller objects are rejected
 max_area = 44879 * 3  # (pix^2) larger objects are rejected
 max_inv_compactness = 2.0  # objects less compact than this are rejected (= more compact^-1)
@@ -92,8 +92,10 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
             for cell in cells:
                 poly_cell = shapely.geometry.Polygon(cell)
                 area = poly_cell.area
-                inv_compactness = poly_cell.length ** 2 / (4 * np.pi * area)
-
+                if area > 0:
+                    inv_compactness = poly_cell.length ** 2 / (4 * np.pi * area)
+                else:
+                    inv_compactness = np.nan
                 areas.append(area)
                 inv_compactnesses.append(inv_compactness)
 
@@ -126,11 +128,7 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
 
             # create symlink to the aggregated annotation file from the name expected by AIDA
             if os.path.isfile(symlink_name):
-                if os.path.islink(symlink_name):
-                    # delete existing symlink
-                    os.remove(symlink_name)
-                else:
-                    raise FileExistsError('File found with the name of the symlink we are trying to create')
+                os.remove(symlink_name)
             os.symlink(os.path.basename(aggregated_annotation_file), symlink_name)
 
     return
