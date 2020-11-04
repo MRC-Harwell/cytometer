@@ -71,7 +71,7 @@ saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pi
 # hole_size_treshold = 8000
 
 # json_annotation_files_dict here needs to have the same files as in
-# klf14_b6ntac_exp_0099_paper_figures.py
+# klf14_b6ntac_exp_0099_paper_figures_v7.py
 
 # NOTE: This list has the base filenames that map to the .ndpi files. However, the script later modifies these filenames
 # to add the '_exp_0097_corrected.json' suffix, so that corrected segmentations are loaded.
