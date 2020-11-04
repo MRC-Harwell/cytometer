@@ -1,5 +1,8 @@
 """
-Generate figures for the DeepCytometer paper.
+Generate figures for the DeepCytometer paper for v7 of the pipeline.
+
+Partly deprecated by klf14_b6ntac_exp_0110_paper_figures_v8.py:
+* Some figures have been updated to have v8 of the pipeline in the paper.
 
 Code cannibalised from:
 * klf14_b6ntac_exp_0097_full_slide_pipeline_v7.py
@@ -1936,108 +1939,107 @@ import math
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 
 DEBUG = False
 
-depot = 'sqwat'
-# depot = 'gwat'
-
 permutation_sample_size = 9  # the factorial of this number is the number of repetitions in the permutation tests
 
-# list of annotation files for this depot
-json_annotation_files = json_annotation_files_dict[depot]
+for depot in ['sqwat', 'gwat']:
 
-# modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
-json_annotation_files = [x.replace('.json', '_exp_0097_corrected.json') for x in json_annotation_files]
-json_annotation_files = [os.path.join(annotations_dir, x) for x in json_annotation_files]
+    # list of annotation files for this depot
+    json_annotation_files = json_annotation_files_dict[depot]
 
-# CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
-metainfo = pd.read_csv(metainfo_csv_file)
+    # modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
+    json_annotation_files = [x.replace('.json', '_exp_0097_corrected.json') for x in json_annotation_files]
+    json_annotation_files = [os.path.join(annotations_dir, x) for x in json_annotation_files]
 
-# make sure that in the boxplots PAT comes before MAT
-metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
-metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+    # CSV file with metainformation of all mice
+    metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+    metainfo = pd.read_csv(metainfo_csv_file)
 
-quantiles = np.linspace(0, 1, 11)
-quantiles = quantiles[1:-1]
+    # make sure that in the boxplots PAT comes before MAT
+    metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+    metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+    metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
 
-# compute areas of the rough masks
-filename_rough_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_area_' + depot + '.npz')
-id_all = []
-rough_mask_area_all = []
-for i_file, json_file in enumerate(json_annotation_files):
+    quantiles = np.linspace(0, 1, 11)
+    quantiles = quantiles[1:-1]
 
-    print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
+    # compute areas of the rough masks
+    filename_rough_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0099_rough_mask_area_' + depot + '.npz')
+    id_all = []
+    rough_mask_area_all = []
+    for i_file, json_file in enumerate(json_annotation_files):
 
-    if not os.path.isfile(json_file):
-        print('Missing file')
-        # continue
+        print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
 
-    # open full resolution histology slide
-    ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
-    ndpi_file = os.path.join(ndpi_dir, os.path.basename(ndpi_file))
-    im = openslide.OpenSlide(ndpi_file)
+        if not os.path.isfile(json_file):
+            print('Missing file')
+            # continue
 
-    # pixel size
-    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-    xres = 1e-2 / float(im.properties['tiff.XResolution'])
-    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+        # open full resolution histology slide
+        ndpi_file = json_file.replace('_exp_0097_corrected.json', '.ndpi')
+        ndpi_file = os.path.join(ndpi_dir, os.path.basename(ndpi_file))
+        im = openslide.OpenSlide(ndpi_file)
 
-    # load mask
-    rough_mask_file = json_file.replace('_exp_0097_corrected.json', '_rough_mask.npz')
-    rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
+        # pixel size
+        assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+        xres = 1e-2 / float(im.properties['tiff.XResolution'])
+        yres = 1e-2 / float(im.properties['tiff.YResolution'])
 
-    if not os.path.isfile(rough_mask_file):
-        print('No mask: ' + rough_mask_file)
+        # load mask
+        rough_mask_file = json_file.replace('_exp_0097_corrected.json', '_rough_mask.npz')
+        rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
 
-    aux = np.load(rough_mask_file)
-    lores_istissue0 = aux['lores_istissue0']
+        if not os.path.isfile(rough_mask_file):
+            print('No mask: ' + rough_mask_file)
 
-    if DEBUG:
-        foo = aux['im_downsampled']
-        foo = PIL.Image.fromarray(foo)
-        foo = foo.resize(tuple((np.round(np.array(foo.size[0:2]) / 4)).astype(np.int)))
-        plt.imshow(foo)
-        plt.title(os.path.basename(ndpi_file))
+        aux = np.load(rough_mask_file)
+        lores_istissue0 = aux['lores_istissue0']
 
-    # compute scaling factor between downsampled mask and original image
-    size_orig = np.array(im.dimensions)  # width, height
-    size_downsampled = np.array(lores_istissue0.shape)[::-1]  # width, height
-    downsample_factor = size_orig / size_downsampled  # width, height
+        if DEBUG:
+            foo = aux['im_downsampled']
+            foo = PIL.Image.fromarray(foo)
+            foo = foo.resize(tuple((np.round(np.array(foo.size[0:2]) / 4)).astype(np.int)))
+            plt.imshow(foo)
+            plt.title(os.path.basename(ndpi_file))
 
-    # create dataframe for this image
-    rough_mask_area = np.count_nonzero(lores_istissue0) * (xres * downsample_factor[0]) * (yres * downsample_factor[1])  # m^2
-    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
-                                                          values=[rough_mask_area,], values_tag='SC_rough_mask_area',
-                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
+        # compute scaling factor between downsampled mask and original image
+        size_orig = np.array(im.dimensions)  # width, height
+        size_downsampled = np.array(lores_istissue0.shape)[::-1]  # width, height
+        downsample_factor = size_orig / size_downsampled  # width, height
 
-    # mouse ID as a string
-    id = df_common['id'].values[0]
+        # create dataframe for this image
+        rough_mask_area = np.count_nonzero(lores_istissue0) * (xres * downsample_factor[0]) * (yres * downsample_factor[1])  # m^2
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                              values=[rough_mask_area,], values_tag='SC_rough_mask_area',
+                                                              tags_to_keep=['id', 'ko_parent', 'sex'])
 
-    # correct area because most slides contain two slices, but some don't
-    if depot == 'sqwat' and not (id in ['16.2d', '17.1e', '17.2g', '16.2e', '18.1f', '37.4a', '37.2e']):
-        # two slices in the slide, so slice area is approx. one half
-        rough_mask_area /= 2
-    elif depot == 'gwat' and not (id in ['36.1d', '16.2a', '16.2b', '16.2c', '16.2d', '16.2e', '17.1b', '17.1d',
-                                         '17.1e', '17.1f', '17.2c', '17.2d', '17.2f', '17.2g', '18.1b', '18.1c',
-                                         '18.1d', '18.2a', '18.2c', '18.2d', '18.2f', '18.2g', '18.3c', '19.1a',
-                                         '19.2e', '19.2f', '19.2g', '36.3d', '37.2e', '37.2f', '37.2g', '37.2h',
-                                         '37.3a', '37.4a', '37.4b', '39.2d']):
-        # two slices in the slide, so slice area is approx. one half
-        rough_mask_area /= 2
+        # mouse ID as a string
+        id = df_common['id'].values[0]
 
-    # add to output
-    id_all.append(id)
-    rough_mask_area_all.append(rough_mask_area)
+        # correct area because most slides contain two slices, but some don't
+        if depot == 'sqwat' and not (id in ['16.2d', '17.1e', '17.2g', '16.2e', '18.1f', '37.4a', '37.2e']):
+            # two slices in the slide, so slice area is approx. one half
+            rough_mask_area /= 2
+        elif depot == 'gwat' and not (id in ['36.1d', '16.2a', '16.2b', '16.2c', '16.2d', '16.2e', '17.1b', '17.1d',
+                                             '17.1e', '17.1f', '17.2c', '17.2d', '17.2f', '17.2g', '18.1b', '18.1c',
+                                             '18.1d', '18.2a', '18.2c', '18.2d', '18.2f', '18.2g', '18.3c', '19.1a',
+                                             '19.2e', '19.2f', '19.2g', '36.3d', '37.2e', '37.2f', '37.2g', '37.2h',
+                                             '37.3a', '37.4a', '37.4b', '39.2d']):
+            # two slices in the slide, so slice area is approx. one half
+            rough_mask_area /= 2
 
-# save results
-np.savez_compressed(filename_rough_mask_area, id_all=id_all, rough_mask_area_all=rough_mask_area_all)
+        # add to output
+        id_all.append(id)
+        rough_mask_area_all.append(rough_mask_area)
+
+    # save results
+    np.savez_compressed(filename_rough_mask_area, id_all=id_all, rough_mask_area_all=rough_mask_area_all)
 
 
 # load or compute area quantiles
