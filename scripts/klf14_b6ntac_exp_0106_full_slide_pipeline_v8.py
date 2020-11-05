@@ -771,7 +771,7 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
             # convert corrected contours to AIDA items
             contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
                                                                         cell_prob=window_white_adipocyte_prob_corrected,
-                                                                        xres=xres*1e6, yres=yres*1e6)
+                                                                        xres=xres, yres=yres)
 
             if step == 1:
                 # in the first step, overwrite previous annotations file, or create new one
