@@ -46,18 +46,18 @@ def load_model_with_retries(model, number_of_attempts=1, time_between_attempts=5
             print(
                 '# ======> ConnectionResetError. Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
             time.sleep(time_between_attempts)  # secs
-            pass
         except RuntimeError as e:
             errno, strerror = e.args
             if strerror == 'Bad file descriptor':
                 print(
                     '# ======> RuntimeError (' + strerror + '). Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
                 time.sleep(time_between_attempts)  # secs
-                pass
             else:
                 # this may be a legitimate RuntimeError that has nothing to do with the network filesystem, so we
                 # re-throw the exception
                 raise
+        except:
+            raise
 
     return model
 
