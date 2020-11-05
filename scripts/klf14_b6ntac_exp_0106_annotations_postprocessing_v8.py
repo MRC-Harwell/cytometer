@@ -67,9 +67,9 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
     :return:
     """
 
-    for annotation_file in annotation_files_list:
+    for i_file, annotation_file in enumerate(annotation_files_list):
 
-        print('File: ' + os.path.basename(annotation_file))
+        print('File ' + str(i_file) + ': ' + os.path.basename(annotation_file))
 
         # name of the file that we are going to save the aggregated annotations to
         aggregated_annotation_file = annotation_file.replace('.json', '_aggregated.json')
@@ -80,8 +80,8 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
         histo_file = os.path.join(histology_dir, histo_file)
 
         im = openslide.OpenSlide(histo_file)
-        xres = 1e-2 / float(im.properties['tiff.XResolution'])
-        yres = 1e-2 / float(im.properties['tiff.YResolution'])
+        xres = float(im.properties['openslide.mpp-x'])  # um/pixel
+        yres = float(im.properties['openslide.mpp-y'])  # um/pixel
 
         # aggregate cells from all blocks and write/overwrite a file with them
         if not os.path.isfile(aggregated_annotation_file) or overwrite_aggregated_annotation_file:
@@ -118,7 +118,7 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
 
             # create AIDA items to contain contours
             items = cytometer.data.aida_contour_items(cells, f_area2quantile_m, cm='quantiles_aida',
-                                                      xres=xres*1e6, yres=yres*1e6, cell_prob=props['cell_prob'])
+                                                      xres=xres, yres=yres, cell_prob=props['cell_prob'])
 
             # write contours to single layer AIDA file (one to visualise, one to correct manually)
             cytometer.data.aida_write_new_items(aggregated_annotation_file, items, mode='w', indent=0)
