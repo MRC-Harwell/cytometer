@@ -543,7 +543,7 @@ df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_auto_f)
 df['Sex'] = 'Female'
 df['Method'] = 'Auto all'
-df_all = pd.concat((df_all, df))
+df_all = df
 
 df = pd.DataFrame()
 df['Area'] = np.concatenate(areas_auto_m)
