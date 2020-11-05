@@ -900,7 +900,11 @@ def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0,
         except ConnectionResetError:
             print('# ======> ConnectionResetError. Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
             time.sleep(5)  # secs
-            pass
+        except BrokenPipeError:
+            print('# ======> BrokenPipeError. Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
+            time.sleep(5)  # secs
+        except:
+            raise
 
 
 def aida_get_contours(annotations, layer_name='.*', return_props=False):
