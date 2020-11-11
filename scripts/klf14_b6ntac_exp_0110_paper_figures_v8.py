@@ -193,7 +193,7 @@ json_annotation_files_dict['gwat'] = [
 ]
 
 ########################################################################################################################
-## Cell populations from automatically segmented images in two depots: SQWAT and GWAT:
+## Compute cell populations from automatically segmented images in two depots: SQWAT and GWAT:
 ##   Cell area histograms
 ##   HD quantiles of cell areas
 ## The results are saved, so in later sections, it's possible to just read them for further analysis.
@@ -231,17 +231,12 @@ quantiles = np.linspace(0, 1, 21)
 log10_area_bin_edges = np.linspace(np.log10(min_area), np.log10(max_area), 201)
 log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
 
-# dataframe to keep all results, one row per annotations file
-df_all = pd.DataFrame()
+if os.path.isfile(dataframe_corrected_filename):
 
-for depot in ['sqwat', 'gwat']:
+    # load dataframe with cell population quantiles and histograms
+    df_all = pd.read_csv(dataframe_corrected_filename)
 
-    # list of annotation files for this depot
-    json_annotation_files = json_annotation_files_dict[depot]
-
-    # modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
-    json_annotation_files = [x.replace('.json', '_exp_0106_corrected_aggregated.json') for x in json_annotation_files]
-    json_annotation_files = [os.path.join(annotations_dir, x) for x in json_annotation_files]
+else:
 
     # CSV file with metainformation of all mice
     metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
@@ -249,94 +244,202 @@ for depot in ['sqwat', 'gwat']:
 
     # make sure that in the boxplots PAT comes before MAT
     metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-    metainfo['ko_parent'] = metainfo['ko_parent'].astype(pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
-    metainfo['genotype'] = metainfo['genotype'].astype(pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+    metainfo['ko_parent'] = metainfo['ko_parent'].astype(
+        pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+    metainfo['genotype'] = metainfo['genotype'].astype(
+        pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
 
-    # process annotation files and coarse masks
-    filename_coarse_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_coarse_mask_area_' + depot + '.npz')
-    for i_file, json_file in enumerate(json_annotation_files):
+    # mean mouse body weight (female and male)
+    mean_bw_f = metainfo[metainfo['sex'] == 'f']['BW'].mean()
+    mean_bw_m = metainfo[metainfo['sex'] == 'm']['BW'].mean()
 
-        print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
+    # dataframe to keep all results, one row per annotations file
+    df_all = pd.DataFrame()
 
-        if not os.path.isfile(json_file):
-            print('Missing annotations file')
-            continue
+    for depot in ['sqwat', 'gwat']:
 
-        # open full resolution histology slide
-        ndpi_file = json_file.replace('_exp_0106_corrected_aggregated.json', '.ndpi')
-        ndpi_file = os.path.join(ndpi_dir, os.path.basename(ndpi_file))
-        im = openslide.OpenSlide(ndpi_file)
+        # list of annotation files for this depot
+        json_annotation_files = json_annotation_files_dict[depot]
 
-        # pixel size
-        assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-        xres = float(im.properties['openslide.mpp-x'])  # um/pixel
-        yres = float(im.properties['openslide.mpp-y'])  # um/pixel
+        # modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
+        json_annotation_files = [x.replace('.json', '_exp_0106_corrected_aggregated.json') for x in json_annotation_files]
+        json_annotation_files = [os.path.join(annotations_dir, x) for x in json_annotation_files]
 
-        # load mask
-        coarse_mask_file = json_file.replace('_exp_0106_corrected_aggregated.json', '_coarse_mask.npz')
-        coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
+        # process annotation files and coarse masks
+        filename_coarse_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_coarse_mask_area_' + depot + '.npz')
+        for i_file, json_file in enumerate(json_annotation_files):
 
-        with np.load(coarse_mask_file) as aux:
-            lores_istissue0 = aux['lores_istissue0']
+            print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
+
+            if not os.path.isfile(json_file):
+                print('Missing annotations file')
+                continue
+
+            # open full resolution histology slide
+            ndpi_file = json_file.replace('_exp_0106_corrected_aggregated.json', '.ndpi')
+            ndpi_file = os.path.join(ndpi_dir, os.path.basename(ndpi_file))
+            im = openslide.OpenSlide(ndpi_file)
+
+            # pixel size
+            assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+            xres = float(im.properties['openslide.mpp-x'])  # um/pixel
+            yres = float(im.properties['openslide.mpp-y'])  # um/pixel
+
+            # load mask
+            coarse_mask_file = json_file.replace('_exp_0106_corrected_aggregated.json', '_coarse_mask.npz')
+            coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
+
+            with np.load(coarse_mask_file) as aux:
+                lores_istissue0 = aux['lores_istissue0']
+
+                if DEBUG:
+                    foo = aux['im_downsampled']
+                    foo = PIL.Image.fromarray(foo)
+                    foo = foo.resize(tuple((np.round(np.array(foo.size[0:2]) / 4)).astype(np.int)))
+                    plt.imshow(foo)
+                    plt.title(os.path.basename(ndpi_file))
+
+            # create dataframe for this image
+            df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                           values=[depot, ], values_tag='depot',
+                                                           tags_to_keep=['id', 'ko_parent', 'sex', 'genotype', 'BW'])
+
+            # compute scaling factor between downsampled mask and original image
+            size_orig = np.array(im.dimensions)  # width, height
+            size_downsampled = np.array(lores_istissue0.shape)[::-1]  # width, height
+            downsample_factor = size_orig / size_downsampled  # width, height
+
+            # compute area of coarse mask
+            coarse_mask_area = 1e-6 * np.count_nonzero(lores_istissue0) * (xres * downsample_factor[0]) * (yres * downsample_factor[1])  # mm^2
+
+            # correct area because most slides contain two slices, but some don't
+            id = df['id'].values[0]
+            if depot == 'sqwat' and not (id in ['16.2d', '17.1e', '17.2g', '16.2e', '18.1f', '37.4a', '37.2e']):
+                # two slices in the slide, so slice area is approx. one half
+                coarse_mask_area /= 2
+            elif depot == 'gwat' and not (id in ['36.1d', '16.2a', '16.2b', '16.2c', '16.2d', '16.2e', '17.1b', '17.1d',
+                                                 '17.1e', '17.1f', '17.2c', '17.2d', '17.2f', '17.2g', '18.1b', '18.1c',
+                                                 '18.1d', '18.2a', '18.2c', '18.2d', '18.2f', '18.2g', '18.3c', '19.1a',
+                                                 '19.2e', '19.2f', '19.2g', '36.3d', '37.2e', '37.2f', '37.2g', '37.2h',
+                                                 '37.3a', '37.4a', '37.4b', '39.2d']):
+                # two slices in the slide, so slice area is approx. one half
+                coarse_mask_area /= 2
+
+            df['coarse_mask_area_mm3'] = coarse_mask_area
+
+            # load contours and their confidence measure from annotation file
+            cells, props = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*', return_props=True)
+
+            # compute areas of the cells
+            areas = np.array([shapely.geometry.Polygon(cell).area for cell in cells])
+
+            # BW normalisation factor for cell areas
+            if df['sex'].values == 'f':
+                bw_norm_factor = np.float((df['BW'] / mean_bw_f) ** (2/3))
+            elif df['sex'].values == 'm':
+                bw_norm_factor = np.float((df['BW'] / mean_bw_m) ** (2/3))
+            else:
+                raise ValueError('Sex unrecognised')
+
+            # compute areas at population quantiles
+            areas_at_quantiles = stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
+            for j in range(len(quantiles)):
+                df['area_q_' + '{0:02d}'.format(j)] = areas_at_quantiles[j]
+
+            norm_areas_at_quantiles = stats.mstats.hdquantiles(areas * bw_norm_factor, prob=quantiles, axis=0)
+            for j in range(len(quantiles)):
+                df['norm_area_q_' + '{0:02d}'.format(j)] = norm_areas_at_quantiles[j]
+
+            # compute histograms with log10(area) binning
+            histo, _ = np.histogram(np.log10(areas), bins=log10_area_bin_edges, density=True)
+            for j in range(len(log10_area_bin_edges) - 1):
+                df['histo_bin_' + '{0:03d}'.format(j)] = histo[j]
+
+            norm_histo, _ = np.histogram(np.log10(areas * bw_norm_factor), bins=log10_area_bin_edges, density=True)
+            for j in range(len(log10_area_bin_edges) - 1):
+                df['norm_histo_bin_' + '{0:03d}'.format(j)] = norm_histo[j]
 
             if DEBUG:
-                foo = aux['im_downsampled']
-                foo = PIL.Image.fromarray(foo)
-                foo = foo.resize(tuple((np.round(np.array(foo.size[0:2]) / 4)).astype(np.int)))
-                plt.imshow(foo)
-                plt.title(os.path.basename(ndpi_file))
+                plt.clf()
+                plt.plot(10 ** log10_area_bin_centers, histo, label='Areas')
+                plt.plot(10 ** log10_area_bin_centers, norm_histo, label='Norm areas')
+                plt.legend()
 
-        # create dataframe for this image
-        df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
-                                                       values=[depot, ], values_tag='depot',
-                                                       tags_to_keep=['id', 'ko_parent', 'sex'])
+            # add results to total dataframe
+            df_all = pd.concat([df_all, df], ignore_index=True)
 
-        # compute scaling factor between downsampled mask and original image
-        size_orig = np.array(im.dimensions)  # width, height
-        size_downsampled = np.array(lores_istissue0.shape)[::-1]  # width, height
-        downsample_factor = size_orig / size_downsampled  # width, height
+            # save dataframe
+            df_all.to_csv(dataframe_corrected_filename, index=False)
 
-        # compute area of coarse mask
-        coarse_mask_area = 1e-6 * np.count_nonzero(lores_istissue0) * (xres * downsample_factor[0]) * (yres * downsample_factor[1])  # mm^2
+########################################################################################################################
+## Analyse cell populations from automatically segmented images in two depots: SQWAT and GWAT:
+##   Cell area histograms
+##   HD quantiles of cell areas
+## Cell populations were computed in previous section
+### USED IN PAPER
+########################################################################################################################
 
-        # correct area because most slides contain two slices, but some don't
-        id = df['id'].values[0]
-        if depot == 'sqwat' and not (id in ['16.2d', '17.1e', '17.2g', '16.2e', '18.1f', '37.4a', '37.2e']):
-            # two slices in the slide, so slice area is approx. one half
-            coarse_mask_area /= 2
-        elif depot == 'gwat' and not (id in ['36.1d', '16.2a', '16.2b', '16.2c', '16.2d', '16.2e', '17.1b', '17.1d',
-                                             '17.1e', '17.1f', '17.2c', '17.2d', '17.2f', '17.2g', '18.1b', '18.1c',
-                                             '18.1d', '18.2a', '18.2c', '18.2d', '18.2f', '18.2g', '18.3c', '19.1a',
-                                             '19.2e', '19.2f', '19.2g', '36.3d', '37.2e', '37.2f', '37.2g', '37.2h',
-                                             '37.3a', '37.4a', '37.4b', '39.2d']):
-            # two slices in the slide, so slice area is approx. one half
-            coarse_mask_area /= 2
 
-        df['coarse_mask_area_mm3'] = coarse_mask_area
+import matplotlib.pyplot as plt
+# import cytometer.data
+# from shapely.geometry import Polygon
+# import openslide
+import numpy as np
+# import scipy.stats
+import pandas as pd
+# from mlxtend.evaluate import permutation_test
+# from statsmodels.stats.multitest import multipletests
+# import math
+# import PIL
 
-        # load contours and their confidence measure from annotation file
-        cells, props = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*', return_props=True)
+# directories
+klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
+ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+dataframe_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 
-        # compute areas of the cells
-        areas = [shapely.geometry.Polygon(cell).area for cell in cells]
+DEBUG = False
 
-        # compute areas at population quantiles
-        areas_at_quantiles = stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
-        for j in range(len(quantiles)):
-            df['area_q_' + '{0:02d}'.format(j)] = areas_at_quantiles[j]
+# load dataframe with cell population quantiles and histograms
+dataframe_corrected_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_corrected.csv')
+df_all = pd.read_csv(dataframe_corrected_filename)
 
-        # compute histograms with log10(area) binning
-        histo, _ = np.histogram(np.log10(areas), bins=log10_area_bin_edges, density=True)
-        for j in range(len(log10_area_bin_edges) - 1):
-            df['histo_bin_' + '{0:03d}'.format(j)] = histo[j]
+## histograms
 
-        if DEBUG:
-            plt.clf()
-            plt.plot(10 ** log10_area_bin_centers, histo)
+# 2.00646604, 2.02207953, ..., 5.11355093, 5.12916443
+log10_area_bin_edges = np.linspace(np.log10(min_area), np.log10(max_area), 201)
+log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
 
-        # add results to total dataframe
-        df_all = pd.concat([df_all, df], ignore_index=True)
+columns = []
+for j in range(len(log10_area_bin_edges) - 1):
+    columns += ['histo_bin_' + '{0:03d}'.format(j),]
 
-        # save dataframe
-        df_all.to_csv(dataframe_corrected_filename, index=False)
+# f PAT
+df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+df = df.reset_index()
+histo = df[columns]
 
+# f MAT
+df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+df = df.reset_index()
+histo = df[columns]
+
+if DEBUG:
+    plt.clf()
+    plt.plot(log10_area_bin_centers, np.transpose(histo))
+    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
+    plt.xlabel('Area ($\mu m^2$)')
+
+## population quantiles
+
+# 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
+quantiles = np.linspace(0, 1, 21)
+
+columns = []
+for j in range(len(quantiles)):
+    columns += ['area_q_' + '{0:02d}'.format(j),]
+
+# f PAT
+df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
