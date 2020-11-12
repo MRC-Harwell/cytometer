@@ -17,9 +17,6 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 
-import shapely
-import scipy.stats as stats
-
 # post-processing parameters
 min_area = 203 / 2  # (pix^2) smaller objects are rejected
 max_area = 44879 * 3  # (pix^2) larger objects are rejected
@@ -202,14 +199,16 @@ json_annotation_files_dict['gwat'] = [
 
 import matplotlib.pyplot as plt
 import cytometer.data
-from shapely.geometry import Polygon
+import shapely
+import scipy.stats as stats
 import openslide
 import numpy as np
 import scipy.stats
+import sklearn.neighbors, sklearn.model_selection
 import pandas as pd
-from mlxtend.evaluate import permutation_test
-from statsmodels.stats.multitest import multipletests
-import math
+# from mlxtend.evaluate import permutation_test
+# from statsmodels.stats.multitest import multipletests
+# import math
 import PIL
 
 # directories
@@ -269,10 +268,12 @@ for method in ['auto', 'corrected']:
             json_annotation_files = [os.path.join(annotations_dir, x) for x in json_annotation_files]
 
             # process annotation files and coarse masks
-            filename_coarse_mask_area = os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_coarse_mask_area_' + depot + '.npz')
+            filename_coarse_mask_area = os.path.join(figures_dir,
+                                                     'klf14_b6ntac_exp_0110_coarse_mask_area_' + depot + '.npz')
             for i_file, json_file in enumerate(json_annotation_files):
 
-                print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': ' + os.path.basename(json_file))
+                print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': '
+                      + os.path.basename(json_file))
 
                 if not os.path.isfile(json_file):
                     print('Missing annotations file')
@@ -336,36 +337,29 @@ for method in ['auto', 'corrected']:
                 # compute areas of the cells
                 areas = np.array([shapely.geometry.Polygon(cell).area for cell in cells])
 
-                # BW normalisation factor for cell areas
-                if df['sex'].values == 'f':
-                    bw_norm_factor = np.float((df['BW'] / mean_bw_f) ** (2/3))
-                elif df['sex'].values == 'm':
-                    bw_norm_factor = np.float((df['BW'] / mean_bw_m) ** (2/3))
-                else:
-                    raise ValueError('Sex unrecognised')
+                # smooth out histogram
+                kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(areas.reshape(-1, 1))
+                log_dens = kde.score_samples(np.linspace(0, areas.max(), 1000).reshape(-1, 1))
+                pdf = np.exp(log_dens)
+
+                # compute mode
+                df['area_smoothed_mode'] = np.linspace(0, areas.max(), 1000)[np.argmax(pdf)]
 
                 # compute areas at population quantiles
                 areas_at_quantiles = stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
                 for j in range(len(quantiles)):
                     df['area_q_' + '{0:02d}'.format(j)] = areas_at_quantiles[j]
 
-                norm_areas_at_quantiles = stats.mstats.hdquantiles(areas * bw_norm_factor, prob=quantiles, axis=0)
-                for j in range(len(quantiles)):
-                    df['norm_area_q_' + '{0:02d}'.format(j)] = norm_areas_at_quantiles[j]
-
                 # compute histograms with log10(area) binning
-                histo, _ = np.histogram(np.log10(areas), bins=log10_area_bin_edges, density=True)
+                histo, _ = np.histogram(areas, bins=10**log10_area_bin_edges, density=True)
                 for j in range(len(log10_area_bin_edges) - 1):
                     df['histo_bin_' + '{0:03d}'.format(j)] = histo[j]
-
-                norm_histo, _ = np.histogram(np.log10(areas * bw_norm_factor), bins=log10_area_bin_edges, density=True)
-                for j in range(len(log10_area_bin_edges) - 1):
-                    df['norm_histo_bin_' + '{0:03d}'.format(j)] = norm_histo[j]
 
                 if DEBUG:
                     plt.clf()
                     plt.plot(10 ** log10_area_bin_centers, histo, label='Areas')
-                    plt.plot(10 ** log10_area_bin_centers, norm_histo, label='Norm areas')
+                    plt.plot(np.linspace(0, areas.max(), 1000), pdf, label='Kernel')
+                    plt.plot([df['area_mode'], df['area_mode']], [0, pdf.max()], label='Mode')
                     plt.legend()
 
                 # add results to total dataframe
@@ -405,8 +399,10 @@ metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 
 DEBUG = False
 
+method = 'corrected'
+
 # load dataframe with cell population quantiles and histograms
-dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas.csv')
+dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.csv')
 df_all = pd.read_csv(dataframe_areas_filename)
 
 ## histograms
