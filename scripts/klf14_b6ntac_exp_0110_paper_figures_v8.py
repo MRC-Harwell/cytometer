@@ -424,6 +424,12 @@ df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_p
 df = df.reset_index()
 histo = df[columns]
 
+if DEBUG:
+    plt.clf()
+    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
+    plt.xlabel('Area ($\mu m^2$)')
+    plt.title('GWAT f PAT')
+
 # f MAT
 df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
 df = df.reset_index()
@@ -431,10 +437,37 @@ histo = df[columns]
 
 if DEBUG:
     plt.clf()
-    # plt.plot(log10_area_bin_centers, np.transpose(histo))
     plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
     plt.xlabel('Area ($\mu m^2$)')
+    plt.title('GWAT f MAT')
 
+## smoothed histograms
+
+columns = []
+for j in range(len(log10_area_bin_edges) - 1):
+    columns += ['smoothed_histo_bin_' + '{0:03d}'.format(j),]
+
+# f PAT
+df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+df = df.reset_index()
+histo = df[columns]
+
+if DEBUG:
+    plt.clf()
+    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
+    plt.xlabel('Area ($\mu m^2$)')
+    plt.title('GWAT f PAT')
+
+# f MAT
+df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+df = df.reset_index()
+histo = df[columns]
+
+if DEBUG:
+    plt.clf()
+    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
+    plt.xlabel('Area ($\mu m^2$)')
+    plt.title('GWAT f MAT')
 
 ## population quantiles
 
@@ -447,3 +480,68 @@ for j in range(len(quantiles)):
 
 # f PAT
 df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+
+## plot description of histograms
+
+depot = 'gwat'
+# depot = 'sqwat'
+
+# f PAT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+df = df.reset_index()
+bw_f_pat = df['BW']
+mode_f_pat = df['area_smoothed_mode']
+assert(quantiles[15] == 0.75)  # check: we are selecting the 75% quantile
+q75_f_pat = df['area_q_15']
+
+# f MAT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+df = df.reset_index()
+bw_f_mat = df['BW']
+mode_f_mat = df['area_smoothed_mode']
+q75_f_mat = df['area_q_15']
+
+# m PAT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+df = df.reset_index()
+bw_m_pat = df['BW']
+mode_m_pat = df['area_smoothed_mode']
+assert(quantiles[15] == 0.75)  # check: we are selecting the 75% quantile
+q75_m_pat = df['area_q_15']
+
+# m MAT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+df = df.reset_index()
+bw_m_mat = df['BW']
+mode_m_mat = df['area_smoothed_mode']
+q75_m_mat = df['area_q_15']
+
+# plot
+if DEBUG:
+    plt.clf()
+    plt.subplot(221)
+    plt.scatter(bw_f_pat, mode_f_pat * 1e-3, c='C0', label='f PAT')
+    plt.scatter(bw_f_mat, mode_f_mat * 1e-3, c='C1', label='f MAT')
+    plt.ylabel('Area smoothed mode ($10^3\ \mu m^2$)')
+    plt.legend()
+
+    plt.subplot(223)
+    plt.scatter(bw_f_pat, q75_f_pat * 1e-3, c='C0', label='f PAT')
+    plt.scatter(bw_f_mat, q75_f_mat * 1e-3, c='C1', label='f MAT')
+    plt.xlabel('Body weight (g)')
+    plt.ylabel('Area 75%-quantile ($10^3\ \mu m^2$)')
+    plt.legend()
+
+    plt.subplot(222)
+    plt.scatter(bw_m_pat, mode_m_pat * 1e-3, c='C0', label='m PAT')
+    plt.scatter(bw_m_mat, mode_m_mat * 1e-3, c='C1', label='m MAT')
+    plt.legend()
+
+    plt.subplot(224)
+    plt.scatter(bw_m_pat, q75_m_pat * 1e-3, c='C0', label='m PAT')
+    plt.scatter(bw_m_mat, q75_m_mat * 1e-3, c='C1', label='m MAT')
+    plt.xlabel('Body weight (g)')
+    plt.legend()
+
+    plt.tight_layout()
+
