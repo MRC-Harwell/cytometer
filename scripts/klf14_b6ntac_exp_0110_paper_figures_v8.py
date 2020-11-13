@@ -339,11 +339,11 @@ for method in ['auto', 'corrected']:
 
                 # smooth out histogram
                 kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(areas.reshape(-1, 1))
-                log_dens = kde.score_samples(np.linspace(0, areas.max(), 1000).reshape(-1, 1))
+                log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
                 pdf = np.exp(log_dens)
 
                 # compute mode
-                df['area_smoothed_mode'] = np.linspace(0, areas.max(), 1000)[np.argmax(pdf)]
+                df['area_smoothed_mode'] = (10 ** log10_area_bin_centers)[np.argmax(pdf)]
 
                 # compute areas at population quantiles
                 areas_at_quantiles = stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
@@ -352,14 +352,18 @@ for method in ['auto', 'corrected']:
 
                 # compute histograms with log10(area) binning
                 histo, _ = np.histogram(areas, bins=10**log10_area_bin_edges, density=True)
-                for j in range(len(log10_area_bin_edges) - 1):
+                for j in range(len(log10_area_bin_centers)):
                     df['histo_bin_' + '{0:03d}'.format(j)] = histo[j]
+
+                # smoothed histogram
+                for j in range(len(log10_area_bin_centers)):
+                    df['smoothed_histo_bin_' + '{0:03d}'.format(j)] = pdf[j]
 
                 if DEBUG:
                     plt.clf()
                     plt.plot(10 ** log10_area_bin_centers, histo, label='Areas')
-                    plt.plot(np.linspace(0, areas.max(), 1000), pdf, label='Kernel')
-                    plt.plot([df['area_mode'], df['area_mode']], [0, pdf.max()], label='Mode')
+                    plt.plot(10 ** log10_area_bin_centers, pdf, label='Kernel')
+                    plt.plot([df['area_smoothed_mode'], df['area_smoothed_mode']], [0, pdf.max()], 'k', label='Mode')
                     plt.legend()
 
                 # add results to total dataframe
@@ -419,21 +423,6 @@ for j in range(len(log10_area_bin_edges) - 1):
 df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
 df = df.reset_index()
 histo = df[columns]
-
-# f MAT
-df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
-df = df.reset_index()
-histo = df[columns]
-
-if DEBUG:
-    plt.clf()
-    # plt.plot(log10_area_bin_centers, np.transpose(histo))
-    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
-    plt.xlabel('Area ($\mu m^2$)')
-
-columns = []
-for j in range(len(log10_area_bin_edges) - 1):
-    columns += ['norm_histo_bin_' + '{0:03d}'.format(j),]
 
 # f MAT
 df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
