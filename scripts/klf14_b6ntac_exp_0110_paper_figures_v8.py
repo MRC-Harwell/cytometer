@@ -533,18 +533,37 @@ q25_m_mat = df['area_q_05']
 q50_m_mat = df['area_q_10']
 q75_m_mat = df['area_q_15']
 
-# fit linear model
+# fit linear models
 df = df_all[(df_all['depot'] == depot)]
 df = df[~np.isnan(df['BW'])]
 df['BW__'] = df['BW'] / np.mean(df['BW'])
-mode_model = sm.formula.ols('area_smoothed_mode ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
-q25_model = sm.formula.ols('area_q_05 ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
-q50_model = sm.formula.ols('area_q_10 ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
-q75_model = sm.formula.ols('area_q_15 ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
-print(mode_model.summary())
-print(q25_model.summary())
-print(q50_model.summary())
-print(q75_model.summary())
+
+# mode_model = sm.formula.ols('area_smoothed_mode ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
+# q25_model = sm.formula.ols('area_q_05 ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
+# q50_model = sm.formula.ols('area_q_10 ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
+# q75_model = sm.formula.ols('area_q_15 ~ BW__ * C(sex) * C(ko_parent)', data=df).fit()
+# print(mode_model.summary())
+# print(q25_model.summary())
+# print(q50_model.summary())
+# print(q75_model.summary())
+
+mode_model_f = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'f']).fit()
+q25_model_f = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'f']).fit()
+q50_model_f = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'f']).fit()
+q75_model_f = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'f']).fit()
+print(mode_model_f.summary())
+print(q25_model_f.summary())
+print(q50_model_f.summary())
+print(q75_model_f.summary())
+
+mode_model_m = sm.formula.ols('area_smoothed_mode ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+q25_model_m = sm.formula.ols('area_q_05 ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+q50_model_m = sm.formula.ols('area_q_10 ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+q75_model_m = sm.formula.ols('area_q_15 ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+print(mode_model_m.summary())
+print(q25_model_m.summary())
+print(q50_model_m.summary())
+print(q75_model_m.summary())
 
 # plot
 if DEBUG:
@@ -554,8 +573,8 @@ if DEBUG:
     plt.subplot(421)
     plt.scatter(bw_f_pat, mode_f_pat * 1e-3, c='C0', label='f PAT')
     plt.scatter(bw_f_mat, mode_f_mat * 1e-3, c='C1', label='f MAT')
-    plot_linear_regression(mode_model, sex='f', ko_parent='PAT', style='C0')
-    plot_linear_regression(mode_model, sex='f', ko_parent='MAT', style='C1')
+    plot_linear_regression(mode_model_f, sex='f', ko_parent='PAT', style='C0')
+    plot_linear_regression(mode_model_f, sex='f', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     plt.ylabel('Mode ($10^3\ \mu m^2$)', fontsize=14)
     if depot == 'sqwat':
@@ -567,8 +586,8 @@ if DEBUG:
     plt.subplot(423)
     plt.scatter(bw_f_pat, q25_f_pat * 1e-3, c='C0', label='f PAT')
     plt.scatter(bw_f_mat, q25_f_mat * 1e-3, c='C1', label='f MAT')
-    plot_linear_regression(q25_model, sex='f', ko_parent='PAT', style='C0')
-    plot_linear_regression(q25_model, sex='f', ko_parent='MAT', style='C1')
+    plot_linear_regression(q25_model_f, sex='f', ko_parent='PAT', style='C0')
+    plot_linear_regression(q25_model_f, sex='f', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     if depot == 'sqwat':
         plt.ylim(2, 15)
@@ -580,8 +599,8 @@ if DEBUG:
     plt.subplot(425)
     plt.scatter(bw_f_pat, q50_f_pat * 1e-3, c='C0', label='f PAT')
     plt.scatter(bw_f_mat, q50_f_mat * 1e-3, c='C1', label='f MAT')
-    plot_linear_regression(q50_model, sex='f', ko_parent='PAT', style='C0')
-    plot_linear_regression(q50_model, sex='f', ko_parent='MAT', style='C1')
+    plot_linear_regression(q50_model_f, sex='f', ko_parent='PAT', style='C0')
+    plot_linear_regression(q50_model_f, sex='f', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     plt.ylabel('Median ($10^3\ \mu m^2$)', fontsize=14)
     plt.legend()
@@ -589,8 +608,8 @@ if DEBUG:
     plt.subplot(427)
     plt.scatter(bw_f_pat, q75_f_pat * 1e-3, c='C0', label='f PAT')
     plt.scatter(bw_f_mat, q75_f_mat * 1e-3, c='C1', label='f MAT')
-    plot_linear_regression(q75_model, sex='f', ko_parent='PAT', style='C0')
-    plot_linear_regression(q75_model, sex='f', ko_parent='MAT', style='C1')
+    plot_linear_regression(q75_model_f, sex='f', ko_parent='PAT', style='C0')
+    plot_linear_regression(q75_model_f, sex='f', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
     plt.ylabel('75%-quant. ($10^3\ \mu m^2$)', fontsize=14)
@@ -599,16 +618,16 @@ if DEBUG:
     plt.subplot(422)
     plt.scatter(bw_m_pat, mode_m_pat * 1e-3, c='C0', label='m PAT')
     plt.scatter(bw_m_mat, mode_m_mat * 1e-3, c='C1', label='m MAT')
-    plot_linear_regression(mode_model, sex='m', ko_parent='PAT', style='C0')
-    plot_linear_regression(mode_model, sex='m', ko_parent='MAT', style='C1')
+    plot_linear_regression(mode_model_m, sex='m', ko_parent='PAT', style='C0')
+    plot_linear_regression(mode_model_m, sex='m', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     plt.legend()
 
     plt.subplot(424)
     plt.scatter(bw_m_pat, q25_m_pat * 1e-3, c='C0', label='m PAT')
     plt.scatter(bw_m_mat, q25_m_mat * 1e-3, c='C1', label='m MAT')
-    plot_linear_regression(q25_model, sex='m', ko_parent='PAT', style='C0')
-    plot_linear_regression(q25_model, sex='m', ko_parent='MAT', style='C1')
+    plot_linear_regression(q25_model_m, sex='m', ko_parent='PAT', style='C0')
+    plot_linear_regression(q25_model_m, sex='m', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     plt.legend()
     if depot == 'sqwat':
@@ -620,8 +639,8 @@ if DEBUG:
     plt.subplot(426)
     plt.scatter(bw_m_pat, q50_m_pat * 1e-3, c='C0', label='m PAT')
     plt.scatter(bw_m_mat, q50_m_mat * 1e-3, c='C1', label='m MAT')
-    plot_linear_regression(q50_model, sex='m', ko_parent='PAT', style='C0')
-    plot_linear_regression(q50_model, sex='m', ko_parent='MAT', style='C1')
+    plot_linear_regression(q50_model_m, sex='m', ko_parent='PAT', style='C0')
+    plot_linear_regression(q50_model_m, sex='m', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     if depot == 'sqwat':
         plt.ylim(6, 29)
@@ -632,8 +651,8 @@ if DEBUG:
     plt.subplot(428)
     plt.scatter(bw_m_pat, q75_m_pat * 1e-3, c='C0', label='m PAT')
     plt.scatter(bw_m_mat, q75_m_mat * 1e-3, c='C1', label='m MAT')
-    plot_linear_regression(q75_model, sex='m', ko_parent='PAT', style='C0')
-    plot_linear_regression(q75_model, sex='m', ko_parent='MAT', style='C1')
+    plot_linear_regression(q75_model_m, sex='m', ko_parent='PAT', style='C0')
+    plot_linear_regression(q75_model_m, sex='m', ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
     plt.legend()
