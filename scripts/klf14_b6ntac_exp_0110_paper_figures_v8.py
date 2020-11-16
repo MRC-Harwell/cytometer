@@ -556,10 +556,10 @@ print(q25_model_f.summary())
 print(q50_model_f.summary())
 print(q75_model_f.summary())
 
-mode_model_m = sm.formula.ols('area_smoothed_mode ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
-q25_model_m = sm.formula.ols('area_q_05 ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
-q50_model_m = sm.formula.ols('area_q_10 ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
-q75_model_m = sm.formula.ols('area_q_15 ~ BW__ * C(sex) * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+mode_model_m = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+q25_model_m = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+q50_model_m = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
+q75_model_m = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df[df['sex'] == 'm']).fit()
 print(mode_model_m.summary())
 print(q25_model_m.summary())
 print(q50_model_m.summary())
@@ -659,3 +659,4 @@ if DEBUG:
 
     plt.tight_layout()
 
+if DE
