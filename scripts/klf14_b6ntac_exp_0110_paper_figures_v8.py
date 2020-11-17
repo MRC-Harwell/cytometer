@@ -384,6 +384,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from statsmodels.stats.multitest import multipletests
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -789,6 +790,12 @@ print(decile_models_m[4].summary())
 # extract coefficients, errors and p-values from quartile models
 df_coeff_f, df_stderr_f, df_pval_f = models_coeff_stderr_pval(decile_models_f)
 df_coeff_m, df_stderr_m, df_pval_m = models_coeff_stderr_pval(decile_models_m)
+
+# multitest correction using Benjamini-Hochberg
+for coeff in df_pval_f.columns:
+    _, df_pval_f[coeff], _, _ = multipletests(df_pval_f[coeff], method='fdr_bh', alpha=0.05, returnsorted=False)
+for coeff in df_pval_f.columns:
+    _, df_pval_m[coeff], _, _ = multipletests(df_pval_m[coeff], method='fdr_bh', alpha=0.05, returnsorted=False)
 
 if DEBUG:
     plt.clf()
