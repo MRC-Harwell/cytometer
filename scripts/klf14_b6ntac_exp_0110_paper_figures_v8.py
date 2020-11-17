@@ -401,6 +401,8 @@ method = 'corrected'
 # load dataframe with cell population quantiles and histograms
 dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.csv')
 df_all = pd.read_csv(dataframe_areas_filename)
+df_all = df_all[~np.isnan(df_all['BW'])]
+df_all = df_all.reset_index()
 
 df_all['sex'] = df_all['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
 df_all['ko_parent'] = df_all['ko_parent'].astype(
@@ -432,12 +434,13 @@ def models_coeff_stderr_pval(models):
     df_pval.drop(labels='index', axis='columns', inplace=True)
     return df_coeff, df_stderr, df_pval
 
-def plot_linear_regression(model, df, ko_parent, style):
+def plot_linear_regression(model, df, sex=None, ko_parent=None, genotype=None, style=None):
     if np.std(df['BW'] / df['BW__']) > 0:
         raise ValueError('BW / BW__ is not the same for all rows')
     BW__factor = (df['BW'] / df['BW__']).mean()
     BW__lim = np.array([df['BW__'].min(), df['BW__'].max()])
-    X = pd.DataFrame(data={'BW__': BW__lim, 'ko_parent': [ko_parent, ko_parent]})
+    X = pd.DataFrame(data={'BW__': BW__lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
+                           'genotype': [genotype, genotype]})
     y_pred = model.predict(X)
     plt.plot(BW__lim * BW__factor, y_pred * 1e-3, style)
 
@@ -463,6 +466,7 @@ def plot_model_coeff(q, df_coeff, df_stderr, df_pval):
 
 
 ## histograms
+########################################################################################################################
 
 # 2.00646604, 2.02207953, ..., 5.11355093, 5.12916443
 log10_area_bin_edges = np.linspace(np.log10(min_area), np.log10(max_area), 201)
@@ -495,6 +499,7 @@ if DEBUG:
     plt.title('GWAT f MAT')
 
 ## smoothed histograms
+########################################################################################################################
 
 columns = []
 for j in range(len(log10_area_bin_edges) - 1):
@@ -522,20 +527,10 @@ if DEBUG:
     plt.xlabel('Area ($\mu m^2$)')
     plt.title('GWAT f MAT')
 
-## population quantiles
-#
-# # 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
-# quantiles = np.linspace(0, 1, 21)
-#
-# columns = []
-# for j in range(len(quantiles)):
-#     columns += ['area_q_' + '{0:02d}'.format(j),]
-#
-# # f PAT
-# df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
 
-## linear regression analysis of cell areas vs. body weight
+## linear regression analysis of quantile_area ~ BW * ko_parent
 ## (only mode, 25%-, 50%- and 75%-quantiles for illustration purposes and debugging)
+########################################################################################################################
 
 # 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
 quantiles = np.linspace(0, 1, 21)
@@ -546,49 +541,8 @@ assert(quantiles[15] == 0.75)  # check: we are selecting the 75% quantile
 depot = 'gwat'
 # depot = 'sqwat'
 
-# f PAT
-df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
-df = df[~np.isnan(df['BW'])]
-df = df.reset_index()
-bw_f_pat = df['BW']
-mode_f_pat = df['area_smoothed_mode']
-q25_f_pat = df['area_q_05']
-q50_f_pat = df['area_q_10']
-q75_f_pat = df['area_q_15']
-
-# f MAT
-df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
-df = df[~np.isnan(df['BW'])]
-df = df.reset_index()
-bw_f_mat = df['BW']
-mode_f_mat = df['area_smoothed_mode']
-q25_f_mat = df['area_q_05']
-q50_f_mat = df['area_q_10']
-q75_f_mat = df['area_q_15']
-
-# m PAT
-df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
-df = df[~np.isnan(df['BW'])]
-df = df.reset_index()
-bw_m_pat = df['BW']
-mode_m_pat = df['area_smoothed_mode']
-q25_m_pat = df['area_q_05']
-q50_m_pat = df['area_q_10']
-q75_m_pat = df['area_q_15']
-
-# m MAT
-df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
-df = df[~np.isnan(df['BW'])]
-df = df.reset_index()
-bw_m_mat = df['BW']
-mode_m_mat = df['area_smoothed_mode']
-q25_m_mat = df['area_q_05']
-q50_m_mat = df['area_q_10']
-q75_m_mat = df['area_q_15']
-
 # fit linear models
 df = df_all[(df_all['depot'] == depot)]
-df = df[~np.isnan(df['BW'])]
 BW__factor = df['BW'].mean()
 df['BW__'] = df['BW'] / BW__factor
 df_f = df[df['sex'] == 'f'].reset_index()
@@ -618,8 +572,10 @@ if DEBUG:
     plt.gcf().set_size_inches([6.4, 9.99])
 
     plt.subplot(421)
-    plt.scatter(bw_f_pat, mode_f_pat * 1e-3, c='C0', label='f PAT')
-    plt.scatter(bw_f_mat, mode_f_mat * 1e-3, c='C1', label='f MAT')
+    df = df_f[df_f['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C0', label='f PAT')
+    df = df_f[df_f['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C1', label='f MAT')
     plot_linear_regression(mode_model_f, df_f, ko_parent='PAT', style='C0')
     plot_linear_regression(mode_model_f, df_f, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
@@ -631,8 +587,10 @@ if DEBUG:
     plt.legend()
 
     plt.subplot(423)
-    plt.scatter(bw_f_pat, q25_f_pat * 1e-3, c='C0', label='f PAT')
-    plt.scatter(bw_f_mat, q25_f_mat * 1e-3, c='C1', label='f MAT')
+    df = df_f[df_f['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C0', label='f PAT')
+    df = df_f[df_f['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C1', label='f MAT')
     plot_linear_regression(q25_model_f, df_f, ko_parent='PAT', style='C0')
     plot_linear_regression(q25_model_f, df_f, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
@@ -644,8 +602,10 @@ if DEBUG:
     plt.legend()
 
     plt.subplot(425)
-    plt.scatter(bw_f_pat, q50_f_pat * 1e-3, c='C0', label='f PAT')
-    plt.scatter(bw_f_mat, q50_f_mat * 1e-3, c='C1', label='f MAT')
+    df = df_f[df_f['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C0', label='f PAT')
+    df = df_f[df_f['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C1', label='f MAT')
     plot_linear_regression(q50_model_f, df_f, ko_parent='PAT', style='C0')
     plot_linear_regression(q50_model_f, df_f, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
@@ -653,8 +613,10 @@ if DEBUG:
     plt.legend()
 
     plt.subplot(427)
-    plt.scatter(bw_f_pat, q75_f_pat * 1e-3, c='C0', label='f PAT')
-    plt.scatter(bw_f_mat, q75_f_mat * 1e-3, c='C1', label='f MAT')
+    df = df_f[df_f['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C0', label='f PAT')
+    df = df_f[df_f['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C1', label='f MAT')
     plot_linear_regression(q75_model_f, df_f, ko_parent='PAT', style='C0')
     plot_linear_regression(q75_model_f, df_f, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
@@ -663,20 +625,24 @@ if DEBUG:
     plt.legend()
 
     plt.subplot(422)
-    plt.scatter(bw_m_pat, mode_m_pat * 1e-3, c='C0', label='m PAT')
-    plt.scatter(bw_m_mat, mode_m_mat * 1e-3, c='C1', label='m MAT')
+    df = df_m[df_m['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C0', label='m PAT')
+    df = df_m[df_m['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C1', label='m MAT')
     plot_linear_regression(mode_model_m, df_m, ko_parent='PAT', style='C0')
     plot_linear_regression(mode_model_m, df_m, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
+    plt.ylabel('Mode ($10^3\ \mu m^2$)', fontsize=14)
     plt.legend()
 
     plt.subplot(424)
-    plt.scatter(bw_m_pat, q25_m_pat * 1e-3, c='C0', label='m PAT')
-    plt.scatter(bw_m_mat, q25_m_mat * 1e-3, c='C1', label='m MAT')
+    df = df_m[df_m['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C0', label='m PAT')
+    df = df_m[df_m['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C1', label='m MAT')
     plot_linear_regression(q25_model_m, df_m, ko_parent='PAT', style='C0')
     plot_linear_regression(q25_model_m, df_m, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
-    plt.legend()
     if depot == 'sqwat':
         plt.ylim(4, 15)
     elif depot == 'qwat':
@@ -684,11 +650,14 @@ if DEBUG:
     plt.legend()
 
     plt.subplot(426)
-    plt.scatter(bw_m_pat, q50_m_pat * 1e-3, c='C0', label='m PAT')
-    plt.scatter(bw_m_mat, q50_m_mat * 1e-3, c='C1', label='m MAT')
+    df = df_m[df_m['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C0', label='m PAT')
+    df = df_m[df_m['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C1', label='m MAT')
     plot_linear_regression(q50_model_m, df_m, ko_parent='PAT', style='C0')
     plot_linear_regression(q50_model_m, df_m, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
+    plt.ylabel('Median ($10^3\ \mu m^2$)', fontsize=14)
     if depot == 'sqwat':
         plt.ylim(6, 29)
     elif depot == 'qwat':
@@ -696,12 +665,15 @@ if DEBUG:
     plt.legend()
 
     plt.subplot(428)
-    plt.scatter(bw_m_pat, q75_m_pat * 1e-3, c='C0', label='m PAT')
-    plt.scatter(bw_m_mat, q75_m_mat * 1e-3, c='C1', label='m MAT')
+    df = df_m[df_m['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C0', label='m PAT')
+    df = df_m[df_m['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C1', label='m MAT')
     plot_linear_regression(q75_model_m, df_m, ko_parent='PAT', style='C0')
     plot_linear_regression(q75_model_m, df_m, ko_parent='MAT', style='C1')
     plt.tick_params(labelsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
+    plt.ylabel('75%-quant. ($10^3\ \mu m^2$)', fontsize=14)
     plt.legend()
 
     plt.tight_layout()
@@ -761,6 +733,7 @@ if DEBUG:
 
 ## linear regression analysis of cell areas vs. body weight
 ## (all deciles)
+########################################################################################################################
 
 # 0.1 , 0.2, ..., 0.9
 quantiles = np.linspace(0, 1, 21)
@@ -841,3 +814,8 @@ if DEBUG:
     plt.xlabel('Quantile (%)', fontsize=14)
 
     plt.tight_layout()
+
+## linear regression analysis of quantile_area ~ BW * ko_parent * genotype
+## (only mode, 25%-, 50%- and 75%-quantiles for illustration purposes and debugging)
+########################################################################################################################
+
