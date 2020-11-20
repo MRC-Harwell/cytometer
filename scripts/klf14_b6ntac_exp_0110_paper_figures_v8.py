@@ -194,7 +194,7 @@ json_annotation_files_dict['gwat'] = [
 ##   Cell area histograms
 ##   HD quantiles of cell areas
 ## The results are saved, so in later sections, it's possible to just read them for further analysis.
-### USED IN PAPER
+## GENERATES DATA USED IN FOLLOWING SECTIONS
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
@@ -220,6 +220,7 @@ figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 
 DEBUG = False
+SAVEFIG = False
 
 # 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
 quantiles = np.linspace(0, 1, 21)
@@ -385,6 +386,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.stats.multitest import multipletests
+import seaborn as sns
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -435,7 +437,7 @@ def models_coeff_stderr_pval(models):
     return df_coeff, df_stderr, df_pval
 
 def plot_linear_regression(model, df, sex=None, ko_parent=None, genotype=None, style=None):
-    if np.std(df['BW'] / df['BW__']) > 0:
+    if np.std(df['BW'] / df['BW__']) > 1e-8:
         raise ValueError('BW / BW__ is not the same for all rows')
     BW__factor = (df['BW'] / df['BW__']).mean()
     BW__lim = np.array([df['BW__'].min(), df['BW__'].max()])
@@ -527,6 +529,101 @@ if DEBUG:
     plt.xlabel('Area ($\mu m^2$)')
     plt.title('GWAT f MAT')
 
+## compare body weight PAT/MAT groups
+########################################################################################################################
+
+from statannot import add_stat_annotation
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# make sure that in the boxplots PAT comes before MAT
+metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+metainfo['ko_parent'] = metainfo['ko_parent'].astype(
+    pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['genotype'] = metainfo['genotype'].astype(
+    pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
+# remove BW=NaNs
+metainfo = metainfo[~np.isnan(metainfo['BW'])]
+metainfo = metainfo.reset_index()
+
+# scale cull_age to avoid large condition numbers
+metainfo['cull_age__'] = (metainfo['cull_age'] - np.mean(metainfo['cull_age'])) / np.std(metainfo['cull_age'])
+
+# for convenience create two dataframes (female and male) with the data for the current depot
+metainfo_f = metainfo[metainfo['sex'] == 'f'].reset_index()
+metainfo_m = metainfo[metainfo['sex'] == 'm'].reset_index()
+
+# ANCOVA comparison of means between PAT and MAT
+bw_model_f = sm.RLM.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+
+print(bw_model_f.summary())
+print(bw_model_m.summary())
+
+
+if DEBUG:
+    # plot body weight vs. age of culling
+    plt.clf()
+    plt.scatter(metainfo_f[metainfo_f['ko_parent'] == 'PAT']['cull_age'],
+                metainfo_f[metainfo_f['ko_parent'] == 'PAT']['BW'], c='C0')
+    plt.scatter(metainfo_f[metainfo_f['ko_parent'] == 'MAT']['cull_age'],
+                metainfo_f[metainfo_f['ko_parent'] == 'MAT']['BW'], c='C1')
+    plt.scatter(metainfo_m[metainfo_f['ko_parent'] == 'PAT']['cull_age'],
+                metainfo_m[metainfo_f['ko_parent'] == 'PAT']['BW'], c='C2')
+    plt.scatter(metainfo_m[metainfo_f['ko_parent'] == 'MAT']['cull_age'],
+                metainfo_m[metainfo_f['ko_parent'] == 'MAT']['BW'], c='C3')
+    plt.xlabel('Cull age (days)', fontsize=14)
+    plt.ylabel('Body weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.tight_layout()
+
+    cull_age__lim = np.array([metainfo['cull_age__'].min(), metainfo['cull_age__'].max()])
+    cull_age_lim = np.array([metainfo['cull_age'].min(), metainfo['cull_age'].max()])
+    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['PAT', 'PAT']})
+    y_pred = bw_model_f.predict(X)
+    plt.plot(cull_age_lim, y_pred, 'C0', linewidth=2, label='f PAT')
+    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['MAT', 'MAT']})
+    y_pred = bw_model_f.predict(X)
+    plt.plot(cull_age_lim, y_pred, 'C1', linewidth=2, label='f MAT')
+    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['PAT', 'PAT']})
+    y_pred = bw_model_m.predict(X)
+    plt.plot(cull_age_lim, y_pred, 'C2', linewidth=2, label='m PAT')
+    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['MAT', 'MAT']})
+    y_pred = bw_model_m.predict(X)
+    plt.plot(cull_age_lim, y_pred, 'C3', linewidth=2, label='m MAT')
+
+    plt.legend(fontsize=12)
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.svg'))
+
+
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([5.48, 4.8 ])
+
+    ax = sns.swarmplot(x='sex', y='BW', hue='ko_parent', data=metainfo, dodge=True)
+    plt.xlabel('')
+    plt.ylabel('Body weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xticks([0, 1], labels=['Female', 'Male'])
+    ax.get_legend().set_title('')
+    ax.legend(loc='lower right', fontsize=12)
+
+    plt.plot([-0.2, -0.2, 0.2, 0.2], [42, 44, 44, 42], 'k', lw=1.5)
+    plt.text(0, 44, '*', ha='center', va='bottom', fontsize=14)
+    plt.plot([0.8, 0.8, 1.2, 1.2], [52, 54, 54, 52], 'k', lw=1.5)
+    plt.text(1, 54, 'ns', ha='center', va='bottom', fontsize=14)
+    plt.ylim(18, 58)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.svg'))
+
 
 ## linear regression analysis of quantile_area ~ BW * ko_parent
 ## (only mode, 25%-, 50%- and 75%-quantiles for illustration purposes and debugging)
@@ -542,25 +639,33 @@ depot = 'gwat'
 # depot = 'sqwat'
 
 # fit linear models
-df = df_all[(df_all['depot'] == depot)]
+df = df_all[(df_all['depot'] == depot)].copy()
 BW__factor = df['BW'].mean()
 df['BW__'] = df['BW'] / BW__factor
 df_f = df[df['sex'] == 'f'].reset_index()
 df_m = df[df['sex'] == 'm'].reset_index()
 
-mode_model_f = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_f).fit()
-q25_model_f = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df_f).fit()
-q50_model_f = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df_f).fit()
-q75_model_f = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df_f).fit()
+mode_model_f = sm.RLM.from_formula('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_f, M=sm.robust.norms.HuberT()).fit()
+q25_model_f = sm.RLM.from_formula('area_q_05 ~ BW__ * C(ko_parent)', data=df_f, M=sm.robust.norms.HuberT()).fit()
+q50_model_f = sm.RLM.from_formula('area_q_10 ~ BW__ * C(ko_parent)', data=df_f, M=sm.robust.norms.HuberT()).fit()
+q75_model_f = sm.RLM.from_formula('area_q_15 ~ BW__ * C(ko_parent)', data=df_f, M=sm.robust.norms.HuberT()).fit()
+# mode_model_f = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_f).fit()
+# q25_model_f = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df_f).fit()
+# q50_model_f = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df_f).fit()
+# q75_model_f = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df_f).fit()
 print(mode_model_f.summary())
 print(q25_model_f.summary())
 print(q50_model_f.summary())
 print(q75_model_f.summary())
 
-mode_model_m = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_m).fit()
-q25_model_m = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df_m).fit()
-q50_model_m = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df_m).fit()
-q75_model_m = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df_m).fit()
+mode_model_m = sm.RLM.from_formula('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_m, M=sm.robust.norms.HuberT()).fit()
+q25_model_m = sm.RLM.from_formula('area_q_05 ~ BW__ * C(ko_parent)', data=df_m, M=sm.robust.norms.HuberT()).fit()
+q50_model_m = sm.RLM.from_formula('area_q_10 ~ BW__ * C(ko_parent)', data=df_m, M=sm.robust.norms.HuberT()).fit()
+q75_model_m = sm.RLM.from_formula('area_q_15 ~ BW__ * C(ko_parent)', data=df_m, M=sm.robust.norms.HuberT()).fit()
+# mode_model_m = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_m).fit()
+# q25_model_m = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df_m).fit()
+# q50_model_m = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df_m).fit()
+# q75_model_m = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df_m).fit()
 print(mode_model_m.summary())
 print(q25_model_m.summary())
 print(q50_model_m.summary())
@@ -731,7 +836,7 @@ if DEBUG:
 
     plt.tight_layout()
 
-## linear regression analysis of cell areas vs. body weight
+## linear regression analysis of area ~ BW * ko_parent * genotype
 ## (all deciles)
 ########################################################################################################################
 
@@ -743,19 +848,23 @@ deciles = quantiles[deciles_idx]  # [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
 depot = 'gwat'
 # depot = 'sqwat'
 
-# fit linear models
-df = df_all[(df_all['depot'] == depot)]
+# for convenience create two dataframes (female and male) with the data for the current depot
+df = df_all[(df_all['depot'] == depot)].copy()
 df = df[~np.isnan(df['BW'])]
 BW__factor = df['BW'].mean()
 df['BW__'] = df['BW'] / BW__factor
 df_f = df[df['sex'] == 'f'].reset_index()
 df_m = df[df['sex'] == 'm'].reset_index()
 
-# compute linear models for each decile
-decile_models_f = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_f).fit()
+# fit linear models for each decile
+decile_models_f = [sm.RLM.from_formula('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_f, M=sm.robust.norms.HuberT()).fit()
                    for j in deciles_idx]
-decile_models_m = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_m).fit()
+decile_models_m = [sm.RLM.from_formula('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_m, M=sm.robust.norms.HuberT()).fit()
                    for j in deciles_idx]
+# decile_models_f = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_f).fit()
+#                    for j in deciles_idx]
+# decile_models_m = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_m).fit()
+#                    for j in deciles_idx]
 
 print(decile_models_f[4].summary())
 print(decile_models_m[4].summary())
@@ -772,41 +881,44 @@ for coeff in df_pval_f.columns:
 
 if DEBUG:
     plt.clf()
+    plt.gcf().set_size_inches([6.4, 9.99])
     q = np.array(deciles) * 100
 
-    plt.subplot(321)
-    plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] / BW__factor, df_stderr_f['C(ko_parent)[T.MAT]'] / BW__factor,
+    plt.subplot(3,2,1)
+    plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'],
+                     df_stderr_f['C(ko_parent)[T.MAT]'],
                      df_pval_f['C(ko_parent)[T.MAT]'])
     plt.title('Female', fontsize=14)
     plt.ylabel(r'$\beta_{KO\ parent}$', fontsize=14)
     plt.tick_params(labelsize=14)
 
-    plt.subplot(322)
-    plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] / BW__factor, df_stderr_m['C(ko_parent)[T.MAT]'] / BW__factor,
+    plt.subplot(3,2,2)
+    plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'],
+                     df_stderr_m['C(ko_parent)[T.MAT]'],
                      df_pval_m['C(ko_parent)[T.MAT]'])
     plt.title('Male', fontsize=14)
     plt.tick_params(labelsize=14)
 
-    plt.subplot(323)
+    plt.subplot(3,2,3)
     plot_model_coeff(q, df_coeff_f['BW__'] / BW__factor, df_stderr_f['BW__'] / BW__factor,
                      df_pval_f['BW__'])
     plt.ylabel(r'$\beta_{BW}$', fontsize=14)
     plt.tick_params(labelsize=14)
 
-    plt.subplot(324)
+    plt.subplot(3,2,4)
     plot_model_coeff(q, df_coeff_m['BW__'] / BW__factor, df_stderr_m['BW__'] / BW__factor,
                      df_pval_m['BW__'])
     plt.tick_params(labelsize=14)
 
-    plt.subplot(325)
+    plt.subplot(3,2,5)
     plot_model_coeff(q, df_coeff_f['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
                      df_stderr_f['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
                      df_pval_f['BW__:C(ko_parent)[T.MAT]'])
-    plt.ylabel(r'$\beta_{BW\cdot KO\ parent}$', fontsize=14)
+    plt.ylabel(r'$\beta_{BW \cdot KO\ parent}$', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
 
-    plt.subplot(326)
+    plt.subplot(3,2,6)
     plot_model_coeff(q, df_coeff_m['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
                      df_stderr_m['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
                      df_pval_m['BW__:C(ko_parent)[T.MAT]'])
@@ -817,5 +929,293 @@ if DEBUG:
 
 ## linear regression analysis of quantile_area ~ BW * ko_parent * genotype
 ## (only mode, 25%-, 50%- and 75%-quantiles for illustration purposes and debugging)
+##
+## NOT USED: commented out
 ########################################################################################################################
+#
+# # 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
+# quantiles = np.linspace(0, 1, 21)
+# assert(quantiles[5]  == 0.25)  # check: we are selecting the 25% quantile
+# assert(quantiles[10] == 0.5)  # check: we are selecting the median
+# assert(quantiles[15] == 0.75)  # check: we are selecting the 75% quantile
+#
+# depot = 'gwat'
+# # depot = 'sqwat'
+#
+# # fit linear models
+# df = df_all[(df_all['depot'] == depot)]
+# BW__factor = df['BW'].mean()
+# df['BW__'] = df['BW'] / BW__factor
+# df_f = df[df['sex'] == 'f'].reset_index()
+# df_m = df[df['sex'] == 'm'].reset_index()
+#
+# mode_model_f = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_f).fit()
+# q25_model_f = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df_f).fit()
+# q50_model_f = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df_f).fit()
+# q75_model_f = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df_f).fit()
+# print(mode_model_f.summary())
+# print(q25_model_f.summary())
+# print(q50_model_f.summary())
+# print(q75_model_f.summary())
+#
+# mode_model_m = sm.formula.ols('area_smoothed_mode ~ BW__ * C(ko_parent)', data=df_m).fit()
+# q25_model_m = sm.formula.ols('area_q_05 ~ BW__ * C(ko_parent)', data=df_m).fit()
+# q50_model_m = sm.formula.ols('area_q_10 ~ BW__ * C(ko_parent)', data=df_m).fit()
+# q75_model_m = sm.formula.ols('area_q_15 ~ BW__ * C(ko_parent)', data=df_m).fit()
+# print(mode_model_m.summary())
+# print(q25_model_m.summary())
+# print(q50_model_m.summary())
+# print(q75_model_m.summary())
+#
+# # plot
+# if DEBUG:
+#     plt.clf()
+#     plt.gcf().set_size_inches([6.4, 9.99])
+#
+#     plt.subplot(421)
+#     df = df_f[df_f['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C0', label='f PAT')
+#     df = df_f[df_f['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C1', label='f MAT')
+#     plot_linear_regression(mode_model_f, df_f, ko_parent='PAT', style='C0')
+#     plot_linear_regression(mode_model_f, df_f, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     plt.ylabel('Mode ($10^3\ \mu m^2$)', fontsize=14)
+#     if depot == 'sqwat':
+#         plt.ylim(2, 15)
+#     elif depot == 'qwat':
+#         pass
+#     plt.legend()
+#
+#     plt.subplot(423)
+#     df = df_f[df_f['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C0', label='f PAT')
+#     df = df_f[df_f['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C1', label='f MAT')
+#     plot_linear_regression(q25_model_f, df_f, ko_parent='PAT', style='C0')
+#     plot_linear_regression(q25_model_f, df_f, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     if depot == 'sqwat':
+#         plt.ylim(2, 15)
+#     elif depot == 'qwat':
+#         plt.ylim(20, 43)
+#     plt.ylabel('25%-quant. ($10^3\ \mu m^2$)', fontsize=14)
+#     plt.legend()
+#
+#     plt.subplot(425)
+#     df = df_f[df_f['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C0', label='f PAT')
+#     df = df_f[df_f['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C1', label='f MAT')
+#     plot_linear_regression(q50_model_f, df_f, ko_parent='PAT', style='C0')
+#     plot_linear_regression(q50_model_f, df_f, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     plt.ylabel('Median ($10^3\ \mu m^2$)', fontsize=14)
+#     plt.legend()
+#
+#     plt.subplot(427)
+#     df = df_f[df_f['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C0', label='f PAT')
+#     df = df_f[df_f['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C1', label='f MAT')
+#     plot_linear_regression(q75_model_f, df_f, ko_parent='PAT', style='C0')
+#     plot_linear_regression(q75_model_f, df_f, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     plt.xlabel('Body weight (g)', fontsize=14)
+#     plt.ylabel('75%-quant. ($10^3\ \mu m^2$)', fontsize=14)
+#     plt.legend()
+#
+#     plt.subplot(422)
+#     df = df_m[df_m['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C0', label='m PAT')
+#     df = df_m[df_m['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_smoothed_mode'] * 1e-3, c='C1', label='m MAT')
+#     plot_linear_regression(mode_model_m, df_m, ko_parent='PAT', style='C0')
+#     plot_linear_regression(mode_model_m, df_m, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     plt.ylabel('Mode ($10^3\ \mu m^2$)', fontsize=14)
+#     plt.legend()
+#
+#     plt.subplot(424)
+#     df = df_m[df_m['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C0', label='m PAT')
+#     df = df_m[df_m['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_q_05'] * 1e-3, c='C1', label='m MAT')
+#     plot_linear_regression(q25_model_m, df_m, ko_parent='PAT', style='C0')
+#     plot_linear_regression(q25_model_m, df_m, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     if depot == 'sqwat':
+#         plt.ylim(4, 15)
+#     elif depot == 'qwat':
+#         plt.ylim(5, 22)
+#     plt.legend()
+#
+#     plt.subplot(426)
+#     df = df_m[df_m['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C0', label='m PAT')
+#     df = df_m[df_m['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_q_10'] * 1e-3, c='C1', label='m MAT')
+#     plot_linear_regression(q50_model_m, df_m, ko_parent='PAT', style='C0')
+#     plot_linear_regression(q50_model_m, df_m, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     plt.ylabel('Median ($10^3\ \mu m^2$)', fontsize=14)
+#     if depot == 'sqwat':
+#         plt.ylim(6, 29)
+#     elif depot == 'qwat':
+#         plt.ylim(20, 43)
+#     plt.legend()
+#
+#     plt.subplot(428)
+#     df = df_m[df_m['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C0', label='m PAT')
+#     df = df_m[df_m['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['area_q_15'] * 1e-3, c='C1', label='m MAT')
+#     plot_linear_regression(q75_model_m, df_m, ko_parent='PAT', style='C0')
+#     plot_linear_regression(q75_model_m, df_m, ko_parent='MAT', style='C1')
+#     plt.tick_params(labelsize=14)
+#     plt.xlabel('Body weight (g)', fontsize=14)
+#     plt.ylabel('75%-quant. ($10^3\ \mu m^2$)', fontsize=14)
+#     plt.legend()
+#
+#     plt.tight_layout()
 
+## linear regression analysis of area ~ BW * ko_parent * genotype
+## (all deciles)
+##
+## NOT USED: commented out because it leads nowhere
+########################################################################################################################
+#
+# # 0.1 , 0.2, ..., 0.9
+# quantiles = np.linspace(0, 1, 21)
+# deciles_idx = list(range(2, 20, 2))
+# deciles = quantiles[deciles_idx]  # [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+#
+# depot = 'gwat'
+# # depot = 'sqwat'
+#
+# # for convenience create two dataframes (female and male) with the data for the current depot
+# df = df_all[(df_all['depot'] == depot)]
+# df = df[~np.isnan(df['BW'])]
+# BW__factor = df['BW'].mean()
+# df['BW__'] = df['BW'] / BW__factor
+# df_f = df[df['sex'] == 'f'].reset_index()
+# df_m = df[df['sex'] == 'm'].reset_index()
+#
+# # fit linear models for each decile
+# decile_models_f = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent) * C(genotype)', data=df_f).fit()
+#                    for j in deciles_idx]
+# decile_models_m = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent) * C(genotype)', data=df_m).fit()
+#                    for j in deciles_idx]
+#
+# print(decile_models_f[4].summary())
+# print(decile_models_m[4].summary())
+#
+# # extract coefficients, errors and p-values from quartile models
+# df_coeff_f, df_stderr_f, df_pval_f = models_coeff_stderr_pval(decile_models_f)
+# df_coeff_m, df_stderr_m, df_pval_m = models_coeff_stderr_pval(decile_models_m)
+#
+# # multitest correction using Benjamini-Hochberg
+# for coeff in df_pval_f.columns:
+#     _, df_pval_f[coeff], _, _ = multipletests(df_pval_f[coeff], method='fdr_bh', alpha=0.05, returnsorted=False)
+# for coeff in df_pval_f.columns:
+#     _, df_pval_m[coeff], _, _ = multipletests(df_pval_m[coeff], method='fdr_bh', alpha=0.05, returnsorted=False)
+#
+# if DEBUG:
+#     plt.clf()
+#     plt.gcf().set_size_inches([6.4, 9.99])
+#     q = np.array(deciles) * 100
+#
+#     plt.subplot(7,2,1)
+#     plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'],
+#                      df_stderr_f['C(ko_parent)[T.MAT]'],
+#                      df_pval_f['C(ko_parent)[T.MAT]'])
+#     plt.title('Female', fontsize=14)
+#     plt.ylabel(r'$\beta_{KO\ parent}$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(722)
+#     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'],
+#                      df_stderr_m['C(ko_parent)[T.MAT]'],
+#                      df_pval_m['C(ko_parent)[T.MAT]'])
+#     plt.title('Male', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(723)
+#     plot_model_coeff(q, df_coeff_f['C(genotype)[T.KLF14-KO:Het]'],
+#                      df_stderr_f['C(genotype)[T.KLF14-KO:Het]'],
+#                      df_pval_f['C(genotype)[T.KLF14-KO:Het]'])
+#     plt.ylabel(r'$\beta_{genotype}$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(724)
+#     plot_model_coeff(q, df_coeff_m['C(genotype)[T.KLF14-KO:Het]'],
+#                      df_stderr_m['C(genotype)[T.KLF14-KO:Het]'],
+#                      df_pval_m['C(genotype)[T.KLF14-KO:Het]'])
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(725)
+#     plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'],
+#                      df_stderr_f['C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'],
+#                      df_pval_f['C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'])
+#     plt.ylabel(r'$\beta_{KO\ parent\cdot genotype}$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(726)
+#     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'],
+#                      df_stderr_m['C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'],
+#                      df_pval_m['C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'])
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(727)
+#     plot_model_coeff(q, df_coeff_f['BW__'] / BW__factor, df_stderr_f['BW__'] / BW__factor,
+#                      df_pval_f['BW__'])
+#     plt.ylabel(r'$\beta_{BW}$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(728)
+#     plot_model_coeff(q, df_coeff_m['BW__'] / BW__factor, df_stderr_m['BW__'] / BW__factor,
+#                      df_pval_m['BW__'])
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(729)
+#     plot_model_coeff(q, df_coeff_f['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
+#                      df_stderr_f['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
+#                      df_pval_f['BW__:C(ko_parent)[T.MAT]'])
+#     plt.ylabel(r'$\beta_{BW \cdot KO\ parent}$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(7,2,10)
+#     plot_model_coeff(q, df_coeff_m['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
+#                      df_stderr_m['BW__:C(ko_parent)[T.MAT]'] / BW__factor,
+#                      df_pval_m['BW__:C(ko_parent)[T.MAT]'])
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(7,2,11)
+#     plot_model_coeff(q, df_coeff_f['BW__:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_stderr_f['BW__:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_pval_f['BW__:C(genotype)[T.KLF14-KO:Het]'])
+#     plt.ylabel(r'$\beta_{BW \cdot genotype}$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(7,2,12)
+#     plot_model_coeff(q, df_coeff_m['BW__:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_stderr_m['BW__:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_pval_m['BW__:C(genotype)[T.KLF14-KO:Het]'])
+#     plt.tick_params(labelsize=14)
+#
+#     plt.subplot(7,2,13)
+#     plot_model_coeff(q, df_coeff_f['BW__:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_stderr_f['BW__:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_pval_f['BW__:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'])
+#     plt.ylabel(r'$\beta_{BW \cdot genotype \cdot KO\ parent}$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.xlabel('Quantile (%)', fontsize=14)
+#
+#     plt.subplot(7,2,14)
+#     plot_model_coeff(q, df_coeff_m['BW__:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_stderr_m['BW__:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'] / BW__factor,
+#                      df_pval_m['BW__:C(ko_parent)[T.MAT]:C(genotype)[T.KLF14-KO:Het]'])
+#     plt.tick_params(labelsize=14)
+#     plt.xlabel('Quantile (%)', fontsize=14)
+#
+#     plt.tight_layout()
