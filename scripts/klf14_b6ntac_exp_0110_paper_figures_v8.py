@@ -384,6 +384,7 @@ for method in ['auto', 'corrected']:
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats as stats
 import statsmodels.api as sm
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
@@ -468,6 +469,41 @@ def plot_model_coeff(q, df_coeff, df_stderr, df_pval):
 
 
 ## histograms
+## NOT USED IN PAPER (we use smoothed histograms instead)
+########################################################################################################################
+
+# # 2.00646604, 2.02207953, ..., 5.11355093, 5.12916443
+# log10_area_bin_edges = np.linspace(np.log10(min_area), np.log10(max_area), 201)
+# log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
+#
+# columns = []
+# for j in range(len(log10_area_bin_edges) - 1):
+#     columns += ['histo_bin_' + '{0:03d}'.format(j),]
+#
+# # f PAT
+# df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+# df = df.reset_index()
+# histo = df[columns]
+#
+# if DEBUG:
+#     plt.clf()
+#     plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo))
+#     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+#     plt.title('GWAT f PAT')
+#
+# # f MAT
+# df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+# df = df.reset_index()
+# histo = df[columns]
+#
+# if DEBUG:
+#     plt.clf()
+#     plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
+#     plt.xlabel('Area ($\mu m^2$)')
+#     plt.title('GWAT f MAT')
+
+## smoothed histograms
+## USED IN THE PAPER
 ########################################################################################################################
 
 # 2.00646604, 2.02207953, ..., 5.11355093, 5.12916443
@@ -476,58 +512,154 @@ log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:])
 
 columns = []
 for j in range(len(log10_area_bin_edges) - 1):
-    columns += ['histo_bin_' + '{0:03d}'.format(j),]
-
-# f PAT
-df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
-df = df.reset_index()
-histo = df[columns]
-
-if DEBUG:
-    plt.clf()
-    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
-    plt.xlabel('Area ($\mu m^2$)')
-    plt.title('GWAT f PAT')
-
-# f MAT
-df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
-df = df.reset_index()
-histo = df[columns]
-
-if DEBUG:
-    plt.clf()
-    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
-    plt.xlabel('Area ($\mu m^2$)')
-    plt.title('GWAT f MAT')
-
-## smoothed histograms
-########################################################################################################################
-
-columns = []
-for j in range(len(log10_area_bin_edges) - 1):
     columns += ['smoothed_histo_bin_' + '{0:03d}'.format(j),]
 
-# f PAT
-df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
-df = df.reset_index()
-histo = df[columns]
+depot = 'gwat'
+# depot = 'sqwat'
 
-if DEBUG:
+if SAVEFIG:
     plt.clf()
-    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
-    plt.xlabel('Area ($\mu m^2$)')
-    plt.title('GWAT f PAT')
 
-# f MAT
-df = df_all[(df_all['depot'] == 'gwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
-df = df.reset_index()
-histo = df[columns]
+    # f PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = df[columns]
 
-if DEBUG:
+    plt.subplot(221)
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(125, 0.8, 'female PAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    # f MAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+    df = df.reset_index()
+    histo = df[columns]
+
+    plt.subplot(222)
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(125, 0.8, 'female MAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    # m PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = df[columns]
+
+    plt.subplot(223)
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(125, 0.8, 'male PAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    # m MAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+    df = df.reset_index()
+    histo = df[columns]
+
+    plt.subplot(224)
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(125, 0.8, 'male MAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_' + depot + '.svg'))
+
+if SAVEFIG:
     plt.clf()
-    plt.plot(10 ** log10_area_bin_centers, np.transpose(histo))
-    plt.xlabel('Area ($\mu m^2$)')
-    plt.title('GWAT f MAT')
+
+    # f PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = df[columns]
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(221)
+    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(125, 0.8, 'female PAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    # f MAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+    df = df.reset_index()
+    histo = df[columns]
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(222)
+    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(125, 0.8, 'female MAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    # m PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = df[columns]
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(223)
+    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(125, 0.8, 'male PAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    # m MAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+    df = df.reset_index()
+    histo = df[columns]
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(224)
+    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(125, 0.8, 'male MAT', horizontalalignment='right', fontsize=14)
+    plt.xlim(-6.5, max_area * 1e-3)
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
 
 ## compare body weight PAT/MAT groups
 ########################################################################################################################
