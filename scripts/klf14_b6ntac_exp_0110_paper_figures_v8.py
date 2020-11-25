@@ -382,6 +382,7 @@ for method in ['auto', 'corrected']:
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -1247,6 +1248,13 @@ if SAVEFIG:
     plt.ylabel(r'$\beta_{KO\ parent}\ (10^3\ \mu m^2)$', fontsize=14)
     plt.title('Female', fontsize=14)
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.yticks([-0.5, 0, 0.5, 1, 1.5])
+        plt.ylim(-0.9, 1.9)
+    elif depot == 'sqwat':
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.yticks([-0.5, 0, 0.5, 1, 1.5])
+        plt.ylim(-0.7, 2.1)
 
     plt.subplot(322)
     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] / BW__factor * 1e-3,
@@ -1256,6 +1264,13 @@ if SAVEFIG:
     plt.xticks(q)
     plt.title('Male', fontsize=14)
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.yticks([-0.5, 0, 0.5, 1, 1.5])
+        plt.ylim(-0.9, 1.9)
+    elif depot == 'sqwat':
+        plt.yticks([-0.5, 0, 0.5, 1, 1.5])
+        plt.ylim(-0.7, 2.1)
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 
     plt.subplot(323)
     plot_model_coeff(q, df_coeff_f['BW__'] / BW__factor * 1e-3,
@@ -1265,6 +1280,13 @@ if SAVEFIG:
     plt.xticks(q)
     plt.ylabel(r'$\beta_{BW}\ (10^3\ \mu m^2/g)$', fontsize=14)
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.yticks([-1, 0, 1, 2, 3])
+        plt.ylim(-1.0, 3.0)
+    elif depot == 'sqwat':
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.ylim(-0.2, 2.2)
 
     plt.subplot(324)
     plot_model_coeff(q, df_coeff_m['BW__'] / BW__factor * 1e-3,
@@ -1273,6 +1295,13 @@ if SAVEFIG:
                      df_pval_m['BW__'])
     plt.xticks(q)
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.yticks([-1, 0, 1, 2, 3])
+        plt.ylim(-1.0, 3.0)
+    elif depot == 'sqwat':
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.ylim(-0.2, 2.2)
 
     plt.subplot(325)
     plot_model_coeff(q, df_coeff_f['BW__:C(ko_parent)[T.MAT]'] / BW__factor * 1e-3,
@@ -1283,6 +1312,13 @@ if SAVEFIG:
     plt.ylabel(r'$\beta_{BW\cdot KO\ parent}\ (10^3\ \mu m^2/g)$', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.yticks([-1.5, -1, -0.5, 0, 0.5, 1])
+        plt.ylim(-1.6, 1.0)
+    elif depot == 'sqwat':
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.yticks([-2, -1, 0, 1])
+        plt.ylim(-2.1, 1.1)
 
     plt.subplot(326)
     plot_model_coeff(q, df_coeff_m['BW__:C(ko_parent)[T.MAT]'] / BW__factor * 1e-3,
@@ -1292,6 +1328,13 @@ if SAVEFIG:
     plt.xticks(q)
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.yticks([-1.5, -1, -0.5, 0, 0.5, 1])
+        plt.ylim(-1.6, 1.0)
+    elif depot == 'sqwat':
+        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        plt.yticks([-2, -1, 0, 1])
+        plt.ylim(-2.1, 1.1)
 
     plt.tight_layout()
 
@@ -1360,6 +1403,14 @@ if SAVEFIG:
     plt.title('Female', fontsize=14)
     plt.ylabel(r'$\beta_{KO\ parent}\ (10^3\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        # plt.yticks([-1.5, -1, -0.5, 0, 0.5, 1])
+        plt.ylim(-40, 80)
+    elif depot == 'sqwat':
+        plt.ylim(-35, 85)
+        # plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        # plt.yticks([-2, -1, 0, 1])
+        # plt.ylim(-2.1, 1.1)
 
     plt.subplot(3,2,2)
     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
@@ -1368,6 +1419,10 @@ if SAVEFIG:
                      df_pval_m['C(ko_parent)[T.MAT]'])
     plt.title('Male', fontsize=14)
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-40, 80)
+    elif depot == 'sqwat':
+        plt.ylim(-35, 85)
 
     plt.subplot(3,2,3)
     plot_model_coeff(q, df_coeff_f['BW__'] / BW__factor * 1e-3,
@@ -1376,6 +1431,10 @@ if SAVEFIG:
                      df_pval_f['BW__'])
     plt.ylabel(r'$\beta_{BW}\ (10^3\ \mu m^2/g)$', fontsize=14)
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-0.6, 4)
+    elif depot == 'sqwat':
+        plt.ylim(-0.1, 3.1)
 
     plt.subplot(3,2,4)
     plot_model_coeff(q, df_coeff_m['BW__'] / BW__factor * 1e-3,
@@ -1383,6 +1442,10 @@ if SAVEFIG:
                      df_ci_hi_m['BW__'] / BW__factor * 1e-3,
                      df_pval_m['BW__'])
     plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-0.6, 4)
+    elif depot == 'sqwat':
+        plt.ylim(-0.1, 3.1)
 
     plt.subplot(3,2,5)
     plot_model_coeff(q, df_coeff_f['BW__:C(ko_parent)[T.MAT]'] / BW__factor * 1e-3,
@@ -1392,6 +1455,10 @@ if SAVEFIG:
     plt.ylabel(r'$\beta_{BW \cdot KO\ parent}\ (10^3\ \mu m^2/g)$', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(-2.1, 1.4)
+    elif depot == 'sqwat':
+        plt.ylim(-2.2, 1.2)
 
     plt.subplot(3,2,6)
     plot_model_coeff(q, df_coeff_m['BW__:C(ko_parent)[T.MAT]'] / BW__factor * 1e-3,
@@ -1400,6 +1467,10 @@ if SAVEFIG:
                      df_pval_m['BW__:C(ko_parent)[T.MAT]'])
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(-2.1, 1.4)
+    elif depot == 'sqwat':
+        plt.ylim(-2.2, 1.2)
 
     plt.tight_layout()
 
