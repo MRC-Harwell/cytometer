@@ -305,9 +305,20 @@ for method in ['auto', 'corrected']:
                         plt.title(os.path.basename(ndpi_file))
 
                 # create dataframe for this image
-                df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
-                                                               values=[depot, ], values_tag='depot',
-                                                               tags_to_keep=['id', 'ko_parent', 'sex', 'genotype', 'BW'])
+                if depot == 'sqwat':
+                    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                                   values=[depot, ], values_tag='depot',
+                                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype',
+                                                                                 'BW', 'SC'])
+                    df.rename(columns={'SC': 'DW'}, inplace=True)
+                elif depot == 'gwat':
+                    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
+                                                                   values=[depot, ], values_tag='depot',
+                                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype',
+                                                                                 'BW', 'gWAT'])
+                    df.rename(columns={'gWAT': 'DW'}, inplace=True)
+                else:
+                    raise RuntimeError('Unknown depot type')
 
                 # compute scaling factor between downsampled mask and original image
                 size_orig = np.array(im.dimensions)  # width, height
@@ -1347,7 +1358,7 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_quartile_linear_model_coeffs_' + depot + '.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_quartile_linear_model_coeffs_' + depot + '.svg'))
 
-## linear regression analysis of area ~ BW * ko_parent * genotype
+## linear regression analysis of area(decile) ~ BW * ko_parent * genotype
 ## (all deciles)
 ########################################################################################################################
 
@@ -1775,3 +1786,139 @@ if SAVEFIG:
 #     plt.xlabel('Quantile (%)', fontsize=14)
 #
 #     plt.tight_layout()
+
+## linear regression analysis of area(decile) ~ ko_parent * DW/BW
+## (all deciles)
+########################################################################################################################
+
+# 0.1 , 0.2, ..., 0.9
+quantiles = np.linspace(0, 1, 21)
+deciles_idx = list(range(2, 20, 2))
+deciles = quantiles[deciles_idx]  # [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+depot = 'gwat'
+# depot = 'sqwat'
+
+# for convenience create two dataframes (female and male) with the data for the current depot
+df = df_all[(df_all['depot'] == depot)].copy()
+df = df[~np.isnan(df['BW'])]
+df['DW_BW'] = df['BW'] / df['DW']
+df_f = df[df['sex'] == 'f'].reset_index()
+df_m = df[df['sex'] == 'm'].reset_index()
+
+# fit linear models for each decile
+decile_models_f = [sm.RLM.from_formula('area_q_' + '{0:02d}'.format(j) + ' ~ DW_BW * C(ko_parent)', data=df_f, M=sm.robust.norms.HuberT()).fit()
+                   for j in deciles_idx]
+decile_models_m = [sm.RLM.from_formula('area_q_' + '{0:02d}'.format(j) + ' ~ DW_BW * C(ko_parent)', data=df_m, M=sm.robust.norms.HuberT()).fit()
+                   for j in deciles_idx]
+# decile_models_f = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_f).fit()
+#                    for j in deciles_idx]
+# decile_models_m = [sm.formula.ols('area_q_' + '{0:02d}'.format(j) + ' ~ BW__ * C(ko_parent)', data=df_m).fit()
+#                    for j in deciles_idx]
+
+print(decile_models_f[4].summary())
+print(decile_models_m[4].summary())
+
+# extract coefficients, errors and p-values from quartile models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = models_coeff_ci_pval(decile_models_f)
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = models_coeff_ci_pval(decile_models_m)
+
+# multitest correction using Benjamini-Hochberg
+for coeff in df_pval_f.columns:
+    _, df_pval_f[coeff], _, _ = multipletests(df_pval_f[coeff], method='fdr_bh', alpha=0.05, returnsorted=False)
+for coeff in df_pval_f.columns:
+    _, df_pval_m[coeff], _, _ = multipletests(df_pval_m[coeff], method='fdr_bh', alpha=0.05, returnsorted=False)
+
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([6.4, 9.99])
+    q = np.array(deciles) * 100
+
+    plt.subplot(3,2,1)
+    plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_pval_f['C(ko_parent)[T.MAT]'])
+    plt.title('Female', fontsize=14)
+    plt.ylabel(r'$\beta_{KO\ parent}\ (10^3\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        # plt.yticks([-1.5, -1, -0.5, 0, 0.5, 1])
+        plt.ylim(-40, 80)
+    elif depot == 'sqwat':
+        plt.ylim(-35, 85)
+        # plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        # plt.yticks([-2, -1, 0, 1])
+        # plt.ylim(-2.1, 1.1)
+
+    plt.subplot(3,2,2)
+    plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_pval_m['C(ko_parent)[T.MAT]'])
+    plt.title('Male', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-40, 80)
+    elif depot == 'sqwat':
+        plt.ylim(-35, 85)
+
+    plt.subplot(3,2,3)
+    plot_model_coeff(q, df_coeff_f['DW_BW'],
+                     df_ci_lo_f['DW_BW'],
+                     df_ci_hi_f['DW_BW'],
+                     df_pval_f['DW_BW'])
+    plt.ylabel(r'$\beta_{DW/BW}\ (10^3\ \mu m^2/g)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-0.6, 4)
+    elif depot == 'sqwat':
+        plt.ylim(-0.1, 3.1)
+
+    plt.subplot(3,2,4)
+    plot_model_coeff(q, df_coeff_m['DW_BW'],
+                     df_ci_lo_m['DW_BW'],
+                     df_ci_hi_m['DW_BW'],
+                     df_pval_m['DW_BW'])
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-0.6, 4)
+    elif depot == 'sqwat':
+        plt.ylim(-0.1, 3.1)
+
+    plt.subplot(3,2,5)
+    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'],
+                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'],
+                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'],
+                     df_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
+    plt.ylabel(r'$\beta_{DW/BW \cdot KO\ parent}\ (10^3\ \mu m^2/g)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(-2.1, 1.4)
+    elif depot == 'sqwat':
+        plt.ylim(-2.2, 1.2)
+
+    plt.subplot(3,2,6)
+    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'],
+                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'],
+                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'],
+                     df_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(-2.1, 1.4)
+    elif depot == 'sqwat':
+        plt.ylim(-2.2, 1.2)
+
+    plt.tight_layout()
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    # plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_linear_model_coeffs_' + depot + '.png'))
+    # plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_linear_model_coeffs_' + depot + '.svg'))
+
