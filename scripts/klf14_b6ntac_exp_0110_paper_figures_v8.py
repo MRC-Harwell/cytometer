@@ -384,12 +384,10 @@ for method in ['auto', 'corrected']:
                 # save dataframe
                 df_all.to_csv(dataframe_areas_filename, index=False)
 
+
 ########################################################################################################################
-## Analyse cell populations from automatically segmented images in two depots: SQWAT and GWAT:
-##   Cell area histograms
-##   HD quantiles of cell areas
-## Cell populations were computed in previous section
-### USED IN PAPER
+## Import packages and auxiliary functions common to all analysis sections
+## USED IN PAPER
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
@@ -500,6 +498,7 @@ def plot_model_coeff(q, df_coeff, df_ci_lo, df_ci_hi, df_pval):
     plot_pvals(df_pval, q, df_coeff)
 
 
+## Analyse cell populations from automatically segmented images in two depots: SQWAT and GWAT:
 ## histograms
 ## NOT USED IN PAPER (we use smoothed histograms instead)
 ########################################################################################################################
@@ -534,6 +533,7 @@ def plot_model_coeff(q, df_coeff, df_ci_lo, df_ci_hi, df_pval):
 #     plt.xlabel('Area ($\mu m^2$)')
 #     plt.title('GWAT f MAT')
 
+## Analyse cell populations from automatically segmented images in two depots: SQWAT and GWAT:
 ## smoothed histograms
 ## USED IN THE PAPER
 ########################################################################################################################
