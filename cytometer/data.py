@@ -1226,10 +1226,11 @@ def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to
     if len(id_in_sid) > 1:
         raise ValueError('s is ambiguous, and more than one ID can be found in it: ' + s)
     elif len(id_in_sid) == 0:  # no ID found in the filename
-        raise ValueError('Either s has no valid ID, or metainfo is missing a row for that ID: ' + s)
-
-    # row with all the metainfo for the selected mouse
-    metainfo_row = metainfo.loc[id_in_sid, :]
+        warnings.warn('Either s has no valid ID, or metainfo is missing a row for that ID: ' + s)
+        metainfo_row = pd.DataFrame(columns=metainfo.columns)
+    else:
+        # row with all the metainfo for the selected mouse
+        metainfo_row = metainfo.loc[id_in_sid, :]
 
     # keep only some of the metainformation tags
     if tags_to_keep:
