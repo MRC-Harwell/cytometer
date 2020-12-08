@@ -405,6 +405,9 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
+import openslide
+import cytometer.data
+import shapely
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -417,6 +420,21 @@ metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 DEBUG = False
 
 method = 'corrected'
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# make sure that in the boxplots PAT comes before MAT
+metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+metainfo['ko_parent'] = metainfo['ko_parent'].astype(
+    pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['genotype'] = metainfo['genotype'].astype(
+    pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
+# remove BW=NaNs
+metainfo = metainfo[~np.isnan(metainfo['BW'])]
+metainfo = metainfo.reset_index()
 
 # load dataframe with cell population quantiles and histograms
 dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.csv')
@@ -469,13 +487,13 @@ def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None
     y_pred = model.predict(X)
     plt.plot(BW__lim * BW__factor, y_pred * sy, style)
 
-def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0):
+def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0, label=None):
     DW_BW = df['DW'] / df['BW']
     DW_BW_lim = np.array([DW_BW.min(), DW_BW.max()])
     X = pd.DataFrame(data={'DW_BW': DW_BW_lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
                            'genotype': [genotype, genotype]})
     y_pred = model.predict(X)
-    plt.plot(DW_BW_lim * sx, y_pred * sy, style)
+    plt.plot(DW_BW_lim * sx, y_pred * sy, style, label=label)
 
 def pval_to_asterisk(pval, brackets=True):
     """
@@ -752,21 +770,6 @@ if SAVEFIG:
 ## USED IN PAPER
 ########################################################################################################################
 
-# CSV file with metainformation of all mice
-metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
-metainfo = pd.read_csv(metainfo_csv_file)
-
-# make sure that in the boxplots PAT comes before MAT
-metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-metainfo['ko_parent'] = metainfo['ko_parent'].astype(
-    pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
-metainfo['genotype'] = metainfo['genotype'].astype(
-    pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
-
-# remove BW=NaNs
-metainfo = metainfo[~np.isnan(metainfo['BW'])]
-metainfo = metainfo.reset_index()
-
 # scale cull_age to avoid large condition numbers
 metainfo['cull_age__'] = (metainfo['cull_age'] - np.mean(metainfo['cull_age'])) / np.std(metainfo['cull_age'])
 
@@ -1023,6 +1026,7 @@ if SAVEFIG:
     plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
     pval_bw = df_pval_f['BW__'][0]
     pval_mat = df_pval_f['C(ko_parent)[T.MAT]'][0]
+    plt.title('Male', fontsize=14)
     if depot == 'gwat':
         plt.ylim(0.8, 4.3)
         pval_text = '$p_{BW}$=' + '{0:.4f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
@@ -1035,6 +1039,30 @@ if SAVEFIG:
                     '\n' + \
                     '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
         plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
+
+    plt.subplot(322)
+    df = df_m[df_m['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_025'] * 1e-3, c='C0', label='PAT')
+    df = df_m[df_m['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_025'] * 1e-3, c='C1', label='MAT')
+    plot_linear_regression_BW(q25_model_m, df_m, ko_parent='PAT', style='C0', sy=1e-3)
+    plot_linear_regression_BW(q25_model_m, df_m, ko_parent='MAT', style='C1', sy=1e-3)
+    plt.tick_params(labelsize=14)
+    pval_bw = df_pval_m['BW__'][0]
+    pval_mat = df_pval_m['C(ko_parent)[T.MAT]'][0]
+    plt.title('Male', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(0.8, 4.3)
+        pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+                    '\n' + \
+                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
+    elif depot == 'sqwat':
+        plt.ylim(0.6, 3.1)
+        pval_text = '$p_{BW}$=' + '{0:.4f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+                    '\n' + \
+                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
 
     plt.subplot(323)
     df = df_f[df_f['ko_parent'] == 'PAT']
@@ -1060,6 +1088,29 @@ if SAVEFIG:
                     '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
         plt.text(0.02, 0.56, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
 
+    plt.subplot(324)
+    df = df_m[df_m['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['area_q_050'] * 1e-3, c='C0', label='PAT')
+    df = df_m[df_m['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['area_q_050'] * 1e-3, c='C1', label='MAT')
+    plot_linear_regression_BW(q50_model_m, df_m, ko_parent='PAT', style='C0', sy=1e-3)
+    plot_linear_regression_BW(q50_model_m, df_m, ko_parent='MAT', style='C1', sy=1e-3)
+    plt.tick_params(labelsize=14)
+    pval_bw = df_pval_m['BW__'][1]
+    pval_mat = df_pval_m['C(ko_parent)[T.MAT]'][1]
+    if depot == 'gwat':
+        plt.ylim(1.65, 8.44)
+        pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+                    '\n' + \
+                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
+    elif depot == 'sqwat':
+        plt.ylim(0.8, 5.8)
+        pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+                    '\n' + \
+                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        plt.text(0.3, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
+
     plt.subplot(325)
     df = df_f[df_f['ko_parent'] == 'PAT']
     plt.scatter(df['BW'], df['area_q_075'] * 1e-3, c='C0', label='PAT')
@@ -1084,52 +1135,6 @@ if SAVEFIG:
                     '\n' + \
                     '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
         plt.text(0.02, 0.8, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
-
-    plt.subplot(322)
-    df = df_m[df_m['ko_parent'] == 'PAT']
-    plt.scatter(df['BW'], df['area_q_025'] * 1e-3, c='C0', label='PAT')
-    df = df_m[df_m['ko_parent'] == 'MAT']
-    plt.scatter(df['BW'], df['area_q_025'] * 1e-3, c='C1', label='MAT')
-    plot_linear_regression_BW(q25_model_m, df_m, ko_parent='PAT', style='C0', sy=1e-3)
-    plot_linear_regression_BW(q25_model_m, df_m, ko_parent='MAT', style='C1', sy=1e-3)
-    plt.tick_params(labelsize=14)
-    pval_bw = df_pval_m['BW__'][0]
-    pval_mat = df_pval_m['C(ko_parent)[T.MAT]'][0]
-    if depot == 'gwat':
-        plt.ylim(0.8, 4.3)
-        pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                    '\n' + \
-                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-        plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
-    elif depot == 'sqwat':
-        plt.ylim(0.6, 3.1)
-        pval_text = '$p_{BW}$=' + '{0:.4f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                    '\n' + \
-                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-        plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
-
-    plt.subplot(324)
-    df = df_m[df_m['ko_parent'] == 'PAT']
-    plt.scatter(df['BW'], df['area_q_050'] * 1e-3, c='C0', label='PAT')
-    df = df_m[df_m['ko_parent'] == 'MAT']
-    plt.scatter(df['BW'], df['area_q_050'] * 1e-3, c='C1', label='MAT')
-    plot_linear_regression_BW(q50_model_m, df_m, ko_parent='PAT', style='C0', sy=1e-3)
-    plot_linear_regression_BW(q50_model_m, df_m, ko_parent='MAT', style='C1', sy=1e-3)
-    plt.tick_params(labelsize=14)
-    pval_bw = df_pval_m['BW__'][1]
-    pval_mat = df_pval_m['C(ko_parent)[T.MAT]'][1]
-    if depot == 'gwat':
-        plt.ylim(1.65, 8.44)
-        pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                    '\n' + \
-                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-        plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
-    elif depot == 'sqwat':
-        plt.ylim(0.8, 5.8)
-        pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                    '\n' + \
-                    '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-        plt.text(0.3, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
 
     plt.subplot(326)
     df = df_m[df_m['ko_parent'] == 'PAT']
@@ -1473,6 +1478,7 @@ if SAVEFIG:
     plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
     pval_bw = q25_model_f.pvalues['DW_BW']
     pval_mat = q25_model_f.pvalues['C(ko_parent)[T.MAT]']
+    plt.title('Female', fontsize=14)
     if depot == 'gwat':
         plt.ylim(0.82, 4.32)
         pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
@@ -1496,6 +1502,7 @@ if SAVEFIG:
     plt.tick_params(labelsize=14)
     pval_bw = q25_model_m.pvalues['DW_BW']
     pval_mat = q25_model_m.pvalues['C(ko_parent)[T.MAT]']
+    plt.title('Male', fontsize=14)
     if depot == 'gwat':
         plt.ylim(0.82, 4.32)
         pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
@@ -1837,3 +1844,326 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_linear_model_coeffs_' + depot + '.svg'))
 
 ########################################################################################################################
+## quantile regression analysis of area ~ DW/BW * ko_parent
+## USED IN PAPER
+########################################################################################################################
+
+# 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
+quantiles = np.linspace(0, 1, 21)
+
+# 1.32020052, 1.33581401, ..., 4.42728541, 4.4428989
+log10_area_bin_edges = np.linspace(np.log10(min_area_um2), np.log10(max_area_um2), 201)
+log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
+
+method = 'corrected'
+
+depot = 'gwat'
+# depot = 'sqwat'
+
+# compute or load dataframe with one row per cell
+dataframe_cells_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_individual_cells_' + method + '_' + depot + '.csv')
+if not os.path.isfile(dataframe_cells_filename):
+    # create dataframe with one row per cell
+    df_all = read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected')
+
+    # save for later use
+    df_all.to_csv(dataframe_cells_filename, index=False)
+else:
+    # load dataframe with cell population quantiles and histograms
+    df_all = pd.read_csv(dataframe_cells_filename)
+
+# remove DW=NaNs
+df_all = df_all[~np.isnan(df_all['DW'])]
+df_all = df_all.reset_index()
+
+df_all['sex'] = df_all['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+df_all['ko_parent'] = df_all['ko_parent'].astype(
+    pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_all['genotype'] = df_all['genotype'].astype(
+    pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
+# for convenience of boxplots
+df_all['area_m'] = df_all['area'] * 1e-3
+
+# count number of cells per mouse, and assign that number to each cell, so that we can use it to compute weights for
+# the quantile regression later
+_, idx, cell_count = np.unique(df_all['id'], return_counts=True, return_inverse=True)
+df_all['cell_count'] = cell_count[idx]
+
+# normalise DW by BW
+df_all['DW_BW'] = df_all['DW'] / df_all['BW']
+
+# stratify by sex
+df_f = df_all[df_all['sex'] == 'f']
+df_m = df_all[df_all['sex'] == 'm']
+
+# compute quantile regression models
+model_f = smf.quantreg('area ~ DW_BW * C(ko_parent)', data=df_f, weights=1/df_f['cell_count']**2)
+q25_model_f = model_f.fit(q=0.25)
+q50_model_f = model_f.fit(q=0.50)
+q75_model_f = model_f.fit(q=0.75)
+print(q25_model_f.summary())
+print(q50_model_f.summary())
+print(q75_model_f.summary())
+
+model_m = smf.quantreg('area ~ DW_BW * C(ko_parent)', data=df_m, weights=1/df_m['cell_count']**2)
+q25_model_m = model_m.fit(q=0.25)
+q50_model_m = model_m.fit(q=0.50)
+q75_model_m = model_m.fit(q=0.75)
+print(q25_model_m.summary())
+print(q50_model_m.summary())
+print(q75_model_m.summary())
+
+# extract coefficients, errors and p-values from quartile models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = models_coeff_ci_pval([q25_model_f, q50_model_f, q75_model_f])
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m])
+
+# multitest correction using Benjamini-Yekuteli
+for coeff in df_pval_f.columns:
+    _, df_pval_f[coeff], _, _ = multipletests(df_pval_f[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
+for coeff in df_pval_f.columns:
+    _, df_pval_m[coeff], _, _ = multipletests(df_pval_m[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
+
+# convert p-values to asterisks
+df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+
+# save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+df_concat = pd.DataFrame()
+for col in df_coeff_f.columns:
+    df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
+df_concat.to_csv('/tmp/foo.csv')
+
+df_concat = pd.DataFrame()
+for col in df_coeff_f.columns:
+    df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
+df_concat.to_csv('/tmp/foo.csv')
+
+# plot
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([9.6, 9.6])
+
+    # Female PAT
+    ax = plt.subplot(221)
+    df = df_f[df_f['ko_parent'] == 'PAT']
+    ids = list(df.groupby(by='id').groups.keys())
+    positions = [df[df['id'] == x]['DW_BW'].iloc[0] * 1e3 for x in ids]
+    widths = (np.max(positions) - np.min(positions)) / 100
+    flierprops = dict(marker='.', markersize=1)
+    df.boxplot(ax=ax, column='area_m', by='id', positions=positions, widths=widths, flierprops=flierprops)
+
+    plot_linear_regression_DW(q25_model_f, df_f, ko_parent='PAT', style='C2', sx=1e3, sy=1e-3, label='Q1')
+    plot_linear_regression_DW(q50_model_f, df_f, ko_parent='PAT', style='C3', sx=1e3, sy=1e-3, label='Q2')
+    plot_linear_regression_DW(q75_model_f, df_f, ko_parent='PAT', style='C4', sx=1e3, sy=1e-3, label='Q3')
+
+    plt.xlim(4, 60)
+    xticks = [5, 10, 20, 30, 40, 50, 60]
+    plt.tick_params(labelsize=14)
+    plt.xticks(xticks, labels=['{0:.0f}'.format(x) for x in xticks])
+    plt.xlabel('')
+    plt.ylabel('Area ($10^3\ \mu m^2$)', fontsize=14)
+    plt.title('Female PAT')
+    plt.legend(fontsize=12)
+    plt.tight_layout()
+
+    # Female MAT
+    ax = plt.subplot(222)
+    df = df_f[df_f['ko_parent'] == 'MAT']
+    ids = list(df.groupby(by='id').groups.keys())
+    positions = [df[df['id'] == x]['DW_BW'].iloc[0] * 1e3 for x in ids]
+    widths = (np.max(positions) - np.min(positions)) / 100
+    flierprops = dict(marker='.', markersize=1)
+    boxprops = dict(color='C1')
+    df.boxplot(ax=ax, column='area_m', by='id', positions=positions, widths=widths, flierprops=flierprops)
+
+    plot_linear_regression_DW(q25_model_f, df_f, ko_parent='MAT', style='C2--', sx=1e3, sy=1e-3, label='Q1')
+    plot_linear_regression_DW(q50_model_f, df_f, ko_parent='MAT', style='C3--', sx=1e3, sy=1e-3, label='Q2')
+    plot_linear_regression_DW(q75_model_f, df_f, ko_parent='MAT', style='C4--', sx=1e3, sy=1e-3, label='Q3')
+
+    plt.xlim(4, 60)
+    xticks = [5, 10, 20, 30, 40, 50, 60]
+    plt.tick_params(labelsize=14)
+    plt.xticks(xticks, labels=['{0:.0f}'.format(x) for x in xticks])
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Female MAT')
+    plt.legend(fontsize=12)
+    plt.tight_layout()
+
+    # Male PAT
+    ax = plt.subplot(223)
+    df = df_m[df_m['ko_parent'] == 'PAT']
+    ids = list(df.groupby(by='id').groups.keys())
+    positions = [df[df['id'] == x]['DW_BW'].iloc[0] * 1e3 for x in ids]
+    widths = (np.max(positions) - np.min(positions)) / 100
+    flierprops = dict(marker='.', markersize=1)
+    df.boxplot(ax=ax, column='area_m', by='id', positions=positions, widths=widths, flierprops=flierprops)
+
+    plot_linear_regression_DW(q25_model_m, df_m, ko_parent='PAT', style='C2', sx=1e3, sy=1e-3, label='Q1')
+    plot_linear_regression_DW(q50_model_m, df_m, ko_parent='PAT', style='C3', sx=1e3, sy=1e-3, label='Q2')
+    plot_linear_regression_DW(q75_model_m, df_m, ko_parent='PAT', style='C4', sx=1e3, sy=1e-3, label='Q3')
+
+    plt.xlim(4, 60)
+    xticks = [5, 10, 20, 30, 40, 50, 60]
+    plt.tick_params(labelsize=14)
+    plt.xticks(xticks, labels=['{0:.0f}'.format(x) for x in xticks])
+    plt.xlabel('DW / BW (g / kg)', fontsize=14)
+    plt.ylabel('Area ($10^3\ \mu m^2$)', fontsize=14)
+    plt.title('Male PAT')
+    plt.tight_layout()
+
+    # Male MAT
+    ax = plt.subplot(224)
+    df = df_m[df_m['ko_parent'] == 'MAT']
+    ids = list(df.groupby(by='id').groups.keys())
+    positions = [df[df['id'] == x]['DW_BW'].iloc[0] * 1e3 for x in ids]
+    widths = (np.max(positions) - np.min(positions)) / 100
+    flierprops = dict(marker='.', markersize=1)
+    df.boxplot(ax=ax, column='area_m', by='id', positions=positions, widths=widths, flierprops=flierprops)
+
+    plot_linear_regression_DW(q25_model_m, df_m, ko_parent='MAT', style='C2--', sx=1e3, sy=1e-3, label='Q1')
+    plot_linear_regression_DW(q50_model_m, df_m, ko_parent='MAT', style='C3--', sx=1e3, sy=1e-3, label='Q2')
+    plot_linear_regression_DW(q75_model_m, df_m, ko_parent='MAT', style='C4--', sx=1e3, sy=1e-3, label='Q3')
+
+    plt.xlim(4, 60)
+    xticks = [5, 10, 20, 30, 40, 50, 60]
+    plt.tick_params(labelsize=14)
+    plt.xticks(xticks, labels=['{0:.0f}'.format(x) for x in xticks])
+    plt.xlabel('DW / BW (g / kg)', fontsize=14)
+    plt.ylabel('')
+    plt.title('Male MAT')
+    plt.tight_layout()
+
+    if depot == 'gwat':
+        plt.suptitle('Female gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Female subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+# 0.1 , 0.2, ..., 0.9
+deciles_idx = list(range(2, 20, 2))
+deciles = quantiles[deciles_idx]  # [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+
+# fit linear models for each decile
+model_f = smf.quantreg('area ~ DW_BW * C(ko_parent)', data=df_f, weights=1/df_f['cell_count']**2)
+decile_models_f = [model_f.fit(q=d) for d in deciles]
+model_m = smf.quantreg('area ~ DW_BW * C(ko_parent)', data=df_m, weights=1/df_m['cell_count']**2)
+decile_models_m = [model_m.fit(q=d) for d in deciles]
+
+print(decile_models_f[4].summary())
+print(decile_models_m[4].summary())
+
+# extract coefficients, errors and p-values from quartile models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = models_coeff_ci_pval(decile_models_f)
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = models_coeff_ci_pval(decile_models_m)
+
+# multitest correction using Benjamini-Yekuteli
+for coeff in df_pval_f.columns:
+    _, df_pval_f[coeff], _, _ = multipletests(df_pval_f[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
+for coeff in df_pval_f.columns:
+    _, df_pval_m[coeff], _, _ = multipletests(df_pval_m[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
+
+# convert p-values to asterisks
+df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m), columns=df_coeff_m.columns)
+
+# save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+df_concat = pd.DataFrame()
+for col in df_coeff_f.columns:
+    df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
+df_concat.to_csv('/tmp/foo.csv')
+
+df_concat = pd.DataFrame()
+for col in df_coeff_f.columns:
+    df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
+df_concat.to_csv('/tmp/foo.csv')
+
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([6.4, 7.6])
+    q = np.array(deciles) * 100
+
+    plt.subplot(3,2,1)
+    plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_pval_f['C(ko_parent)[T.MAT]'])
+    plt.title('Female', fontsize=14)
+    plt.ylabel(r'$\beta_{parent}\ (10^3\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-1, 10.5)
+    elif depot == 'sqwat':
+        plt.ylim(-.5, 4)
+
+    plt.subplot(3,2,2)
+    plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_pval_m['C(ko_parent)[T.MAT]'])
+    plt.title('Male', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-1, 10.5)
+    elif depot == 'sqwat':
+        plt.ylim(-.5, 4)
+
+    plt.subplot(3,2,3)
+    plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-5,
+                     df_ci_lo_f['DW_BW'] * 1e-5,
+                     df_ci_hi_f['DW_BW'] * 1e-5,
+                     df_pval_f['DW_BW'])
+    plt.ylabel(r'$\beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-.10, 1.80)
+    elif depot == 'sqwat':
+        plt.ylim(-0.1, 1.75)
+
+    plt.subplot(3,2,4)
+    plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-5,
+                     df_ci_lo_m['DW_BW'] * 1e-5,
+                     df_ci_hi_m['DW_BW'] * 1e-5,
+                     df_pval_m['DW_BW'])
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-.10, 1.80)
+    elif depot == 'sqwat':
+        plt.ylim(-0.1, 1.75)
+
+    plt.subplot(3,2,5)
+    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
+    plt.ylabel(r'$\beta_{DW/BW \cdot parent}\ (10^5\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(-2.15, .60)
+    elif depot == 'sqwat':
+        plt.ylim(-2.1, 1)
+
+    plt.subplot(3,2,6)
+    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile (%)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(-2.15, .60)
+    elif depot == 'sqwat':
+        plt.ylim(-2.1, 1)
+
+    plt.tight_layout()
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    # plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_linear_model_coeffs_' + depot + '.png'))
+    # plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_linear_model_coeffs_' + depot + '.svg'))
