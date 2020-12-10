@@ -397,7 +397,7 @@ for method in ['auto', 'corrected']:
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
+# from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
@@ -2239,7 +2239,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-1, 20)
     elif depot == 'sqwat':
-        plt.ylim(-.5, 4)
+        plt.ylim(-1, 13)
 
     plt.subplot(4,2,2)
     plot_model_coeff(q, df_coeff_m['Intercept'] * 1e-3,
@@ -2252,7 +2252,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-1, 20)
     elif depot == 'sqwat':
-        plt.ylim(-.5, 4)
+        plt.ylim(-1, 13)
 
     plt.subplot(4,2,3)
     plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
@@ -2266,7 +2266,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-1, 10.5)
     elif depot == 'sqwat':
-        plt.ylim(-.5, 4)
+        plt.ylim(-.5, 5)
 
     plt.subplot(4,2,4)
     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
@@ -2279,7 +2279,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-1, 10.5)
     elif depot == 'sqwat':
-        plt.ylim(-.5, 4)
+        plt.ylim(-.5, 5)
 
     plt.subplot(4,2,5)
     plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-5,
@@ -2292,7 +2292,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-.10, 2.0)
     elif depot == 'sqwat':
-        plt.ylim(-0.1, 1.75)
+        plt.ylim(-0.1, 2)
 
     plt.subplot(4,2,6)
     plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-5,
@@ -2304,7 +2304,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-.10, 2.0)
     elif depot == 'sqwat':
-        plt.ylim(-0.1, 1.75)
+        plt.ylim(-0.1, 2)
 
     plt.subplot(4,2,7)
     plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
@@ -2318,7 +2318,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-2.15, 1.0)
     elif depot == 'sqwat':
-        plt.ylim(-2.1, 1)
+        plt.ylim(-2.1, 1.25)
 
     plt.subplot(4,2,8)
     plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
@@ -2331,7 +2331,7 @@ if DEBUG:
     if depot == 'gwat':
         plt.ylim(-2.15, 1.0)
     elif depot == 'sqwat':
-        plt.ylim(-2.1, 1)
+        plt.ylim(-2.1, 1.25)
 
     plt.tight_layout()
 
