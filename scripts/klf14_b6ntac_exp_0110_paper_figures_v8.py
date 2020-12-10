@@ -539,10 +539,10 @@ def pval_to_asterisk(pval, brackets=True):
     else:
         return np.vectorize(translate)(pval, brackets)
 
-def plot_pvals(pvals, xs, ys, corrected_pvals=None):
-    ylim = plt.gca().get_ylim()
-    offset = (np.max(ylim) - np.min(ylim)) * 0.10  # vertical offset between data point and bottom asterisk
-    delta = np.diff(plt.xlim())[0] / 100  # horizontal shift from the vertical of the datapoint when there are corrected p-values
+def plot_pvals(pvals, xs, ys, ylim=None, corrected_pvals=None):
+    if ylim is None:
+        ylim = plt.gca().get_ylim()
+    offset = (np.max(ylim) - np.min(ylim)) * 0.075  # vertical offset between data point and bottom asterisk
     if corrected_pvals is None:
         for pval, x, y in zip(pvals, xs, ys):
             str = pval_to_asterisk(pval, brackets=False)
@@ -554,19 +554,21 @@ def plot_pvals(pvals, xs, ys, corrected_pvals=None):
         for pval, corrected_pval, x, y in zip(pvals, corrected_pvals, xs, ys):
             str = pval_to_asterisk(pval, brackets=False)
             if pval > 0.05:
-                plt.text(x - delta, y + offset, str, ha='center')
+                plt.text(x, y + offset, str, ha='center')
             else:
-                plt.text(x - delta, y + offset, str, ha='center', rotation=90)
+                plt.text(x, y + offset, str, ha='center', rotation=90)
             str = pval_to_asterisk(corrected_pval, brackets=False)
+            if str == 'ns':  # we don't plot 'ns' in corrected p-values, to avoid having asterisks overlapped by 'ns'
+                str = ''
             if pval > 0.05:
-                plt.text(x + delta, y + offset, str, ha='center', color='r')
+                plt.text(x, y + offset, str, ha='center', color='r')
             else:
-                plt.text(x + delta, y + offset, str, ha='center', rotation=90, color='r')
+                plt.text(x, y + offset, str, ha='center', rotation=90, color='r')
 
-def plot_model_coeff(q, df_coeff, df_ci_lo, df_ci_hi, df_pval, df_corrected_pval=None):
+def plot_model_coeff(q, df_coeff, df_ci_lo, df_ci_hi, df_pval, ylim=None, df_corrected_pval=None):
     plt.plot(q, df_coeff)
     plt.fill_between(q, df_ci_lo, df_ci_hi, alpha=0.5)
-    plot_pvals(df_pval, q, df_coeff, corrected_pvals=df_corrected_pval)
+    plot_pvals(df_pval, q, df_coeff, corrected_pvals=df_corrected_pval, ylim=ylim)
 
 def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected'):
 
@@ -1471,14 +1473,16 @@ df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = models_coeff_ci_pval([q25_model_
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m])
 
 # multitest correction using Benjamini-Yekuteli
-for coeff in df_pval_f.columns:
-    _, df_pval_f[coeff], _, _ = multipletests(df_pval_f[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
-for coeff in df_pval_f.columns:
-    _, df_pval_m[coeff], _, _ = multipletests(df_pval_m[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
 df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
 df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
 df_concat = pd.DataFrame()
@@ -1505,8 +1509,8 @@ if SAVEFIG:
     plot_linear_regression_DW(q25_model_f, df_f, ko_parent='MAT', style='C1', sx=100, sy=1e-3)
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
-    pval_bw = q25_model_f.pvalues['DW_BW']
-    pval_mat = q25_model_f.pvalues['C(ko_parent)[T.MAT]']
+    pval_bw = df_pval_f.loc[0, 'DW_BW']
+    pval_mat = df_pval_f.loc[0, 'C(ko_parent)[T.MAT]']
     plt.title('Female', fontsize=14)
     if depot == 'gwat':
         plt.ylim(0.82, 4.32)
@@ -1529,8 +1533,8 @@ if SAVEFIG:
     plot_linear_regression_DW(q25_model_m, df_m, ko_parent='PAT', style='C0', sx=100, sy=1e-3)
     plot_linear_regression_DW(q25_model_m, df_m, ko_parent='MAT', style='C1', sx=100, sy=1e-3)
     plt.tick_params(labelsize=14)
-    pval_bw = q25_model_m.pvalues['DW_BW']
-    pval_mat = q25_model_m.pvalues['C(ko_parent)[T.MAT]']
+    pval_bw = df_pval_m.loc[0, 'DW_BW']
+    pval_mat = df_pval_m.loc[0, 'C(ko_parent)[T.MAT]']
     plt.title('Male', fontsize=14)
     if depot == 'gwat':
         plt.ylim(0.82, 4.32)
@@ -1554,8 +1558,8 @@ if SAVEFIG:
     plot_linear_regression_DW(q50_model_f, df_f, ko_parent='MAT', style='C1', sx=100, sy=1e-3)
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q2}}$ ($10^3\ \mu m^2$)', fontsize=14)
-    pval_bw = q50_model_f.pvalues['DW_BW']
-    pval_mat = q50_model_f.pvalues['C(ko_parent)[T.MAT]']
+    pval_bw = df_pval_f.loc[1, 'DW_BW']
+    pval_mat = df_pval_f.loc[1, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.44, 8.44)
         pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
@@ -1577,8 +1581,8 @@ if SAVEFIG:
     plot_linear_regression_DW(q50_model_m, df_m, ko_parent='PAT', style='C0', sx=100, sy=1e-3)
     plot_linear_regression_DW(q50_model_m, df_m, ko_parent='MAT', style='C1', sx=100, sy=1e-3)
     plt.tick_params(labelsize=14)
-    pval_bw = q50_model_m.pvalues['DW_BW']
-    pval_mat = q50_model_m.pvalues['C(ko_parent)[T.MAT]']
+    pval_bw = df_pval_m.loc[1, 'DW_BW']
+    pval_mat = df_pval_m.loc[1, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.44, 8.44)
         pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
@@ -1602,8 +1606,8 @@ if SAVEFIG:
     plt.tick_params(labelsize=14)
     plt.xlabel('Depot / Body weight\n(g / 100 g)', fontsize=14)
     plt.ylabel('Area$_{\mathrm{Q3}}$ ($10^3\ \mu m^2$)', fontsize=14)
-    pval_bw = q75_model_f.pvalues['DW_BW']
-    pval_mat = q75_model_f.pvalues['C(ko_parent)[T.MAT]']
+    pval_bw = df_pval_f.loc[2, 'DW_BW']
+    pval_mat = df_pval_f.loc[2, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.65, 12.97)
         pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
@@ -1626,8 +1630,8 @@ if SAVEFIG:
     plot_linear_regression_DW(q75_model_m, df_m, ko_parent='MAT', style='C1', sx=100, sy=1e-3)
     plt.tick_params(labelsize=14)
     plt.xlabel('Depot / Body weight\n(g / 100 g)', fontsize=14)
-    pval_bw = q75_model_m.pvalues['DW_BW']
-    pval_mat = q75_model_m.pvalues['C(ko_parent)[T.MAT]']
+    pval_bw = df_pval_m.loc[2, 'DW_BW']
+    pval_mat = df_pval_m.loc[2, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.65, 12.97)
         pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
@@ -1653,86 +1657,137 @@ if SAVEFIG:
 if SAVEFIG:
     q = [25, 50, 75]
     plt.clf()
-    plt.gcf().set_size_inches([6.4, 7.6])
+    plt.gcf().set_size_inches([6.4, 10.13])
 
-    plt.subplot(321)
+    plt.subplot(421)
+    if depot == 'gwat':
+        ylim = (-0.3, 13)
+    elif depot == 'sqwat':
+        ylim = (-0.41, 4.53)
+    plot_model_coeff(q, df_coeff_f['Intercept'] * 1e-3,
+                     df_ci_lo_f['Intercept'] * 1e-3,
+                     df_ci_hi_f['Intercept'] * 1e-3,
+                     df_pval_f['Intercept'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['Intercept'])
+    plt.xticks(q)
+    plt.ylabel(r'Intercept $(10^3\ \mu m^2)$', fontsize=14)
+    plt.title('Female', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.ylim(ylim[0], ylim[1])
+
+    plt.subplot(422)
+    if depot == 'gwat':
+        ylim = (-0.3, 13)
+    elif depot == 'sqwat':
+        ylim = (-0.3, 7)
+    plot_model_coeff(q, df_coeff_m['Intercept'] * 1e-3,
+                     df_ci_lo_m['Intercept'] * 1e-3,
+                     df_ci_hi_m['Intercept'] * 1e-3,
+                     df_pval_m['Intercept'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['Intercept'])
+    plt.xticks(q)
+    plt.title('Male', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.ylim(ylim[0], ylim[1])
+
+    plt.subplot(423)
+    if depot == 'gwat':
+        ylim = (-2.47, 6.38)
+    elif depot == 'sqwat':
+        ylim = (-0.41, 4.53)
     plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
-                     df_pval_f['C(ko_parent)[T.MAT]'])
+                     df_pval_f['C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['C(ko_parent)[T.MAT]'])
     plt.xticks(q)
     plt.ylabel(r'$\beta_{parent}\ (10^3\ \mu m^2)$', fontsize=14)
     plt.title('Female', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-2.47, 6.38)
-    elif depot == 'sqwat':
-        plt.ylim(-0.41, 4.53)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(322)
+    plt.subplot(424)
+    if depot == 'gwat':
+        ylim = (-2.47, 6.38)
+    elif depot == 'sqwat':
+        ylim = (-0.41, 4.53)
     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
-                     df_pval_m['C(ko_parent)[T.MAT]'])
+                     df_pval_m['C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['C(ko_parent)[T.MAT]'])
     plt.xticks(q)
     plt.title('Male', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-2.47, 6.38)
-    elif depot == 'sqwat':
-        plt.ylim(-0.41, 4.53)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(323)
-    plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-6,
-                     df_ci_lo_f['DW_BW'] * 1e-6,
-                     df_ci_hi_f['DW_BW'] * 1e-6,
-                     df_pval_f['DW_BW'])
+    plt.subplot(425)
+    if depot == 'gwat':
+        ylim = (-0.41, 1.9)
+    elif depot == 'sqwat':
+        ylim = (-0.3, 2.1)
+    plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-5,
+                     df_ci_lo_f['DW_BW'] * 1e-5,
+                     df_ci_hi_f['DW_BW'] * 1e-5,
+                     df_pval_f['DW_BW'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['DW_BW'])
     plt.xticks(q)
-    plt.ylabel(r'$\beta_{DW/BW}\ (10^6\ \mu m^2)$', fontsize=14)
+    plt.ylabel(r'$\beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-0.041, 0.19)
-    elif depot == 'sqwat':
-        plt.ylim(-0.03, 0.21)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(324)
-    plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-6,
-                     df_ci_lo_m['DW_BW'] * 1e-6,
-                     df_ci_hi_m['DW_BW'] * 1e-6,
-                     df_pval_m['DW_BW'])
+    plt.subplot(426)
+    if depot == 'gwat':
+        ylim = (-0.41, 1.9)
+    elif depot == 'sqwat':
+        ylim = (-0.3, 2.1)
+    plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-5,
+                     df_ci_lo_m['DW_BW'] * 1e-5,
+                     df_ci_hi_m['DW_BW'] * 1e-5,
+                     df_pval_m['DW_BW'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['DW_BW'])
     plt.xticks(q)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-0.041, 0.19)
-    elif depot == 'sqwat':
-        plt.ylim(-0.03, 0.21)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(325)
-    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
-    plt.xticks(q)
-    plt.ylabel(r'$\beta_{DW/BW\cdot parent}\ (10^6\ \mu m^2)$', fontsize=14)
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Quantile (%)', fontsize=14)
+    plt.subplot(427)
     if depot == 'gwat':
-        plt.ylim(-0.25, 0.16)
+        ylim = (-2.5, 1.6)
     elif depot == 'sqwat':
-        plt.ylim(-0.27, 0.12)
-
-    plt.subplot(326)
-    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
+        ylim = (-2.7, 1.2)
+    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
     plt.xticks(q)
+    plt.ylabel(r'$\beta_{DW/BW\cdot parent}\ (10^5\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
+    plt.ylim(ylim[0], ylim[1])
+
+    plt.subplot(428)
     if depot == 'gwat':
-        plt.ylim(-0.25, 0.16)
+        ylim = (-2.5, 1.6)
     elif depot == 'sqwat':
-        plt.ylim(-0.27, 0.12)
+        ylim = (-2.7, 1.2)
+    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
+    plt.xticks(q)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile (%)', fontsize=14)
+    plt.ylim(ylim[0], ylim[1])
 
     plt.tight_layout()
 
@@ -1763,14 +1818,16 @@ df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = models_coeff_ci_pval(decile_mode
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = models_coeff_ci_pval(decile_models_m)
 
 # multitest correction using Benjamini-Yekuteli
-for coeff in df_pval_f.columns:
-    _, df_pval_f[coeff], _, _ = multipletests(df_pval_f[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
-for coeff in df_pval_f.columns:
-    _, df_pval_m[coeff], _, _ = multipletests(df_pval_m[coeff], method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m), columns=df_coeff_m.columns)
+df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
 df_concat = pd.DataFrame()
@@ -1785,81 +1842,130 @@ df_concat.to_csv('/tmp/foo.csv')
 
 if SAVEFIG:
     plt.clf()
-    plt.gcf().set_size_inches([6.4, 7.6])
+    plt.gcf().set_size_inches([6.4, 10.13])
     q = np.array(deciles) * 100
 
-    plt.subplot(3,2,1)
+    plt.subplot(4,2,1)
+    if depot == 'gwat':
+        ylim = (-0.3, 20.30)
+    elif depot == 'sqwat':
+        ylim = (-0.3, 11)
+    plot_model_coeff(q, df_coeff_f['Intercept'] * 1e-3,
+                     df_ci_lo_f['Intercept'] * 1e-3,
+                     df_ci_hi_f['Intercept'] * 1e-3,
+                     df_pval_f['Intercept'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['Intercept'])
+    plt.title('Female', fontsize=14)
+    plt.ylabel(r'Intercept $(10^3\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.ylim(ylim[0], ylim[1])
+
+    plt.subplot(4,2,2)
+    if depot == 'gwat':
+        ylim = (-0.3, 20.30)
+    elif depot == 'sqwat':
+        ylim = (-0.3, 11)
+    plot_model_coeff(q, df_coeff_m['Intercept'] * 1e-3,
+                     df_ci_lo_m['Intercept'] * 1e-3,
+                     df_ci_hi_m['Intercept'] * 1e-3,
+                     df_pval_m['Intercept'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['Intercept'])
+    plt.title('Male', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.ylim(ylim[0], ylim[1])
+
+    plt.subplot(4,2,3)
+    if depot == 'gwat':
+        ylim = (-4.12, 10.30)
+    elif depot == 'sqwat':
+        ylim = (-0.62, 6.18)
     plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
-                     df_pval_f['C(ko_parent)[T.MAT]'])
+                     df_pval_f['C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['C(ko_parent)[T.MAT]'])
     plt.title('Female', fontsize=14)
     plt.ylabel(r'$\beta_{parent}\ (10^3\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-4.12, 10.30)
-    elif depot == 'sqwat':
-        plt.ylim(-0.62, 6.18)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(3,2,2)
+    plt.subplot(4,2,4)
+    if depot == 'gwat':
+        ylim = (-4.12, 10.30)
+    elif depot == 'sqwat':
+        ylim = (-0.62, 6.18)
     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
-                     df_pval_m['C(ko_parent)[T.MAT]'])
+                     df_pval_m['C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['C(ko_parent)[T.MAT]'])
     plt.title('Male', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-4.12, 10.30)
-    elif depot == 'sqwat':
-        plt.ylim(-0.62, 6.18)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(3,2,3)
-    plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-6,
-                     df_ci_lo_f['DW_BW'] * 1e-6,
-                     df_ci_hi_f['DW_BW'] * 1e-6,
-                     df_pval_f['DW_BW'])
-    plt.ylabel(r'$\beta_{DW/BW}\ (10^6\ \mu m^2)$', fontsize=14)
+    plt.subplot(4,2,5)
+    if depot == 'gwat':
+        ylim = (-0.41, 2.3)
+    elif depot == 'sqwat':
+        ylim = (-0.41, 2.7)
+    plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-5,
+                     df_ci_lo_f['DW_BW'] * 1e-5,
+                     df_ci_hi_f['DW_BW'] * 1e-5,
+                     df_pval_f['DW_BW'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['DW_BW'])
+    plt.ylabel(r'$\beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-0.041, 0.23)
-    elif depot == 'sqwat':
-        plt.ylim(-0.041, 0.27)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(3,2,4)
-    plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-6,
-                     df_ci_lo_m['DW_BW'] * 1e-6,
-                     df_ci_hi_m['DW_BW'] * 1e-6,
-                     df_pval_m['DW_BW'])
+    plt.subplot(4,2,6)
+    if depot == 'gwat':
+        ylim = (-0.41, 2.3)
+    elif depot == 'sqwat':
+        ylim = (-0.41, 2.7)
+    plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-5,
+                     df_ci_lo_m['DW_BW'] * 1e-5,
+                     df_ci_hi_m['DW_BW'] * 1e-5,
+                     df_pval_m['DW_BW'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['DW_BW'])
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-0.041, 0.23)
-    elif depot == 'sqwat':
-        plt.ylim(-0.041, 0.27)
+    plt.ylim(ylim[0], ylim[1])
 
-    plt.subplot(3,2,5)
-    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
-    plt.ylabel(r'$\beta_{DW/BW \cdot parent}\ (10^6\ \mu m^2)$', fontsize=14)
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Quantile (%)', fontsize=14)
+    plt.subplot(4,2,7)
     if depot == 'gwat':
-        plt.ylim(-0.35, 0.23)
+        ylim = (-3.5, 2.3)
     elif depot == 'sqwat':
-        plt.ylim(-0.37, 0.16)
-
-    plt.subplot(3,2,6)
-    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-6,
-                     df_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
+        ylim = (-3.7, 1.6)
+    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
+    plt.ylabel(r'$\beta_{DW/BW \cdot parent}\ (10^5\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
+    plt.ylim(ylim[0], ylim[1])
+
+    plt.subplot(4,2,8)
     if depot == 'gwat':
-        plt.ylim(-0.35, 0.23)
+        ylim = (-3.5, 2.3)
     elif depot == 'sqwat':
-        plt.ylim(-0.37, 0.16)
+        ylim = (-3.7, 1.6)
+    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+                     df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
+                     ylim=ylim,
+                     df_corrected_pval=df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Quantile (%)', fontsize=14)
+    plt.ylim(ylim[0], ylim[1])
 
     plt.tight_layout()
 
@@ -2039,7 +2145,7 @@ if DEBUG:
     xticks = [5, 10, 20, 30, 40, 50, 60]
     plt.tick_params(labelsize=14)
     plt.xticks(xticks, labels=['{0:.0f}'.format(x) for x in xticks])
-    plt.xlabel('DW / BW (g / kg)', fontsize=14)
+    plt.xlabel('DW / BW (mg / g)', fontsize=14)
     plt.ylabel('Area ($10^3\ \mu m^2$)', fontsize=14)
     plt.title('Male PAT')
     plt.tight_layout()
@@ -2061,16 +2167,20 @@ if DEBUG:
     xticks = [5, 10, 20, 30, 40, 50, 60]
     plt.tick_params(labelsize=14)
     plt.xticks(xticks, labels=['{0:.0f}'.format(x) for x in xticks])
-    plt.xlabel('DW / BW (g / kg)', fontsize=14)
+    plt.xlabel('DW / BW (mg / g)', fontsize=14)
     plt.ylabel('')
     plt.title('Male MAT')
     plt.tight_layout()
 
     if depot == 'gwat':
-        plt.suptitle('Female gonadal', fontsize=14)
+        plt.suptitle('Gonadal', fontsize=14)
     elif depot == 'sqwat':
-        plt.suptitle('Female subcutaneous', fontsize=14)
+        plt.suptitle('Subcutaneous', fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_quartile_dw_bw_quantreg_boxplots_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_quartile_dw_bw_quantreg_boxplots_' + depot + '.svg'))
+
 
 # 0.1 , 0.2, ..., 0.9
 deciles_idx = list(range(2, 20, 2))
@@ -2114,15 +2224,42 @@ df_concat.to_csv('/tmp/foo.csv')
 
 if DEBUG:
     plt.clf()
-    plt.gcf().set_size_inches([6.4, 7.6])
+    plt.gcf().set_size_inches([6.4, 10.13])
     q = np.array(deciles) * 100
 
-    plt.subplot(3,2,1)
+    plt.subplot(4,2,1)
+    plot_model_coeff(q, df_coeff_f['Intercept'] * 1e-3,
+                     df_ci_lo_f['Intercept'] * 1e-3,
+                     df_ci_hi_f['Intercept'] * 1e-3,
+                     df_pval_f['Intercept'],
+                     df_corrected_pval=df_corrected_pval_f['Intercept'])
+    plt.title('Female', fontsize=14)
+    plt.ylabel(r'Intercept $(10^3\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-1, 20)
+    elif depot == 'sqwat':
+        plt.ylim(-.5, 4)
+
+    plt.subplot(4,2,2)
+    plot_model_coeff(q, df_coeff_m['Intercept'] * 1e-3,
+                     df_ci_lo_m['Intercept'] * 1e-3,
+                     df_ci_hi_m['Intercept'] * 1e-3,
+                     df_pval_m['Intercept'],
+                     df_corrected_pval=df_corrected_pval_f['Intercept'])
+    plt.title('Male', fontsize=14)
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(-1, 20)
+    elif depot == 'sqwat':
+        plt.ylim(-.5, 4)
+
+    plt.subplot(4,2,3)
     plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_f['C(ko_parent)[T.MAT]'],
-                     df_corrected_pval_f['C(ko_parent)[T.MAT]'])
+                     df_corrected_pval=df_corrected_pval_f['C(ko_parent)[T.MAT]'])
     plt.title('Female', fontsize=14)
     plt.ylabel(r'$\beta_{parent}\ (10^3\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
@@ -2131,12 +2268,12 @@ if DEBUG:
     elif depot == 'sqwat':
         plt.ylim(-.5, 4)
 
-    plt.subplot(3,2,2)
+    plt.subplot(4,2,4)
     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_m['C(ko_parent)[T.MAT]'],
-                     df_corrected_pval_m['C(ko_parent)[T.MAT]'])
+                     df_corrected_pval=df_corrected_pval_m['C(ko_parent)[T.MAT]'])
     plt.title('Male', fontsize=14)
     plt.tick_params(labelsize=14)
     if depot == 'gwat':
@@ -2144,55 +2281,55 @@ if DEBUG:
     elif depot == 'sqwat':
         plt.ylim(-.5, 4)
 
-    plt.subplot(3,2,3)
+    plt.subplot(4,2,5)
     plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-5,
                      df_ci_lo_f['DW_BW'] * 1e-5,
                      df_ci_hi_f['DW_BW'] * 1e-5,
                      df_pval_f['DW_BW'],
-                     df_corrected_pval_f['DW_BW'])
+                     df_corrected_pval=df_corrected_pval_f['DW_BW'])
     plt.ylabel(r'$\beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
     if depot == 'gwat':
-        plt.ylim(-.10, 1.80)
+        plt.ylim(-.10, 2.0)
     elif depot == 'sqwat':
         plt.ylim(-0.1, 1.75)
 
-    plt.subplot(3,2,4)
+    plt.subplot(4,2,6)
     plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-5,
                      df_ci_lo_m['DW_BW'] * 1e-5,
                      df_ci_hi_m['DW_BW'] * 1e-5,
                      df_pval_m['DW_BW'],
-                     df_corrected_pval_m['DW_BW'])
+                     df_corrected_pval=df_corrected_pval_m['DW_BW'])
     plt.tick_params(labelsize=14)
     if depot == 'gwat':
-        plt.ylim(-.10, 1.80)
+        plt.ylim(-.10, 2.0)
     elif depot == 'sqwat':
         plt.ylim(-0.1, 1.75)
 
-    plt.subplot(3,2,5)
+    plt.subplot(4,2,7)
     plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
-                     df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
+                     df_corrected_pval=df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
     plt.ylabel(r'$\beta_{DW/BW \cdot parent}\ (10^5\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
     if depot == 'gwat':
-        plt.ylim(-2.15, .60)
+        plt.ylim(-2.15, 1.0)
     elif depot == 'sqwat':
         plt.ylim(-2.1, 1)
 
-    plt.subplot(3,2,6)
+    plt.subplot(4,2,8)
     plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
-                     df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
+                     df_corrected_pval=df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
     plt.tick_params(labelsize=14)
     plt.xlabel('Quantile (%)', fontsize=14)
     if depot == 'gwat':
-        plt.ylim(-2.15, .60)
+        plt.ylim(-2.15, 1.0)
     elif depot == 'sqwat':
         plt.ylim(-2.1, 1)
 
@@ -2203,6 +2340,9 @@ if DEBUG:
     elif depot == 'sqwat':
         plt.suptitle('Subcutaneous', fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_coeffs_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_coeffs_' + depot + '.svg'))
 
 if DEBUG:
     plt.clf()
@@ -2253,3 +2393,6 @@ if DEBUG:
     elif depot == 'sqwat':
         plt.suptitle('Subcutaneous', fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_slope_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_slope_' + depot + '.svg'))
