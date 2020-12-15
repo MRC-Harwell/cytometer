@@ -450,47 +450,51 @@ df_all['genotype'] = df_all['genotype'].astype(
 
 ## auxiliary functions
 
-def models_coeff_ci_pval(models):
-    df_coeff = pd.DataFrame()
-    df_ci_lo = pd.DataFrame()
-    df_ci_hi = pd.DataFrame()
-    df_pval = pd.DataFrame()
+def models_coeff_ci_pval(models, extra_hypotheses=None):
+    if extra_hypotheses is not None:
+        hypotheses_labels = extra_hypotheses.replace(' ', '').split(',')
+    df_coeff_tot = pd.DataFrame()
+    df_ci_lo_tot = pd.DataFrame()
+    df_ci_hi_tot = pd.DataFrame()
+    df_pval_tot = pd.DataFrame()
     for model in models:
         # values of coefficients
-        df = pd.DataFrame(data=model.params).transpose()
-        df_coeff = pd.concat((df_coeff, df))
+        df_coeff = pd.DataFrame(data=model.params).transpose()
         # values of coefficient's confidence interval
-        df = pd.DataFrame(data=model.conf_int()[0]).transpose()
-        df_ci_lo = pd.concat((df_ci_lo, df))
-        df = pd.DataFrame(data=model.conf_int()[1]).transpose()
-        df_ci_hi = pd.concat((df_ci_hi, df))
+        df_ci_lo = pd.DataFrame(data=model.conf_int()[0]).transpose()
+        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose().reset_index()
         # p-values
-        df = pd.DataFrame(data=model.pvalues).transpose()
-        df_pval = pd.concat((df_pval, df))
-    df_coeff = df_coeff.reset_index()
-    df_ci_lo = df_ci_lo.reset_index()
-    df_ci_hi = df_ci_hi.reset_index()
-    df_pval = df_pval.reset_index()
-    df_coeff.drop(labels='index', axis='columns', inplace=True)
-    df_ci_lo.drop(labels='index', axis='columns', inplace=True)
-    df_ci_hi.drop(labels='index', axis='columns', inplace=True)
-    df_pval.drop(labels='index', axis='columns', inplace=True)
-    return df_coeff, df_ci_lo, df_ci_hi, df_pval
+        df_pval = pd.DataFrame(data=model.pvalues).transpose()
+        # extra p-values
+        if extra_hypotheses is not None:
+            extra_tests = model.t_test(extra_hypotheses)
 
-def linear_function_parameters_from_dw_models(models):
-    a_pat = []
-    b_pat = []
-    a_mat = []
-    b_mat = []
-    for model in models:
-        if set(['Intercept', 'C(ko_parent)[T.MAT]', 'DW_BW', 'DW_BW:C(ko_parent)[T.MAT]']) != set(model.params.index):
-            raise TypeError('Model does not have expected variables')
-        a_pat += [model.params['Intercept'],]
-        a_mat += [model.params['Intercept'] + model.params['C(ko_parent)[T.MAT]'],]
-        b_pat += [model.params['DW_BW'],]
-        b_mat += [model.params['DW_BW'] + model.params['DW_BW:C(ko_parent)[T.MAT]'],]
-    df = pd.DataFrame({'a_pat':a_pat, 'a_mat':a_mat, 'b_pat':b_pat, 'b_mat':b_mat})
-    return df
+            df = pd.DataFrame(data=[extra_tests.effect], columns=hypotheses_labels)
+            df_coeff = pd.concat([df_coeff, df], axis='columns')
+
+            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 0]], columns=hypotheses_labels)
+            df_ci_lo = pd.concat([df_ci_lo, df], axis='columns')
+
+            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 1]], columns=hypotheses_labels)
+            df_ci_hi = pd.concat([df_ci_hi, df], axis='columns')
+
+            df = pd.DataFrame(data=[extra_tests.pvalue], columns=hypotheses_labels)
+            df_pval = pd.concat([df_pval, df], axis='columns')
+
+        df_coeff_tot = pd.concat((df_coeff_tot, df_coeff))
+        df_ci_lo_tot = pd.concat((df_ci_lo_tot, df_ci_lo))
+        df_ci_hi_tot = pd.concat((df_ci_hi_tot, df_ci_hi))
+        df_pval_tot = pd.concat((df_pval_tot, df_pval))
+
+    df_coeff_tot = df_coeff_tot.reset_index()
+    df_ci_lo_tot = df_ci_lo_tot.reset_index()
+    df_ci_hi_tot = df_ci_hi_tot.reset_index()
+    df_pval_tot = df_pval_tot.reset_index()
+    df_coeff_tot.drop(labels='index', axis='columns', inplace=True)
+    df_ci_lo_tot.drop(labels='index', axis='columns', inplace=True)
+    df_ci_hi_tot.drop(labels='index', axis='columns', inplace=True)
+    df_pval_tot.drop(labels='index', axis='columns', inplace=True)
+    return df_coeff_tot, df_ci_lo_tot, df_ci_hi_tot, df_pval_tot
 
 def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sy=1.0):
     if np.std(df['BW'] / df['BW__']) > 1e-8:
@@ -539,36 +543,65 @@ def pval_to_asterisk(pval, brackets=True):
     else:
         return np.vectorize(translate)(pval, brackets)
 
-def plot_pvals(pvals, xs, ys, ylim=None, corrected_pvals=None):
+def plot_pvals(pvals, xs, ys, ylim=None, corrected_pvals=None, df_pval_location='above', color=None):
     if ylim is None:
         ylim = plt.gca().get_ylim()
-    offset = (np.max(ylim) - np.min(ylim)) * 0.075  # vertical offset between data point and bottom asterisk
+    offset = (np.max(ylim) - np.min(ylim)) / 40  # vertical offset between data point and bottom asterisk
     if corrected_pvals is None:
-        for pval, x, y in zip(pvals, xs, ys):
-            str = pval_to_asterisk(pval, brackets=False)
-            if pval > 0.05:
-                plt.text(x, y + offset, str, ha='center')
-            else:
-                plt.text(x, y + offset, str, ha='center', rotation=90)
-    else:
-        for pval, corrected_pval, x, y in zip(pvals, corrected_pvals, xs, ys):
-            str = pval_to_asterisk(pval, brackets=False)
-            if pval > 0.05:
-                plt.text(x, y + offset, str, ha='center')
-            else:
-                plt.text(x, y + offset, str, ha='center', rotation=90)
-            str = pval_to_asterisk(corrected_pval, brackets=False)
-            if str == 'ns':  # we don't plot 'ns' in corrected p-values, to avoid having asterisks overlapped by 'ns'
-                str = ''
-            if pval > 0.05:
-                plt.text(x, y + offset, str, ha='center', color='r')
-            else:
-                plt.text(x, y + offset, str, ha='center', rotation=90, color='r')
+        corrected_pvals = np.ones(shape=np.array(pvals).shape, dtype=np.float32)
+    h = []
+    for pval, corrected_pval, x, y in zip(pvals, corrected_pvals, xs, ys):
+        str = pval_to_asterisk(pval, brackets=False).replace('*', '∗')
+        corrected_str = pval_to_asterisk(corrected_pval, brackets=False).replace('*', '∗')
+        if corrected_str == 'ns':  # we don't plot 'ns' in corrected p-values, to avoid having asterisks overlapped by 'ns'
+            corrected_str = ''
+        str = str.replace(corrected_str, '⊛'*len(corrected_str), 1)
+        if pval > 0.05:
+            rotation = 0
+        else:
+            rotation = 90
+        if df_pval_location == 'above':
+            y += offset
+            va = 'bottom'
+        else:
+            y -= 2*offset
+            va = 'top'
+        h.append(plt.text(x, y + offset, str, ha='center', va=va, color=color, rotation=90))
+    return h
 
-def plot_model_coeff(q, df_coeff, df_ci_lo, df_ci_hi, df_pval, ylim=None, df_corrected_pval=None):
-    plt.plot(q, df_coeff)
-    plt.fill_between(q, df_ci_lo, df_ci_hi, alpha=0.5)
-    plot_pvals(df_pval, q, df_coeff, corrected_pvals=df_corrected_pval, ylim=ylim)
+def plot_model_coeff(x, df_coeff, df_ci_lo, df_ci_hi, df_pval, ylim=None, df_corrected_pval=None, color=None,
+                     df_pval_location='above', label=None):
+    if color is None:
+        # next colour to be used, according to the colour iterator
+        color = next(plt.gca()._get_lines.prop_cycler)['color']
+    plt.plot(x, df_coeff, color=color, label=label)
+    plt.fill_between(x, df_ci_lo, df_ci_hi, alpha=0.5, color=color)
+    h = plot_pvals(df_pval, x, df_ci_hi, corrected_pvals=df_corrected_pval, ylim=ylim, color=color,
+                   df_pval_location=df_pval_location)
+    return h
+
+#@@@@
+def plot_model_coeff_compare2(x, df_coeff_1, df_ci_lo_1, df_ci_hi_1, df_pval_1,
+                              df_coeff_2, df_ci_lo_2, df_ci_hi_2, df_pval_2,
+                              ylim=None,
+                              df_corrected_pval_1=None, df_corrected_pval_2=None,
+                              color_1=None, color_2=None,
+                              label_1=None, label_2=None):
+    if color_1 is None:
+        # next colour to be used, according to the colour iterator
+        color_1 = next(plt.gca()._get_lines.prop_cycler)['color']
+    if color_2 is None:
+        color_2 = next(plt.gca()._get_lines.prop_cycler)['color']
+    dx = (np.max(x) - np.min(x)) / 90
+    plt.plot(x, df_coeff_1, color=color_1, label=label_1)
+    plt.plot(x, df_coeff_2, color=color_2, label=label_2)
+    plt.fill_between(x, df_ci_lo_1, df_ci_hi_1, alpha=0.5, color=color_1)
+    plt.fill_between(x, df_ci_lo_2, df_ci_hi_2, alpha=0.5, color=color_2)
+    y = np.maximum(df_ci_hi_1, df_ci_hi_2)
+    h1 = plot_pvals(df_pval_1, x - dx, y, corrected_pvals=df_corrected_pval_1, ylim=ylim, color=color_1)
+    h2 = plot_pvals(df_pval_2, x + dx, y, corrected_pvals=df_corrected_pval_2, ylim=ylim, color=color_2)
+
+    return h1, h2
 
 def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected'):
 
@@ -1484,16 +1517,17 @@ df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), column
 df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
 df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
-# save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
 # plot
 if SAVEFIG:
@@ -1829,16 +1863,17 @@ df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), column
 df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
 df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
-# save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
 if SAVEFIG:
     plt.clf()
@@ -2065,16 +2100,17 @@ df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), column
 df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
 df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
-# save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col], df_corrected_asterisk_f[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col], df_corrected_asterisk_m[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
 # plot
 if DEBUG:
@@ -2195,9 +2231,11 @@ decile_models_m = [model_m.fit(q=d) for d in deciles]
 print(decile_models_f[4].summary())
 print(decile_models_m[4].summary())
 
-# extract coefficients, errors and p-values from quartile models
-df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = models_coeff_ci_pval(decile_models_f)
-df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = models_coeff_ci_pval(decile_models_m)
+# extract coefficients, errors and p-values from quantile models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+    models_coeff_ci_pval(decile_models_f, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+    models_coeff_ci_pval(decile_models_m, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
@@ -2211,127 +2249,170 @@ df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), column
 df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
 df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
-# save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
-df_concat = pd.DataFrame()
-for col in df_coeff_f.columns:
-    df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
-df_concat.to_csv('/tmp/foo.csv')
+    df_concat = pd.DataFrame()
+    for col in df_coeff_f.columns:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
+    df_concat.to_csv('/tmp/foo.csv')
 
-if DEBUG:
+if DEBUG:  # @@@
     plt.clf()
-    plt.gcf().set_size_inches([6.4, 10.13])
+    plt.gcf().set_size_inches([9.6, 9.5])
     q = np.array(deciles) * 100
 
     plt.subplot(4,2,1)
-    plot_model_coeff(q, df_coeff_f['Intercept'] * 1e-3,
-                     df_ci_lo_f['Intercept'] * 1e-3,
-                     df_ci_hi_f['Intercept'] * 1e-3,
-                     df_pval_f['Intercept'],
-                     df_corrected_pval=df_corrected_pval_f['Intercept'])
+    if depot == 'gwat':
+        ylim = (-1, 30)
+    elif depot == 'sqwat':
+        ylim = (-1, 13)
+    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
+                              df_ci_lo_f['Intercept'] * 1e-3,
+                              df_ci_hi_f['Intercept'] * 1e-3,
+                              df_pval_f['Intercept'],
+                              df_coeff_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_lo_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_hi_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_pval_f['Intercept+C(ko_parent)[T.MAT]'],
+                              df_corrected_pval_1=df_corrected_pval_f['Intercept'],
+                              df_corrected_pval_2=df_corrected_pval_f['Intercept+C(ko_parent)[T.MAT]'],
+                              ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
     plt.title('Female', fontsize=14)
     plt.ylabel(r'Intercept $(10^3\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-1, 20)
-    elif depot == 'sqwat':
-        plt.ylim(-1, 13)
+    plt.legend(fontsize=12, loc='upper left')
+    plt.ylim(ylim)
 
     plt.subplot(4,2,2)
-    plot_model_coeff(q, df_coeff_m['Intercept'] * 1e-3,
-                     df_ci_lo_m['Intercept'] * 1e-3,
-                     df_ci_hi_m['Intercept'] * 1e-3,
-                     df_pval_m['Intercept'],
-                     df_corrected_pval=df_corrected_pval_f['Intercept'])
+    if depot == 'gwat':
+        ylim = (-1, 30)
+    elif depot == 'sqwat':
+        ylim = (-1, 13)
+    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
+                              df_ci_lo_m['Intercept'] * 1e-3,
+                              df_ci_hi_m['Intercept'] * 1e-3,
+                              df_pval_m['Intercept'],
+                              df_coeff_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_lo_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_hi_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_pval_m['Intercept+C(ko_parent)[T.MAT]'],
+                              df_corrected_pval_1=df_corrected_pval_m['Intercept'],
+                              df_corrected_pval_2=df_corrected_pval_m['Intercept+C(ko_parent)[T.MAT]'],
+                              ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
     plt.title('Male', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-1, 20)
-    elif depot == 'sqwat':
-        plt.ylim(-1, 13)
+    plt.legend(fontsize=12, loc='upper left')
+    plt.ylim(ylim)
 
     plt.subplot(4,2,3)
+    if depot == 'gwat':
+        ylim = (-0.5, 9)
+    elif depot == 'sqwat':
+        ylim = (-1, 13)
     plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_f['C(ko_parent)[T.MAT]'],
-                     df_corrected_pval=df_corrected_pval_f['C(ko_parent)[T.MAT]'])
-    plt.title('Female', fontsize=14)
-    plt.ylabel(r'$\beta_{parent}\ (10^3\ \mu m^2)$', fontsize=14)
+                     df_corrected_pval=df_corrected_pval_f['C(ko_parent)[T.MAT]'],
+                     ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+    plt.ylabel(r'$\Delta$ Intercept $(10^3\ \mu m^2)$', fontsize=14)
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-1, 10.5)
-    elif depot == 'sqwat':
-        plt.ylim(-.5, 5)
+    plt.legend(fontsize=12, loc='upper left')
+    plt.ylim(ylim)
 
     plt.subplot(4,2,4)
+    if depot == 'gwat':
+        ylim = (-0.5, 9)
+    elif depot == 'sqwat':
+        ylim = (-1, 13)
     plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_m['C(ko_parent)[T.MAT]'],
-                     df_corrected_pval=df_corrected_pval_m['C(ko_parent)[T.MAT]'])
-    plt.title('Male', fontsize=14)
+                     df_corrected_pval=df_corrected_pval_m['C(ko_parent)[T.MAT]'],
+                     ylim=ylim, color='k', label='PAT$\mapsto$MAT')
     plt.tick_params(labelsize=14)
-    if depot == 'gwat':
-        plt.ylim(-1, 10.5)
-    elif depot == 'sqwat':
-        plt.ylim(-.5, 5)
+    plt.legend(fontsize=12, loc='upper left')
+    plt.ylim(ylim)
 
     plt.subplot(4,2,5)
-    plot_model_coeff(q, df_coeff_f['DW_BW'] * 1e-5,
-                     df_ci_lo_f['DW_BW'] * 1e-5,
-                     df_ci_hi_f['DW_BW'] * 1e-5,
-                     df_pval_f['DW_BW'],
-                     df_corrected_pval=df_corrected_pval_f['DW_BW'])
-    plt.ylabel(r'$\beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
-    plt.tick_params(labelsize=14)
     if depot == 'gwat':
-        plt.ylim(-.10, 2.0)
+        ylim = (-170, 300)
     elif depot == 'sqwat':
-        plt.ylim(-0.1, 2)
+        ylim = (-1, 13)
+    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-3,
+                              df_ci_lo_f['DW_BW'] * 1e-3,
+                              df_ci_hi_f['DW_BW'] * 1e-3,
+                              df_pval_f['DW_BW'],
+                              df_coeff_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_lo_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_hi_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_pval_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+                              df_corrected_pval_1=df_corrected_pval_f['DW_BW'],
+                              df_corrected_pval_2=df_corrected_pval_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+                              ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+    plt.ylabel(r'$\beta_{parent} (10^3\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.legend(fontsize=12, loc='lower right')
+    plt.ylim(ylim)
 
     plt.subplot(4,2,6)
-    plot_model_coeff(q, df_coeff_m['DW_BW'] * 1e-5,
-                     df_ci_lo_m['DW_BW'] * 1e-5,
-                     df_ci_hi_m['DW_BW'] * 1e-5,
-                     df_pval_m['DW_BW'],
-                     df_corrected_pval=df_corrected_pval_m['DW_BW'])
-    plt.tick_params(labelsize=14)
     if depot == 'gwat':
-        plt.ylim(-.10, 2.0)
+        ylim = (-170, 300)
     elif depot == 'sqwat':
-        plt.ylim(-0.1, 2)
+        ylim = (-1, 13)
+    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-3,
+                              df_ci_lo_m['DW_BW'] * 1e-3,
+                              df_ci_hi_m['DW_BW'] * 1e-3,
+                              df_pval_m['DW_BW'],
+                              df_coeff_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_lo_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_ci_hi_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                              df_pval_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+                              df_corrected_pval_1=df_corrected_pval_m['DW_BW'],
+                              df_corrected_pval_2=df_corrected_pval_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+                              ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+    plt.tick_params(labelsize=14)
+    plt.legend(fontsize=12, loc='lower left')
+    plt.ylim(ylim)
 
-    plt.subplot(4,2,7)
-    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
-                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
-                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    plt.subplot(4, 2, 7)
+    if depot == 'gwat':
+        ylim = (-210, 120)
+    elif depot == 'sqwat':
+        ylim = (-1, 13)
+    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
-                     df_corrected_pval=df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'])
-    plt.ylabel(r'$\beta_{DW/BW \cdot parent}\ (10^5\ \mu m^2)$', fontsize=14)
-    plt.tick_params(labelsize=14)
+                     df_corrected_pval=df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
+                     ylim=ylim, color='k', label='PAT$\mapsto$MAT')
     plt.xlabel('Quantile (%)', fontsize=14)
-    if depot == 'gwat':
-        plt.ylim(-2.15, 1.0)
-    elif depot == 'sqwat':
-        plt.ylim(-2.1, 1.25)
+    plt.ylabel(r'$\Delta \beta_{parent}\ (10^3\ \mu m^2)$', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.legend(fontsize=12, loc='lower left')
+    plt.ylim(ylim)
 
-    plt.subplot(4,2,8)
-    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
-                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
-                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    plt.subplot(4, 2, 8)
+    if depot == 'gwat':
+        ylim = (-210, 120)
+    elif depot == 'sqwat':
+        ylim = (-1, 13)
+    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
+                     df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
-                     df_corrected_pval=df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'])
-    plt.tick_params(labelsize=14)
+                     df_corrected_pval=df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
+                     ylim=ylim, color='k', label='PAT$\mapsto$MAT')
     plt.xlabel('Quantile (%)', fontsize=14)
-    if depot == 'gwat':
-        plt.ylim(-2.15, 1.0)
-    elif depot == 'sqwat':
-        plt.ylim(-2.1, 1.25)
+    plt.tick_params(labelsize=14)
+    plt.legend(fontsize=12, loc='lower left')
+    plt.ylim(ylim)
 
     plt.tight_layout()
 
@@ -2341,58 +2422,5 @@ if DEBUG:
         plt.suptitle('Subcutaneous', fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_coeffs_' + depot + '.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_coeffs_' + depot + '.svg'))
-
-if DEBUG:
-    plt.clf()
-    plt.gcf().set_size_inches([6.4, 6.1])
-    q = np.array(deciles) * 100
-
-    # Female
-    df = linear_function_parameters_from_dw_models(decile_models_f)
-
-    plt.subplot(221)
-    plt.plot(q, df['a_pat'] * 1e-3, 'C0', linewidth=3, label='PAT')
-    plt.plot(q, df['a_mat'] * 1e-3, 'C1', linewidth=3, label='MAT')
-    plt.tick_params(labelsize=14)
-    plt.ylabel('Constant ($10^3\ \mu m^2$)', fontsize=14)
-    plt.legend(fontsize=12)
-    plt.title('Female', fontsize=14)
-    plt.ylim(-1, 20)
-
-    plt.subplot(223)
-    plt.plot(q, df['b_pat'] * 1e-5, 'C0', linewidth=3, label='PAT')
-    plt.plot(q, df['b_mat'] * 1e-5, 'C1', linewidth=3, label='MAT')
-    plt.tick_params(labelsize=14)
-    plt.ylabel('Slope ($10^5\ \mu m^2$)', fontsize=14)
-    plt.xlabel('Quantile (%)', fontsize=14)
-    plt.ylim(-1.4, 1.4)
-
-    # Male
-    df = linear_function_parameters_from_dw_models(decile_models_m)
-
-    plt.subplot(222)
-    plt.plot(q, df['a_pat'] * 1e-3, 'C0', linewidth=3, label='PAT')
-    plt.plot(q, df['a_mat'] * 1e-3, 'C1', linewidth=3, label='MAT')
-    plt.tick_params(labelsize=14)
-    plt.title('Male', fontsize=14)
-    plt.ylim(-1, 20)
-
-    plt.subplot(224)
-    plt.plot(q, df['b_pat'] * 1e-5, 'C0', linewidth=3, label='PAT')
-    plt.plot(q, df['b_mat'] * 1e-5, 'C1', linewidth=3, label='MAT')
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Quantile (%)', fontsize=14)
-    plt.ylim(-1.4, 1.4)
-
-    plt.tight_layout()
-
-    if depot == 'gwat':
-        plt.suptitle('Gonadal', fontsize=14)
-    elif depot == 'sqwat':
-        plt.suptitle('Subcutaneous', fontsize=14)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_slope_' + depot + '.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_slope_' + depot + '.svg'))
+    # plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_coeffs_' + depot + '.png'))
+    # plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_quantreg_coeffs_' + depot + '.svg'))
