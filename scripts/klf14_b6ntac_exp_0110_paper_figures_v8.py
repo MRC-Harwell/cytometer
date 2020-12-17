@@ -851,6 +851,42 @@ bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo
 print(bw_model_f.summary())
 print(bw_model_m.summary())
 
+# extract coefficients, errors and p-values from models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+    models_coeff_ci_pval([bw_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+    models_coeff_ci_pval([bw_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+
+# convert p-values to asterisks
+df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+            'cull_age__', 'cull_age__+C(ko_parent)[T.MAT]:cull_age__', 'C(ko_parent)[T.MAT]:cull_age__']
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+
 
 if SAVEFIG:
     # plot body weight vs. age of culling
@@ -949,6 +985,41 @@ print(gwat_model_m.summary())
 print(sqwat_model_f.summary())
 print(sqwat_model_m.summary())
 
+# extract coefficients, errors and p-values from models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+    models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+    models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+
+# convert p-values to asterisks
+df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+            'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
 if SAVEFIG:
     plt.clf()
 
@@ -959,35 +1030,18 @@ if SAVEFIG:
     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
-    pval_bw = gwat_model_f.pvalues['BW__']
-    pval_mat = gwat_model_f.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                '\n' + \
-                '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    plt.text(0.05, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
+    # pval_bw = gwat_model_f.pvalues['BW__']
+    # pval_mat = gwat_model_f.pvalues['C(ko_parent)[T.MAT]']
+    # pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+    #             '\n' + \
+    #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+    # plt.text(0.05, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
     plt.title('Female', fontsize=14)
     plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
     plt.legend(loc='lower right')
-
-    plt.subplot(223)
-    df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
-    plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
-    df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
-    plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
-    plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
-    plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
-    pval_bw = sqwat_model_f.pvalues['BW__']
-    pval_mat = sqwat_model_f.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                '\n' + \
-                '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    plt.text(0.2, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Body weight (g)', fontsize=14)
-    plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
 
     plt.subplot(222)
     df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
@@ -996,15 +1050,35 @@ if SAVEFIG:
     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
-    pval_bw = gwat_model_m.pvalues['BW__']
-    pval_mat = gwat_model_m.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                '\n' + \
-                '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    plt.text(0.5, 0.25, pval_text, transform=plt.gca().transAxes, va='top', ha='center')
+    # pval_bw = gwat_model_m.pvalues['BW__']
+    # pval_mat = gwat_model_m.pvalues['C(ko_parent)[T.MAT]']
+    # pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+    #             '\n' + \
+    #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+    # plt.text(0.5, 0.25, pval_text, transform=plt.gca().transAxes, va='top', ha='center')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
+
+    plt.subplot(223)
+    df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
+    plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
+    df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
+    plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
+    plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
+    plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
+    # pval_bw = sqwat_model_f.pvalues['BW__']
+    # pval_mat = sqwat_model_f.pvalues['C(ko_parent)[T.MAT]']
+    # pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+    #             '\n' + \
+    #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+    # plt.text(0.2, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.tick_params(labelsize=14)
+    plt.ylim(0, 2.1)
+    plt.xlabel('Body weight (g)', fontsize=14)
+    plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
 
     plt.subplot(224)
     df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
@@ -1013,13 +1087,14 @@ if SAVEFIG:
     plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
-    pval_bw = sqwat_model_m.pvalues['BW__']
-    pval_mat = sqwat_model_m.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-                '\n' + \
-                '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    plt.text(0.2, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
+    # pval_bw = sqwat_model_m.pvalues['BW__']
+    # pval_mat = sqwat_model_m.pvalues['C(ko_parent)[T.MAT]']
+    # pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+    #             '\n' + \
+    #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+    # plt.text(0.2, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
 
@@ -1083,15 +1158,20 @@ df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, bra
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-    df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+            'DW_BW', 'DW_BW+DW_BW:C(ko_parent)[T.MAT]', 'DW_BW:C(ko_parent)[T.MAT]']
 
     df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
 
 # plot
 if SAVEFIG:
@@ -1453,15 +1533,20 @@ df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, bra
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-    df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+            'DW_BW', 'DW_BW+DW_BW:C(ko_parent)[T.MAT]', 'DW_BW:C(ko_parent)[T.MAT]']
 
     df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
 
 if SAVEFIG:
     plt.clf()
@@ -1711,15 +1796,20 @@ df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, bra
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-    df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col], df_corrected_asterisk_f[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+            'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
 
     df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col], df_corrected_asterisk_m[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
 
 # plot
 if DEBUG:
@@ -1860,15 +1950,20 @@ df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, bra
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-    df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+            'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
 
     df_concat = pd.DataFrame()
-    for col in df_coeff_f.columns:
-        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
-    df_concat.to_csv('/tmp/foo.csv')
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
 
 if DEBUG:
     plt.clf()
