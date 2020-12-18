@@ -1030,12 +1030,6 @@ if SAVEFIG:
     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
-    # pval_bw = gwat_model_f.pvalues['BW__']
-    # pval_mat = gwat_model_f.pvalues['C(ko_parent)[T.MAT]']
-    # pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-    #             '\n' + \
-    #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    # plt.text(0.05, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
@@ -1050,12 +1044,6 @@ if SAVEFIG:
     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
-    # pval_bw = gwat_model_m.pvalues['BW__']
-    # pval_mat = gwat_model_m.pvalues['C(ko_parent)[T.MAT]']
-    # pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-    #             '\n' + \
-    #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    # plt.text(0.5, 0.25, pval_text, transform=plt.gca().transAxes, va='top', ha='center')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
@@ -1068,12 +1056,6 @@ if SAVEFIG:
     plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
     plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
     plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
-    # pval_bw = sqwat_model_f.pvalues['BW__']
-    # pval_mat = sqwat_model_f.pvalues['C(ko_parent)[T.MAT]']
-    # pval_text = '$p_{BW}$=' + '{0:.2e}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-    #             '\n' + \
-    #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    # plt.text(0.2, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.tick_params(labelsize=14)
     plt.ylim(0, 2.1)
@@ -1087,12 +1069,6 @@ if SAVEFIG:
     plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
-    # pval_bw = sqwat_model_m.pvalues['BW__']
-    # pval_mat = sqwat_model_m.pvalues['C(ko_parent)[T.MAT]']
-    # pval_text = '$p_{BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
-    #             '\n' + \
-    #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
-    # plt.text(0.2, 0.95, pval_text, transform=plt.gca().transAxes, va='top')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
@@ -1779,8 +1755,10 @@ print(q50_model_m.summary())
 print(q75_model_m.summary())
 
 # extract coefficients, errors and p-values from quartile models
-df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = models_coeff_ci_pval([q25_model_f, q50_model_f, q75_model_f])
-df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m])
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+    models_coeff_ci_pval([q25_model_f, q50_model_f, q75_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+    models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
@@ -1797,7 +1775,7 @@ df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, bra
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
     cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
-            'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
+            'DW_BW', 'DW_BW+DW_BW:C(ko_parent)[T.MAT]', 'DW_BW:C(ko_parent)[T.MAT]']
 
     df_concat = pd.DataFrame()
     for col in cols:
@@ -1951,7 +1929,7 @@ df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, bra
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
     cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
-            'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
+            'DW_BW', 'DW_BW+DW_BW:C(ko_parent)[T.MAT]', 'DW_BW:C(ko_parent)[T.MAT]']
 
     df_concat = pd.DataFrame()
     for col in cols:
