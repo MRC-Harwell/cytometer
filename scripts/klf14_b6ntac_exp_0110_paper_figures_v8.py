@@ -1,6 +1,9 @@
 """
 Generate figures for the DeepCytometer paper for v8 of the pipeline.
 
+Here's the analysis for automatically segmented cells. Hand traced cells are analysed in
+klf14_b6ntac_exp_0109_pipeline_v8_validation.py.
+
 This script partly deprecates klf14_b6ntac_exp_0099_paper_figures_v7.py:
 * Some figures have been updated to have v8 of the pipeline in the paper.
 
