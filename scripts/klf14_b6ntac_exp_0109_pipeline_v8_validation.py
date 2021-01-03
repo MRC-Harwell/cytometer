@@ -133,6 +133,180 @@ for i_fold in range(n_folds):
 del i_fold
 
 ########################################################################################################################
+## Hand traced cells: Basic measures of total population
+########################################################################################################################
+
+import sklearn.neighbors, sklearn.model_selection
+import shapely
+import scipy.stats as stats
+
+# we use the same min and max area as we use in the pipeline for post-processing parameters, so that the histograms are
+# aligned
+min_area = 203 / 2  # (pix^2) smaller objects are rejected
+max_area = 44879 * 3  # (pix^2) larger objects are rejected
+
+xres_ref = 0.4538234626730202
+yres_ref = 0.4537822752643282
+min_area_um2 = min_area * xres_ref * yres_ref
+max_area_um2 = max_area * xres_ref * yres_ref
+
+# loop hand traced files and make a dataframe with the cell sizes
+df_all = pd.DataFrame()
+for i, file_svg in enumerate(file_svg_list):
+
+    print('File ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+    # load hand traced contours
+    cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                    minimum_npoints=3)
+
+    print('Cells: ' + str(len(cells)))
+
+    if (len(cells) == 0):
+        continue
+
+    # load training image
+    file_im = file_svg.replace('.svg', '.tif')
+    im = PIL.Image.open(file_im)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    im = np.array(im)
+
+    if DEBUG:
+        plt.clf()
+        plt.imshow(im)
+        for j in range(len(cells)):
+            cell = np.array(cells[j])
+            plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
+            plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
+
+    # compute cell areas
+    cell_areas = [shapely.geometry.Polygon(x).area * xres * yres for x in cells]
+
+    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
+                                                   values=cell_areas, values_tag='area',
+                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
+
+    # figure out what depot these cells belong to
+    # NOTE: this code is here only for completion, because there are no gonadal slides in the training dataset, only
+    # subcutaneous
+    aux = os.path.basename(file_svg).replace('KLF14-B6NTAC', '')
+    if 'B' in aux and 'C' in aux:
+        raise ValueError('Slice appears to be both gonadal and subcutaneous')
+    elif 'B' in aux:
+        depot = 'gwat'
+    elif 'C' in aux:
+        depot = 'sqwat'
+    else:
+        raise ValueError('Slice is neither gonadal nor subcutaneous')
+    df['depot'] = depot
+    df_all = df_all.append(df, ignore_index=True)
+
+
+print('Min cell size = ' + '{0:.1f}'.format(np.min(df_all['area'])) + ' um^2 = '
+      + '{0:.1f}'.format(np.min(df_all['area']) / xres_ref / yres_ref) + ' pixels')
+print('Max cell size = ' + '{0:.1f}'.format(np.max(df_all['area'])) + ' um^2 = '
+      + '{0:.1f}'.format(np.max(df_all['area']) / xres_ref / yres_ref) + ' pixels')
+
+if SAVE_FIGS:
+    # 1.32020052, 1.33581401, ..., 4.42728541, 4.4428989
+    log10_area_bin_edges = np.linspace(np.log10(min_area_um2), np.log10(max_area_um2), 201)
+    log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
+
+    plt.clf()
+
+    plt.subplot(221)
+    idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+        np.array(df_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'female PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    print('female PAT')
+    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
+    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
+    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+
+    plt.subplot(222)
+    idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+        np.array(df_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'female MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    print('female MAT')
+    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
+    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
+    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+
+    plt.subplot(223)
+    idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+        np.array(df_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.1, 'male PAT', fontsize=14, transform=plt.gca().transAxes, va='bottom', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    print('male PAT')
+    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
+    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
+    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+
+    plt.subplot(224)
+    idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+        np.array(df_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'male MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    print('male MAT')
+    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
+    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
+    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.svg'))
+
+
+########################################################################################################################
 ## Find matches between hand traced contours and pipeline segmentations
 ########################################################################################################################
 
@@ -313,40 +487,42 @@ def load_dataframe(dataframe_filename):
 df_auto_all = load_dataframe(dataframe_auto_filename)
 df_corrected_all = load_dataframe(dataframe_corrected_filename)
 
-plt.clf()
-bp = plt.boxplot((df_auto_all['ref_area'] / 1e3,
-                  df_auto_all['test_area'] / 1e3,
-                  df_corrected_all['test_area'] / 1e3),
-                 positions=[1, 2, 3], notch=True, labels=['Hand traced', 'Auto', 'Corrected'])
+if SAVE_FIGS:
 
-# points of interest from the boxplots
-bp_poi = cytometer.utils.boxplot_poi(bp)
+    plt.clf()
+    bp = plt.boxplot((df_auto_all['ref_area'] / 1e3,
+                      df_auto_all['test_area'] / 1e3,
+                      df_corrected_all['test_area'] / 1e3),
+                     positions=[1, 2, 3], notch=True, labels=['Hand traced', 'Auto', 'Corrected'])
 
-plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual median
-plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
-plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
-plt.tick_params(axis="both", labelsize=14)
-plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
-plt.ylim(-700 / 1e3, 10000 / 1e3)
-plt.tight_layout()
+    # points of interest from the boxplots
+    bp_poi = cytometer.utils.boxplot_poi(bp)
 
-# manual quartile values
-plt.text(1.20, bp_poi[0, 3] + .1, '%0.1f' % (bp_poi[0, 3]), fontsize=12, color='k')
-plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='C1')
-plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
+    plt.plot([0.75, 3.25], [bp_poi[0, 2], ] * 2, 'C1', linestyle='dotted')  # manual median
+    plt.plot([0.75, 3.25], [bp_poi[0, 1], ] * 2, 'k', linestyle='dotted')  # manual Q1
+    plt.plot([0.75, 3.25], [bp_poi[0, 3], ] * 2, 'k', linestyle='dotted')  # manual Q3
+    plt.tick_params(axis="both", labelsize=14)
+    plt.ylabel('Area ($\cdot 10^{3} \mu$m$^2$)', fontsize=14)
+    plt.ylim(-700 / 1e3, 10000 / 1e3)
+    plt.tight_layout()
 
-# auto quartile values
-plt.text(2.20, bp_poi[1, 3] + .1 - .3, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
-plt.text(2.20, bp_poi[1, 2] + .1 - .3, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
-plt.text(2.20, bp_poi[1, 1] + .1 - .4, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
+    # manual quartile values
+    plt.text(1.20, bp_poi[0, 3] + .1, '%0.1f' % (bp_poi[0, 3]), fontsize=12, color='k')
+    plt.text(1.20, bp_poi[0, 2] + .1, '%0.1f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+    plt.text(1.20, bp_poi[0, 1] + .1, '%0.1f' % (bp_poi[0, 1]), fontsize=12, color='k')
 
-# corrected quartile values
-plt.text(3.20, bp_poi[2, 3] + .1 - .1, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
-plt.text(3.20, bp_poi[2, 2] + .1 + .0, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
-plt.text(3.20, bp_poi[2, 1] + .1 + .0, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
+    # auto quartile values
+    plt.text(2.20, bp_poi[1, 3] + .1 - .3, '%0.1f' % (bp_poi[1, 3]), fontsize=12, color='k')
+    plt.text(2.20, bp_poi[1, 2] + .1 - .3, '%0.1f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+    plt.text(2.20, bp_poi[1, 1] + .1 - .4, '%0.1f' % (bp_poi[1, 1]), fontsize=12, color='k')
 
-plt.savefig(os.path.join(figures_dir, 'exp_0109_area_boxplots_manual_dataset.svg'))
-plt.savefig(os.path.join(figures_dir, 'exp_0109_area_boxplots_manual_dataset.png'))
+    # corrected quartile values
+    plt.text(3.20, bp_poi[2, 3] + .1 - .1, '%0.1f' % (bp_poi[2, 3]), fontsize=12, color='k')
+    plt.text(3.20, bp_poi[2, 2] + .1 + .0, '%0.1f' % (bp_poi[2, 2]), fontsize=12, color='C1')
+    plt.text(3.20, bp_poi[2, 1] + .1 + .0, '%0.1f' % (bp_poi[2, 1]), fontsize=12, color='k')
+
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_boxplots_manual_dataset.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_boxplots_manual_dataset.png'))
 
 # Wilcoxon sign-ranked tests of whether manual areas are significantly different to auto/corrected areas
 print('Manual mean ± std = ' + str(np.mean(df_auto_all['ref_area'])) + ' ± '
@@ -366,34 +542,36 @@ w, p = scipy.stats.wilcoxon(df_corrected_all['ref_area'],
 print('Manual vs. corrected, W = ' + str(w) + ', p = ' + str(p))
 
 
-# boxplots of area error
-plt.clf()
-bp = plt.boxplot(((df_auto_all['test_area'] / df_auto_all['ref_area'] - 1) * 100,
-                  (df_corrected_all['test_area'] / df_corrected_all['ref_area'] - 1) * 100),
-                 positions=[1, 2], notch=True, labels=['Auto vs.\nHand traced', 'Corrected vs.\nHand traced'])
-# bp = plt.boxplot((df_auto_all['test_area'] / 1e3 - df_auto_all['ref_area'] / 1e3,
-#                   df_corrected_all['test_area'] / 1e3 - df_corrected_all['ref_area'] / 1e3),
-#                  positions=[1, 2], notch=True, labels=['Auto -\nHand traced', 'Corrected -\nHand traced'])
+if SAVE_FIGS:
 
-plt.plot([0.75, 2.25], [0, 0], 'k', 'linewidth', 2)
-plt.xlim(0.5, 2.5)
-# plt.ylim(-1.4, 1.1)
+    # boxplots of area error
+    plt.clf()
+    bp = plt.boxplot(((df_auto_all['test_area'] / df_auto_all['ref_area'] - 1) * 100,
+                      (df_corrected_all['test_area'] / df_corrected_all['ref_area'] - 1) * 100),
+                     positions=[1, 2], notch=True, labels=['Auto vs.\nHand traced', 'Corrected vs.\nHand traced'])
+    # bp = plt.boxplot((df_auto_all['test_area'] / 1e3 - df_auto_all['ref_area'] / 1e3,
+    #                   df_corrected_all['test_area'] / 1e3 - df_corrected_all['ref_area'] / 1e3),
+    #                  positions=[1, 2], notch=True, labels=['Auto -\nHand traced', 'Corrected -\nHand traced'])
 
-plt.ylim(-40, 40)
+    plt.plot([0.75, 2.25], [0, 0], 'k', 'linewidth', 2)
+    plt.xlim(0.5, 2.5)
+    # plt.ylim(-1.4, 1.1)
 
-# points of interest from the boxplots
-bp_poi = cytometer.utils.boxplot_poi(bp)
+    plt.ylim(-40, 40)
 
-# manual quartile values
-plt.text(1.10, bp_poi[0, 2], '%0.2f' % (bp_poi[0, 2]), fontsize=12, color='C1')
-plt.text(2.10, bp_poi[1, 2], '%0.2f' % (bp_poi[1, 2]), fontsize=12, color='C1')
+    # points of interest from the boxplots
+    bp_poi = cytometer.utils.boxplot_poi(bp)
 
-plt.tick_params(axis="both", labelsize=14)
-plt.ylabel('Area$_{pipeline}$ / Area$_{ht} - 1$ ($\%$)', fontsize=14)
-plt.tight_layout()
+    # manual quartile values
+    plt.text(1.10, bp_poi[0, 2], '%0.2f' % (bp_poi[0, 2]), fontsize=12, color='C1')
+    plt.text(2.10, bp_poi[1, 2], '%0.2f' % (bp_poi[1, 2]), fontsize=12, color='C1')
 
-plt.savefig(os.path.join(figures_dir, 'exp_0109_area_error_boxplots_manual_dataset.svg'))
-plt.savefig(os.path.join(figures_dir, 'exp_0109_area_error_boxplots_manual_dataset.png'))
+    plt.tick_params(axis="both", labelsize=14)
+    plt.ylabel('Area$_{pipeline}$ / Area$_{ht} - 1$ ($\%$)', fontsize=14)
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_error_boxplots_manual_dataset.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_error_boxplots_manual_dataset.png'))
 
 ## Segmentation error vs. cell size plots, with Gaussian process regression
 
