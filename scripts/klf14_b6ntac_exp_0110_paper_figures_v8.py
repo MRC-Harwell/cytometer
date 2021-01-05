@@ -233,18 +233,27 @@ SAVEFIG = False
 # 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
 quantiles = np.linspace(0, 1, 21)
 
-# 1.32020052, 1.33581401, ..., 4.42728541, 4.4428989
-log10_area_bin_edges = np.linspace(np.log10(min_area_um2), np.log10(max_area_um2), 201)
-log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
+# bins for the cell population histograms
+area_bin_edges = np.linspace(min_area_um2, max_area_um2, 201)
+area_bin_centers = (area_bin_edges[0:-1] + area_bin_edges[1:]) / 2.0
+
+# data file with extra info for the dataframe (quantiles and histograms bins)
+dataframe_areas_extra_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_extra.npz')
+
+# if the file doesn't exist, save it
+if not os.path.isfile(dataframe_areas_extra_filename):
+    np.savez(dataframe_areas_extra_filename, quantiles=quantiles, area_bin_edges=area_bin_edges,
+             area_bin_centers=area_bin_centers)
 
 for method in ['auto', 'corrected']:
 
-    dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.csv')
+    # dataframe with histograms and smoothed histograms of cell populations in each slide
+    dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.pkl')
 
     if os.path.isfile(dataframe_areas_filename):
 
         # load dataframe with cell population quantiles and histograms
-        df_all = pd.read_csv(dataframe_areas_filename)
+        df_all = pd.read_pickle(dataframe_areas_filename)
 
     else:
 
@@ -358,41 +367,38 @@ for method in ['auto', 'corrected']:
                 areas = np.array([shapely.geometry.Polygon(cell).area for cell in cells]) * xres * yres  # um^2
 
                 # smooth out histogram
-                kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(areas.reshape(-1, 1))
-                log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+                kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(areas.reshape(-1, 1))
+                log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
                 pdf = np.exp(log_dens)
 
                 # compute mode
-                df['area_smoothed_mode'] = (10 ** log10_area_bin_centers)[np.argmax(pdf)]
+                df['area_smoothed_mode'] = area_bin_centers[np.argmax(pdf)]
 
                 # compute areas at population quantiles
                 areas_at_quantiles = stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
-                for j in range(len(quantiles)):
-                    df['area_q_' + '{0:03d}'.format(int(quantiles[j]*100))] = areas_at_quantiles[j]
+                df['area_at_quantiles'] = [areas_at_quantiles]
 
-                # compute histograms with log10(area) binning
-                histo, _ = np.histogram(areas, bins=10**log10_area_bin_edges, density=True)
-                for j in range(len(log10_area_bin_centers)):
-                    df['histo_bin_' + '{0:03d}'.format(j)] = histo[j]
+                # compute histograms with area binning
+                histo, _ = np.histogram(areas, bins=area_bin_edges, density=True)
+                df['histo'] = [histo]
 
                 # smoothed histogram
-                for j in range(len(log10_area_bin_centers)):
-                    df['smoothed_histo_bin_' + '{0:03d}'.format(j)] = pdf[j]
+                df['smoothed_histo'] = [pdf]
 
                 if DEBUG:
                     plt.clf()
-                    plt.plot(1e-3 * 10 ** log10_area_bin_centers, histo, label='Areas')
-                    plt.plot(1e-3 * 10 ** log10_area_bin_centers, pdf, label='Kernel')
-                    plt.plot([df['area_smoothed_mode'] * 1e-3, df['area_smoothed_mode'] * 1e-3], [0, pdf.max()], 'k', label='Mode')
+                    plt.plot(1e-3 * area_bin_centers, df['histo'][0], label='Areas')
+                    plt.plot(1e-3 * area_bin_centers, df['smoothed_histo'], label='Kernel')
+                    plt.plot([df['area_smoothed_mode'] * 1e-3, df['area_smoothed_mode'] * 1e-3],
+                             [0, df['smoothed_histo'].max()], 'k', label='Mode')
                     plt.legend()
                     plt.xlabel('Area ($10^3 \cdot \mu m^2$)', fontsize=14)
 
                 # add results to total dataframe
                 df_all = pd.concat([df_all, df], ignore_index=True)
 
-                # save dataframe
-                df_all.to_csv(dataframe_areas_filename, index=False)
-
+        # save dataframe with data from both depots for current method (auto or corrected)
+        df_all.to_pickle(dataframe_areas_filename)
 
 ########################################################################################################################
 ## Import packages and auxiliary functions common to all analysis sections
@@ -403,6 +409,7 @@ import matplotlib.pyplot as plt
 # from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
+import ast
 import scipy.stats as stats
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
@@ -440,8 +447,8 @@ metainfo = metainfo[~np.isnan(metainfo['BW'])]
 metainfo = metainfo.reset_index()
 
 # load dataframe with cell population quantiles and histograms
-dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.csv')
-df_all = pd.read_csv(dataframe_areas_filename)
+dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.pkl')
+df_all = pd.read_pickle(dataframe_areas_filename)
 df_all = df_all[~np.isnan(df_all['BW'])]
 df_all = df_all.reset_index()
 
@@ -450,6 +457,13 @@ df_all['ko_parent'] = df_all['ko_parent'].astype(
     pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
 df_all['genotype'] = df_all['genotype'].astype(
     pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
+# load extra info needed for the histograms
+dataframe_areas_extra_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_extra.npz')
+with np.load(dataframe_areas_extra_filename) as aux:
+    quantiles = aux['quantiles']
+    area_bin_edges = aux['area_bin_edges']
+    area_bin_centers = aux['area_bin_centers']
 
 ## auxiliary functions
 
@@ -677,14 +691,6 @@ def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, met
 ## USED IN THE PAPER
 ########################################################################################################################
 
-# 2.00646604, 2.02207953, ..., 5.11355093, 5.12916443
-log10_area_bin_edges = np.linspace(np.log10(min_area_um2), np.log10(max_area_um2), 201)
-log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
-
-columns = []
-for j in range(len(log10_area_bin_edges) - 1):
-    columns += ['smoothed_histo_bin_' + '{0:03d}'.format(j),]
-
 depot = 'gwat'
 # depot = 'sqwat'
 
@@ -694,10 +700,10 @@ if SAVEFIG:
     # f PAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(221)
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.text(0.9, 0.9, 'female PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
@@ -707,10 +713,10 @@ if SAVEFIG:
     # f MAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(222)
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.text(0.9, 0.9, 'female MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
@@ -720,10 +726,10 @@ if SAVEFIG:
     # m PAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(223)
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.text(0.9, 0.9, 'male PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
@@ -734,10 +740,10 @@ if SAVEFIG:
     # m MAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(224)
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.xticks([0, 10, 20])
@@ -760,15 +766,15 @@ if SAVEFIG:
     # f PAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
 
     plt.subplot(221)
-    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
                      alpha=0.5, color='C0')
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.tick_params(labelsize=14)
     plt.text(0.9, 0.9, 'female PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
@@ -777,15 +783,15 @@ if SAVEFIG:
     # f MAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
 
     plt.subplot(222)
-    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
                      alpha=0.5, color='C0')
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
     plt.tick_params(labelsize=14)
     plt.text(0.9, 0.9, 'female MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
@@ -794,15 +800,15 @@ if SAVEFIG:
     # m PAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
 
     plt.subplot(223)
-    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
                      alpha=0.5, color='C0')
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
     plt.tick_params(labelsize=14)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
@@ -812,15 +818,15 @@ if SAVEFIG:
     # m MAT
     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
     df = df.reset_index()
-    histo = df[columns]
+    histo = np.array(df['smoothed_histo'].tolist())
     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
 
     plt.subplot(224)
-    plt.fill_between(10 ** log10_area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
                      alpha=0.5, color='C0')
-    plt.plot(10 ** log10_area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
     plt.tick_params(labelsize=14)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
