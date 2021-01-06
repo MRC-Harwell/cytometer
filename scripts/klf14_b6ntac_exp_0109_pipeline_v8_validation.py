@@ -74,6 +74,7 @@ saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipelin
 annotations_dir = os.path.join(home, 'bit/cytometer_data/aida_data_Klf14_v8/annotations')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 paper_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+dataframe_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 figures_dir = os.path.join(paper_dir, 'figures')
 
 # file with RGB modes from all training data
@@ -184,7 +185,7 @@ for i, file_svg in enumerate(file_svg_list):
             plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
 
     # compute cell areas
-    cell_areas = [shapely.geometry.Polygon(x).area * xres * yres for x in cells]
+    cell_areas = np.array([shapely.geometry.Polygon(x).area for x in cells]) * xres * yres
 
     df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
                                                    values=cell_areas, values_tag='area',
@@ -211,20 +212,22 @@ print('Min cell size = ' + '{0:.1f}'.format(np.min(df_all['area'])) + ' um^2 = '
 print('Max cell size = ' + '{0:.1f}'.format(np.max(df_all['area'])) + ' um^2 = '
       + '{0:.1f}'.format(np.max(df_all['area']) / xres_ref / yres_ref) + ' pixels')
 
+# these are the same as in exp 0110
+quantiles = np.linspace(0, 1, 21)
+area_bin_edges = np.linspace(min_area_um2, max_area_um2, 201)
+area_bin_centers = (area_bin_edges[0:-1] + area_bin_edges[1:]) / 2.0
+
 if SAVE_FIGS:
-    # 1.32020052, 1.33581401, ..., 4.42728541, 4.4428989
-    log10_area_bin_edges = np.linspace(np.log10(min_area_um2), np.log10(max_area_um2), 201)
-    log10_area_bin_centers = (log10_area_bin_edges[0:-1] + log10_area_bin_edges[1:]) / 2.0
 
     plt.clf()
 
     plt.subplot(221)
     idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')
-    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
         np.array(df_all[idx]['area']).reshape(-1, 1))
-    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    log_dens = kde.score_samples((area_bin_centers).reshape(-1, 1))
     pdf = np.exp(log_dens)
-    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.plot((area_bin_centers) * 1e-3, pdf / pdf.max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.text(0.9, 0.9, 'female PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
@@ -239,11 +242,11 @@ if SAVE_FIGS:
 
     plt.subplot(222)
     idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
-    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
         np.array(df_all[idx]['area']).reshape(-1, 1))
-    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
     pdf = np.exp(log_dens)
-    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.plot(area_bin_centers * 1e-3, pdf / pdf.max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.text(0.9, 0.9, 'female MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
@@ -258,11 +261,11 @@ if SAVE_FIGS:
 
     plt.subplot(223)
     idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')
-    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
         np.array(df_all[idx]['area']).reshape(-1, 1))
-    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
     pdf = np.exp(log_dens)
-    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.plot(area_bin_centers * 1e-3, pdf / pdf.max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.text(0.9, 0.1, 'male PAT', fontsize=14, transform=plt.gca().transAxes, va='bottom', ha='right')
@@ -278,11 +281,11 @@ if SAVE_FIGS:
 
     plt.subplot(224)
     idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
-    kde = sklearn.neighbors.KernelDensity(bandwidth=1000, kernel='gaussian').fit(
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
         np.array(df_all[idx]['area']).reshape(-1, 1))
-    log_dens = kde.score_samples((10 ** log10_area_bin_centers).reshape(-1, 1))
+    log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
     pdf = np.exp(log_dens)
-    plt.plot((10 ** log10_area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.plot(area_bin_centers * 1e-3, pdf / pdf.max())
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.text(0.9, 0.9, 'male MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
