@@ -247,18 +247,6 @@ file_svg_list = aux['file_list']
 idx_test_all = aux['idx_test']
 idx_train_all = aux['idx_train']
 
-# # HACK: This will replace the regular list of hand training files
-# # list of hand segmentations we had to add because a couple of mice were subsampled and didn't provide realistic cell
-# # populations
-# file_svg_list_extra = [
-#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg'),
-#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg'),
-#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006040_col_005272.svg'),
-#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_012680_col_023936.svg'),
-#     os.path.join(klf14_training_data_dir, 'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_017360_col_024712.svg')
-# ]
-# file_svg_list = file_svg_list_extra
-
 # correct home directory
 file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
 file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
