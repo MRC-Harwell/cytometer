@@ -579,11 +579,11 @@ if SAVE_FIGS:
 ## Segmentation error vs. cell size plots, with Gaussian process regression
 
 # load dataframes to file
-for output in ['auto', 'corrected']:
+for method in ['auto', 'corrected']:
 
-    if output == 'auto':
+    if method == 'auto':
         df_all = load_dataframe(dataframe_auto_filename)
-    elif output == 'corrected':
+    elif method == 'corrected':
         df_all = load_dataframe(dataframe_corrected_filename)
     else:
         raise ValueError('Output must be "auto" or "corrected"')
@@ -621,23 +621,23 @@ for output in ['auto', 'corrected']:
     plt.plot(df_all['ref_area'] * 1e-3, df_err_q3['test_ref_area_err'] * 100, 'k', linewidth=2)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.xlabel('Area$_{ht}$ ($10^3\ \mu m^2$)', fontsize=14)
-    plt.ylabel('Area$_{' + output + '}$ / Area$_{ht} - 1$ (%)', fontsize=14)
+    plt.ylabel('Area$_{' + method + '}$ / Area$_{ht} - 1$ (%)', fontsize=14)
     plt.gca().set_xticks([0, 5, 10, 15, 20])
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error.svg'))
-    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error.png'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + method + '_manual_error.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + method + '_manual_error.png'))
 
-    if output == 'auto':
+    if method == 'auto':
         plt.xlim(-0.05, 10)
         plt.ylim(-25, 20)
-    elif output == 'corrected':
+    elif method == 'corrected':
         plt.xlim(-0.05, 10)
         plt.ylim(-20, 50)
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error_zoom.svg'))
-    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + output + '_manual_error_zoom.png'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + method + '_manual_error_zoom.svg'))
+    plt.savefig(os.path.join(figures_dir, 'exp_0109_area_' + method + '_manual_error_zoom.png'))
 
 ## Note: If we perform a sign test to see whether the median = 0, we would assume a binomial distribution of number of
 ## values < median, and with a Gaussian approximation to the binomial distribution, we'd be performing a normal null
