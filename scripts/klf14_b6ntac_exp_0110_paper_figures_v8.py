@@ -960,11 +960,11 @@ if SAVEFIG:
     ax.legend(loc='lower right', fontsize=12)
 
     plt.plot([-0.2, -0.2, 0.2, 0.2], [42, 44, 44, 42], 'k', lw=1.5)
-    pval_text = '$p_{MAT}$=' + '{0:.3f}'.format(bw_model_f.pvalues['C(ko_parent)[T.MAT]']) + \
+    pval_text = '$p$=' + '{0:.3f}'.format(bw_model_f.pvalues['C(ko_parent)[T.MAT]']) + \
                 ' ' + pval_to_asterisk(bw_model_f.pvalues['C(ko_parent)[T.MAT]'])
     plt.text(0, 44.5, pval_text, ha='center', va='bottom', fontsize=14)
     plt.plot([0.8, 0.8, 1.2, 1.2], [52, 54, 54, 52], 'k', lw=1.5)
-    pval_text = '$p_{MAT}$=' + '{0:.2f}'.format(bw_model_m.pvalues['C(ko_parent)[T.MAT]']) + \
+    pval_text = '$p$=' + '{0:.2f}'.format(bw_model_m.pvalues['C(ko_parent)[T.MAT]']) + \
                 ' ' + pval_to_asterisk(bw_model_m.pvalues['C(ko_parent)[T.MAT]'])
     plt.text(1, 54.5, pval_text, ha='center', va='bottom', fontsize=14)
     plt.ylim(18, 58)
@@ -974,6 +974,16 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.svg'))
 
+## sex effect on mouse BW
+
+sex_model = sm.RLM.from_formula('BW ~ C(sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
+print(sex_model.summary())
+
+pval_text = 'p=' + '{0:.3e}'.format(sex_model.pvalues['C(sex)[T.m]']) + \
+            ' ' + pval_to_asterisk(sex_model.pvalues['C(sex)[T.m]'])
+print(pval_text)
+
+## depot ~ BW * parent models
 
 # scale cull_age to avoid large condition numbers
 BW_mean = metainfo['BW'].mean()
