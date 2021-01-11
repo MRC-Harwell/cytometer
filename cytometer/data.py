@@ -1180,7 +1180,7 @@ def read_keras_training_output(filename, every_step=True):
     return df_all
 
 
-def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to_keep=None):
+def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to_keep=None, id_tag='id'):
     """
     If you have a vector with cell areas, values = [4.0 , 7.0 , 9.0 , 7.3], then
 
@@ -1209,6 +1209,8 @@ def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to
     :param values_tag: Name of the column with the values in the output dataframe.
     :param tags_to_keep: (def None = keep all the tags). If not all the metainformation columns are needed, a list of
     tags can be passed here, e.g. tags_to_keep = ['id', 'ko', 'sex'].
+    :param id_tag: (def 'id') String with the name of the column that contains the animal ID. This ID is also in the
+    filename, and that's how the filename gets matched to a row in the metainfo file.
     :return: panda.DataFrame with one row per value.
     """
 
@@ -1217,7 +1219,7 @@ def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to
         metainfo = pd.read_csv(metainfo)
 
     # list of mouse IDs
-    mouse_ids = metainfo['id']
+    mouse_ids = metainfo[id_tag]
 
     # indices of IDs that can be found in the filename
     id_in_sid = np.where([x in s for x in mouse_ids])[0]
