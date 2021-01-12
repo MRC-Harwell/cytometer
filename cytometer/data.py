@@ -1180,7 +1180,7 @@ def read_keras_training_output(filename, every_step=True):
     return df_all
 
 
-def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to_keep=None, id_tag='id'):
+def tag_values_with_mouse_info(metainfo, s, values=None, values_tag='values', tags_to_keep=None, id_tag='id'):
     """
     If you have a vector with cell areas, values = [4.0 , 7.0 , 9.0 , 7.3], then
 
@@ -1238,16 +1238,13 @@ def tag_values_with_mouse_info(metainfo, s, values, values_tag='values', tags_to
     if tags_to_keep:
         metainfo_row = metainfo_row[tags_to_keep]
 
-    # repeat the row once per element in values
-    if len(values) == 0:
-        df = pd.DataFrame(columns=metainfo_row.columns)
+    if values is None or len(values) == 0:
+        return metainfo_row
     else:
+        # repeat the row once per element in values
         df = pd.concat([metainfo_row] * len(values), ignore_index=True)
-
-    # add the values as a new column
-    df[values_tag] = values
-
-    return df
+        df[values_tag] = values
+        return df
 
 
 ## Deprecated functions
