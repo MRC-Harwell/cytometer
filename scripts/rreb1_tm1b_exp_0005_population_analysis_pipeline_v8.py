@@ -23,7 +23,7 @@ xres_ref = 0.4538234626730202
 yres_ref = 0.4537822752643282
 min_area_um2 = min_area * xres_ref * yres_ref
 # max_area_um2 = max_area * xres_ref * yres_ref
-max_area_um2 = 20e3
+max_area_um2 = 25e3
 
 # list of NDPI files that were processed
 ndpi_files_list = [
@@ -162,14 +162,19 @@ else:
     # RREB1-TM1B-B6N-IC/5.1c -> 5.1c
     metainfo['Animal Identifier'] = [x.replace('RREB1-TM1B-B6N-IC/', '') for x in metainfo['Animal Identifier']]
 
+    # rename columns to make them easier to use in statsmodels
+    metainfo = metainfo.rename(
+        columns={'Weight (g)': 'Weight', 'Gonadal_AT (g)': 'Gonadal', 'Mesenteric_AT (g)': 'Mesenteric',
+                 'PAT+RPAT (g)': 'PAT', 'Brown_AT (g)': 'Brown', 'SAT (g)': 'SAT'})
+
     # make sure that in the boxplots Rreb1-tm1b:WT comes before Rreb1-tm1b:Het, and female before male
     metainfo['Sex'] = metainfo['Sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
     metainfo['Genotype'] = metainfo['Genotype'].astype(
         pd.api.types.CategoricalDtype(categories=['Rreb1-tm1b:WT', 'Rreb1-tm1b:Het'], ordered=True))
 
     # mean mouse body weight (female and male)
-    mean_bw_f = metainfo[metainfo['Sex'] == 'f']['Weight (g)'].mean()
-    mean_bw_m = metainfo[metainfo['Sex'] == 'm']['Weight (g)'].mean()
+    mean_bw_f = metainfo[metainfo['Sex'] == 'f']['Weight'].mean()
+    mean_bw_m = metainfo[metainfo['Sex'] == 'm']['Weight'].mean()
 
     # dataframe to keep all results, one row per annotations file
     df_all = pd.DataFrame()
@@ -222,20 +227,20 @@ else:
         if n_matches != 1:
             raise ValueError(['Filename matches in metainfo table: ' + str(n_matches)])
         if is_gonadal:
-             depot_label = 'Gonadal_AT (g)'
+             depot_label = 'Gonadal'
         elif is_perineal:
-            depot_label = 'PAT+RPAT (g)'  # perineal + retroperineal
+            depot_label = 'PAT'  # perineal + retroperineal
         elif is_subcutaneous:
-            depot_label = 'SAT (g)'
+            depot_label = 'SAT'
         elif is_mesenteric:
-            depot_label = 'Mesenteric_AT (g)'
+            depot_label = 'Mesenteric'
 
         aux = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
                                                         tags_to_keep=['Animal Identifier', 'Sex', 'Genotype',
-                                                                      'Weight (g)', 'Gonadal_AT (g)', 'PAT+RPAT (g)',
-                                                                      'SAT (g)', 'Mesenteric_AT (g)'],
+                                                                      'Weight', 'Gonadal', 'PAT',
+                                                                      'SAT', 'Mesenteric'],
                                                         id_tag='Animal Identifier')
-        df = aux.drop(labels=['Gonadal_AT (g)', 'PAT+RPAT (g)', 'SAT (g)', 'Mesenteric_AT (g)'], axis='columns')
+        df = aux.drop(labels=['Gonadal', 'PAT', 'SAT', 'Mesenteric'], axis='columns')
         df['depot'] = depot_label
         df['depot_weight'] = aux[depot_label]
 
@@ -317,6 +322,10 @@ metainfo = pd.read_csv(metainfo_csv_file)
 # RREB1-TM1B-B6N-IC/5.1c -> 5.1c
 metainfo['Animal Identifier'] = [x.replace('RREB1-TM1B-B6N-IC/', '') for x in metainfo['Animal Identifier']]
 
+# rename columns to make them easier to use in statsmodels
+metainfo = metainfo.rename(columns={'Weight (g)':'Weight', 'Gonadal_AT (g)':'Gonadal', 'Mesenteric_AT (g)':'Mesenteric',
+                                    'PAT+RPAT (g)':'PAT', 'Brown_AT (g)':'Brown', 'SAT (g)':'SAT'})
+
 # make sure that in the boxplots Rreb1-tm1b:WT comes before Rreb1-tm1b:Het, and female before male
 metainfo['Sex'] = metainfo['Sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
 metainfo['Genotype'] = metainfo['Genotype'].astype(
@@ -330,6 +339,14 @@ df_all = df_all.reset_index()
 df_all['Sex'] = df_all['Sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
 df_all['Genotype'] = df_all['Genotype'].astype(
     pd.api.types.CategoricalDtype(categories=['Rreb1-tm1b:WT', 'Rreb1-tm1b:Het'], ordered=True))
+
+# rename columns to make them easier to use in statsmodels
+df_all = df_all.rename(columns={'Weight (g)':'Weight', 'Gonadal_AT (g)':'Gonadal', 'Mesenteric_AT (g)':'Mesenteric',
+                                'PAT+RPAT (g)': 'PAT', 'Brown_AT (g)': 'Brown', 'SAT (g)': 'SAT'})
+
+# WARNING! Remove SAT population for female WT 2.2a, because the histology contains very few white adipocytes
+idx = (df_all['Animal Identifier'] == '2.2a') & (df_all['depot'] == 'SAT')
+df_all.drop(df_all.index[idx], axis='rows', inplace=True)
 
 # load extra info needed for the histograms
 dataframe_areas_extra_filename = os.path.join(dataframe_dir, 'rreb1_tm1b_exp_0005_dataframe_areas_extra.npz')
@@ -564,10 +581,10 @@ def plot_model_coeff_compare2(x, df_coeff_1, df_ci_lo_1, df_ci_hi_1, df_pval_1,
 ## USED IN THE PAPER
 ########################################################################################################################
 
-depot = 'Gonadal_AT (g)'
-# depot = 'PAT+RPAT (g)'  # perineal + retroperineal
-# depot = 'SAT (g)'
-# depot = 'Mesenteric_AT (g)'
+depot = 'Gonadal'
+# depot = 'PAT'  # perineal + retroperineal
+# depot = 'SAT'
+# depot = 'Mesenteric'
 
 if SAVEFIG:
     plt.clf()
@@ -578,10 +595,11 @@ if SAVEFIG:
     histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(221)
-    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    lineObjects = plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.legend(lineObjects, df['Animal Identifier'])
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
-    plt.text(0.9, 0.9, 'female WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.65, 0.9, 'female WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xticks([0, 10, 20])
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
@@ -591,10 +609,11 @@ if SAVEFIG:
     histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(222)
-    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    lineObjects = plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.legend(lineObjects, df['Animal Identifier'])
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
-    plt.text(0.9, 0.9, 'female Het', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.65, 0.9, 'female Het', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xticks([0, 10, 20])
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
@@ -604,10 +623,11 @@ if SAVEFIG:
     histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(223)
-    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    lineObjects = plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.legend(lineObjects, df['Animal Identifier'])
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
-    plt.text(0.9, 0.9, 'male WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.69, 0.9, 'male WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xticks([0, 10, 20])
     plt.xlim(-1.2, max_area_um2 * 1e-3)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
@@ -618,11 +638,12 @@ if SAVEFIG:
     histo = np.array(df['smoothed_histo'].tolist())
 
     plt.subplot(224)
-    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    lineObjects = plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.legend(lineObjects, df['Animal Identifier'])
     plt.tick_params(labelsize=14)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.xticks([0, 10, 20])
-    plt.text(0.9, 0.9, 'male Het', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.65, 0.9, 'male Het', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xlim(-1.2, max_area_um2 * 1e-3)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 
@@ -632,150 +653,276 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_' + depot + '.png'))
     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_' + depot + '.svg'))
 
+if SAVEFIG:
+    plt.clf()
+
+    # f PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(221)
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'female PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # f MAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(222)
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'female MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(223)
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(0.9, 0.9, 'male PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m MAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+
+    plt.subplot(224)
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(0.9, 0.9, 'male MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    plt.suptitle(depot, fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
+
+## numerical quartiles and CIs associated to the histograms
+
+idx_q1 = np.where(quantiles == 0.25)[0][0]
+idx_q2 = np.where(quantiles == 0.50)[0][0]
+idx_q3 = np.where(quantiles == 0.75)[0][0]
+
+print('Depot: ' + depot)
+
+# f WT
+df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
+df = df.reset_index()
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+
+# compute mean value and CIs in 10^3 um^2 units
+q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('f WT')
+print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+# f Het
+df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
+df = df.reset_index()
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+
+# compute mean value and CIs in 10^3 um^2 units
+q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('f Het')
+print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+# m WT
+df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
+df = df.reset_index()
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+
+# compute mean value and CIs in 10^3 um^2 units
+q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('m WT')
+print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+# m Het
+df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
+df = df.reset_index()
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+
+# compute mean value and CIs in 10^3 um^2 units
+q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('m Het')
+print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+
+## sex effect on mouse BW
+
+sex_model = sm.RLM.from_formula('Weight ~ C(Sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
+print(sex_model.summary())
+
+pval_text = 'p=' + '{0:.3e}'.format(sex_model.pvalues['C(Sex)[T.m]']) + \
+            ' ' + pval_to_asterisk(sex_model.pvalues['C(Sex)[T.m]'])
+print(pval_text)
+
+# ## depot ~ BW * parent models
+#
+# # scale cull_age to avoid large condition numbers
+# BW_mean = metainfo['BW'].mean()
+# metainfo['BW__'] = metainfo['BW'] / BW_mean
+#
+# # for convenience
+# metainfo_f = metainfo[metainfo['sex'] == 'f']
+# metainfo_m = metainfo[metainfo['sex'] == 'm']
+#
+# # models of depot weight ~ BW * ko_parent
+# gwat_model_f = sm.RLM.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+# gwat_model_m = sm.RLM.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+# sqwat_model_f = sm.RLM.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+# sqwat_model_m = sm.RLM.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+#
+# print(gwat_model_f.summary())
+# print(gwat_model_m.summary())
+# print(sqwat_model_f.summary())
+# print(sqwat_model_m.summary())
+#
+# # extract coefficients, errors and p-values from models
+# df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+#     models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+# df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+#     models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+#
+# # multitest correction using Benjamini-Yekuteli
+# _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+# df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+# _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+# df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+#
+# # convert p-values to asterisks
+# df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+# df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+# df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+# df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+#
+# if SAVEFIG:
+#     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+#     cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+#             'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
+#
+#     df_concat = pd.DataFrame()
+#     for col in cols:
+#         df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+#                                df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+#     df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+#
+#     df_concat = pd.DataFrame()
+#     for col in cols:
+#         df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+#                                df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+#     df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+#
 # if SAVEFIG:
 #     plt.clf()
 #
-#     # f PAT
-#     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
-#     df = df.reset_index()
-#     histo = np.array(df['smoothed_histo'].tolist())
-#     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
-#     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
-#     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
-#
 #     plt.subplot(221)
-#     plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
-#                      alpha=0.5, color='C0')
-#     plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
-#     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+#     df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['gWAT'], c='C0', label='PAT')
+#     df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
+#     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
+#     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
+#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+#     plt.ylim(0, 2.1)
 #     plt.tick_params(labelsize=14)
-#     plt.text(0.9, 0.9, 'female PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
-#     plt.xlim(-1.2, max_area_um2 * 1e-3)
-#
-#     # f MAT
-#     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
-#     df = df.reset_index()
-#     histo = np.array(df['smoothed_histo'].tolist())
-#     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
-#     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
-#     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+#     plt.title('Female', fontsize=14)
+#     plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
+#     plt.legend(loc='lower right')
 #
 #     plt.subplot(222)
-#     plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
-#                      alpha=0.5, color='C0')
-#     plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
-#     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+#     df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['gWAT'], c='C0', label='PAT')
+#     df = metainfo_m[metainfo_m['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
+#     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
+#     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
+#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+#     plt.ylim(0, 2.1)
 #     plt.tick_params(labelsize=14)
-#     plt.text(0.9, 0.9, 'female MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
-#     plt.xlim(-1.2, max_area_um2 * 1e-3)
-#
-#     # m PAT
-#     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
-#     df = df.reset_index()
-#     histo = np.array(df['smoothed_histo'].tolist())
-#     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
-#     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
-#     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+#     plt.title('Male', fontsize=14)
 #
 #     plt.subplot(223)
-#     plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
-#                      alpha=0.5, color='C0')
-#     plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
-#     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+#     df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
+#     df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
+#     plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
+#     plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
+#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
 #     plt.tick_params(labelsize=14)
-#     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
-#     plt.text(0.9, 0.9, 'male PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
-#     plt.xlim(-1.2, max_area_um2 * 1e-3)
-#
-#     # m MAT
-#     df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
-#     df = df.reset_index()
-#     histo = np.array(df['smoothed_histo'].tolist())
-#     histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
-#     histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
-#     histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+#     plt.ylim(0, 2.1)
+#     plt.xlabel('Body weight (g)', fontsize=14)
+#     plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
 #
 #     plt.subplot(224)
-#     plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / histo_q3.max(), histo_q3[0,] / histo_q3.max(),
-#                      alpha=0.5, color='C0')
-#     plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
-#     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+#     df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
+#     plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
+#     df = metainfo_m[metainfo_m['ko_parent'] == 'MAT']
+#     plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
+#     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
+#     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
+#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+#     plt.ylim(0, 2.1)
 #     plt.tick_params(labelsize=14)
-#     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
-#     plt.text(0.9, 0.9, 'male MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
-#     plt.xlim(-1.2, max_area_um2 * 1e-3)
+#     plt.xlabel('Body weight (g)', fontsize=14)
 #
-#     if depot == 'gwat':
-#         plt.suptitle('Gonadal', fontsize=14)
-#     elif depot == 'sqwat':
-#         plt.suptitle('Subcutaneous', fontsize=14)
-#     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+#     plt.tight_layout()
 #
-#     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
-#     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
+#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.png'))
+#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.svg'))
 #
-# ## numerical quartiles and CIs associated to the histograms
-#
-# idx_q1 = np.where(quantiles == 0.25)[0][0]
-# idx_q2 = np.where(quantiles == 0.50)[0][0]
-# idx_q3 = np.where(quantiles == 0.75)[0][0]
-#
-# # f PAT
-# df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
-# df = df.reset_index()
-# areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
-#
-# # compute mean value and CIs in 10^3 um^2 units
-# q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-#
-# print('f PAT')
-# print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
-#
-# # f MAT
-# df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
-# df = df.reset_index()
-# areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
-#
-# # compute mean value and CIs in 10^3 um^2 units
-# q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-#
-# print('f MAT')
-# print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
-#
-# # m PAT
-# df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
-# df = df.reset_index()
-# areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
-#
-# # compute mean value and CIs in 10^3 um^2 units
-# q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-#
-# print('m PAT')
-# print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
-#
-# # m MAT
-# df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
-# df = df.reset_index()
-# areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
-#
-# # compute mean value and CIs in 10^3 um^2 units
-# q1_mean, q2_mean, q3_mean = areas_at_quantiles.mean(axis=0)[[idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_lo, q2_ci_lo, q3_ci_lo = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.025, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-# q1_ci_hi, q2_ci_hi, q3_ci_hi = stats.mstats.hdquantiles(areas_at_quantiles, prob=0.975, axis=0).data[0, [idx_q1, idx_q2, idx_q3]] * 1e-3
-#
-# print('m MAT')
-# print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
-# print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
