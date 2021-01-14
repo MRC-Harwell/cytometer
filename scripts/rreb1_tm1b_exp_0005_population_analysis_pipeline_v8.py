@@ -358,52 +358,6 @@ with np.load(dataframe_areas_extra_filename) as aux:
 
 ## auxiliary functions
 
-def models_coeff_ci_pval(models, extra_hypotheses=None):
-    if extra_hypotheses is not None:
-        hypotheses_labels = extra_hypotheses.replace(' ', '').split(',')
-    df_coeff_tot = pd.DataFrame()
-    df_ci_lo_tot = pd.DataFrame()
-    df_ci_hi_tot = pd.DataFrame()
-    df_pval_tot = pd.DataFrame()
-    for model in models:
-        # values of coefficients
-        df_coeff = pd.DataFrame(data=model.params).transpose()
-        # values of coefficient's confidence interval
-        df_ci_lo = pd.DataFrame(data=model.conf_int()[0]).transpose()
-        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose().reset_index()
-        # p-values
-        df_pval = pd.DataFrame(data=model.pvalues).transpose()
-        # extra p-values
-        if extra_hypotheses is not None:
-            extra_tests = model.t_test(extra_hypotheses)
-
-            df = pd.DataFrame(data=[extra_tests.effect], columns=hypotheses_labels)
-            df_coeff = pd.concat([df_coeff, df], axis='columns')
-
-            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 0]], columns=hypotheses_labels)
-            df_ci_lo = pd.concat([df_ci_lo, df], axis='columns')
-
-            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 1]], columns=hypotheses_labels)
-            df_ci_hi = pd.concat([df_ci_hi, df], axis='columns')
-
-            df = pd.DataFrame(data=[extra_tests.pvalue], columns=hypotheses_labels)
-            df_pval = pd.concat([df_pval, df], axis='columns')
-
-        df_coeff_tot = pd.concat((df_coeff_tot, df_coeff))
-        df_ci_lo_tot = pd.concat((df_ci_lo_tot, df_ci_lo))
-        df_ci_hi_tot = pd.concat((df_ci_hi_tot, df_ci_hi))
-        df_pval_tot = pd.concat((df_pval_tot, df_pval))
-
-    df_coeff_tot = df_coeff_tot.reset_index()
-    df_ci_lo_tot = df_ci_lo_tot.reset_index()
-    df_ci_hi_tot = df_ci_hi_tot.reset_index()
-    df_pval_tot = df_pval_tot.reset_index()
-    df_coeff_tot.drop(labels='index', axis='columns', inplace=True)
-    df_ci_lo_tot.drop(labels='index', axis='columns', inplace=True)
-    df_ci_hi_tot.drop(labels='index', axis='columns', inplace=True)
-    df_pval_tot.drop(labels='index', axis='columns', inplace=True)
-    return df_coeff_tot, df_ci_lo_tot, df_ci_hi_tot, df_pval_tot
-
 # def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sy=1.0):
 #     if np.std(df['BW'] / df['BW__']) > 1e-8:
 #         raise ValueError('BW / BW__ is not the same for all rows')
@@ -710,14 +664,60 @@ print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', 
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
 
 
-## sex effect on mouse BW
+## Weight ~ Sex
 
-sex_model = sm.RLM.from_formula('Weight ~ C(Sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
-print(sex_model.summary())
+bw_model = sm.RLM.from_formula('Weight ~ C(Sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
+print(bw_model.summary())
 
-pval_text = 'p=' + '{0:.3e}'.format(sex_model.pvalues['C(Sex)[T.m]']) + \
-            ' ' + cytometer.stats.pval_to_asterisk(sex_model.pvalues['C(Sex)[T.m]'])
+pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]']) + \
+            ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]'])
 print(pval_text)
+
+## Weight ~ Sex * Genotype
+
+bw_model = sm.RLM.from_formula('Weight ~ C(Sex) * C(Genotype)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
+print(bw_model.summary())
+
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval([bw_model],
+                                         extra_hypotheses='C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]')
+
+pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]']) + \
+            ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]'])
+print(pval_text)
+pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Genotype)[T.Rreb1-tm1b:Het]']) + \
+            ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Genotype)[T.Rreb1-tm1b:Het]'])
+print(pval_text)
+pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]']) + \
+            ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'])
+print(pval_text)
+
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([5.48, 4.8 ])
+
+    ax = sns.swarmplot(x='Sex', y='Weight', hue='Genotype', data=metainfo, dodge=True)
+    plt.xlabel('')
+    plt.ylabel('Body weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xticks([0, 1], labels=['Female', 'Male'])
+    ax.get_legend().set_title('')
+    ax.legend(loc='upper right', fontsize=12)
+
+    plt.plot([-0.2, -0.2, 0.2, 0.2], [57, 59, 59, 57], 'k', lw=1.5)
+    pval_text = '$p$=' + '{0:.2g}'.format(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]'][0]) + \
+                ' ' + cytometer.stats.pval_to_asterisk(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]'][0])
+    plt.text(0, 59.5, pval_text, ha='center', va='bottom', fontsize=14)
+    plt.plot([0.8, 0.8, 1.2, 1.2], [46, 48, 48, 46], 'k', lw=1.5)
+    pval_text = '$p$=' + '{0:.2g}'.format(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'][0]) + \
+                ' ' + cytometer.stats.pval_to_asterisk(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'][0])
+    plt.text(1, 48.5, pval_text, ha='center', va='bottom', fontsize=14)
+    plt.ylim(18, 63)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_swarm_bw.png'))
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_swarm_bw.svg'))
 
 # ## depot ~ BW * parent models
 #
@@ -742,9 +742,9 @@ print(pval_text)
 #
 # # extract coefficients, errors and p-values from models
 # df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-#     models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+#     cytometer.stats.models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
 # df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-#     models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+#     cytometer.stats.models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
 #
 # # multitest correction using Benjamini-Yekuteli
 # _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)

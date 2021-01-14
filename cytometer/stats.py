@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import pandas as pd
 
 def pval_to_asterisk(pval, brackets=True):
     """
@@ -93,3 +93,70 @@ def plot_model_coeff_compare2(x, df_coeff_1, df_ci_lo_1, df_ci_hi_1, df_pval_1,
     h2 = plot_pvals(df_pval_2, x + dx, y, corrected_pvals=df_corrected_pval_2, ylim=ylim, color=color_2)
 
     return h1, h2
+
+
+def models_coeff_ci_pval(models, extra_hypotheses=None):
+    """
+    For convenience, extract betas (coefficients), confidence intervals and p-values from a statsmodels model. Each one
+    corresponds to one t-test of a hypothesis (where the hypothesis is that the coefficient ~= 0).
+    This function also allows to add extra hypotheses (contrasts) to the model. For example, that the sum of two of
+    the model's coefficients is ~= 0.
+
+    * Example of a model:
+
+    import statsmodels.api as sm
+    model = sm.RLM.from_formula('weight ~ C(sex)', data=df, M=sm.robust.norms.HuberT()).fit()
+
+    * Example of extra hypotheses:
+
+    'Intercept + C(ko_parent)[T.MAT]'
+
+    :param models: List of statsmodels models (see example above).
+    :param extra_hypotheses: String with new hypotheses to t-test in the model (see example above).
+    :return: df_coeff, df_ci_lo, df_ci_hi, df_pval
+    """
+    if extra_hypotheses is not None:
+        hypotheses_labels = extra_hypotheses.replace(' ', '').split(',')
+    df_coeff_tot = pd.DataFrame()
+    df_ci_lo_tot = pd.DataFrame()
+    df_ci_hi_tot = pd.DataFrame()
+    df_pval_tot = pd.DataFrame()
+    for model in models:
+        # values of coefficients
+        df_coeff = pd.DataFrame(data=model.params).transpose()
+        # values of coefficient's confidence interval
+        df_ci_lo = pd.DataFrame(data=model.conf_int()[0]).transpose()
+        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose().reset_index()
+        # p-values
+        df_pval = pd.DataFrame(data=model.pvalues).transpose()
+        # extra p-values
+        if extra_hypotheses is not None:
+            extra_tests = model.t_test(extra_hypotheses)
+
+            df = pd.DataFrame(data=[extra_tests.effect], columns=hypotheses_labels)
+            df_coeff = pd.concat([df_coeff, df], axis='columns')
+
+            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 0]], columns=hypotheses_labels)
+            df_ci_lo = pd.concat([df_ci_lo, df], axis='columns')
+
+            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 1]], columns=hypotheses_labels)
+            df_ci_hi = pd.concat([df_ci_hi, df], axis='columns')
+
+            df = pd.DataFrame(data=[extra_tests.pvalue], columns=hypotheses_labels)
+            df_pval = pd.concat([df_pval, df], axis='columns')
+
+        df_coeff_tot = pd.concat((df_coeff_tot, df_coeff))
+        df_ci_lo_tot = pd.concat((df_ci_lo_tot, df_ci_lo))
+        df_ci_hi_tot = pd.concat((df_ci_hi_tot, df_ci_hi))
+        df_pval_tot = pd.concat((df_pval_tot, df_pval))
+
+    df_coeff_tot = df_coeff_tot.reset_index()
+    df_ci_lo_tot = df_ci_lo_tot.reset_index()
+    df_ci_hi_tot = df_ci_hi_tot.reset_index()
+    df_pval_tot = df_pval_tot.reset_index()
+    df_coeff_tot.drop(labels='index', axis='columns', inplace=True)
+    df_ci_lo_tot.drop(labels='index', axis='columns', inplace=True)
+    df_ci_hi_tot.drop(labels='index', axis='columns', inplace=True)
+    df_pval_tot.drop(labels='index', axis='columns', inplace=True)
+    return df_coeff_tot, df_ci_lo_tot, df_ci_hi_tot, df_pval_tot
+
