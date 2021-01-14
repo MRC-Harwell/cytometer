@@ -468,52 +468,6 @@ with np.load(dataframe_areas_extra_filename) as aux:
 
 ## auxiliary functions
 
-def models_coeff_ci_pval(models, extra_hypotheses=None):
-    if extra_hypotheses is not None:
-        hypotheses_labels = extra_hypotheses.replace(' ', '').split(',')
-    df_coeff_tot = pd.DataFrame()
-    df_ci_lo_tot = pd.DataFrame()
-    df_ci_hi_tot = pd.DataFrame()
-    df_pval_tot = pd.DataFrame()
-    for model in models:
-        # values of coefficients
-        df_coeff = pd.DataFrame(data=model.params).transpose()
-        # values of coefficient's confidence interval
-        df_ci_lo = pd.DataFrame(data=model.conf_int()[0]).transpose()
-        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose().reset_index()
-        # p-values
-        df_pval = pd.DataFrame(data=model.pvalues).transpose()
-        # extra p-values
-        if extra_hypotheses is not None:
-            extra_tests = model.t_test(extra_hypotheses)
-
-            df = pd.DataFrame(data=[extra_tests.effect], columns=hypotheses_labels)
-            df_coeff = pd.concat([df_coeff, df], axis='columns')
-
-            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 0]], columns=hypotheses_labels)
-            df_ci_lo = pd.concat([df_ci_lo, df], axis='columns')
-
-            df = pd.DataFrame(data=[extra_tests.conf_int()[:, 1]], columns=hypotheses_labels)
-            df_ci_hi = pd.concat([df_ci_hi, df], axis='columns')
-
-            df = pd.DataFrame(data=[extra_tests.pvalue], columns=hypotheses_labels)
-            df_pval = pd.concat([df_pval, df], axis='columns')
-
-        df_coeff_tot = pd.concat((df_coeff_tot, df_coeff))
-        df_ci_lo_tot = pd.concat((df_ci_lo_tot, df_ci_lo))
-        df_ci_hi_tot = pd.concat((df_ci_hi_tot, df_ci_hi))
-        df_pval_tot = pd.concat((df_pval_tot, df_pval))
-
-    df_coeff_tot = df_coeff_tot.reset_index()
-    df_ci_lo_tot = df_ci_lo_tot.reset_index()
-    df_ci_hi_tot = df_ci_hi_tot.reset_index()
-    df_pval_tot = df_pval_tot.reset_index()
-    df_coeff_tot.drop(labels='index', axis='columns', inplace=True)
-    df_ci_lo_tot.drop(labels='index', axis='columns', inplace=True)
-    df_ci_hi_tot.drop(labels='index', axis='columns', inplace=True)
-    df_pval_tot.drop(labels='index', axis='columns', inplace=True)
-    return df_coeff_tot, df_ci_lo_tot, df_ci_hi_tot, df_pval_tot
-
 def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sy=1.0):
     if np.std(df['BW'] / df['BW__']) > 1e-8:
         raise ValueError('BW / BW__ is not the same for all rows')
@@ -837,9 +791,9 @@ print(bw_model_m.summary())
 
 # extract coefficients, errors and p-values from models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    models_coeff_ci_pval([bw_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
+    cytometer.stats.models_coeff_ci_pval([bw_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    models_coeff_ci_pval([bw_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
+    cytometer.stats.models_coeff_ci_pval([bw_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
@@ -981,9 +935,9 @@ print(sqwat_model_m.summary())
 
 # extract coefficients, errors and p-values from models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
@@ -1110,9 +1064,9 @@ print(q75_model_m.summary())
 
 # extract coefficients, errors and p-values from quartile models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    models_coeff_ci_pval([q25_model_f, q50_model_f, q75_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval([q25_model_f, q50_model_f, q75_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
@@ -1485,9 +1439,9 @@ print(decile_models_m[4].summary())
 
 # extract coefficients, errors and p-values from quartile models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    models_coeff_ci_pval(decile_models_f, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval(decile_models_f, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    models_coeff_ci_pval(decile_models_m, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval(decile_models_m, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
@@ -1750,9 +1704,9 @@ print(q75_model_m.summary())
 
 # extract coefficients, errors and p-values from quartile models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    models_coeff_ci_pval([q25_model_f, q50_model_f, q75_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval([q25_model_f, q50_model_f, q75_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval([q25_model_m, q50_model_m, q75_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
@@ -1904,9 +1858,9 @@ print(decile_models_m[4].summary())
 
 # extract coefficients, errors and p-values from quantile models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    models_coeff_ci_pval(decile_models_f, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval(decile_models_f, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    models_coeff_ci_pval(decile_models_m, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+    cytometer.stats.models_coeff_ci_pval(decile_models_m, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
