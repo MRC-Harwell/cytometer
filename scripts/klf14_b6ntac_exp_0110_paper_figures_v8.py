@@ -417,6 +417,7 @@ from statsmodels.stats.multitest import multipletests
 import seaborn as sns
 import openslide
 import cytometer.data
+import cytometer.stats
 import shapely
 
 # directories
@@ -530,98 +531,6 @@ def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None
                            'genotype': [genotype, genotype]})
     y_pred = model.predict(X)
     plt.plot(DW_BW_lim * sx, y_pred * sy, style, label=label)
-
-def pval_to_asterisk(pval, brackets=True):
-    """
-    convert p-value scalar or array/dataframe of p-vales to significance strings 'ns', '*', '**', etc.
-    :param pval: scalar, array or dataframe of p-values
-    :return: scalar or array with the same shape as the input, where each p-value is converted to its significance
-    string
-    """
-    def translate(pval, brackets=True):
-        if brackets:
-            lb = '('
-            rb = ')'
-        else:
-            lb = ''
-            rb = ''
-        if pval > 0.05:
-            return lb + 'ns' + rb
-        elif pval > 0.01:
-            return lb + '*' + rb
-        elif pval > 0.001:
-            return lb + '**' + rb
-        elif pval > 0.0001:
-            return lb + '***' + rb
-        else:
-            return lb + '****' + rb
-    if np.isscalar(pval):
-        return translate(pval, brackets)
-    else:
-        return np.vectorize(translate)(pval, brackets)
-
-def plot_pvals(pvals, xs, ys, ylim=None, corrected_pvals=None, df_pval_location='above', color=None):
-    if ylim is None:
-        ylim = plt.gca().get_ylim()
-    offset = (np.max(ylim) - np.min(ylim)) / 40  # vertical offset between data point and bottom asterisk
-    if corrected_pvals is None:
-        corrected_pvals = np.ones(shape=np.array(pvals).shape, dtype=np.float32)
-    h = []
-    for pval, corrected_pval, x, y in zip(pvals, corrected_pvals, xs, ys):
-        str = pval_to_asterisk(pval, brackets=False).replace('*', '∗')
-        corrected_str = pval_to_asterisk(corrected_pval, brackets=False).replace('*', '∗')
-        if str == 'ns':
-            fontsize = 10
-        else:
-            fontsize = 7
-        if corrected_str == 'ns':  # we don't plot 'ns' in corrected p-values, to avoid having asterisks overlapped by 'ns'
-            corrected_str = ''
-        str = str.replace(corrected_str, '⊛'*len(corrected_str), 1)
-        if pval > 0.05:
-            rotation = 90
-        else:
-            rotation = 90
-        if df_pval_location == 'above':
-            y += offset
-            va = 'bottom'
-        else:
-            y -= 2*offset
-            va = 'top'
-        h.append(plt.text(x, y + offset, str, ha='center', va=va, color=color, rotation=rotation, fontsize=fontsize))
-    return h
-
-def plot_model_coeff(x, df_coeff, df_ci_lo, df_ci_hi, df_pval, ylim=None, df_corrected_pval=None, color=None,
-                     df_pval_location='above', label=None):
-    if color is None:
-        # next colour to be used, according to the colour iterator
-        color = next(plt.gca()._get_lines.prop_cycler)['color']
-    plt.plot(x, df_coeff, color=color, label=label)
-    plt.fill_between(x, df_ci_lo, df_ci_hi, alpha=0.5, color=color)
-    h = plot_pvals(df_pval, x, df_ci_hi, corrected_pvals=df_corrected_pval, ylim=ylim, color=color,
-                   df_pval_location=df_pval_location)
-    return h
-
-def plot_model_coeff_compare2(x, df_coeff_1, df_ci_lo_1, df_ci_hi_1, df_pval_1,
-                              df_coeff_2, df_ci_lo_2, df_ci_hi_2, df_pval_2,
-                              ylim=None,
-                              df_corrected_pval_1=None, df_corrected_pval_2=None,
-                              color_1=None, color_2=None,
-                              label_1=None, label_2=None):
-    if color_1 is None:
-        # next colour to be used, according to the colour iterator
-        color_1 = next(plt.gca()._get_lines.prop_cycler)['color']
-    if color_2 is None:
-        color_2 = next(plt.gca()._get_lines.prop_cycler)['color']
-    dx = (np.max(x) - np.min(x)) / 60
-    plt.plot(x, df_coeff_1, color=color_1, label=label_1)
-    plt.plot(x, df_coeff_2, color=color_2, label=label_2)
-    plt.fill_between(x, df_ci_lo_1, df_ci_hi_1, alpha=0.5, color=color_1)
-    plt.fill_between(x, df_ci_lo_2, df_ci_hi_2, alpha=0.5, color=color_2)
-    y = np.maximum(df_ci_hi_1, df_ci_hi_2)
-    h1 = plot_pvals(df_pval_1, x - dx, y, corrected_pvals=df_corrected_pval_1, ylim=ylim, color=color_1)
-    h2 = plot_pvals(df_pval_2, x + dx, y, corrected_pvals=df_corrected_pval_2, ylim=ylim, color=color_2)
-
-    return h1, h2
 
 def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected'):
 
@@ -939,10 +848,10 @@ _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method=
 df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
@@ -989,9 +898,9 @@ if SAVEFIG:
     plt.plot(cull_age_lim, y_pred, 'C3', linewidth=2, label='f MAT')
     pval_cull_age = bw_model_f.pvalues['cull_age__']
     pval_mat = bw_model_f.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{cull\ age}$=' + '{0:.2f}'.format(pval_cull_age) + ' ' + pval_to_asterisk(pval_cull_age) + \
+    pval_text = '$p_{cull\ age}$=' + '{0:.2f}'.format(pval_cull_age) + ' ' + cytometer.stats.pval_to_asterisk(pval_cull_age) + \
                 '\n' + \
-                '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+                '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
     plt.text(142.75, 26.3, pval_text, va='top', fontsize=12)
 
     X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['PAT', 'PAT']})
@@ -1002,9 +911,9 @@ if SAVEFIG:
     plt.plot(cull_age_lim, y_pred, 'C5', linewidth=2, label='m MAT')
     pval_cull_age = bw_model_m.pvalues['cull_age__']
     pval_mat = bw_model_m.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{cull\ age}$=' + '{0:.2f}'.format(pval_cull_age) + ' ' + pval_to_asterisk(pval_cull_age) + \
+    pval_text = '$p_{cull\ age}$=' + '{0:.2f}'.format(pval_cull_age) + ' ' + cytometer.stats.pval_to_asterisk(pval_cull_age) + \
                 '\n' + \
-                '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+                '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
     plt.text(142.75, 44, pval_text, va='bottom', fontsize=12)
 
     plt.legend(fontsize=12)
@@ -1027,11 +936,11 @@ if SAVEFIG:
 
     plt.plot([-0.2, -0.2, 0.2, 0.2], [42, 44, 44, 42], 'k', lw=1.5)
     pval_text = '$p$=' + '{0:.3f}'.format(bw_model_f.pvalues['C(ko_parent)[T.MAT]']) + \
-                ' ' + pval_to_asterisk(bw_model_f.pvalues['C(ko_parent)[T.MAT]'])
+                ' ' + cytometer.stats.pval_to_asterisk(bw_model_f.pvalues['C(ko_parent)[T.MAT]'])
     plt.text(0, 44.5, pval_text, ha='center', va='bottom', fontsize=14)
     plt.plot([0.8, 0.8, 1.2, 1.2], [52, 54, 54, 52], 'k', lw=1.5)
     pval_text = '$p$=' + '{0:.2f}'.format(bw_model_m.pvalues['C(ko_parent)[T.MAT]']) + \
-                ' ' + pval_to_asterisk(bw_model_m.pvalues['C(ko_parent)[T.MAT]'])
+                ' ' + cytometer.stats.pval_to_asterisk(bw_model_m.pvalues['C(ko_parent)[T.MAT]'])
     plt.text(1, 54.5, pval_text, ha='center', va='bottom', fontsize=14)
     plt.ylim(18, 58)
 
@@ -1046,7 +955,7 @@ sex_model = sm.RLM.from_formula('BW ~ C(sex)', data=metainfo, M=sm.robust.norms.
 print(sex_model.summary())
 
 pval_text = 'p=' + '{0:.3e}'.format(sex_model.pvalues['C(sex)[T.m]']) + \
-            ' ' + pval_to_asterisk(sex_model.pvalues['C(sex)[T.m]'])
+            ' ' + cytometer.stats.pval_to_asterisk(sex_model.pvalues['C(sex)[T.m]'])
 print(pval_text)
 
 ## depot ~ BW * parent models
@@ -1083,10 +992,10 @@ _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method=
 df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
@@ -1212,10 +1121,10 @@ _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method=
 df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
@@ -1254,15 +1163,15 @@ if SAVEFIG:
     plt.legend(fontsize=12)
     if depot == 'gwat':
         plt.ylim(0.82, 4.32)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
     elif depot == 'sqwat':
         plt.ylim(0.62, 3.09)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.35, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
 
     plt.subplot(322)
@@ -1278,15 +1187,15 @@ if SAVEFIG:
     plt.title('Male', fontsize=14)
     if depot == 'gwat':
         plt.ylim(0.82, 4.32)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.02, 0.00, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
     elif depot == 'sqwat':
         plt.ylim(0.62, 3.09)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
 
     plt.subplot(323)
@@ -1302,15 +1211,15 @@ if SAVEFIG:
     # pval_mat = df_pval_f.loc[1, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.44, 8.44)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
     elif depot == 'sqwat':
         plt.ylim(0.82, 5.77)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.35, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
 
     plt.subplot(324)
@@ -1325,15 +1234,15 @@ if SAVEFIG:
     # pval_mat = df_pval_m.loc[1, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.44, 8.44)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
     elif depot == 'sqwat':
         plt.ylim(0.82, 5.77)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.25, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
 
     plt.subplot(325)
@@ -1350,15 +1259,15 @@ if SAVEFIG:
     # pval_mat = df_pval_f.loc[2, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.65, 12.97)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.02, 0.8, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
     elif depot == 'sqwat':
         plt.ylim(1.03, 10.39)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.35, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
 
     plt.subplot(326)
@@ -1374,15 +1283,15 @@ if SAVEFIG:
     # pval_mat = df_pval_m.loc[2, 'C(ko_parent)[T.MAT]']
     if depot == 'gwat':
         plt.ylim(1.65, 12.97)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.2f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.02, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
     elif depot == 'sqwat':
         plt.ylim(1.03, 10.39)
-        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + pval_to_asterisk(pval_bw) + \
+        # pval_text = '$p_{DW/BW}$=' + '{0:.3f}'.format(pval_bw) + ' ' + cytometer.stats.pval_to_asterisk(pval_bw) + \
         #             '\n' + \
-        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + pval_to_asterisk(pval_mat)
+        #             '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
         # plt.text(0.25, 0.02, pval_text, transform=plt.gca().transAxes, va='bottom', fontsize=12)
 
     if depot == 'gwat':
@@ -1405,7 +1314,7 @@ if SAVEFIG:
         ylim = (-1, 20)
     elif depot == 'sqwat':
         ylim = (-1, 13)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
                               df_ci_lo_f['Intercept'] * 1e-3,
                               df_ci_hi_f['Intercept'] * 1e-3,
                               df_pval_f['Intercept'],
@@ -1428,7 +1337,7 @@ if SAVEFIG:
         ylim = (-1, 20)
     elif depot == 'sqwat':
         ylim = (-1, 13)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
                               df_ci_lo_m['Intercept'] * 1e-3,
                               df_ci_hi_m['Intercept'] * 1e-3,
                               df_pval_m['Intercept'],
@@ -1449,7 +1358,7 @@ if SAVEFIG:
         ylim = (-3, 9)
     elif depot == 'sqwat':
         ylim = (-1, 6)
-    plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
+    cytometer.stats.plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_f['C(ko_parent)[T.MAT]'],
@@ -1466,7 +1375,7 @@ if SAVEFIG:
         ylim = (-3, 9)
     elif depot == 'sqwat':
         ylim = (-1, 6)
-    plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
+    cytometer.stats.plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_m['C(ko_parent)[T.MAT]'],
@@ -1481,7 +1390,7 @@ if SAVEFIG:
         ylim = (-1.5, 2.5)
     elif depot == 'sqwat':
         ylim = (-1.5, 2.5)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
                               df_ci_lo_f['DW_BW'] * 1e-5,
                               df_ci_hi_f['DW_BW'] * 1e-5,
                               df_pval_f['DW_BW'],
@@ -1502,7 +1411,7 @@ if SAVEFIG:
         ylim = (-1.5, 2.5)
     elif depot == 'sqwat':
         ylim = (-1.5, 2.5)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
                               df_ci_lo_m['DW_BW'] * 1e-5,
                               df_ci_hi_m['DW_BW'] * 1e-5,
                               df_pval_m['DW_BW'],
@@ -1522,7 +1431,7 @@ if SAVEFIG:
         ylim = (-2.4, 2)
     elif depot == 'sqwat':
         ylim = (-2.6, 2)
-    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    cytometer.stats.plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
@@ -1539,7 +1448,7 @@ if SAVEFIG:
         ylim = (-2.4, 2)
     elif depot == 'sqwat':
         ylim = (-2.6, 2.4)
-    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    cytometer.stats.plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
@@ -1587,10 +1496,10 @@ _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method=
 df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
@@ -1619,7 +1528,7 @@ if SAVEFIG:
         ylim = (-1, 34)
     elif depot == 'sqwat':
         ylim = (-1, 20)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
                               df_ci_lo_f['Intercept'] * 1e-3,
                               df_ci_hi_f['Intercept'] * 1e-3,
                               df_pval_f['Intercept'],
@@ -1641,7 +1550,7 @@ if SAVEFIG:
         ylim = (-1, 34)
     elif depot == 'sqwat':
         ylim = (-1, 20)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
                               df_ci_lo_m['Intercept'] * 1e-3,
                               df_ci_hi_m['Intercept'] * 1e-3,
                               df_pval_m['Intercept'],
@@ -1661,7 +1570,7 @@ if SAVEFIG:
         ylim = (-5, 12)
     elif depot == 'sqwat':
         ylim = (-1, 7)
-    plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
+    cytometer.stats.plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_f['C(ko_parent)[T.MAT]'],
@@ -1677,7 +1586,7 @@ if SAVEFIG:
         ylim = (-5, 12)
     elif depot == 'sqwat':
         ylim = (-1, 7)
-    plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
+    cytometer.stats.plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_m['C(ko_parent)[T.MAT]'],
@@ -1691,7 +1600,7 @@ if SAVEFIG:
         ylim = (-2.5, 3.5)
     elif depot == 'sqwat':
         ylim = (-2, 3.5)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
                               df_ci_lo_f['DW_BW'] * 1e-5,
                               df_ci_hi_f['DW_BW'] * 1e-5,
                               df_pval_f['DW_BW'],
@@ -1711,7 +1620,7 @@ if SAVEFIG:
         ylim = (-2.5, 3.5)
     elif depot == 'sqwat':
         ylim = (-2, 3.5)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
                               df_ci_lo_m['DW_BW'] * 1e-5,
                               df_ci_hi_m['DW_BW'] * 1e-5,
                               df_pval_m['DW_BW'],
@@ -1730,7 +1639,7 @@ if SAVEFIG:
         ylim = (-4, 3)
     elif depot == 'sqwat':
         ylim = (-4, 2.4)
-    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    cytometer.stats.plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
@@ -1746,7 +1655,7 @@ if SAVEFIG:
         ylim = (-4, 3)
     elif depot == 'sqwat':
         ylim = (-4, 2.4)
-    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    cytometer.stats.plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
@@ -1852,10 +1761,10 @@ _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method=
 df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
@@ -2006,10 +1915,10 @@ _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method=
 df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
 
 if SAVEFIG:
     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
@@ -2038,7 +1947,7 @@ if DEBUG:
         ylim = (-1, 28)
     elif depot == 'sqwat':
         ylim = (-1, 15)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
                               df_ci_lo_f['Intercept'] * 1e-3,
                               df_ci_hi_f['Intercept'] * 1e-3,
                               df_pval_f['Intercept'],
@@ -2060,7 +1969,7 @@ if DEBUG:
         ylim = (-1, 28)
     elif depot == 'sqwat':
         ylim = (-1, 15)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
                               df_ci_lo_m['Intercept'] * 1e-3,
                               df_ci_hi_m['Intercept'] * 1e-3,
                               df_pval_m['Intercept'],
@@ -2081,7 +1990,7 @@ if DEBUG:
         ylim = (-0.5, 9)
     elif depot == 'sqwat':
         ylim = (-0.5, 4.5)
-    plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
+    cytometer.stats.plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_f['C(ko_parent)[T.MAT]'],
@@ -2097,7 +2006,7 @@ if DEBUG:
         ylim = (-0.5, 9)
     elif depot == 'sqwat':
         ylim = (-0.5, 4.5)
-    plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
+    cytometer.stats.plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
                      df_pval_m['C(ko_parent)[T.MAT]'],
@@ -2112,7 +2021,7 @@ if DEBUG:
         ylim = (-1.70, 2.75)
     elif depot == 'sqwat':
         ylim = (-1, 2.5)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
                               df_ci_lo_f['DW_BW'] * 1e-5,
                               df_ci_hi_f['DW_BW'] * 1e-5,
                               df_pval_f['DW_BW'],
@@ -2132,7 +2041,7 @@ if DEBUG:
         ylim = (-1.70, 2.75)
     elif depot == 'sqwat':
         ylim = (-1, 2.5)
-    h1, h2 = plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
+    h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
                               df_ci_lo_m['DW_BW'] * 1e-5,
                               df_ci_hi_m['DW_BW'] * 1e-5,
                               df_pval_m['DW_BW'],
@@ -2151,7 +2060,7 @@ if DEBUG:
         ylim = (-2.20, 1.00)
     elif depot == 'sqwat':
         ylim = (-2.1, 2)
-    plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    cytometer.stats.plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
@@ -2167,7 +2076,7 @@ if DEBUG:
         ylim = (-2.20, 1.00)
     elif depot == 'sqwat':
         ylim = (-2.1, 2)
-    plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+    cytometer.stats.plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
                      df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
