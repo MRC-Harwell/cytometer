@@ -358,16 +358,12 @@ with np.load(dataframe_areas_extra_filename) as aux:
 
 ## auxiliary functions
 
-# def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sy=1.0):
-#     if np.std(df['BW'] / df['BW__']) > 1e-8:
-#         raise ValueError('BW / BW__ is not the same for all rows')
-#     BW__factor = (df['BW'] / df['BW__']).mean()
-#     BW__lim = np.array([df['BW__'].min(), df['BW__'].max()])
-#     X = pd.DataFrame(data={'BW__': BW__lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
-#                            'genotype': [genotype, genotype]})
-#     y_pred = model.predict(X)
-#     plt.plot(BW__lim * BW__factor, y_pred * sy, style)
-#
+def plot_linear_regression_depot_weight(model, df, sex=None, genotype=None, style=None, sy=1.0):
+    weight_lim = np.array([df['Weight'].min(), df['Weight'].max()])
+    X = pd.DataFrame(data={'Weight': weight_lim, 'Sex': [sex, sex], 'Genotype': [genotype, genotype]})
+    y_pred = model.predict(X)
+    plt.plot(weight_lim, y_pred * sy, style)
+
 # def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0, label=None):
 #     DW_BW = df['DW'] / df['BW']
 #     DW_BW_lim = np.array([DW_BW.min(), DW_BW.max()])
@@ -684,13 +680,13 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
 
 pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]']) + \
             ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]'])
-print(pval_text)
+print('C(Sex)[T.m]: ' + pval_text)
 pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Genotype)[T.Rreb1-tm1b:Het]']) + \
             ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Genotype)[T.Rreb1-tm1b:Het]'])
-print(pval_text)
+print('C(Genotype)[T.Rreb1-tm1b:Het]: ' + pval_text)
 pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]']) + \
             ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'])
-print(pval_text)
+print('C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]: ' + pval_text)
 
 if SAVEFIG:
     plt.clf()
@@ -719,117 +715,175 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_swarm_bw.png'))
     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_swarm_bw.svg'))
 
-# ## depot ~ BW * parent models
-#
-# # scale cull_age to avoid large condition numbers
+## depot_weight ~ BW * Genotype
+
+# # scale body weight to avoid large condition numbers
 # BW_mean = metainfo['BW'].mean()
 # metainfo['BW__'] = metainfo['BW'] / BW_mean
-#
-# # for convenience
-# metainfo_f = metainfo[metainfo['sex'] == 'f']
-# metainfo_m = metainfo[metainfo['sex'] == 'm']
-#
-# # models of depot weight ~ BW * ko_parent
-# gwat_model_f = sm.RLM.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-# gwat_model_m = sm.RLM.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
-# sqwat_model_f = sm.RLM.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-# sqwat_model_m = sm.RLM.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
-#
-# print(gwat_model_f.summary())
-# print(gwat_model_m.summary())
-# print(sqwat_model_f.summary())
-# print(sqwat_model_m.summary())
-#
-# # extract coefficients, errors and p-values from models
-# df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-#     cytometer.stats.models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
-# df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-#     cytometer.stats.models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
-#
-# # multitest correction using Benjamini-Yekuteli
-# _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-# df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
-# _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-# df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
-#
-# # convert p-values to asterisks
-# df_asterisk_f = pd.DataFrame(pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-# df_asterisk_m = pd.DataFrame(pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-# df_corrected_asterisk_f = pd.DataFrame(pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-# df_corrected_asterisk_m = pd.DataFrame(pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
-#
-# if SAVEFIG:
-#     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-#     cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
-#             'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
-#
-#     df_concat = pd.DataFrame()
-#     for col in cols:
-#         df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
-#                                df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
-#     df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
-#
-#     df_concat = pd.DataFrame()
-#     for col in cols:
-#         df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
-#                                df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
-#     df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
-#
-# if SAVEFIG:
-#     plt.clf()
-#
-#     plt.subplot(221)
-#     df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
-#     plt.scatter(df['BW'], df['gWAT'], c='C0', label='PAT')
-#     df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
-#     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
-#     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
-#     plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
-#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-#     plt.ylim(0, 2.1)
-#     plt.tick_params(labelsize=14)
-#     plt.title('Female', fontsize=14)
-#     plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
-#     plt.legend(loc='lower right')
-#
-#     plt.subplot(222)
-#     df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
-#     plt.scatter(df['BW'], df['gWAT'], c='C0', label='PAT')
-#     df = metainfo_m[metainfo_m['ko_parent'] == 'MAT']
-#     plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
-#     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
-#     plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
-#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-#     plt.ylim(0, 2.1)
-#     plt.tick_params(labelsize=14)
-#     plt.title('Male', fontsize=14)
-#
-#     plt.subplot(223)
-#     df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
-#     plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
-#     df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
-#     plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
-#     plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
-#     plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
-#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-#     plt.tick_params(labelsize=14)
-#     plt.ylim(0, 2.1)
-#     plt.xlabel('Body weight (g)', fontsize=14)
-#     plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
-#
-#     plt.subplot(224)
-#     df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
-#     plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
-#     df = metainfo_m[metainfo_m['ko_parent'] == 'MAT']
-#     plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
-#     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
-#     plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
-#     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-#     plt.ylim(0, 2.1)
-#     plt.tick_params(labelsize=14)
-#     plt.xlabel('Body weight (g)', fontsize=14)
-#
-#     plt.tight_layout()
+
+# for convenience
+metainfo_f = metainfo[metainfo['Sex'] == 'f']
+metainfo_m = metainfo[metainfo['Sex'] == 'm']
+
+# models of depot weight ~ BW * ko_parent
+
+# depot = 'Gonadal'
+# depot = 'PAT'  # perineal + retroperineal
+# depot = 'SAT'
+# depot = 'Mesenteric'
+
+gonadal_model_f = sm.RLM.from_formula('Gonadal ~ Weight * C(Genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+gonadal_model_m = sm.RLM.from_formula('Gonadal ~ Weight * C(Genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+perineal_model_f = sm.RLM.from_formula('PAT ~ Weight * C(Genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+perineal_model_m = sm.RLM.from_formula('PAT ~ Weight * C(Genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+subcutaneous_model_f = sm.RLM.from_formula('SAT ~ Weight * C(Genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+subcutaneous_model_m = sm.RLM.from_formula('SAT ~ Weight * C(Genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+mesenteric_model_f = sm.RLM.from_formula('Mesenteric ~ Weight * C(Genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+mesenteric_model_m = sm.RLM.from_formula('Mesenteric ~ Weight * C(Genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+
+print(gonadal_model_f.summary())
+print(gonadal_model_m.summary())
+print(perineal_model_f.summary())
+print(perineal_model_m.summary())
+print(subcutaneous_model_f.summary())
+print(subcutaneous_model_m.summary())
+print(mesenteric_model_f.summary())
+print(mesenteric_model_m.summary())
+
+# extract coefficients, errors and p-values from models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+    cytometer.stats.models_coeff_ci_pval([gonadal_model_f, perineal_model_f, subcutaneous_model_f, mesenteric_model_f],
+                                         extra_hypotheses='Intercept + C(Genotype)[T.Rreb1-tm1b:Het],'
+                                                          + 'Weight + Weight:C(Genotype)[T.Rreb1-tm1b:Het]')
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+    cytometer.stats.models_coeff_ci_pval([gonadal_model_m, perineal_model_m, subcutaneous_model_m, mesenteric_model_m],
+                                         extra_hypotheses='Intercept + C(Genotype)[T.Rreb1-tm1b:Het],'
+                                                          + 'Weight + Weight:C(Genotype)[T.Rreb1-tm1b:Het]')
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+
+# convert p-values to asterisks
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    cols = ['Intercept', 'Intercept+C(Genotype)[T.Rreb1-tm1b:Het]', 'C(Genotype)[T.Rreb1-tm1b:Het]',
+            'Weight', 'Weight+Weight:C(Genotype)[T.Rreb1-tm1b:Het]', 'Weight:C(Genotype)[T.Rreb1-tm1b:Het]']
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'foo2.csv'))
+
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([6.4, 9.4])
+
+    plt.subplot(421)
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['Gonadal'], c='C0', label='WT')
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['Gonadal'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(gonadal_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(gonadal_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    # plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 5)
+    plt.tick_params(labelsize=14)
+    plt.title('Female', fontsize=14)
+    plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
+    plt.legend(loc='upper left', fontsize=12)
+
+    plt.subplot(422)
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['Gonadal'], c='C0', label='WT')
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['Gonadal'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(gonadal_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(gonadal_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    plt.ylim(0, 5)
+    plt.tick_params(labelsize=14)
+    plt.title('Male', fontsize=14)
+
+    plt.subplot(423)
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['PAT'], c='C0', label='WT')
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['PAT'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(perineal_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(perineal_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    plt.ylim(0, 2.5)
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Perineal\ndepot weight (g)', fontsize=14)
+
+    plt.subplot(424)
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['PAT'], c='C0', label='WT')
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['PAT'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(perineal_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(perineal_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    plt.ylim(0, 2.5)
+    plt.tick_params(labelsize=14)
+
+    plt.subplot(425)
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['SAT'], c='C0', label='WT')
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['SAT'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(subcutaneous_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(subcutaneous_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    plt.ylim(0, 3.5)
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
+
+    plt.subplot(426)
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['SAT'], c='C0', label='WT')
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['SAT'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(subcutaneous_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(subcutaneous_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    plt.ylim(0, 3.5)
+    plt.tick_params(labelsize=14)
+
+    plt.subplot(427)
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['Mesenteric'], c='C0', label='WT')
+    df = metainfo_f[metainfo_f['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['Mesenteric'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(mesenteric_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(mesenteric_model_f, metainfo_f, sex='f', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    plt.ylim(0, 2.5)
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Mesenteric\ndepot weight (g)', fontsize=14)
+    plt.xlabel('Body weight (g)', fontsize=14)
+
+    plt.subplot(428)
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:WT']
+    plt.scatter(df['Weight'], df['Mesenteric'], c='C0', label='WT')
+    df = metainfo_m[metainfo_m['Genotype'] == 'Rreb1-tm1b:Het']
+    plt.scatter(df['Weight'], df['Mesenteric'], c='C1', label='Het')
+    plot_linear_regression_depot_weight(mesenteric_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:WT', style='C0', sy=1.0)
+    plot_linear_regression_depot_weight(mesenteric_model_m, metainfo_m, sex='m', genotype='Rreb1-tm1b:Het', style='C1', sy=1.0)
+    plt.ylim(0, 2.5)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Body weight (g)', fontsize=14)
+
+    plt.tight_layout()
 #
 #     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.png'))
 #     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.svg'))
