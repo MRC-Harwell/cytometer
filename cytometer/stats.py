@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import scipy.stats as stats
 
 def pval_to_asterisk(pval, brackets=True):
     """
@@ -160,3 +161,39 @@ def models_coeff_ci_pval(models, extra_hypotheses=None):
     df_pval_tot.drop(labels='index', axis='columns', inplace=True)
     return df_coeff_tot, df_ci_lo_tot, df_ci_hi_tot, df_pval_tot
 
+# likelihood ratio test by Joanna Diong
+stats.chisqprob = lambda chisq, df: stats.chi2.sf(chisq, df)
+def lrtest(llmin, llmax):
+    """
+    Likelihood Ratio Test (LRT) by Joanna Diong
+    https://scientificallysound.org/2017/08/24/the-likelihood-ratio-test-relevance-and-application/
+
+    Example:
+
+    # import example dataset
+    data = sm.datasets.get_rdataset("dietox", "geepack").data
+
+    # fit time only to pig weight
+    md = smf.mixedlm("Weight ~ Time", data, groups=data["Pig"])
+    mdf = md.fit(reml=False)
+    print(mdf.summary())
+    llf = mdf.llf
+
+    # fit time and litter to pig weight
+    mdlitter = smf.mixedlm("Weight ~ Time + Litter", data, groups=data["Pig"])
+    mdflitter = mdlitter.fit(reml=False)
+    print(mdflitter.summary())
+    llflitter = mdflitter.llf
+
+    lr, p = lrtest(llf, llflitter)
+    print('LR test, p value: {:.2f}, {:.4f}'.format(lr, p))
+
+    :param llmin: Log-likelihood of null model (the model without the variable we are considering to add).
+    :param llmax: Log-likelihood of the alternative model (the model with the extra variable).
+    :return: lr, p
+    * lr: likelihood ratio
+    * p: p-value to reject the hypothesis that the alternative model fits the data no better than the null model.
+    """
+    lr = 2 * (llmax - llmin)
+    p = stats.chisqprob(lr, 1) # llmax has 1 dof more than llmin
+    return lr, p
