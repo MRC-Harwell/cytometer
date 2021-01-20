@@ -286,6 +286,7 @@ else:
 
 ########################################################################################################################
 ## Import packages and auxiliary functions common to all analysis sections
+## Load metainfo and cell population data
 ## USED IN PAPER
 ########################################################################################################################
 
@@ -357,63 +358,6 @@ with np.load(dataframe_areas_extra_filename) as aux:
     area_bin_centers = aux['area_bin_centers']
 
 ## auxiliary functions
-
-def plot_linear_regression_depot_weight(model, df, sex=None, genotype=None, style=None, sy=1.0):
-    weight_lim = np.array([df['Weight'].min(), df['Weight'].max()])
-    X = pd.DataFrame(data={'Weight': weight_lim, 'Sex': [sex, sex], 'Genotype': [genotype, genotype]})
-    y_pred = model.predict(X)
-    plt.plot(weight_lim, y_pred * sy, style)
-
-
-    plot_linear_regression(q_models_f_wt[0], df_all, ind_var='depot_weight',
-                           other_vars={'depot':depot, 'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'},
-                           )
-
-model = q_models_f_wt[0]
-df = df_all[df_all['Sex'] == 'f']
-ind_var = 'depot_weight'
-other_vars={'depot':depot, 'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}
-dep_var='area_at_quantile'
-sy=1.0
-c='C0'
-marker='x'
-scatter_label=''
-def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sy=1.0, c='C0', marker='x', scatter_label=''):
-    """
-    Auxiliary function to make it easier to plot linear regression models.
-
-    :param model: statsmodels linear model.
-    :param df: pandas.DataFrame that was used to create the model. Note that the x-axis range in the plots is
-    (df[ind_var].min(), df[ind_var].max()).
-    :param ind_var: String with the name of the independent variable (x-axis variable).
-    :param other_vars: Dictionary with covariates of ind_var in the model, e.g. {'Sex': 'f', 'Genotype': 'WT'}.
-    :param sy: Scaling factor for the dependent variable.
-    :return: None.
-    """
-    # range for the independent variable
-    ind_var_lim = np.array([df[ind_var].min(), df[ind_var].max()])
-    vars = {ind_var: ind_var_lim}
-    for key in other_vars.keys():
-        # duplicate the values provided for the other_vars
-        other_vars[key] = [other_vars[key],] * 2
-    vars.update(other_vars)
-    X = pd.DataFrame(data=vars)
-    y_pred = model.predict(X)
-    plt.plot(ind_var_lim, y_pred * sy, c)
-    if dep_var is not None:
-        idx = ~df[ind_var].isna()
-        for key, val in other_vars.items():
-            idx = idx & (df[key] == val[0])
-        plt.scatter(df.loc[idx, ind_var], df.loc[idx, dep_var] * sy, c=c, marker=marker, label=scatter_label)
-    return None
-
-# def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0, label=None):
-#     DW_BW = df['DW'] / df['BW']
-#     DW_BW_lim = np.array([DW_BW.min(), DW_BW.max()])
-#     X = pd.DataFrame(data={'DW_BW': DW_BW_lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
-#                            'genotype': [genotype, genotype]})
-#     y_pred = model.predict(X)
-#     plt.plot(DW_BW_lim * sx, y_pred * sy, style, label=label)
 
 # def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected'):
 # 
@@ -830,7 +774,18 @@ lr, pval = cytometer.stats.lrtest(mesenteric_null_model_m.llf, mesenteric_model_
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Mesenteric: ' + pval_text)
 
+## null models (WT and Het combined)
+
 ## linear regressions for WT and Het separately
+gonadal_model_f_null = sm.OLS.from_formula('Gonadal ~ Weight', data=metainfo_f).fit()
+perineal_model_f_null = sm.OLS.from_formula('PAT ~ Weight', data=metainfo_f).fit()
+subcutaneous_model_f_null = sm.OLS.from_formula('SAT ~ Weight', data=metainfo_f).fit()
+mesenteric_model_f_null = sm.OLS.from_formula('Mesenteric ~ Weight', data=metainfo_f).fit()
+
+gonadal_model_m_null = sm.OLS.from_formula('Gonadal ~ Weight', data=metainfo_m).fit()
+perineal_model_m_null = sm.OLS.from_formula('PAT ~ Weight', data=metainfo_m).fit()
+subcutaneous_model_m_null = sm.OLS.from_formula('SAT ~ Weight', data=metainfo_m).fit()
+mesenteric_model_m_null = sm.OLS.from_formula('Mesenteric ~ Weight', data=metainfo_m).fit()
 
 # Female WT
 idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
@@ -865,12 +820,14 @@ if SAVEFIG:
     plt.gcf().set_size_inches([6.4, 9.4])
 
     plt.subplot(421)
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(gonadal_model_f_wt, metainfo_f, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Gonadal'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(gonadal_model_f_het, metainfo_f, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Gonadal'], c='C1', label='Het', marker='+', s=49)
+    cytometer.stats.plot_linear_regression(gonadal_model_f_null, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(gonadal_model_f_wt, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Gonadal',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(gonadal_model_f_het, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='Gonadal',
+                                           c='C1', marker='+', line_label='Het')
     plt.ylim(0, 5)
     plt.tick_params(labelsize=14)
     plt.title('Female', fontsize=14)
@@ -878,78 +835,92 @@ if SAVEFIG:
     plt.legend(loc='upper left', fontsize=12)
 
     plt.subplot(422)
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(gonadal_model_m_wt, metainfo_m, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Gonadal'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(gonadal_model_m_het, metainfo_m, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Gonadal'], c='C1', label='Het', marker='+', s=49)
+    cytometer.stats.plot_linear_regression(gonadal_model_m_null, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(gonadal_model_m_wt, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Gonadal',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(gonadal_model_m_het, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='Gonadal',
+                                           c='C1', marker='+', line_label='Het')
     plt.ylim(0, 5)
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
 
     plt.subplot(423)
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(perineal_model_f_wt, metainfo_f, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'PAT'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(perineal_model_f_het, metainfo_f, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'PAT'], c='C1', label='Het', marker='+', s=49)
-    plt.ylim(0, 2.5)
+    cytometer.stats.plot_linear_regression(perineal_model_f_null, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(perineal_model_f_wt, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='PAT',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(perineal_model_f_het, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='PAT',
+                                           c='C1', marker='+', line_label='Het')
+    plt.ylim(0, 2.2)
     plt.tick_params(labelsize=14)
     plt.ylabel('Perineal\ndepot weight (g)', fontsize=14)
 
     plt.subplot(424)
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(perineal_model_m_wt, metainfo_m, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'PAT'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(perineal_model_m_het, metainfo_m, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'PAT'], c='C1', label='Het', marker='+', s=49)
-    plt.ylim(0, 2.5)
+    cytometer.stats.plot_linear_regression(perineal_model_m_null, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(perineal_model_m_wt, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='PAT',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(perineal_model_m_het, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='PAT',
+                                           c='C1', marker='+', line_label='Het')
+    plt.ylim(0, 2.2)
     plt.tick_params(labelsize=14)
 
     plt.subplot(425)
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(subcutaneous_model_f_wt, metainfo_f, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'SAT'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(subcutaneous_model_f_het, metainfo_f, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'SAT'], c='C1', label='Het', marker='+', s=49)
-    plt.ylim(-0.25, 3.5)
+    cytometer.stats.plot_linear_regression(subcutaneous_model_f_null, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(subcutaneous_model_f_wt, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='SAT',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(subcutaneous_model_f_het, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='SAT',
+                                           c='C1', marker='+', line_label='Het')
+    plt.ylim(-0.7, 3.5)
     plt.tick_params(labelsize=14)
     plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
 
     plt.subplot(426)
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(subcutaneous_model_m_wt, metainfo_m, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'SAT'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(subcutaneous_model_m_het, metainfo_m, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'SAT'], c='C1', label='Het', marker='+', s=49)
-    plt.ylim(-0.25, 3.5)
+    cytometer.stats.plot_linear_regression(subcutaneous_model_m_null, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(subcutaneous_model_m_wt, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='SAT',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(subcutaneous_model_m_het, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='SAT',
+                                           c='C1', marker='+', line_label='Het')
+    plt.ylim(-0.7, 3.5)
     plt.tick_params(labelsize=14)
 
     plt.subplot(427)
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(mesenteric_model_f_wt, metainfo_f, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Mesenteric'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(mesenteric_model_f_het, metainfo_f, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Mesenteric'], c='C1', label='Het', marker='+', s=49)
-    plt.ylim(0, 2.5)
+    cytometer.stats.plot_linear_regression(mesenteric_model_f_null, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(mesenteric_model_f_wt, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Mesenteric',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(mesenteric_model_f_het, metainfo_f, ind_var='Weight',
+                                           other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='Mesenteric',
+                                           c='C1', marker='+', line_label='Het')
+    plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
     plt.ylabel('Mesenteric\ndepot weight (g)', fontsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
 
     plt.subplot(428)
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
-    plot_linear_regression_depot_weight(mesenteric_model_m_wt, metainfo_m, style='C0', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Mesenteric'], c='C0', label='WT', marker='x')
-    idx = (metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het')
-    plot_linear_regression_depot_weight(mesenteric_model_m_het, metainfo_m, style='C1', sy=1.0)
-    plt.scatter(metainfo.loc[idx, 'Weight'], metainfo.loc[idx, 'Mesenteric'], c='C1', label='Het', marker='+', s=49)
-    plt.ylim(0, 2.5)
+    cytometer.stats.plot_linear_regression(mesenteric_model_m_null, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m'}, c='k', line_label='Null')
+    cytometer.stats.plot_linear_regression(mesenteric_model_m_wt, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Mesenteric',
+                                           c='C0', marker='x', line_label='WT')
+    cytometer.stats.plot_linear_regression(mesenteric_model_m_het, metainfo_m, ind_var='Weight',
+                                           other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:Het'}, dep_var='Mesenteric',
+                                           c='C1', marker='+', line_label='Het')
+    plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
 
@@ -998,28 +969,31 @@ if SAVEFIG:
 # 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
 quantiles = np.linspace(0, 1, 21)  #
 
+# indices of the quantiles we are going to model
+i_quantiles = [5, 10, 15]  # Q1, Q2, Q3
+
 depot = 'Gonadal'
 # depot = 'PAT'  # perineal + retroperineal
 # depot = 'SAT'
 # depot = 'Mesenteric'
 
-# for convenience
-df_all_f = df_all[df_all['Sex'] == 'f']
-df_all_m = df_all[df_all['Sex'] == 'm']
+# # for convenience
+# df_all_f = df_all[df_all['Sex'] == 'f']
+# df_all_m = df_all[df_all['Sex'] == 'm']
 
-# indices of the quantiles we are going to model
-i_quantiles = [5, 10, 15]  # Q1, Q2, Q3
-
+# fit linear models to area quantiles
 q_models_f_wt = []
 q_models_f_het = []
 q_models_m_wt = []
 q_models_m_het = []
+q_models_f_null = []
+q_models_m_null = []
 for i_q in i_quantiles:
 
     # choose one area_at_quantile value as the output of the linear model
     df_all['area_at_quantile'] = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]
 
-    # fit linear models
+    # fit WT/Het linear models
     idx = (df_all['Sex'] == 'f') & (df_all['depot'] == depot) & (df_all['Genotype'] == 'Rreb1-tm1b:WT')
     q_model_f_wt = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
     idx = (df_all['Sex'] == 'f') & (df_all['depot'] == depot) & (df_all['Genotype'] == 'Rreb1-tm1b:Het')
@@ -1029,18 +1003,28 @@ for i_q in i_quantiles:
     idx = (df_all['Sex'] == 'm') & (df_all['depot'] == depot) & (df_all['Genotype'] == 'Rreb1-tm1b:Het')
     q_model_m_het = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
 
+    # fit null models
+    idx = (df_all['Sex'] == 'f') & (df_all['depot'] == depot)
+    q_model_f_null = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
+    idx = (df_all['Sex'] == 'm') & (df_all['depot'] == depot)
+    q_model_m_null = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
+
     # q_model_f = sm.RLM.from_formula('area_q_025 ~ depot_weight * C(Genotype)', data=df_all, subset=idx, M=sm.robust.norms.HuberT()).fit()
 
     q_models_f_wt.append(q_model_f_wt)
     q_models_f_het.append(q_model_f_het)
     q_models_m_wt.append(q_model_m_wt)
     q_models_m_het.append(q_model_m_het)
+    q_models_f_null.append(q_model_f_null)
+    q_models_m_null.append(q_model_m_null)
 
     if DEBUG:
         print(q_model_f_wt.summary())
         print(q_model_f_het.summary())
         print(q_model_m_wt.summary())
         print(q_model_m_het.summary())
+        print(q_model_f_null.summary())
+        print(q_model_m_null.summary())
 
 # extract coefficients, errors and p-values from quartile models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = cytometer.stats.models_coeff_ci_pval(q_models_f_wt + q_models_f_het)
@@ -1081,18 +1065,21 @@ if SAVEFIG:
     sex = 'f'
     area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
     df_all['area_at_quantile'] = area_at_quantile
-    plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                           scatter_label='WT')
-    plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                           scatter_label='Het')
+    cytometer.stats.plot_linear_regression(q_models_f_null[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
     plt.title('Female', fontsize=14)
-    plt.legend(fontsize=12)
+    plt.legend(loc='lower right', fontsize=12)
     if depot == 'Gonadal':
         plt.ylim(-7, 9)
         # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
@@ -1106,14 +1093,17 @@ if SAVEFIG:
     sex = 'm'
     area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
     df_all['area_at_quantile'] = area_at_quantile
-    plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                           scatter_label='WT')
-    plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                           scatter_label='Het')
+    cytometer.stats.plot_linear_regression(q_models_m_null[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
     if depot == 'Gonadal':
@@ -1128,14 +1118,17 @@ if SAVEFIG:
     sex = 'f'
     area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
     df_all['area_at_quantile'] = area_at_quantile
-    plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                           scatter_label='WT')
-    plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                           scatter_label='Het')
+    cytometer.stats.plot_linear_regression(q_models_f_null[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q2}}$ ($10^3\ \mu m^2$)', fontsize=14)
     if depot == 'Gonadal':
@@ -1151,14 +1144,17 @@ if SAVEFIG:
     sex = 'm'
     area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
     df_all['area_at_quantile'] = area_at_quantile
-    plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                           scatter_label='WT')
-    plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                           scatter_label='Het')
+    cytometer.stats.plot_linear_regression(q_models_m_null[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
     if depot == 'Gonadal':
         plt.ylim(-4, 13)
@@ -1173,14 +1169,17 @@ if SAVEFIG:
     sex = 'f'
     area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
     df_all['area_at_quantile'] = area_at_quantile
-    plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                           scatter_label='WT')
-    plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                           scatter_label='Het')
+    cytometer.stats.plot_linear_regression(q_models_f_null[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q3}}$ ($10^3\ \mu m^2$)', fontsize=14)
     plt.xlabel('Depot weight (g)', fontsize=14)
@@ -1197,14 +1196,17 @@ if SAVEFIG:
     sex = 'm'
     area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
     df_all['area_at_quantile'] = area_at_quantile
-    plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                           scatter_label='WT')
-    plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
-                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
-                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                           scatter_label='Het')
+    cytometer.stats.plot_linear_regression(q_models_m_null[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                                           other_vars={'depot': depot, 'Sex': sex, 'Genotype': 'Rreb1-tm1b:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
     plt.xlabel('Depot weight (g)', fontsize=14)
     if depot == 'Gonadal':
