@@ -293,16 +293,16 @@ import matplotlib.pyplot as plt
 # from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
-import ast
+# import ast
 import scipy.stats as stats
 import statsmodels.api as sm
-import statsmodels.formula.api as smf
+# import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
-import openslide
-import cytometer.data
+# import openslide
+# import cytometer.data
 import cytometer.stats
-import shapely
+# import shapely
 
 # directories
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
@@ -364,6 +364,48 @@ def plot_linear_regression_depot_weight(model, df, sex=None, genotype=None, styl
     y_pred = model.predict(X)
     plt.plot(weight_lim, y_pred * sy, style)
 
+
+    plot_linear_regression(q_models_f_wt[0], df_all, ind_var='depot_weight',
+                           other_vars={'depot':depot, 'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'},
+                           )
+
+model = q_models_f_wt[0]
+df = df_all[df_all['Sex'] == 'f']
+ind_var = 'depot_weight'
+other_vars={'depot':depot, 'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}
+dep_var='area_at_quantile'
+sy=1.0
+c='C0'
+marker='x'
+scatter_label=''
+def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sy=1.0, c='C0', marker='x', scatter_label=''):
+    """
+    Auxiliary function to make it easier to plot linear regression models.
+
+    :param model: statsmodels linear model.
+    :param df: pandas.DataFrame that was used to create the model. Note that the x-axis range in the plots is
+    (df[ind_var].min(), df[ind_var].max()).
+    :param ind_var: String with the name of the independent variable (x-axis variable).
+    :param other_vars: Dictionary with covariates of ind_var in the model, e.g. {'Sex': 'f', 'Genotype': 'WT'}.
+    :param sy: Scaling factor for the dependent variable.
+    :return: None.
+    """
+    # range for the independent variable
+    ind_var_lim = np.array([df[ind_var].min(), df[ind_var].max()])
+    vars = {ind_var: ind_var_lim}
+    for key in other_vars.keys():
+        # duplicate the values provided for the other_vars
+        other_vars[key] = [other_vars[key],] * 2
+    vars.update(other_vars)
+    X = pd.DataFrame(data=vars)
+    y_pred = model.predict(X)
+    plt.plot(ind_var_lim, y_pred * sy, c)
+    if dep_var is not None:
+        idx = ~df[ind_var].isna()
+        for key, val in other_vars.items():
+            idx = idx & (df[key] == val[0])
+        plt.scatter(df.loc[idx, ind_var], df.loc[idx, dep_var] * sy, c=c, marker=marker, label=scatter_label)
+    return None
 
 # def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0, label=None):
 #     DW_BW = df['DW'] / df['BW']
@@ -732,11 +774,6 @@ metainfo_m = metainfo[metainfo['Sex'] == 'm']
 
 # models of depot weight ~ BW * Genotype
 
-# depot = 'Gonadal'
-# depot = 'PAT'  # perineal + retroperineal
-# depot = 'SAT'
-# depot = 'Mesenteric'
-
 # null models (without the Genotype variable)
 gonadal_null_model_f = sm.OLS.from_formula('Gonadal ~ Weight', data=metainfo_f).fit()
 gonadal_null_model_m = sm.OLS.from_formula('Gonadal ~ Weight', data=metainfo_m).fit()
@@ -951,4 +988,606 @@ if SAVEFIG:
     df_concat.to_csv(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_depot_weight_models_coeffs_pvals.csv'))
 
 
+## one data point per animal
+## linear regression analysis of quantile_area ~ DW * Genotype
+## USED IN PAPER
+########################################################################################################################
 
+## (only mode, 25%-, 50%- and 75%-quantiles for illustration purposes and debugging)
+
+# 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
+quantiles = np.linspace(0, 1, 21)  #
+
+depot = 'Gonadal'
+# depot = 'PAT'  # perineal + retroperineal
+# depot = 'SAT'
+# depot = 'Mesenteric'
+
+# for convenience
+df_all_f = df_all[df_all['Sex'] == 'f']
+df_all_m = df_all[df_all['Sex'] == 'm']
+
+# indices of the quantiles we are going to model
+i_quantiles = [5, 10, 15]  # Q1, Q2, Q3
+
+q_models_f_wt = []
+q_models_f_het = []
+q_models_m_wt = []
+q_models_m_het = []
+for i_q in i_quantiles:
+
+    # choose one area_at_quantile value as the output of the linear model
+    df_all['area_at_quantile'] = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]
+
+    # fit linear models
+    idx = (df_all['Sex'] == 'f') & (df_all['depot'] == depot) & (df_all['Genotype'] == 'Rreb1-tm1b:WT')
+    q_model_f_wt = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
+    idx = (df_all['Sex'] == 'f') & (df_all['depot'] == depot) & (df_all['Genotype'] == 'Rreb1-tm1b:Het')
+    q_model_f_het = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
+    idx = (df_all['Sex'] == 'm') & (df_all['depot'] == depot) & (df_all['Genotype'] == 'Rreb1-tm1b:WT')
+    q_model_m_wt = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
+    idx = (df_all['Sex'] == 'm') & (df_all['depot'] == depot) & (df_all['Genotype'] == 'Rreb1-tm1b:Het')
+    q_model_m_het = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df_all, subset=idx).fit()
+
+    # q_model_f = sm.RLM.from_formula('area_q_025 ~ depot_weight * C(Genotype)', data=df_all, subset=idx, M=sm.robust.norms.HuberT()).fit()
+
+    q_models_f_wt.append(q_model_f_wt)
+    q_models_f_het.append(q_model_f_het)
+    q_models_m_wt.append(q_model_m_wt)
+    q_models_m_het.append(q_model_m_het)
+
+    if DEBUG:
+        print(q_model_f_wt.summary())
+        print(q_model_f_het.summary())
+        print(q_model_m_wt.summary())
+        print(q_model_m_het.summary())
+
+# extract coefficients, errors and p-values from quartile models
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = cytometer.stats.models_coeff_ci_pval(q_models_f_wt + q_models_f_het)
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = cytometer.stats.models_coeff_ci_pval(q_models_m_wt + q_models_m_het)
+
+# convert p-values to asterisks
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+# df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+# df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+
+
+if SAVEFIG:
+    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+    cols = ['Intercept', 'C(Genotype)[T.Rreb1-tm1b:Het]',
+            'depot_weight', 'depot_weight:C(Genotype)[T.Rreb1-tm1b:Het]']
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_area_at_quantile_models_coeffs_pvals_f_' + depot + '.csv'))
+
+    df_concat = pd.DataFrame()
+    for col in cols:
+        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_area_at_quantile_models_coeffs_pvals_m_' + depot + '.csv'))
+
+# plot
+if SAVEFIG:
+
+    plt.clf()
+    plt.gcf().set_size_inches([6.4, 7.6])
+
+    plt.subplot(321)
+    # Q1 Female
+    i = 0  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'f'
+    area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    df_all['area_at_quantile'] = area_at_quantile
+    plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                           scatter_label='WT')
+    plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                           scatter_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
+    plt.title('Female', fontsize=14)
+    plt.legend(fontsize=12)
+    if depot == 'Gonadal':
+        plt.ylim(-7, 9)
+        # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
+    elif depot == 'PAT':
+        plt.ylim(0.62, 3.09)
+
+    plt.subplot(322)
+    # Q1 Male
+    i = 0  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'm'
+    area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    df_all['area_at_quantile'] = area_at_quantile
+    plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                           scatter_label='WT')
+    plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                           scatter_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.title('Male', fontsize=14)
+    if depot == 'Gonadal':
+        plt.ylim(-7, 9)
+    elif depot == 'PAT':
+        plt.ylim(0.62, 3.09)
+
+    plt.subplot(323)
+    # Q2 Female
+    i = 1  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'f'
+    area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    df_all['area_at_quantile'] = area_at_quantile
+    plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                           scatter_label='WT')
+    plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                           scatter_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Area$_{\mathrm{Q2}}$ ($10^3\ \mu m^2$)', fontsize=14)
+    if depot == 'Gonadal':
+        plt.ylim(-4, 13)
+        # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
+    elif depot == 'PAT':
+        plt.ylim(0.62, 3.09)
+
+    plt.subplot(324)
+    # Q2 Male
+    i = 1  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'm'
+    area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    df_all['area_at_quantile'] = area_at_quantile
+    plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                           scatter_label='WT')
+    plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                           scatter_label='Het')
+    plt.tick_params(labelsize=14)
+    if depot == 'Gonadal':
+        plt.ylim(-4, 13)
+        # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
+    elif depot == 'PAT':
+        plt.ylim(0.62, 3.09)
+
+    plt.subplot(325)
+    # Q3 Female
+    i = 2  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'f'
+    area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    df_all['area_at_quantile'] = area_at_quantile
+    plot_linear_regression(q_models_f_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                           scatter_label='WT')
+    plot_linear_regression(q_models_f_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                           scatter_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Area$_{\mathrm{Q3}}$ ($10^3\ \mu m^2$)', fontsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    if depot == 'Gonadal':
+        plt.ylim(0, 17)
+        # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
+    elif depot == 'PAT':
+        plt.ylim(0.62, 3.09)
+
+    plt.subplot(326)
+    # Q3 Male
+    i = 2  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'm'
+    area_at_quantile = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    df_all['area_at_quantile'] = area_at_quantile
+    plot_linear_regression(q_models_m_wt[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:WT'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                           scatter_label='WT')
+    plot_linear_regression(q_models_m_het[i], df_all[df_all['Sex'] == sex], 'depot_weight',
+                           other_vars={'depot':depot, 'Sex':sex, 'Genotype':'Rreb1-tm1b:Het'},
+                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                           scatter_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    if depot == 'Gonadal':
+        plt.ylim(0, 17)
+        # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
+    elif depot == 'PAT':
+        plt.ylim(0.62, 3.09)
+
+    plt.suptitle(depot, fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_area_at_quartile_models_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_area_at_quartile_models_' + depot + '.svg'))
+
+# if SAVEFIG:
+#     q = [25, 50, 75]
+#
+#     plt.clf()
+#     plt.gcf().set_size_inches([7.2, 9.5])
+#
+#     plt.subplot(4,2,1)
+#     if depot == 'gwat':
+#         ylim = (-1, 20)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 13)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
+#                               df_ci_lo_f['Intercept'] * 1e-3,
+#                               df_ci_hi_f['Intercept'] * 1e-3,
+#                               df_pval_f['Intercept'],
+#                               df_coeff_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_lo_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_hi_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_pval_f['Intercept+C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_f['Intercept'],
+#                               df_corrected_pval_2=df_corrected_pval_f['Intercept+C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.title('Female', fontsize=14)
+#     plt.ylabel(r'$\beta_{0}\ (10^3\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.legend(fontsize=12, loc='upper left')
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,2)
+#     if depot == 'gwat':
+#         ylim = (-1, 20)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 13)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
+#                               df_ci_lo_m['Intercept'] * 1e-3,
+#                               df_ci_hi_m['Intercept'] * 1e-3,
+#                               df_pval_m['Intercept'],
+#                               df_coeff_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_lo_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_hi_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_pval_m['Intercept+C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_m['Intercept'],
+#                               df_corrected_pval_2=df_corrected_pval_m['Intercept+C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.title('Male', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,3)
+#     if depot == 'gwat':
+#         ylim = (-3, 9)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 6)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_pval_f['C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_f['C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.ylabel(r'$\Delta\beta_{0}\ (10^3\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.legend(fontsize=12, loc='upper left')
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,4)
+#     if depot == 'gwat':
+#         ylim = (-3, 9)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 6)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_pval_m['C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_m['C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,5)
+#     if depot == 'gwat':
+#         ylim = (-1.5, 2.5)
+#     elif depot == 'sqwat':
+#         ylim = (-1.5, 2.5)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
+#                               df_ci_lo_f['DW_BW'] * 1e-5,
+#                               df_ci_hi_f['DW_BW'] * 1e-5,
+#                               df_pval_f['DW_BW'],
+#                               df_coeff_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_lo_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_hi_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_pval_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_f['DW_BW'],
+#                               df_corrected_pval_2=df_corrected_pval_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.ylabel(r'$\beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,6)
+#     if depot == 'gwat':
+#         ylim = (-1.5, 2.5)
+#     elif depot == 'sqwat':
+#         ylim = (-1.5, 2.5)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
+#                               df_ci_lo_m['DW_BW'] * 1e-5,
+#                               df_ci_hi_m['DW_BW'] * 1e-5,
+#                               df_pval_m['DW_BW'],
+#                               df_coeff_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_lo_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_hi_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_pval_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_m['DW_BW'],
+#                               df_corrected_pval_2=df_corrected_pval_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,7)
+#     if depot == 'gwat':
+#         ylim = (-2.4, 2)
+#     elif depot == 'sqwat':
+#         ylim = (-2.6, 2)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.xlabel('Quantile (%)', fontsize=14)
+#     plt.ylabel(r'$\Delta \beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,8)
+#     if depot == 'gwat':
+#         ylim = (-2.4, 2)
+#     elif depot == 'sqwat':
+#         ylim = (-2.6, 2.4)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.xlabel('Quantile (%)', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.xticks(q)
+#     plt.ylim(ylim)
+#
+#     plt.tight_layout()
+#
+#     if depot == 'gwat':
+#         plt.suptitle('Gonadal', fontsize=14)
+#     elif depot == 'sqwat':
+#         plt.suptitle('Subcutaneous', fontsize=14)
+#     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+#
+#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_quartile_dw_bw_linreg_coeffs_' + depot + '.png'))
+#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_quartile_dw_bw_linreg_coeffs_' + depot + '.svg'))
+#
+# # 0.1 , 0.2, ..., 0.9
+# deciles_idx = list(range(2, 20, 2))
+# deciles = quantiles[deciles_idx]  # [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+#
+# # fit linear models for each decile
+# decile_models_f = [sm.RLM.from_formula('area_q_' + '{0:03d}'.format(int(d*100)) + ' ~ DW_BW * C(ko_parent)', data=df_f, M=sm.robust.norms.HuberT()).fit()
+#                    for d in deciles]
+# decile_models_m = [sm.RLM.from_formula('area_q_' + '{0:03d}'.format(int(d*100)) + ' ~ DW_BW * C(ko_parent)', data=df_m, M=sm.robust.norms.HuberT()).fit()
+#                    for d in deciles]
+#
+# print(decile_models_f[4].summary())
+# print(decile_models_m[4].summary())
+#
+# # extract coefficients, errors and p-values from quartile models
+# df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+#     cytometer.stats.models_coeff_ci_pval(decile_models_f, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+# df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+#     cytometer.stats.models_coeff_ci_pval(decile_models_m, extra_hypotheses='Intercept + C(ko_parent)[T.MAT], DW_BW + DW_BW:C(ko_parent)[T.MAT]')
+#
+# # multitest correction using Benjamini-Yekuteli
+# _, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+# df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+# _, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+# df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+#
+# # convert p-values to asterisks
+# df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+# df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+# df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+# df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+#
+# if SAVEFIG:
+#     # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
+#     cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
+#             'DW_BW', 'DW_BW+DW_BW:C(ko_parent)[T.MAT]', 'DW_BW:C(ko_parent)[T.MAT]']
+#
+#     df_concat = pd.DataFrame()
+#     for col in cols:
+#         df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
+#                                df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
+#     df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+#
+#     df_concat = pd.DataFrame()
+#     for col in cols:
+#         df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
+#                                df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
+#     df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+#
+# if SAVEFIG:
+#     plt.clf()
+#     plt.gcf().set_size_inches([7.2, 9.5])
+#     q = np.array(deciles) * 100
+#
+#     plt.subplot(4,2,1)
+#     if depot == 'gwat':
+#         ylim = (-1, 34)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 20)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['Intercept'] * 1e-3,
+#                               df_ci_lo_f['Intercept'] * 1e-3,
+#                               df_ci_hi_f['Intercept'] * 1e-3,
+#                               df_pval_f['Intercept'],
+#                               df_coeff_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_lo_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_hi_f['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_pval_f['Intercept+C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_f['Intercept'],
+#                               df_corrected_pval_2=df_corrected_pval_f['Intercept+C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.title('Female', fontsize=14)
+#     plt.ylabel(r'$\beta_{0}\ (10^3\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.legend(fontsize=12, loc='upper left')
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,2)
+#     if depot == 'gwat':
+#         ylim = (-1, 34)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 20)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['Intercept'] * 1e-3,
+#                               df_ci_lo_m['Intercept'] * 1e-3,
+#                               df_ci_hi_m['Intercept'] * 1e-3,
+#                               df_pval_m['Intercept'],
+#                               df_coeff_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_lo_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_ci_hi_m['Intercept+C(ko_parent)[T.MAT]'] * 1e-3,
+#                               df_pval_m['Intercept+C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_m['Intercept'],
+#                               df_corrected_pval_2=df_corrected_pval_m['Intercept+C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.title('Male', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,3)
+#     if depot == 'gwat':
+#         ylim = (-5, 12)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 7)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_f['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_lo_f['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_hi_f['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_pval_f['C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_f['C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.ylabel(r'$\Delta\beta_{0}\ (10^3\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.legend(fontsize=12, loc='upper left')
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,4)
+#     if depot == 'gwat':
+#         ylim = (-5, 12)
+#     elif depot == 'sqwat':
+#         ylim = (-1, 7)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_m['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_lo_m['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_ci_hi_m['C(ko_parent)[T.MAT]'] * 1e-3,
+#                      df_pval_m['C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_m['C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.tick_params(labelsize=14)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,5)
+#     if depot == 'gwat':
+#         ylim = (-2.5, 3.5)
+#     elif depot == 'sqwat':
+#         ylim = (-2, 3.5)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_f['DW_BW'] * 1e-5,
+#                               df_ci_lo_f['DW_BW'] * 1e-5,
+#                               df_ci_hi_f['DW_BW'] * 1e-5,
+#                               df_pval_f['DW_BW'],
+#                               df_coeff_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_lo_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_hi_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_pval_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_f['DW_BW'],
+#                               df_corrected_pval_2=df_corrected_pval_f['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.ylabel(r'$\beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,6)
+#     if depot == 'gwat':
+#         ylim = (-2.5, 3.5)
+#     elif depot == 'sqwat':
+#         ylim = (-2, 3.5)
+#     h1, h2 = cytometer.stats.cytometer.stats.plot_model_coeff_compare2(q, df_coeff_m['DW_BW'] * 1e-5,
+#                               df_ci_lo_m['DW_BW'] * 1e-5,
+#                               df_ci_hi_m['DW_BW'] * 1e-5,
+#                               df_pval_m['DW_BW'],
+#                               df_coeff_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_lo_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_ci_hi_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                               df_pval_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               df_corrected_pval_1=df_corrected_pval_m['DW_BW'],
+#                               df_corrected_pval_2=df_corrected_pval_m['DW_BW+DW_BW:C(ko_parent)[T.MAT]'],
+#                               ylim=ylim, color_1='C0', color_2='C1', label_1='PAT', label_2='MAT')
+#     plt.tick_params(labelsize=14)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,7)
+#     if depot == 'gwat':
+#         ylim = (-4, 3)
+#     elif depot == 'sqwat':
+#         ylim = (-4, 2.4)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_lo_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_hi_f['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_f['DW_BW:C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.xlabel('Quantile (%)', fontsize=14)
+#     plt.ylabel(r'$\Delta \beta_{DW/BW}\ (10^5\ \mu m^2)$', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.ylim(ylim)
+#
+#     plt.subplot(4,2,8)
+#     if depot == 'gwat':
+#         ylim = (-4, 3)
+#     elif depot == 'sqwat':
+#         ylim = (-4, 2.4)
+#     cytometer.stats.plot_model_coeff(q, df_coeff_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_lo_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_ci_hi_m['DW_BW:C(ko_parent)[T.MAT]'] * 1e-5,
+#                      df_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
+#                      df_corrected_pval=df_corrected_pval_m['DW_BW:C(ko_parent)[T.MAT]'],
+#                      ylim=ylim, color='k', label='PAT$\mapsto$MAT')
+#     plt.xlabel('Quantile (%)', fontsize=14)
+#     plt.tick_params(labelsize=14)
+#     plt.ylim(ylim)
+#
+#     plt.tight_layout()
+#
+#     if depot == 'gwat':
+#         plt.suptitle('Gonadal', fontsize=14)
+#     elif depot == 'sqwat':
+#         plt.suptitle('Subcutaneous', fontsize=14)
+#     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+#
+#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_linreg_coeffs_' + depot + '.png'))
+#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_decile_dw_bw_linreg_coeffs_' + depot + '.svg'))
