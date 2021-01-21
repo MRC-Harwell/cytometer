@@ -379,7 +379,7 @@ if SAVEFIG:
     plt.xticks([0, 10, 20])
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
-    # f MAT
+    # f Het
     df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
     df = df.reset_index()
     histo = np.array(df['smoothed_histo'].tolist())
@@ -393,7 +393,7 @@ if SAVEFIG:
     plt.xticks([0, 10, 20])
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
-    # m PAT
+    # m WT
     df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
     df = df.reset_index()
     histo = np.array(df['smoothed_histo'].tolist())
@@ -408,7 +408,7 @@ if SAVEFIG:
     plt.xlim(-1.2, max_area_um2 * 1e-3)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 
-    # m MAT
+    # m Het
     df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
     df = df.reset_index()
     histo = np.array(df['smoothed_histo'].tolist())
@@ -432,7 +432,7 @@ if SAVEFIG:
 if SAVEFIG:
     plt.clf()
 
-    # f PAT
+    # f WT
     df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
     df = df.reset_index()
     histo = np.array(df['smoothed_histo'].tolist())
@@ -446,10 +446,10 @@ if SAVEFIG:
     plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
     plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
     plt.tick_params(labelsize=14)
-    plt.text(0.9, 0.9, 'female PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.9, 0.9, 'female WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
-    # f MAT
+    # f Het
     df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
     df = df.reset_index()
     histo = np.array(df['smoothed_histo'].tolist())
@@ -463,10 +463,10 @@ if SAVEFIG:
     plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / histo_q3.max(), 'C0', linewidth=2)
     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
     plt.tick_params(labelsize=14)
-    plt.text(0.9, 0.9, 'female MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.9, 0.9, 'female Het', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
-    # m PAT
+    # m WT
     df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
     df = df.reset_index()
     histo = np.array(df['smoothed_histo'].tolist())
@@ -481,10 +481,10 @@ if SAVEFIG:
     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
     plt.tick_params(labelsize=14)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
-    plt.text(0.9, 0.9, 'male PAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.9, 0.9, 'male WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
-    # m MAT
+    # m Het
     df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
     df = df.reset_index()
     histo = np.array(df['smoothed_histo'].tolist())
@@ -499,7 +499,7 @@ if SAVEFIG:
     plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
     plt.tick_params(labelsize=14)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
-    plt.text(0.9, 0.9, 'male MAT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.text(0.9, 0.9, 'male Het', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
     plt.suptitle(depot, fontsize=14)
