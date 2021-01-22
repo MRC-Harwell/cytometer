@@ -96,7 +96,7 @@ def plot_model_coeff_compare2(x, df_coeff_1, df_ci_lo_1, df_ci_hi_1, df_pval_1,
     return h1, h2
 
 
-def models_coeff_ci_pval(models, extra_hypotheses=None):
+def models_coeff_ci_pval(models, extra_hypotheses=None, model_names=None):
     """
     For convenience, extract betas (coefficients), confidence intervals and p-values from a statsmodels model. Each one
     corresponds to one t-test of a hypothesis (where the hypothesis is that the coefficient ~= 0).
@@ -113,7 +113,9 @@ def models_coeff_ci_pval(models, extra_hypotheses=None):
     'Intercept + C(ko_parent)[T.MAT]'
 
     :param models: List of statsmodels models (see example above).
-    :param extra_hypotheses: String with new hypotheses to t-test in the model (see example above).
+    :param extra_hypotheses: (def None) String with new hypotheses to t-test in the model (see example above).
+    :param model_names: (def None) List of strings with the name of each model. This will become the index in each
+    output dataframe.
     :return: df_coeff, df_ci_lo, df_ci_hi, df_pval
     """
     if extra_hypotheses is not None:
@@ -159,6 +161,15 @@ def models_coeff_ci_pval(models, extra_hypotheses=None):
     df_ci_lo_tot.drop(labels='index', axis='columns', inplace=True)
     df_ci_hi_tot.drop(labels='index', axis='columns', inplace=True)
     df_pval_tot.drop(labels='index', axis='columns', inplace=True)
+    if model_names is not None:
+        df_coeff_tot['model'] = model_names
+        df_ci_lo_tot['model'] = model_names
+        df_ci_hi_tot['model'] = model_names
+        df_pval_tot['model'] = model_names
+        df_coeff_tot = df_coeff_tot.set_index('model')
+        df_ci_lo_tot = df_ci_lo_tot.set_index('model')
+        df_ci_hi_tot = df_ci_hi_tot.set_index('model')
+        df_pval_tot = df_pval_tot.set_index('model')
     return df_coeff_tot, df_ci_lo_tot, df_ci_hi_tot, df_pval_tot
 
 # likelihood ratio test by Joanna Diong
