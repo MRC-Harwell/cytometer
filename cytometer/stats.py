@@ -198,7 +198,7 @@ def lrtest(llmin, llmax):
     p = stats.chisqprob(lr, 1) # llmax has 1 dof more than llmin
     return lr, p
 
-def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sy=1.0, c='C0', marker='x', line_label=''):
+def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sx=1.0, sy=1.0, c='C0', marker='x', line_label=''):
     """
     Auxiliary function to make it easier to plot linear regression models. Optionally, also the
 
@@ -208,7 +208,8 @@ def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sy=1
     :param ind_var: String with the name of the independent variable (x-axis variable).
     :param other_vars: Dictionary with covariates of ind_var in the model, e.g. {'Sex': 'f', 'Genotype': 'WT'}.
     :param dep_var: (def None)
-    :param sy: Scaling factor for the dependent variable.
+    :param sx: (def 1.0) Scaling factor for the independent variable.
+    :param sy: (def 1.0) Scaling factor for the dependent variable.
     :return: None.
     """
     # range for the independent variable
@@ -220,10 +221,10 @@ def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sy=1
     vars.update(other_vars)
     X = pd.DataFrame(data=vars)
     y_pred = model.predict(X)
-    plt.plot(ind_var_lim, y_pred * sy, c, label=line_label)
+    plt.plot(ind_var_lim * sx, y_pred * sy, c, label=line_label)
     if dep_var is not None:
         idx = ~df[ind_var].isna()
         for key, val in other_vars.items():
             idx = idx & (df[key] == val[0])
-        plt.scatter(df.loc[idx, ind_var], df.loc[idx, dep_var] * sy, c=c, marker=marker)
+        plt.scatter(df.loc[idx, ind_var] * sx, df.loc[idx, dep_var] * sy, c=c, marker=marker)
     return None
