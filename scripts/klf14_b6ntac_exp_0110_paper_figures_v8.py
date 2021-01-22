@@ -211,12 +211,9 @@ import shapely
 import scipy.stats as stats
 import openslide
 import numpy as np
-import scipy.stats
+# import scipy.stats
 import sklearn.neighbors, sklearn.model_selection
 import pandas as pd
-# from mlxtend.evaluate import permutation_test
-# from statsmodels.stats.multitest import multipletests
-# import math
 import PIL
 
 # directories
@@ -406,10 +403,8 @@ for method in ['auto', 'corrected']:
 ########################################################################################################################
 
 import matplotlib.pyplot as plt
-# from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 import pandas as pd
-import ast
 import scipy.stats as stats
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
@@ -914,7 +909,7 @@ print(pval_text)
 
 ## depot ~ BW * parent models
 
-# scale cull_age to avoid large condition numbers
+# scale BW to avoid large condition numbers
 BW_mean = metainfo['BW'].mean()
 metainfo['BW__'] = metainfo['BW'] / BW_mean
 
@@ -923,61 +918,97 @@ metainfo_f = metainfo[metainfo['sex'] == 'f']
 metainfo_m = metainfo[metainfo['sex'] == 'm']
 
 # models of depot weight ~ BW * ko_parent
-gwat_model_f = sm.RLM.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-gwat_model_m = sm.RLM.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
-sqwat_model_f = sm.RLM.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-sqwat_model_m = sm.RLM.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
 
-print(gwat_model_f.summary())
-print(gwat_model_m.summary())
-print(sqwat_model_f.summary())
-print(sqwat_model_m.summary())
+# models for Likelihood Ratio Test, to check whether parent variable has an effect
+gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
+gwat_null_model_m = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m).fit()
+sqwat_null_model_f = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f).fit()
+sqwat_null_model_m = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m).fit()
+
+gwat_model_f = sm.OLS.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_f).fit()
+gwat_model_m = sm.OLS.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_m).fit()
+sqwat_model_f = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_f).fit()
+sqwat_model_m = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_m).fit()
+
+# Likelihood ratio tests of the Genotype variable
+print('Likelihood Ratio Test')
+
+print('Female')
+lr, pval = cytometer.stats.lrtest(gwat_null_model_f.llf, gwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_f.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_null_model_f.llf, sqwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_f.aic))
+
+print('Male')
+lr, pval = cytometer.stats.lrtest(gwat_null_model_m.llf, gwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_m.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_null_model_m.llf, sqwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m.aic))
+
+## fit robust linear models DW ~ BW__, stratified by sex and parent
+# female PAT and MAT
+gwat_model_f_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_f_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_f_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_f_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+
+# male PAT and MAT
+gwat_model_m_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_m_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_m_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_m_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
 
 # extract coefficients, errors and p-values from models
-df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    cytometer.stats.models_coeff_ci_pval([gwat_model_f, sqwat_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
-df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    cytometer.stats.models_coeff_ci_pval([gwat_model_m, sqwat_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], BW__ + BW__:C(ko_parent)[T.MAT]')
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        [gwat_model_f_pat, sqwat_model_f_pat,
+         gwat_model_f_mat, sqwat_model_f_mat,
+         gwat_model_m_pat, sqwat_model_m_pat,
+         gwat_model_m_mat, sqwat_model_m_mat])
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
-_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False), columns=df_coeff.columns)
 
 if SAVEFIG:
-    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
-            'BW__', 'BW__+BW__:C(ko_parent)[T.MAT]', 'BW__:C(ko_parent)[T.MAT]']
+    # spreadsheet for model coefficients and p-values
+    cols = ['Intercept', 'BW__']
 
     df_concat = pd.DataFrame()
     for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
-                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
-    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
-
-    df_concat = pd.DataFrame()
-    for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
-                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
-    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
+        df_concat = pd.concat([df_concat, df_coeff[col], df_pval[col], df_asterisk[col],
+                               df_corrected_pval[col], df_corrected_asterisk[col]], axis=1)
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_depot_weight_models_coeffs_pvals.csv'))
 
 if SAVEFIG:
     plt.clf()
-
     plt.subplot(221)
-    df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
-    plt.scatter(df['BW'], df['gWAT'], c='C0', label='PAT')
-    df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
-    plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
-    plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
-    plot_linear_regression_BW(gwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
+    sex = 'f'
+    cytometer.stats.plot_linear_regression(gwat_null_model_f, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_f_pat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(gwat_model_f_mat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
@@ -986,24 +1017,36 @@ if SAVEFIG:
     plt.legend(loc='lower right')
 
     plt.subplot(222)
-    df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
-    plt.scatter(df['BW'], df['gWAT'], c='C0', label='PAT')
-    df = metainfo_m[metainfo_m['ko_parent'] == 'MAT']
-    plt.scatter(df['BW'], df['gWAT'], c='C1', label='MAT')
-    plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
-    plot_linear_regression_BW(gwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
+    sex = 'm'
+    cytometer.stats.plot_linear_regression(gwat_null_model_m, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_m_pat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(gwat_model_m_mat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
 
     plt.subplot(223)
-    df = metainfo_f[metainfo_f['ko_parent'] == 'PAT']
-    plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
-    df = metainfo_f[metainfo_f['ko_parent'] == 'MAT']
-    plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
-    plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='PAT', style='C0')
-    plot_linear_regression_BW(sqwat_model_f, metainfo_f, sex='f', ko_parent='MAT', style='C1')
+    sex = 'f'
+    cytometer.stats.plot_linear_regression(sqwat_null_model_f, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_pat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_mat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.tick_params(labelsize=14)
     plt.ylim(0, 2.1)
@@ -1011,12 +1054,18 @@ if SAVEFIG:
     plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
 
     plt.subplot(224)
-    df = metainfo_m[metainfo_m['ko_parent'] == 'PAT']
-    plt.scatter(df['BW'], df['SC'], c='C0', label='PAT')
-    df = metainfo_m[metainfo_m['ko_parent'] == 'MAT']
-    plt.scatter(df['BW'], df['SC'], c='C1', label='MAT')
-    plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='PAT', style='C0')
-    plot_linear_regression_BW(sqwat_model_m, metainfo_m, sex='m', ko_parent='MAT', style='C1')
+    sex = 'm'
+    cytometer.stats.plot_linear_regression(sqwat_null_model_m, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_pat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_mat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
     plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
     plt.ylim(0, 2.1)
     plt.tick_params(labelsize=14)
