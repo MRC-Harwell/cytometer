@@ -402,6 +402,7 @@ for method in ['auto', 'corrected']:
 ## USED IN PAPER
 ########################################################################################################################
 
+from toolz import interleave
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -463,23 +464,23 @@ with np.load(dataframe_areas_extra_filename) as aux:
 
 ## auxiliary functions
 
-def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sy=1.0):
-    if np.std(df['BW'] / df['BW__']) > 1e-8:
-        raise ValueError('BW / BW__ is not the same for all rows')
-    BW__factor = (df['BW'] / df['BW__']).mean()
-    BW__lim = np.array([df['BW__'].min(), df['BW__'].max()])
-    X = pd.DataFrame(data={'BW__': BW__lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
-                           'genotype': [genotype, genotype]})
-    y_pred = model.predict(X)
-    plt.plot(BW__lim * BW__factor, y_pred * sy, style)
-
-def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0, label=None):
-    DW_BW = df['DW'] / df['BW']
-    DW_BW_lim = np.array([DW_BW.min(), DW_BW.max()])
-    X = pd.DataFrame(data={'DW_BW': DW_BW_lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
-                           'genotype': [genotype, genotype]})
-    y_pred = model.predict(X)
-    plt.plot(DW_BW_lim * sx, y_pred * sy, style, label=label)
+# def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sy=1.0):
+#     if np.std(df['BW'] / df['BW__']) > 1e-8:
+#         raise ValueError('BW / BW__ is not the same for all rows')
+#     BW__factor = (df['BW'] / df['BW__']).mean()
+#     BW__lim = np.array([df['BW__'].min(), df['BW__'].max()])
+#     X = pd.DataFrame(data={'BW__': BW__lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
+#                            'genotype': [genotype, genotype]})
+#     y_pred = model.predict(X)
+#     plt.plot(BW__lim * BW__factor, y_pred * sy, style)
+#
+# def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0, label=None):
+#     DW_BW = df['DW'] / df['BW']
+#     DW_BW_lim = np.array([DW_BW.min(), DW_BW.max()])
+#     X = pd.DataFrame(data={'DW_BW': DW_BW_lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
+#                            'genotype': [genotype, genotype]})
+#     y_pred = model.predict(X)
+#     plt.plot(DW_BW_lim * sx, y_pred * sy, style, label=label)
 
 def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected'):
 
@@ -969,29 +970,33 @@ sqwat_model_m_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=met
 sqwat_model_m_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
 
 # extract coefficients, errors and p-values from models
+model_names = ['gwat_model_f_pat', 'gwat_model_f_mat',
+         'sqwat_model_f_pat', 'sqwat_model_f_mat',
+         'gwat_model_m_pat', 'gwat_model_m_mat',
+         'sqwat_model_m_pat', 'sqwat_model_m_mat']
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        [gwat_model_f_pat, sqwat_model_f_pat,
-         gwat_model_f_mat, sqwat_model_f_mat,
-         gwat_model_m_pat, sqwat_model_m_pat,
-         gwat_model_m_mat, sqwat_model_m_mat])
+        [gwat_model_f_pat, gwat_model_f_mat,
+         sqwat_model_f_pat, sqwat_model_f_mat,
+         gwat_model_m_pat, gwat_model_m_mat,
+         sqwat_model_m_pat, sqwat_model_m_mat],
+    model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
-df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns)
-df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False), columns=df_coeff.columns)
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
 
 if SAVEFIG:
-    # spreadsheet for model coefficients and p-values
-    cols = ['Intercept', 'BW__']
-
-    df_concat = pd.DataFrame()
-    for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff[col], df_pval[col], df_asterisk[col],
-                               df_corrected_pval[col], df_corrected_asterisk[col]], axis=1)
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+                          axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = df_concat.iloc[:, idx]
     df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_depot_weight_models_coeffs_pvals.csv'))
 
 if SAVEFIG:
