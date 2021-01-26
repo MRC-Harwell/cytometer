@@ -1109,6 +1109,8 @@ q_models_m_pat = []
 q_models_m_mat = []
 q_models_f_null = []
 q_models_m_null = []
+q_models_f = []
+q_models_m = []
 for i_q in i_quantiles:
 
     # choose one area_at_quantile value as the output of the linear model
@@ -1130,12 +1132,20 @@ for i_q in i_quantiles:
     idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
     q_model_m_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
 
+    # fit models with parent variable
+    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
+    q_model_f = sm.OLS.from_formula('area_at_quantile ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
+    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
+    q_model_m = sm.OLS.from_formula('area_at_quantile ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
+
     q_models_f_pat.append(q_model_f_pat)
     q_models_f_mat.append(q_model_f_mat)
     q_models_m_pat.append(q_model_m_pat)
     q_models_m_mat.append(q_model_m_mat)
     q_models_f_null.append(q_model_f_null)
     q_models_m_null.append(q_model_m_null)
+    q_models_f.append(q_model_f)
+    q_models_m.append(q_model_m)
 
     if DEBUG:
         print(q_model_f_pat.summary())
@@ -1144,15 +1154,17 @@ for i_q in i_quantiles:
         print(q_model_m_mat.summary())
         print(q_model_f_null.summary())
         print(q_model_m_null.summary())
+        print(q_model_f.summary())
+        print(q_model_m.summary())
 
-# extract coefficients, errors and p-values from models
+# extract coefficients, errors and p-values from PAT and MAT models
 model_names = []
-for model_name in ['model_f_pat', 'model_f_mat', 'model_f_null', 'model_m_pat', 'model_m_mat', 'model_m_null']:
+for model_name in ['model_f_pat', 'model_f_mat', 'model_m_pat', 'model_m_mat']:
     for i_q in i_quantiles:
         model_names.append('q_' + '{0:.0f}'.format(quantiles[i_q] * 100) + '_' + model_name)
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        q_models_f_pat + q_models_f_mat + q_models_f_null + q_models_m_pat + q_models_m_mat + q_models_m_null,
+        q_models_f_pat + q_models_f_mat + q_models_m_pat + q_models_m_mat,
     model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
@@ -1338,6 +1350,25 @@ if SAVEFIG:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_models_' + depot + '.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_models_' + depot + '.svg'))
+
+# Likelihood ratio tests of the parent variable
+print('Likelihood Ratio Test')
+
+print('Female')
+for i, i_q in enumerate(i_quantiles):
+    lr, pval = cytometer.stats.lrtest(q_models_f_null[i].llf, q_models_f[i].llf)
+    pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
+    print('AIC_null=' + '{0:.2f}'.format(q_models_f_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_f[i].aic))
+
+print('Male')
+for i, i_q in enumerate(i_quantiles):
+    lr, pval = cytometer.stats.lrtest(q_models_m_null[i].llf, q_models_m[i].llf)
+    pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
+    print('AIC_null=' + '{0:.2f}'.format(q_models_m_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_m[i].aic))
+
+
 
 ####### OLD CODE
 
