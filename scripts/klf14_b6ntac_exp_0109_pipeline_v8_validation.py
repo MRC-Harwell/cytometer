@@ -240,6 +240,10 @@ if SAVE_FIGS:
     print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
     print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
 
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
+
     plt.subplot(222)
     idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
     kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
@@ -258,6 +262,10 @@ if SAVE_FIGS:
     print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
     print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
     print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
 
     plt.subplot(223)
     idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')
@@ -279,6 +287,10 @@ if SAVE_FIGS:
     print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
     print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
 
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
+
     plt.subplot(224)
     idx = (df_all['depot'] == 'sqwat') & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
     kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
@@ -298,6 +310,10 @@ if SAVE_FIGS:
     print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
     print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
     print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
 
     if depot == 'gwat':
         plt.suptitle('Gonadal', fontsize=14)

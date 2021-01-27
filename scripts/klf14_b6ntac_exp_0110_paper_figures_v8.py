@@ -698,9 +698,6 @@ if SAVEFIG:
         plt.suptitle('Subcutaneous', fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
-
 ## numerical quartiles and CIs associated to the histograms
 
 idx_q1 = np.where(quantiles == 0.25)[0][0]
@@ -722,6 +719,12 @@ print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', 
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
 
+if SAVEFIG:
+    plt.subplot(221)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
+
 # f MAT
 df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
 df = df.reset_index()
@@ -736,6 +739,12 @@ print('f MAT')
 print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVEFIG:
+    plt.subplot(222)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
 
 # m PAT
 df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
@@ -752,6 +761,12 @@ print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', 
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
 
+if SAVEFIG:
+    plt.subplot(223)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
+
 # m MAT
 df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
 df = df.reset_index()
@@ -766,6 +781,15 @@ print('m MAT')
 print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVEFIG:
+    plt.subplot(224)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
 
 ## Plots of body weight vs cull age, and swarm plots of body weight
 ## USED IN PAPER
