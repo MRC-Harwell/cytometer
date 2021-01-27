@@ -290,6 +290,7 @@ else:
 ## USED IN PAPER
 ########################################################################################################################
 
+from toolz import interleave
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -350,6 +351,37 @@ with np.load(dataframe_areas_extra_filename) as aux:
     quantiles = aux['quantiles']
     area_bin_edges = aux['area_bin_edges']
     area_bin_centers = aux['area_bin_centers']
+
+def format_coeff_text(model, coeff, df_coeff, df_pval):
+    """
+    Format the coefficient and corresponding p-value of a model into a convenient string.
+
+    It uses as inputs dataframes that are the output of cytometer.stats.models_coeff_ci_pval().
+
+    >>> df_coeff
+                Intercept  C(Genotype)[T.Rreb1-tm1b:Het]
+    model
+    bw_model_f     40.725                     -11.553333
+    bw_model_m     42.345                      -9.830000
+
+    >>> df_pval
+                   Intercept  C(Genotype)[T.Rreb1-tm1b:Het]
+    model
+    bw_model_f  6.415136e-06                       0.051971
+    bw_model_m  2.253177e-09                       0.000834
+
+    >>> print(format_coeff_text(df_coeff, df_pval, 'bw_model_m', 'C(Genotype)[T.Rreb1-tm1b:Het]'))
+    C(Genotype)[T.Rreb1-tm1b:Het]: β=-9.8, p=0.00083 (***)
+
+    :param model: fitted statsmodel model
+    :param coeff: string with the name of the coefficient
+    :param df_coeff: pandas.Dataframe with coefficient results from cytometer.stats.models_coeff_ci_pval().
+    :param df_pval: pandas.Dataframe with p-values from cytometer.stats.models_coeff_ci_pval().
+    :return: string with the value of the coefficient and p_value
+    """
+    return coeff + ': β=' + '{0:.2g}'.format(df_coeff.loc[model, coeff]) + \
+           ', p=' + '{0:.2g}'.format(df_pval.loc[model, coeff]) + \
+           ' ' + cytometer.stats.pval_to_asterisk(df_pval.loc[model, coeff])
 
 
 ## Analyse cell populations from automatically segmented images in two depots: SQWAT and GWAT:
@@ -586,37 +618,36 @@ pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]']) + \
             ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]'])
 print(pval_text)
 
-## Weight ~ Sex * Genotype
+## Weight ~ Genotype, stratified by sex
 
 # bw_model = sm.RLM.from_formula('Weight ~ C(Sex) * C(Genotype)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
-bw_model = sm.OLS.from_formula('Weight ~ C(Sex) * C(Genotype)', data=metainfo).fit()
-print(bw_model.summary())
+bw_model_f = sm.OLS.from_formula('Weight ~ C(Genotype)', subset=metainfo['Sex'] == 'f', data=metainfo).fit()
+bw_model_m = sm.OLS.from_formula('Weight ~ C(Genotype)', subset=metainfo['Sex'] == 'm', data=metainfo).fit()
+print(bw_model_f.summary())
+print(bw_model_m.summary())
 
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
-    cytometer.stats.models_coeff_ci_pval([bw_model],
-                                         extra_hypotheses='C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]')
+    cytometer.stats.models_coeff_ci_pval([bw_model_f, bw_model_m], model_names=['bw_model_f', 'bw_model_m'])
 
-pval_text = 'β=' + '{0:.3e}'.format(bw_model.params['C(Sex)[T.m]']) + \
-            ', p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]']) + \
-            ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]'])
-print('C(Sex)[T.m]: ' + pval_text)
-pval_text = 'β=' + '{0:.3e}'.format(bw_model.params['C(Genotype)[T.Rreb1-tm1b:Het]']) + \
-            ', p=' + '{0:.3e}'.format(bw_model.pvalues['C(Genotype)[T.Rreb1-tm1b:Het]']) + \
-            ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Genotype)[T.Rreb1-tm1b:Het]'])
-print('C(Genotype)[T.Rreb1-tm1b:Het]: ' + pval_text)
-pval_text = 'β=' + '{0:.3e}'.format(bw_model.params['C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]']) + \
-            ', p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]']) + \
-            ' ' + cytometer.stats.pval_to_asterisk(bw_model.pvalues['C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'])
-print('C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]: ' + pval_text)
-pval_text = 'β=' + '{0:.3e}'.format(df_coeff['C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'][0]) + \
-            ', p=' + '{0:.3e}'.format(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'][0]) + \
-            ' ' + cytometer.stats.pval_to_asterisk(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'][0])
-print('C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]: ' + pval_text)
+print(format_coeff_text('bw_model_f', 'C(Genotype)[T.Rreb1-tm1b:Het]'), df_coeff, df_pval)
+print(format_coeff_text('bw_model_m', 'C(Genotype)[T.Rreb1-tm1b:Het]'), df_coeff, df_pval)
+
+bw_mean_f_wt = np.mean(metainfo.loc[(metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT'), 'Weight'])
+bw_mean_f_het = np.mean(metainfo.loc[(metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het'), 'Weight'])
+bw_mean_m_wt = np.mean(metainfo.loc[(metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT'), 'Weight'])
+bw_mean_m_het = np.mean(metainfo.loc[(metainfo['Sex'] == 'm') & (metainfo['Genotype'] == 'Rreb1-tm1b:Het'), 'Weight'])
+
+print('Mean Weight change from WT to Het')
+print('Females: ' + '{0:.1f}'.format(100 * (bw_mean_f_het - bw_mean_f_wt)/bw_mean_f_wt) + ' %')
+print('Males: ' + '{0:.1f}'.format(100 * (bw_mean_m_het - bw_mean_m_wt)/bw_mean_m_wt) + ' %')
 
 if SAVEFIG:
     plt.clf()
     plt.gcf().set_size_inches([5.48, 4.8 ])
 
+    # ax = sns.boxplot(x='Sex', y='Weight', hue='Genotype', data=metainfo, dodge=True)
+    # plt.setp(ax.artists, edgecolor='k', facecolor='w')
+    # plt.setp(ax.lines, color='k')
     ax = sns.swarmplot(x='Sex', y='Weight', hue='Genotype', data=metainfo, dodge=True)
     plt.xlabel('')
     plt.ylabel('Body weight (g)', fontsize=14)
@@ -626,12 +657,12 @@ if SAVEFIG:
     ax.legend(['WT', 'Het'], loc='upper right', fontsize=12)
 
     plt.plot([-0.2, -0.2, 0.2, 0.2], [57, 59, 59, 57], 'k', lw=1.5)
-    pval_text = '$p$=' + '{0:.2g}'.format(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]'][0]) + \
-                ' ' + cytometer.stats.pval_to_asterisk(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]'][0])
+    pval_text = '$p$=' + '{0:.2g}'.format(df_pval.loc['bw_model_f', 'C(Genotype)[T.Rreb1-tm1b:Het]']) + \
+                ' ' + cytometer.stats.pval_to_asterisk(df_pval.loc['bw_model_f', 'C(Genotype)[T.Rreb1-tm1b:Het]'])
     plt.text(0, 59.5, pval_text, ha='center', va='bottom', fontsize=14)
     plt.plot([0.8, 0.8, 1.2, 1.2], [46, 48, 48, 46], 'k', lw=1.5)
-    pval_text = '$p$=' + '{0:.2g}'.format(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'][0]) + \
-                ' ' + cytometer.stats.pval_to_asterisk(df_pval['C(Genotype)[T.Rreb1-tm1b:Het]+C(Sex)[T.m]:C(Genotype)[T.Rreb1-tm1b:Het]'][0])
+    pval_text = '$p$=' + '{0:.2g}'.format(df_pval.loc['bw_model_m', 'C(Genotype)[T.Rreb1-tm1b:Het]']) + \
+                ' ' + cytometer.stats.pval_to_asterisk(df_pval.loc['bw_model_m', 'C(Genotype)[T.Rreb1-tm1b:Het]'])
     plt.text(1, 48.5, pval_text, ha='center', va='bottom', fontsize=14)
     plt.ylim(18, 63)
 
@@ -668,54 +699,51 @@ mesenteric_model_f = sm.OLS.from_formula('Mesenteric ~ Weight * C(Genotype)', da
 mesenteric_model_m = sm.OLS.from_formula('Mesenteric ~ Weight * C(Genotype)', data=metainfo_m).fit()
 
 # Likelihood ratio tests of the Genotype variable
-print('Likelihood Ratio Test')
+print('Likelihood Ratio Test and Akaike Information Criterion')
 
 print('Female')
 lr, pval = cytometer.stats.lrtest(gonadal_null_model_f.llf, gonadal_model_f.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Gonadal: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(gonadal_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(gonadal_model_f.aic))
 
 lr, pval = cytometer.stats.lrtest(perineal_null_model_f.llf, perineal_model_f.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Perineal: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(perineal_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(perineal_model_f.aic))
 
 lr, pval = cytometer.stats.lrtest(subcutaneous_null_model_f.llf, subcutaneous_model_f.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Subcutaneous: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(subcutaneous_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(subcutaneous_model_f.aic))
 
 lr, pval = cytometer.stats.lrtest(mesenteric_null_model_f.llf, mesenteric_model_f.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Mesenteric: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(mesenteric_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(mesenteric_model_f.aic))
 
 print('Male')
 lr, pval = cytometer.stats.lrtest(gonadal_null_model_m.llf, gonadal_model_m.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Gonadal: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(gonadal_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(gonadal_model_m.aic))
 
 lr, pval = cytometer.stats.lrtest(perineal_null_model_m.llf, perineal_model_m.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Perineal: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(perineal_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(perineal_model_m.aic))
 
 lr, pval = cytometer.stats.lrtest(subcutaneous_null_model_m.llf, subcutaneous_model_m.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Subcutaneous: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(subcutaneous_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(subcutaneous_model_m.aic))
 
 lr, pval = cytometer.stats.lrtest(mesenteric_null_model_m.llf, mesenteric_model_m.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Mesenteric: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(mesenteric_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(mesenteric_model_m.aic))
 
-## null models (WT and Het combined)
-
-## linear regressions for WT and Het separately
-gonadal_model_f_null = sm.OLS.from_formula('Gonadal ~ Weight', data=metainfo_f).fit()
-perineal_model_f_null = sm.OLS.from_formula('PAT ~ Weight', data=metainfo_f).fit()
-subcutaneous_model_f_null = sm.OLS.from_formula('SAT ~ Weight', data=metainfo_f).fit()
-mesenteric_model_f_null = sm.OLS.from_formula('Mesenteric ~ Weight', data=metainfo_f).fit()
-
-gonadal_model_m_null = sm.OLS.from_formula('Gonadal ~ Weight', data=metainfo_m).fit()
-perineal_model_m_null = sm.OLS.from_formula('PAT ~ Weight', data=metainfo_m).fit()
-subcutaneous_model_m_null = sm.OLS.from_formula('SAT ~ Weight', data=metainfo_m).fit()
-mesenteric_model_m_null = sm.OLS.from_formula('Mesenteric ~ Weight', data=metainfo_m).fit()
+# depot_weight ~ BW separately for WTs and Hets
 
 # Female WT
 idx = (metainfo['Sex'] == 'f') & (metainfo['Genotype'] == 'Rreb1-tm1b:WT')
@@ -750,7 +778,7 @@ if SAVEFIG:
     plt.gcf().set_size_inches([6.4, 9.4])
 
     plt.subplot(421)
-    cytometer.stats.plot_linear_regression(gonadal_model_f_null, metainfo_f, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(gonadal_null_model_f, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(gonadal_model_f_wt, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Gonadal',
@@ -765,7 +793,7 @@ if SAVEFIG:
     plt.legend(loc='upper left', fontsize=12)
 
     plt.subplot(422)
-    cytometer.stats.plot_linear_regression(gonadal_model_m_null, metainfo_m, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(gonadal_null_model_m, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(gonadal_model_m_wt, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Gonadal',
@@ -778,7 +806,7 @@ if SAVEFIG:
     plt.title('Male', fontsize=14)
 
     plt.subplot(423)
-    cytometer.stats.plot_linear_regression(perineal_model_f_null, metainfo_f, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(perineal_null_model_f, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(perineal_model_f_wt, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='PAT',
@@ -791,7 +819,7 @@ if SAVEFIG:
     plt.ylabel('Perineal\ndepot weight (g)', fontsize=14)
 
     plt.subplot(424)
-    cytometer.stats.plot_linear_regression(perineal_model_m_null, metainfo_m, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(perineal_null_model_m, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(perineal_model_m_wt, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='PAT',
@@ -803,7 +831,7 @@ if SAVEFIG:
     plt.tick_params(labelsize=14)
 
     plt.subplot(425)
-    cytometer.stats.plot_linear_regression(subcutaneous_model_f_null, metainfo_f, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(subcutaneous_null_model_f, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(subcutaneous_model_f_wt, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='SAT',
@@ -816,7 +844,7 @@ if SAVEFIG:
     plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
 
     plt.subplot(426)
-    cytometer.stats.plot_linear_regression(subcutaneous_model_m_null, metainfo_m, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(subcutaneous_null_model_m, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(subcutaneous_model_m_wt, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='SAT',
@@ -828,7 +856,7 @@ if SAVEFIG:
     plt.tick_params(labelsize=14)
 
     plt.subplot(427)
-    cytometer.stats.plot_linear_regression(mesenteric_model_f_null, metainfo_f, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(mesenteric_null_model_f, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(mesenteric_model_f_wt, metainfo_f, ind_var='Weight',
                                            other_vars={'Sex':'f', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Mesenteric',
@@ -842,7 +870,7 @@ if SAVEFIG:
     plt.xlabel('Body weight (g)', fontsize=14)
 
     plt.subplot(428)
-    cytometer.stats.plot_linear_regression(mesenteric_model_m_null, metainfo_m, ind_var='Weight',
+    cytometer.stats.plot_linear_regression(mesenteric_null_model_m, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m'}, c='k', line_label='Null')
     cytometer.stats.plot_linear_regression(mesenteric_model_m_wt, metainfo_m, ind_var='Weight',
                                            other_vars={'Sex':'m', 'Genotype':'Rreb1-tm1b:WT'}, dep_var='Mesenteric',
@@ -862,30 +890,36 @@ if SAVEFIG:
 
 
 # extract coefficients, errors and p-values from models
+model_names = ['gonadal_model_f_wt', 'perineal_model_f_wt', 'subcutaneous_model_f_wt', 'mesenteric_model_f_wt',
+               'gonadal_model_f_het', 'perineal_model_f_het', 'subcutaneous_model_f_het', 'mesenteric_model_f_het',
+               'gonadal_model_m_wt', 'perineal_model_m_wt', 'subcutaneous_model_m_wt', 'mesenteric_model_m_wt',
+               'gonadal_model_m_het', 'perineal_model_m_het', 'subcutaneous_model_m_het', 'mesenteric_model_m_het'
+               ]
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
         [gonadal_model_f_wt, perineal_model_f_wt, subcutaneous_model_f_wt, mesenteric_model_f_wt,
          gonadal_model_f_het, perineal_model_f_het, subcutaneous_model_f_het, mesenteric_model_f_het,
          gonadal_model_m_wt, perineal_model_m_wt, subcutaneous_model_m_wt, mesenteric_model_m_wt,
          gonadal_model_m_het, perineal_model_m_het, subcutaneous_model_m_het, mesenteric_model_m_het
-         ])
+         ],
+    model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
 _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
-df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns)
-df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False), columns=df_coeff.columns)
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
 
 if SAVEFIG:
     # spreadsheet for model coefficients and p-values
-    cols = ['Intercept', 'Weight']
-
-    df_concat = pd.DataFrame()
-    for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff[col], df_pval[col], df_asterisk[col],
-                               df_corrected_pval[col], df_corrected_asterisk[col]], axis=1)
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+                          axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = df_concat.iloc[:, idx]
     df_concat.to_csv(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_depot_weight_models_coeffs_pvals.csv'))
 
 
