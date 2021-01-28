@@ -455,7 +455,8 @@ if SAVEFIG:
     plt.xlim(-1.2, max_area_um2 * 1e-3)
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 
-    plt.suptitle(depot, fontsize=14)
+    depot_title = depot.replace('PAT', 'Perineal').replace('SAT', 'Subcutaneous')
+    plt.suptitle(depot_title, fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_' + depot + '.png'))
@@ -534,11 +535,9 @@ if SAVEFIG:
     plt.text(0.9, 0.9, 'male Het', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
-    plt.suptitle(depot, fontsize=14)
+    depot_title = depot.replace('PAT', 'Perineal').replace('SAT', 'Subcutaneous')
+    plt.suptitle(depot_title, fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
-    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
 
 ## numerical quartiles and CIs associated to the histograms
 
@@ -563,6 +562,12 @@ print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', 
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
 
+if SAVEFIG:
+    plt.subplot(221)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
+
 # f Het
 df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'f') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
 df = df.reset_index()
@@ -577,6 +582,12 @@ print('f Het')
 print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVEFIG:
+    plt.subplot(222)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
 
 # m WT
 df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:WT')]
@@ -593,6 +604,12 @@ print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', 
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
 
+if SAVEFIG:
+    plt.subplot(223)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
+
 # m Het
 df = df_all[(df_all['depot'] == depot) & (df_all['Sex'] == 'm') & (df_all['Genotype'] == 'Rreb1-tm1b:Het')]
 df = df.reset_index()
@@ -608,10 +625,18 @@ print('\t' + '{0:.2f}'.format(q1_mean) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', 
 print('\t' + '{0:.2f}'.format(q2_mean) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
 print('\t' + '{0:.2f}'.format(q3_mean) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
 
+if SAVEFIG:
+    plt.subplot(224)
+    plt.plot([q1_mean, q1_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_mean, q2_mean], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_mean, q3_mean], [0, 1], 'k', linewidth=1)
+
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
 
 ## Weight ~ Sex
 
-bw_model = sm.RLM.from_formula('Weight ~ C(Sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
+bw_model = sm.OLS.from_formula('Weight ~ C(Sex)', data=metainfo).fit()
 print(bw_model.summary())
 
 pval_text = 'p=' + '{0:.3e}'.format(bw_model.pvalues['C(Sex)[T.m]']) + \
@@ -670,6 +695,7 @@ if SAVEFIG:
 
     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_swarm_bw.png'))
     plt.savefig(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_paper_figures_swarm_bw.svg'))
+
 
 ## depot_weight ~ BW * Genotype
 
@@ -948,10 +974,12 @@ depot = 'Gonadal'
 # fit linear models to area quantiles
 q_models_f_wt = []
 q_models_f_het = []
+q_models_f_null = []
+q_models_f = []
 q_models_m_wt = []
 q_models_m_het = []
-q_models_f_null = []
 q_models_m_null = []
+q_models_m = []
 for i_q in i_quantiles:
 
     # choose one area_at_quantile value as the output of the linear model
@@ -975,12 +1003,20 @@ for i_q in i_quantiles:
 
     # q_model_f = sm.RLM.from_formula('area_q_025 ~ depot_weight * C(Genotype)', data=df_all, subset=idx, M=sm.robust.norms.HuberT()).fit()
 
+    # fit models with Genotype
+    idx = (df_all['Sex'] == 'f') & (df_all['depot'] == depot)
+    q_model_f = sm.OLS.from_formula('area_at_quantile ~ depot_weight * C(Genotype)', data=df_all, subset=idx).fit()
+    idx = (df_all['Sex'] == 'm') & (df_all['depot'] == depot)
+    q_model_m = sm.OLS.from_formula('area_at_quantile ~ depot_weight * C(Genotype)', data=df_all, subset=idx).fit()
+
     q_models_f_wt.append(q_model_f_wt)
     q_models_f_het.append(q_model_f_het)
+    q_models_f_null.append(q_model_f_null)
+    q_models_f.append(q_model_f)
     q_models_m_wt.append(q_model_m_wt)
     q_models_m_het.append(q_model_m_het)
-    q_models_f_null.append(q_model_f_null)
     q_models_m_null.append(q_model_m_null)
+    q_models_m.append(q_model_m)
 
     if DEBUG:
         print(q_model_f_wt.summary())
@@ -990,31 +1026,32 @@ for i_q in i_quantiles:
         print(q_model_f_null.summary())
         print(q_model_m_null.summary())
 
-# extract coefficients, errors and p-values from quartile models
-df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = cytometer.stats.models_coeff_ci_pval(q_models_f_wt + q_models_f_het)
-df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = cytometer.stats.models_coeff_ci_pval(q_models_m_wt + q_models_m_het)
+# extract coefficients, errors and p-values from PAT and MAT models
+model_names = []
+for model_name in ['model_f_wt', 'model_f_het', 'model_m_wt', 'model_m_het']:
+    for i_q in i_quantiles:
+        model_names.append('q_' + '{0:.0f}'.format(quantiles[i_q] * 100) + '_' + model_name)
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        q_models_f_wt + q_models_f_het + q_models_m_wt + q_models_m_het,
+    model_names=model_names)
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-# df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-# df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
-
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
 
 if SAVEFIG:
-    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-    cols = ['Intercept', 'C(Genotype)[T.Rreb1-tm1b:Het]',
-            'depot_weight', 'depot_weight:C(Genotype)[T.Rreb1-tm1b:Het]']
-
-    df_concat = pd.DataFrame()
-    for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col]], axis=1)
-    df_concat.to_csv(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_area_at_quantile_models_coeffs_pvals_f_' + depot + '.csv'))
-
-    df_concat = pd.DataFrame()
-    for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col]], axis=1)
-    df_concat.to_csv(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_area_at_quantile_models_coeffs_pvals_m_' + depot + '.csv'))
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+                          axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = df_concat.iloc[:, idx]
+    df_concat.to_csv(os.path.join(figures_dir, 'rreb1_tm1b_exp_0005_area_at_quantile_models_coeffs_pvals_' + depot + '.csv'))
 
 # plot
 if SAVEFIG:
@@ -1044,7 +1081,7 @@ if SAVEFIG:
     plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
     plt.title('Female', fontsize=14)
     if depot == 'Gonadal':
-        plt.legend(loc='best', fontsize=12)
+        plt.legend(loc='lower right', fontsize=12)
     if depot == 'Gonadal':
         plt.ylim(-7, 9)
         # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
@@ -1213,39 +1250,25 @@ if SAVEFIG:
 
 ## Likelihood Ratio Tests to investigate whether Genotype has an effect
 
-depot = 'Gonadal'
+# depot = 'Gonadal'
 # depot = 'PAT'  # perineal + retroperineal
 # depot = 'SAT'
 # depot = 'Mesenteric'
 
 # Likelihood ratio tests of the Genotype variable
 df = df_all.copy()
-print('Likelihood Ratio Test: ' + depot)
+print('Likelihood Ratio Test and Akaike Information Criteria: ' + depot)
+
 print('Female')
 for i, i_q in enumerate(i_quantiles):
-
-    print('Quantile: ' + str(quantiles[i_q]))
-
-    idx = (df['Sex'] == 'f') & (df['depot'] == depot)
-    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    q_model_null = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df, subset=idx).fit()
-    q_model = sm.OLS.from_formula('area_at_quantile ~ depot_weight * Genotype', data=df, subset=idx).fit()
-
-    lr, pval = cytometer.stats.lrtest(q_model_null.llf, q_model.llf)
+    lr, pval = cytometer.stats.lrtest(q_models_f_null[i].llf, q_models_f[i].llf)
     pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-    print(depot + ': ' + pval_text)
+    print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
+    print('AIC_null=' + '{0:.2f}'.format(q_models_f_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_f[i].aic))
 
 print('Male')
 for i, i_q in enumerate(i_quantiles):
-
-    print('Quantile: ' + str(quantiles[i_q]))
-
-    idx = (df['Sex'] == 'm') & (df['depot'] == depot)
-    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    q_model_null = sm.OLS.from_formula('area_at_quantile ~ depot_weight', data=df, subset=idx).fit()
-    q_model = sm.OLS.from_formula('area_at_quantile ~ depot_weight * Genotype', data=df, subset=idx).fit()
-
-    lr, pval = cytometer.stats.lrtest(q_model_null.llf, q_model.llf)
+    lr, pval = cytometer.stats.lrtest(q_models_m_null[i].llf, q_models_m[i].llf)
     pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-    print(depot + ': ' + pval_text)
-
+    print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
+    print('AIC_null=' + '{0:.2f}'.format(q_models_m_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_m[i].aic))
