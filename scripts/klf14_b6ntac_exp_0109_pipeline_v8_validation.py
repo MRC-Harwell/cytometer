@@ -80,7 +80,7 @@ figures_dir = os.path.join(paper_dir, 'figures')
 # file with RGB modes from all training data
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
 
-# k-folds file
+# k-folds file with hand traced filenames
 saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # model names
