@@ -402,13 +402,14 @@ for method in ['auto', 'corrected']:
 ## USED IN PAPER
 ########################################################################################################################
 
+import pickle
+import PIL
 from toolz import interleave
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import statsmodels.api as sm
-import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
 import openslide
@@ -418,15 +419,20 @@ import shapely
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+hand_traced_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_v2')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 dataframe_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 
 DEBUG = False
 
 method = 'corrected'
+
+# k-folds file with hand traced filenames
+saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
 # CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
@@ -481,6 +487,78 @@ with np.load(dataframe_areas_extra_filename) as aux:
 #                            'genotype': [genotype, genotype]})
 #     y_pred = model.predict(X)
 #     plt.plot(DW_BW_lim * sx, y_pred * sy, style, label=label)
+
+
+def table_of_hand_traced_regions(file_svg_list):
+    """
+    Open SVG files in a list, and count the number of different types of regions (Cells, Other, Background, Windows,
+    Windows with cells) and create a table with them for the paper
+    :param file_svg_list: list of filenames
+    :return: pd.Dataframe
+    """
+
+    # init dataframe to aggregate training numbers of each mouse
+    table = pd.DataFrame(columns=['Cells', 'Other', 'Background', 'Windows', 'Windows with cells'])
+
+    # loop files with hand traced contours
+    for i, file_svg in enumerate(file_svg_list):
+
+        print('file ' + str(i) + '/' + str(len(file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+        # read the ground truth cell contours in the SVG file. This produces a list [contour_0, ..., contour_N-1]
+        # where each contour_i = [(X_0, Y_0), ..., (X_P-1, X_P-1)]
+        cell_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                                minimum_npoints=3)
+        other_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Other', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        brown_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Brown', add_offset_from_filename=False,
+                                                                 minimum_npoints=3)
+        background_contours = cytometer.data.read_paths_from_svg_file(file_svg, tag='Background',
+                                                                      add_offset_from_filename=False,
+                                                                      minimum_npoints=3)
+        contours = cell_contours + other_contours + brown_contours + background_contours
+
+        # make a list with the type of cell each contour is classified as
+        contour_type = [np.zeros(shape=(len(cell_contours),), dtype=np.uint8),  # 0: white-adipocyte
+                        np.ones(shape=(len(other_contours),), dtype=np.uint8),  # 1: other types of tissue
+                        np.ones(shape=(len(brown_contours),), dtype=np.uint8),
+                        # 1: brown cells (treated as "other" tissue)
+                        np.zeros(shape=(len(background_contours),), dtype=np.uint8)]  # 0: background
+        contour_type = np.concatenate(contour_type)
+
+        print('Cells: ' + str(len(cell_contours)) + '. Other: ' + str(len(other_contours))
+              + '. Brown: ' + str(len(brown_contours)) + '. Background: ' + str(len(background_contours)))
+
+        # create dataframe for this image
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
+                                                              values=[i, ], values_tag='i',
+                                                              tags_to_keep=['id', 'ko_parent', 'sex'])
+
+        # mouse ID as a string
+        id = df_common['id'].values[0]
+        sex = df_common['sex'].values[0]
+        ko = df_common['ko_parent'].values[0]
+
+        # row to add to the table
+        df = pd.DataFrame(
+            [(sex, ko,
+              len(cell_contours), len(other_contours) + len(brown_contours), len(background_contours), 1,
+              int(len(cell_contours) > 0))],
+            columns=['Sex', 'Genotype', 'Cells', 'Other', 'Background', 'Windows', 'Windows with cells'], index=[id])
+
+        if id in table.index:
+
+            num_cols = ['Cells', 'Other', 'Background', 'Windows', 'Windows with cells']
+            table.loc[id, num_cols] = (table.loc[id, num_cols] + df.loc[id, num_cols])
+
+        else:
+
+            table = table.append(df, sort=False, ignore_index=False, verify_integrity=True)
+
+    # alphabetical order by mouse IDs
+    table = table.sort_index()
+
+    return table
 
 def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected'):
 
@@ -546,8 +624,327 @@ def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, met
 
 
 ########################################################################################################################
+## Summary of datasets used for
+#   * DeepCytometer training/validation
+#   * Cell population studies
+########################################################################################################################
+
+## DeepCytometer training/validation
+
+# original dataset used in pipelines up to v6 + extra "other" tissue images
+kfold_filename = os.path.join(saved_models_dir, saved_kfolds_filename)
+with open(kfold_filename, 'rb') as f:
+    aux = pickle.load(f)
+    file_svg_list = aux['file_list']
+    idx_test_all = aux['idx_test']
+    idx_train_all = aux['idx_train']
+
+# correct home directory
+file_svg_list = [x.replace('/users/rittscher/rcasero', home) for x in file_svg_list]
+file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
+
+# number of images
+n_im = len(file_svg_list)
+
+# HACK: If file_svg_list_extra is used above, this block will not work but you don't need it
+# for the loop before that calculates the rows of Table MICE with the breakdown of
+# cells/other/background objects by mouse
+#
+# loop the folds to get the ndpi files that correspond to testing of each fold,
+ndpi_files_test_list = {}
+for i_fold in range(len(idx_test_all)):
+    # list of .svg files for testing
+    file_svg_test = np.array(file_svg_list)[idx_test_all[i_fold]]
+
+    # list of .ndpi files that the .svg windows came from
+    file_ndpi_test = [os.path.basename(x).replace('.svg', '') for x in file_svg_test]
+    file_ndpi_test = np.unique([x.split('_row')[0] for x in file_ndpi_test])
+
+    # add to the dictionary {file: fold}
+    for file in file_ndpi_test:
+        ndpi_files_test_list[file] = i_fold
+
+
+if DEBUG:
+    # list of NDPI files
+    for key in ndpi_files_test_list.keys():
+        print(key)
+
+# create a table with the number of different hand traced regions per animal
+table = table_of_hand_traced_regions(file_svg_list)
+
+# save dataframe
+table.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_training_hand_traced_objects_count.csv'))
+
+# total number of sampled windows
+print('Total number of windows = ' + str(np.sum(table['Windows'])))
+print('Total number of windows with cells = ' + str(np.sum(table['Windows with cells'])))
+
+# total number of "Other" and background areas
+print('Total number of Other areas = ' + str(np.sum(table['Other'])))
+print('Total number of Background areas = ' + str(np.sum(table['Background'])))
+
+# aggregate by sex and genotype
+idx_f = table['Sex'] == 'f'
+idx_m = table['Sex'] == 'm'
+idx_pat = table['Genotype'] == 'PAT'
+idx_mat = table['Genotype'] == 'MAT'
+
+print('f PAT: ' + str(np.sum(table.loc[idx_f & idx_pat, 'Cells'])))
+print('f MAT: ' + str(np.sum(table.loc[idx_f & idx_mat, 'Cells'])))
+print('m PAT: ' + str(np.sum(table.loc[idx_m & idx_pat, 'Cells'])))
+print('m MAT: ' + str(np.sum(table.loc[idx_m & idx_mat, 'Cells'])))
+
+## Cell population studies
+
+# list of hand traced contours
+# The list contains 126 XCF (Gimp format) files with the contours that were used for training DeepCytometer,
+# plus 5 files (131 in total) with extra contours for 2 mice where the cell population was not well
+# represented.
+hand_file_svg_list = [
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_010512_col_006912.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_012848_col_016240.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_016812_col_017484.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_019228_col_015060.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_029472_col_015520.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_005348_col_019844.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_006652_col_061724.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_006900_col_071980.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_010732_col_016692.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_012828_col_018388.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_013600_col_022880.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_014768_col_022576.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_014980_col_027052.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_027388_col_018468.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_028864_col_024512.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_041392_col_026032.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_009588_col_028676.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_011680_col_013984.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_015856_col_012416.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_018720_col_031152.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_021796_col_055852.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_011852_col_071620.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_013300_col_055476.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_014320_col_007600.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_015200_col_021536.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_020256_col_002880.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_021136_col_010880.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_001292_col_004348.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_005600_col_004224.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_007216_col_008896.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_007372_col_008556.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_011904_col_005280.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_010048_col_001856.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_012172_col_049588.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_013232_col_009008.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_016068_col_007276.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_019680_col_016480.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_004124_col_012524.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_004384_col_005456.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006040_col_005272.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006640_col_008848.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_008532_col_009804.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_013952_col_002624.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_017044_col_031228.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_021804_col_035412.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_010716_col_008924.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_016832_col_016944.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_018784_col_010912.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_024528_col_014688.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_026108_col_068956.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_009840_col_008736.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_017792_col_017504.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_020032_col_018640.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_030820_col_022204.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_007500_col_050372.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_008000_col_003680.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_013348_col_019316.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_019168_col_019600.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_022960_col_007808.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_026132_col_012148.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_027968_col_011200.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_003584_col_017280.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_012908_col_010212.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_013984_col_012576.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_014448_col_019088.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_015200_col_015920.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_028156_col_018596.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_001920_col_014048.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_005344_col_019360.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_009236_col_018316.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_012680_col_023936.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_014800_col_020976.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_016756_col_063692.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_017360_col_024712.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_024128_col_010112.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_024836_col_055124.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_005424_col_006896.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_006268_col_013820.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_013820_col_057052.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_014272_col_008064.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_017808_col_012400.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_007296_col_010640.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_013856_col_014128.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_018380_col_063068.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_020448_col_013824.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_024076_col_020404.svg',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_row_010128_col_013536.svg',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_row_015776_col_010976.svg',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_row_015984_col_026832.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_005428_col_058372.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_012404_col_054316.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_013604_col_024644.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_014628_col_069148.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_018384_col_014688.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_019340_col_017348.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_020128_col_010096.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_022000_col_015568.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_006880_col_017808.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_008212_col_015364.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_011004_col_005988.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_015004_col_010364.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_018992_col_005952.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_019556_col_057972.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_021812_col_022916.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_022208_col_018128.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_010084_col_058476.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_012208_col_007472.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_013680_col_019152.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_016260_col_058300.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_019220_col_061724.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_020048_col_028896.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_021012_col_057844.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_023236_col_011084.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_006124_col_082236.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_007436_col_019092.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_009296_col_029664.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_015872_col_019456.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_016556_col_010292.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_023100_col_009220.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_023728_col_011904.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_004256_col_017552.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_005424_col_010432.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_006412_col_012484.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_012144_col_007056.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_013012_col_019820.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_031172_col_025996.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_034628_col_040116.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_035948_col_041492.svg'
+]
+
+# get v2 of the hand traced contours
+hand_file_svg_list = [os.path.join(hand_traced_dir, x) for x in hand_file_svg_list]
+
+# create a table with the number of different hand traced regions per animal
+hand_traced_table = table_of_hand_traced_regions(hand_file_svg_list)
+
+# save dataframe
+hand_traced_table.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_cellpop_v2_hand_traced_objects_count.csv'))
+
+# total number of sampled windows
+print('Total number of windows = ' + str(np.sum(hand_traced_table['Windows'])))
+print('Total number of windows with cells = ' + str(np.sum(hand_traced_table['Windows with cells'])))
+
+# total number of "Other" and background areas
+print('Total number of Other areas = ' + str(np.sum(hand_traced_table['Other'])))
+print('Total number of Background areas = ' + str(np.sum(hand_traced_table['Background'])))
+
+# aggregate by sex and genotype
+idx_f = hand_traced_table['Sex'] == 'f'
+idx_m = hand_traced_table['Sex'] == 'm'
+idx_pat = hand_traced_table['Genotype'] == 'PAT'
+idx_mat = hand_traced_table['Genotype'] == 'MAT'
+
+print('f PAT: ' + str(np.sum(hand_traced_table.loc[idx_f * idx_pat, 'Cells'])))
+print('f MAT: ' + str(np.sum(hand_traced_table.loc[idx_f * idx_mat, 'Cells'])))
+print('m PAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_pat, 'Cells'])))
+print('m MAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_mat, 'Cells'])))
+
+
+########################################################################################################################
 ## Analysis of automatic segmentations
 ########################################################################################################################
+
+
+# loop hand traced files and make a dataframe with the cell sizes
+df_hand_all = pd.DataFrame()
+for i, file_svg in enumerate(hand_file_svg_list):
+
+    print('File ' + str(i) + '/' + str(len(hand_file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+    # load hand traced contours
+    cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                    minimum_npoints=3)
+
+    print('Cells: ' + str(len(cells)))
+
+    if (len(cells) == 0):
+        continue
+
+    # load training image
+    file_im = file_svg.replace('.svg', '.tif')
+    im = PIL.Image.open(file_im)
+
+    # read pixel size information
+    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+    im = np.array(im)
+
+    if DEBUG:
+        plt.clf()
+        plt.imshow(im)
+        for j in range(len(cells)):
+            cell = np.array(cells[j])
+            plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
+            plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
+
+    # compute cell areas
+    cell_areas = np.array([shapely.geometry.Polygon(x).area for x in cells]) * xres * yres
+
+    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
+                                                   values=cell_areas, values_tag='area',
+                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
+
+    # figure out what depot these cells belong to
+    # NOTE: this code is here only for completion, because there are no gonadal slides in the training dataset, only
+    # subcutaneous
+    aux = os.path.basename(file_svg).replace('KLF14-B6NTAC', '')
+    if 'B' in aux and 'C' in aux:
+        raise ValueError('Slice appears to be both gonadal and subcutaneous')
+    elif 'B' in aux:
+        depot = 'gwat'
+    elif 'C' in aux:
+        depot = 'sqwat'
+    else:
+        raise ValueError('Slice is neither gonadal nor subcutaneous')
+    df['depot'] = depot
+    df_hand_all = df_hand_all.append(df, ignore_index=True)
+
+
+print('Min cell size = ' + '{0:.1f}'.format(np.min(df_hand_all['area'])) + ' um^2 = '
+      + '{0:.1f}'.format(np.min(df_hand_all['area']) / xres_ref / yres_ref) + ' pixels')
+print('Max cell size = ' + '{0:.1f}'.format(np.max(df_hand_all['area'])) + ' um^2 = '
+      + '{0:.1f}'.format(np.max(df_hand_all['area']) / xres_ref / yres_ref) + ' pixels')
+
+if SAVEFIG:
+    plt.clf()
+    df_hand_all.boxplot(column='area', by='sex', hue='ko_parent')
+
+
+    boxes = [
+        {'label': "Hand traced",
+         'whislo': 162.6,  # Bottom whisker position
+         'q1': 170.2,  # First quartile (25th percentile)
+         'med': 175.7,  # Median         (50th percentile)
+         'q3': 180.4,  # Third quartile (75th percentile)
+         'whishi': 187.8,  # Top whisker position
+         'fliers': []  # Outliers
+         }
+    ]
 
 ## Analyse cell populations from automatically segmented images in two depots: SQWAT and GWAT:
 ## smoothed histograms
