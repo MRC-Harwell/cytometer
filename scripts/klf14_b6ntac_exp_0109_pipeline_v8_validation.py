@@ -360,7 +360,7 @@ print('Min cell size = ' + '{0:.1f}'.format(np.min(df_all['area'])) + ' um^2 = '
 print('Max cell size = ' + '{0:.1f}'.format(np.max(df_all['area'])) + ' um^2 = '
       + '{0:.1f}'.format(np.max(df_all['area']) / xres_ref / yres_ref) + ' pixels')
 
-# these are the same as in exp 0110
+# these are the same quantiles as the ones for automatic segmentations in exp 0110
 quantiles = np.linspace(0, 1, 21)
 area_bin_edges = np.linspace(min_area_um2, max_area_um2, 201)
 area_bin_centers = (area_bin_edges[0:-1] + area_bin_edges[1:]) / 2.0
