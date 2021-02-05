@@ -410,6 +410,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
 import openslide
@@ -1117,19 +1118,69 @@ if SAVEFIG:
 ## USED IN PAPER
 ########################################################################################################################
 
+print('Min cull age: ' + str(metainfo['cull_age'].min()) + ' days')
+print('Max cull age: ' + str(metainfo['cull_age'].max()) + ' days')
+
+# we need numerical instead of categorical values for logistic regression
+metainfo['ko_parent_num'] = (metainfo['ko_parent'] == 'MAT').astype(np.float32)
+metainfo['genotype_num'] = (metainfo['genotype'] == 'KLF14-KO:Het').astype(np.float32)
+
 # scale cull_age to avoid large condition numbers
 metainfo['cull_age__'] = (metainfo['cull_age'] - np.mean(metainfo['cull_age'])) / np.std(metainfo['cull_age'])
 
 # for convenience create two dataframes (female and male) with the data for the current depot
-metainfo_f = metainfo[metainfo['sex'] == 'f'].reset_index()
-metainfo_m = metainfo[metainfo['sex'] == 'm'].reset_index()
+metainfo_f = metainfo[metainfo['sex'] == 'f']
+metainfo_m = metainfo[metainfo['sex'] == 'm']
 
-# ANCOVA-like comparison of means between PAT and MAT
-bw_model_f = sm.RLM.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+# effect of cull age on body weight
+bw_model_f = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_f).fit()
+print(bw_model_f.summary())
+bw_model_m = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_m).fit()
+print(bw_model_m.summary())
 
+# logistic regression of parent ~ cull_age
+cull_model_f = smf.logit('ko_parent_num ~ cull_age', data=metainfo_f).fit()
+print(cull_model_f.summary())
+cull_model_m = smf.logit('ko_parent_num ~ cull_age', data=metainfo_m).fit()
+print(cull_model_m.summary())
+
+# logistic regression of genotype ~ cull_age
+cull_model_f = smf.logit('genotype_num ~ cull_age', data=metainfo_f).fit()
+print(cull_model_f.summary())
+cull_model_m = smf.logit('genotype_num ~ cull_age', data=metainfo_m).fit()
+print(cull_model_m.summary())
+
+# does cull_age make a difference in the BW ~ parent model?
+bw_null_model_f = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_f).fit()
+bw_null_model_m = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_m).fit()
+bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_m).fit()
+
+print(bw_null_model_f.summary())
+print(bw_null_model_m.summary())
 print(bw_model_f.summary())
 print(bw_model_m.summary())
+
+print('Female')
+null_model = bw_null_model_f
+alt_model = bw_model_f
+lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('p-val: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
+      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
+
+print('Male')
+null_model = bw_null_model_m
+alt_model = bw_model_m
+lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.3g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('p-val: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
+      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
+
+print(bw_null_model_f.summary())
+print(bw_model_f.summary())
 
 # extract coefficients, errors and p-values from models
 df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
