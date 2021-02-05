@@ -624,7 +624,7 @@ def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, met
 
 
 ########################################################################################################################
-## Summary of datasets used for
+## Summary of hand traced datasets used for
 #   * DeepCytometer training/validation
 #   * Cell population studies
 ########################################################################################################################
@@ -674,7 +674,8 @@ if DEBUG:
 table = table_of_hand_traced_regions(file_svg_list)
 
 # save dataframe
-table.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_training_hand_traced_objects_count.csv'))
+if SAVEFIG:
+    table.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_training_hand_traced_objects_count.csv'))
 
 # total number of sampled windows
 print('Total number of windows = ' + str(np.sum(table['Windows'])))
@@ -842,7 +843,8 @@ hand_file_svg_list = [os.path.join(hand_traced_dir, x) for x in hand_file_svg_li
 hand_traced_table = table_of_hand_traced_regions(hand_file_svg_list)
 
 # save dataframe
-hand_traced_table.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_cellpop_v2_hand_traced_objects_count.csv'))
+if SAVEFIG:
+    hand_traced_table.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_cellpop_v2_hand_traced_objects_count.csv'))
 
 # total number of sampled windows
 print('Total number of windows = ' + str(np.sum(hand_traced_table['Windows'])))
@@ -865,87 +867,6 @@ print('m MAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_mat, 'Cells'])))
 
 
 ########################################################################################################################
-## Analysis of automatic segmentations
-########################################################################################################################
-
-
-# loop hand traced files and make a dataframe with the cell sizes
-df_hand_all = pd.DataFrame()
-for i, file_svg in enumerate(hand_file_svg_list):
-
-    print('File ' + str(i) + '/' + str(len(hand_file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
-
-    # load hand traced contours
-    cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
-                                                    minimum_npoints=3)
-
-    print('Cells: ' + str(len(cells)))
-
-    if (len(cells) == 0):
-        continue
-
-    # load training image
-    file_im = file_svg.replace('.svg', '.tif')
-    im = PIL.Image.open(file_im)
-
-    # read pixel size information
-    xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
-    yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
-
-    im = np.array(im)
-
-    if DEBUG:
-        plt.clf()
-        plt.imshow(im)
-        for j in range(len(cells)):
-            cell = np.array(cells[j])
-            plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
-            plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
-
-    # compute cell areas
-    cell_areas = np.array([shapely.geometry.Polygon(x).area for x in cells]) * xres * yres
-
-    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
-                                                   values=cell_areas, values_tag='area',
-                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
-
-    # figure out what depot these cells belong to
-    # NOTE: this code is here only for completion, because there are no gonadal slides in the training dataset, only
-    # subcutaneous
-    aux = os.path.basename(file_svg).replace('KLF14-B6NTAC', '')
-    if 'B' in aux and 'C' in aux:
-        raise ValueError('Slice appears to be both gonadal and subcutaneous')
-    elif 'B' in aux:
-        depot = 'gwat'
-    elif 'C' in aux:
-        depot = 'sqwat'
-    else:
-        raise ValueError('Slice is neither gonadal nor subcutaneous')
-    df['depot'] = depot
-    df_hand_all = df_hand_all.append(df, ignore_index=True)
-
-
-print('Min cell size = ' + '{0:.1f}'.format(np.min(df_hand_all['area'])) + ' um^2 = '
-      + '{0:.1f}'.format(np.min(df_hand_all['area']) / xres_ref / yres_ref) + ' pixels')
-print('Max cell size = ' + '{0:.1f}'.format(np.max(df_hand_all['area'])) + ' um^2 = '
-      + '{0:.1f}'.format(np.max(df_hand_all['area']) / xres_ref / yres_ref) + ' pixels')
-
-if SAVEFIG:
-    plt.clf()
-    df_hand_all.boxplot(column='area', by='sex', hue='ko_parent')
-
-
-    boxes = [
-        {'label': "Hand traced",
-         'whislo': 162.6,  # Bottom whisker position
-         'q1': 170.2,  # First quartile (25th percentile)
-         'med': 175.7,  # Median         (50th percentile)
-         'q3': 180.4,  # Third quartile (75th percentile)
-         'whishi': 187.8,  # Top whisker position
-         'fliers': []  # Outliers
-         }
-    ]
-
 ## Analyse cell populations from automatically segmented images in two depots: SQWAT and GWAT:
 ## smoothed histograms
 ## USED IN THE PAPER
