@@ -218,7 +218,8 @@ def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sx=1
     (df[ind_var].min(), df[ind_var].max()).
     :param ind_var: String with the name of the independent variable (x-axis variable).
     :param other_vars: Dictionary with covariates of ind_var in the model, e.g. {'Sex': 'f', 'Genotype': 'WT'}.
-    :param dep_var: (def None)
+    :param dep_var: (def None) String with the name of the dependent variable (y-axis variable) to get a scatter plot of
+    the points in df.
     :param sx: (def 1.0) Scaling factor for the independent variable.
     :param sy: (def 1.0) Scaling factor for the dependent variable.
     :return: None.
