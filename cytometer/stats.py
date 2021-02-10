@@ -209,19 +209,40 @@ def lrtest(llmin, llmax):
     p = stats.chisqprob(lr, 1) # llmax has 1 dof more than llmin
     return lr, p
 
-def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sx=1.0, sy=1.0, c='C0', marker='x', line_label=''):
+def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sx=1.0, tx = 0.0, sy=1.0, ty=0.0,
+                           c='C0', marker='x', line_label=''):
     """
-    Auxiliary function to make it easier to plot linear regression models. Optionally, also the
+    Auxiliary function to make it easier to plot linear regression models. Optionally, also the scatter plot of points
+    that the model was computed from.
+
+    We expect a pandas.DataFrame with a column for the independent variable ind_var used to create the model.
+    Also, the linear statsmodel model computed from the data. Both ind_var and model will be used to draw a line for the
+    linear model.
+
+    In addition, we can select a column in the DataFrame with the dependent variable used to create the model. In that
+    case, we also plot the scatter points (ind_var, dep_var) that were used to create the model.
+
+    Finally, for convenience, ind_var and dep_var can be transformed to scale the axes of the plot:
+        (ind_var * sx) + tx
+        (dep_var * sy) + ty
+    This is useful of the variables are standarised, e.g. if
+        ind_var = (x - mean(x)) / std(x)
 
     :param model: statsmodels linear model.
     :param df: pandas.DataFrame that was used to create the model. Note that the x-axis range in the plots is
-    (df[ind_var].min(), df[ind_var].max()).
+    (df[ind_var].min(), df[ind_var].max()) * sx + tx.
     :param ind_var: String with the name of the independent variable (x-axis variable).
     :param other_vars: Dictionary with covariates of ind_var in the model, e.g. {'Sex': 'f', 'Genotype': 'WT'}.
     :param dep_var: (def None) String with the name of the dependent variable (y-axis variable) to get a scatter plot of
     the points in df.
-    :param sx: (def 1.0) Scaling factor for the independent variable.
-    :param sy: (def 1.0) Scaling factor for the dependent variable.
+    :param sx: (def 1.0) Scaling factor for the independent variable. The value on the x-axis of the plot will be
+    (ind_var * sx) + tx.
+    :param tx: (def 0.0) Translation factor for the independent variable. The value on the x-axis of the plot will be
+    (ind_var * sx) + tx.
+    :param sy: (def 1.0) Scaling factor for the dependent variable. The value on the y-axis of the plot will be
+    (dep_var * sy) + ty.
+    :param ty: (def 0.0) Translation factor for the dependent variable. The value on the y-axis of the plot will be
+    (dep_var * sy) + ty.
     :return: None.
     """
     # range for the independent variable
@@ -233,10 +254,10 @@ def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sx=1
     vars.update(other_vars)
     X = pd.DataFrame(data=vars)
     y_pred = model.predict(X)
-    plt.plot(ind_var_lim * sx, y_pred * sy, c, label=line_label)
+    plt.plot(ind_var_lim * sx + tx, y_pred * sy + ty, c, label=line_label)
     if dep_var is not None:
         idx = ~df[ind_var].isna()
         for key, val in other_vars.items():
             idx = idx & (df[key] == val[0])
-        plt.scatter(df.loc[idx, ind_var] * sx, df.loc[idx, dep_var] * sy, c=c, marker=marker)
+        plt.scatter(df.loc[idx, ind_var] * sx + tx, df.loc[idx, dep_var] * sy + ty, c=c, marker=marker)
     return None
