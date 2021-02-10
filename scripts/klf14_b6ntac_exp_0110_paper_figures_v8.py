@@ -403,7 +403,7 @@ for method in ['auto', 'corrected']:
 ########################################################################################################################
 
 import pickle
-import PIL
+# import PIL
 from toolz import interleave
 import matplotlib.pyplot as plt
 import numpy as np
@@ -625,9 +625,11 @@ def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, met
 
 
 ########################################################################################################################
-## Summary of hand traced datasets used for
+## Data section:
+## Summary tables of hand traced datasets used for
 #   * DeepCytometer training/validation
 #   * Cell population studies
+# USED IN PAPER
 ########################################################################################################################
 
 ## DeepCytometer training/validation
@@ -647,10 +649,6 @@ file_svg_list = [x.replace('/home/rcasero', home) for x in file_svg_list]
 # number of images
 n_im = len(file_svg_list)
 
-# HACK: If file_svg_list_extra is used above, this block will not work but you don't need it
-# for the loop before that calculates the rows of Table MICE with the breakdown of
-# cells/other/background objects by mouse
-#
 # loop the folds to get the ndpi files that correspond to testing of each fold,
 ndpi_files_test_list = {}
 for i_fold in range(len(idx_test_all)):
@@ -865,6 +863,375 @@ print('f PAT: ' + str(np.sum(hand_traced_table.loc[idx_f * idx_pat, 'Cells'])))
 print('f MAT: ' + str(np.sum(hand_traced_table.loc[idx_f * idx_mat, 'Cells'])))
 print('m PAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_pat, 'Cells'])))
 print('m MAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_mat, 'Cells'])))
+
+########################################################################################################################
+## Whole animal studies (cull age, body weight, depot weight)
+## USED IN PAPER
+########################################################################################################################
+
+## cull_age of body weight
+########################################################################################################################
+
+## some data preparations
+
+print('Min cull age: ' + str(metainfo['cull_age'].min()) + ' days')
+print('Max cull age: ' + str(metainfo['cull_age'].max()) + ' days')
+
+# we need numerical instead of categorical values for logistic regression
+metainfo['ko_parent_num'] = (metainfo['ko_parent'] == 'MAT').astype(np.float32)
+metainfo['genotype_num'] = (metainfo['genotype'] == 'KLF14-KO:Het').astype(np.float32)
+
+# scale cull_age to avoid large condition numbers
+metainfo['cull_age__'] = (metainfo['cull_age'] - np.mean(metainfo['cull_age'])) / np.std(metainfo['cull_age'])
+
+# for convenience create two dataframes (female and male) with the data for the current depot
+metainfo_f = metainfo[metainfo['sex'] == 'f']
+metainfo_m = metainfo[metainfo['sex'] == 'm']
+
+## effect of sex on body weight
+########################################################################################################################
+
+bw_model = sm.RLM.from_formula('BW ~ C(sex)', data=metainfo, subset=metainfo['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+print(bw_model.summary())
+print(bw_model.pvalues)
+print('Males are ' + str(bw_model.params['C(sex)[T.m]'] / bw_model.params['Intercept'] * 100)
+      + ' % larger than females')
+
+
+## effect of cull age on body weight
+########################################################################################################################
+
+bw_model_f = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_f).fit()
+print(bw_model_f.summary())
+bw_model_m = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_m).fit()
+print(bw_model_m.summary())
+
+# logistic regression of parent ~ cull_age
+cull_model_f = smf.logit('ko_parent_num ~ cull_age', data=metainfo_f).fit()
+print(cull_model_f.summary())
+cull_model_m = smf.logit('ko_parent_num ~ cull_age', data=metainfo_m).fit()
+print(cull_model_m.summary())
+
+# logistic regression of genotype ~ cull_age
+cull_model_f = smf.logit('genotype_num ~ cull_age', data=metainfo_f).fit()
+print(cull_model_f.summary())
+cull_model_m = smf.logit('genotype_num ~ cull_age', data=metainfo_m).fit()
+print(cull_model_m.summary())
+
+# does cull_age make a difference in the BW ~ parent model?
+bw_null_model_f = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_f).fit()
+bw_null_model_m = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_m).fit()
+bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_m).fit()
+
+print(bw_null_model_f.summary())
+print(bw_null_model_m.summary())
+print(bw_model_f.summary())
+print(bw_model_m.summary())
+
+print('Female')
+null_model = bw_null_model_f
+alt_model = bw_model_f
+lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('p-val: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
+      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
+
+print('Male')
+null_model = bw_null_model_m
+alt_model = bw_model_m
+lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.3g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('p-val: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
+      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
+
+print(bw_null_model_f.summary())
+print(bw_model_f.summary())
+
+# extract coefficients, errors and p-values from models
+# 'BW ~ C(ko_parent) * cull_age__'
+df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
+    cytometer.stats.models_coeff_ci_pval([bw_model_f])
+df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
+    cytometer.stats.models_coeff_ci_pval([bw_model_m])
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
+_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+
+# convert p-values to asterisks
+df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
+df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
+df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+
+if SAVEFIG:
+    # plot body weight vs. age of culling
+    plt.clf()
+    # 'BW ~ C(ko_parent) * cull_age__'
+    cytometer.stats.plot_linear_regression(bw_model_f, metainfo_f,
+                                           ind_var='cull_age__', other_vars={'ko_parent': 'PAT'}, dep_var='BW',
+                                           sx=np.std(metainfo['cull_age']), tx=np.mean(metainfo['cull_age']),
+                                           c='C2', marker='o', line_label='f PAT')
+    cytometer.stats.plot_linear_regression(bw_model_f, metainfo_f,
+                                           ind_var='cull_age__', other_vars={'ko_parent': 'MAT'}, dep_var='BW',
+                                           sx=np.std(metainfo['cull_age']), tx=np.mean(metainfo['cull_age']),
+                                           c='C3', marker='o', line_label='f MAT')
+    cytometer.stats.plot_linear_regression(bw_model_m, metainfo_m,
+                                           ind_var='cull_age__', other_vars={'ko_parent': 'PAT'}, dep_var='BW',
+                                           sx=np.std(metainfo['cull_age']), tx=np.mean(metainfo['cull_age']),
+                                           c='C4', marker='o', line_label='m PAT')
+    cytometer.stats.plot_linear_regression(bw_model_m, metainfo_m,
+                                           ind_var='cull_age__', other_vars={'ko_parent': 'MAT'}, dep_var='BW',
+                                           sx=np.std(metainfo['cull_age']), tx=np.mean(metainfo['cull_age']),
+                                           c='C5', marker='o', line_label='m MAT')
+
+    plt.xlabel('Cull age (days)', fontsize=14)
+    plt.ylabel('Body weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.legend(fontsize=12)
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.svg'))
+
+## effect of parent and genotype on body weight
+########################################################################################################################
+
+# robust model BW ~ parent * genotype for female/male to account for outliers
+bw_model_f = sm.RLM.from_formula('BW ~ C(ko_parent) * C(genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent) * C(genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+
+print(bw_model_f.summary())
+print(bw_model_m.summary())
+
+# refit removing the genotype variable
+bw_model_f = sm.RLM.from_formula('BW ~ C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+
+print(bw_model_f.summary())
+print(bw_model_f.pvalues)
+print('MAT females are ' + str(bw_model_f.params['C(ko_parent)[T.MAT]'] / bw_model_f.params['Intercept'] * 100)
+      + ' % larger than PATs')
+
+print(bw_model_m.summary())
+
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([5.48, 4.8 ])
+
+    ax = sns.swarmplot(x='sex', y='BW', hue='ko_parent', data=metainfo, dodge=True)
+    plt.xlabel('')
+    plt.ylabel('Body weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xticks([0, 1], labels=['Female', 'Male'])
+    ax.get_legend().set_title('')
+    ax.legend(loc='lower right', fontsize=12)
+
+    plt.plot([-0.2, -0.2, 0.2, 0.2], [42, 44, 44, 42], 'k', lw=1.5)
+    pval_text = '$p$=' + '{0:.4f}'.format(bw_model_f.pvalues['C(ko_parent)[T.MAT]']) + \
+                ' ' + cytometer.stats.pval_to_asterisk(bw_model_f.pvalues['C(ko_parent)[T.MAT]'])
+    plt.text(0, 44.5, pval_text, ha='center', va='bottom', fontsize=14)
+    plt.plot([0.8, 0.8, 1.2, 1.2], [52, 54, 54, 52], 'k', lw=1.5)
+    pval_text = '$p$=' + '{0:.2f}'.format(bw_model_m.pvalues['C(ko_parent)[T.MAT]']) + \
+                ' ' + cytometer.stats.pval_to_asterisk(bw_model_m.pvalues['C(ko_parent)[T.MAT]'])
+    plt.text(1, 54.5, pval_text, ha='center', va='bottom', fontsize=14)
+    plt.ylim(18, 58)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.svg'))
+
+
+
+## sex effect on mouse BW
+
+sex_model = sm.RLM.from_formula('BW ~ C(sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
+print(sex_model.summary())
+
+pval_text = 'p=' + '{0:.3e}'.format(sex_model.pvalues['C(sex)[T.m]']) + \
+            ' ' + cytometer.stats.pval_to_asterisk(sex_model.pvalues['C(sex)[T.m]'])
+print(pval_text)
+
+
+
+## depot ~ BW * parent models
+
+# scale BW to avoid large condition numbers
+BW_mean = metainfo['BW'].mean()
+metainfo['BW__'] = metainfo['BW'] / BW_mean
+
+# for convenience
+metainfo_f = metainfo[metainfo['sex'] == 'f']
+metainfo_m = metainfo[metainfo['sex'] == 'm']
+
+# models of depot weight ~ BW * ko_parent
+
+# models for Likelihood Ratio Test, to check whether parent variable has an effect
+gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
+gwat_null_model_m = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m).fit()
+sqwat_null_model_f = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f).fit()
+sqwat_null_model_m = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m).fit()
+
+gwat_model_f = sm.OLS.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_f).fit()
+gwat_model_m = sm.OLS.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_m).fit()
+sqwat_model_f = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_f).fit()
+sqwat_model_m = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_m).fit()
+
+# Likelihood ratio tests of the parent variable
+print('Likelihood Ratio Test')
+
+print('Female')
+lr, pval = cytometer.stats.lrtest(gwat_null_model_f.llf, gwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_f.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_null_model_f.llf, sqwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_f.aic))
+
+print('Male')
+lr, pval = cytometer.stats.lrtest(gwat_null_model_m.llf, gwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_m.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_null_model_m.llf, sqwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m.aic))
+
+## fit robust linear models DW ~ BW__, stratified by sex and parent
+# female PAT and MAT
+gwat_model_f_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_f_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_f_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_f_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+
+# male PAT and MAT
+gwat_model_m_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_m_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_m_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_m_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+
+# extract coefficients, errors and p-values from models
+model_names = ['gwat_model_f_pat', 'gwat_model_f_mat',
+         'sqwat_model_f_pat', 'sqwat_model_f_mat',
+         'gwat_model_m_pat', 'gwat_model_m_mat',
+         'sqwat_model_m_pat', 'sqwat_model_m_mat']
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        [gwat_model_f_pat, gwat_model_f_mat,
+         sqwat_model_f_pat, sqwat_model_f_mat,
+         gwat_model_m_pat, gwat_model_m_mat,
+         sqwat_model_m_pat, sqwat_model_m_mat],
+    model_names=model_names)
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+# convert p-values to asterisks
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
+
+if SAVEFIG:
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+                          axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = df_concat.iloc[:, idx]
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_depot_weight_models_coeffs_pvals.csv'))
+
+if SAVEFIG:
+    plt.clf()
+    plt.subplot(221)
+    sex = 'f'
+    cytometer.stats.plot_linear_regression(gwat_null_model_f, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_f_pat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(gwat_model_f_mat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
+    plt.tick_params(labelsize=14)
+    plt.title('Female', fontsize=14)
+    plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
+    plt.legend(loc='lower right')
+
+    plt.subplot(222)
+    sex = 'm'
+    cytometer.stats.plot_linear_regression(gwat_null_model_m, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_m_pat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(gwat_model_m_mat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
+    plt.tick_params(labelsize=14)
+    plt.title('Male', fontsize=14)
+
+    plt.subplot(223)
+    sex = 'f'
+    cytometer.stats.plot_linear_regression(sqwat_null_model_f, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_pat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_mat, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.tick_params(labelsize=14)
+    plt.ylim(0, 2.1)
+    plt.xlabel('Body weight (g)', fontsize=14)
+    plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
+
+    plt.subplot(224)
+    sex = 'm'
+    cytometer.stats.plot_linear_regression(sqwat_null_model_m, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_pat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
+                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_mat, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
+                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
+                                           line_label='MAT')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Body weight (g)', fontsize=14)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.svg'))
 
 
 ########################################################################################################################
@@ -1113,371 +1480,6 @@ if SAVEFIG:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
-
-## Plots of body weight vs cull age, and swarm plots of body weight
-## USED IN PAPER
-########################################################################################################################
-
-print('Min cull age: ' + str(metainfo['cull_age'].min()) + ' days')
-print('Max cull age: ' + str(metainfo['cull_age'].max()) + ' days')
-
-# we need numerical instead of categorical values for logistic regression
-metainfo['ko_parent_num'] = (metainfo['ko_parent'] == 'MAT').astype(np.float32)
-metainfo['genotype_num'] = (metainfo['genotype'] == 'KLF14-KO:Het').astype(np.float32)
-
-# scale cull_age to avoid large condition numbers
-metainfo['cull_age__'] = (metainfo['cull_age'] - np.mean(metainfo['cull_age'])) / np.std(metainfo['cull_age'])
-
-# for convenience create two dataframes (female and male) with the data for the current depot
-metainfo_f = metainfo[metainfo['sex'] == 'f']
-metainfo_m = metainfo[metainfo['sex'] == 'm']
-
-# effect of cull age on body weight
-bw_model_f = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_f).fit()
-print(bw_model_f.summary())
-bw_model_m = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_m).fit()
-print(bw_model_m.summary())
-
-# logistic regression of parent ~ cull_age
-cull_model_f = smf.logit('ko_parent_num ~ cull_age', data=metainfo_f).fit()
-print(cull_model_f.summary())
-cull_model_m = smf.logit('ko_parent_num ~ cull_age', data=metainfo_m).fit()
-print(cull_model_m.summary())
-
-# logistic regression of genotype ~ cull_age
-cull_model_f = smf.logit('genotype_num ~ cull_age', data=metainfo_f).fit()
-print(cull_model_f.summary())
-cull_model_m = smf.logit('genotype_num ~ cull_age', data=metainfo_m).fit()
-print(cull_model_m.summary())
-
-# does cull_age make a difference in the BW ~ parent model?
-bw_null_model_f = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_f).fit()
-bw_null_model_m = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_m).fit()
-bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_f).fit()
-bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_m).fit()
-
-print(bw_null_model_f.summary())
-print(bw_null_model_m.summary())
-print(bw_model_f.summary())
-print(bw_model_m.summary())
-
-print('Female')
-null_model = bw_null_model_f
-alt_model = bw_model_f
-lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
-pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-print('p-val: ' + pval_text)
-print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
-      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
-
-print('Male')
-null_model = bw_null_model_m
-alt_model = bw_model_m
-lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
-pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.3g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-print('p-val: ' + pval_text)
-print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
-      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
-
-print(bw_null_model_f.summary())
-print(bw_model_f.summary())
-
-# extract coefficients, errors and p-values from models
-df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    cytometer.stats.models_coeff_ci_pval([bw_model_f], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
-df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    cytometer.stats.models_coeff_ci_pval([bw_model_m], extra_hypotheses='Intercept + C(ko_parent)[T.MAT], cull_age__ + C(ko_parent)[T.MAT]:cull_age__')
-
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
-_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
-
-# convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
-
-if SAVEFIG:
-    # save a table for the summary of findings spreadsheet: "summary_of_WAT_findings"
-    cols = ['Intercept', 'Intercept+C(ko_parent)[T.MAT]', 'C(ko_parent)[T.MAT]',
-            'cull_age__', 'cull_age__+C(ko_parent)[T.MAT]:cull_age__', 'C(ko_parent)[T.MAT]:cull_age__']
-
-    df_concat = pd.DataFrame()
-    for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff_f[col], df_pval_f[col], df_asterisk_f[col],
-                               df_corrected_pval_f[col], df_corrected_asterisk_f[col]], axis=1)
-    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
-
-    df_concat = pd.DataFrame()
-    for col in cols:
-        df_concat = pd.concat([df_concat, df_coeff_m[col], df_pval_m[col], df_asterisk_m[col],
-                               df_corrected_pval_m[col], df_corrected_asterisk_m[col]], axis=1)
-    df_concat.to_csv(os.path.join(figures_dir, 'foo.csv'))
-
-
-
-if SAVEFIG:
-    # plot body weight vs. age of culling
-    plt.clf()
-    plt.scatter(metainfo_f[metainfo_f['ko_parent'] == 'PAT']['cull_age'],
-                metainfo_f[metainfo_f['ko_parent'] == 'PAT']['BW'], c='C2')
-    plt.scatter(metainfo_f[metainfo_f['ko_parent'] == 'MAT']['cull_age'],
-                metainfo_f[metainfo_f['ko_parent'] == 'MAT']['BW'], c='C3')
-    plt.scatter(metainfo_m[metainfo_f['ko_parent'] == 'PAT']['cull_age'],
-                metainfo_m[metainfo_f['ko_parent'] == 'PAT']['BW'], c='C4')
-    plt.scatter(metainfo_m[metainfo_f['ko_parent'] == 'MAT']['cull_age'],
-                metainfo_m[metainfo_f['ko_parent'] == 'MAT']['BW'], c='C5')
-    plt.xlabel('Cull age (days)', fontsize=14)
-    plt.ylabel('Body weight (g)', fontsize=14)
-    plt.tick_params(labelsize=14)
-    plt.tight_layout()
-
-    cull_age__lim = np.array([metainfo['cull_age__'].min(), metainfo['cull_age__'].max()])
-    cull_age_lim = np.array([metainfo['cull_age'].min(), metainfo['cull_age'].max()])
-    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['PAT', 'PAT']})
-    y_pred = bw_model_f.predict(X)
-    plt.plot(cull_age_lim, y_pred, 'C2', linewidth=2, label='f PAT')
-    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['MAT', 'MAT']})
-    y_pred = bw_model_f.predict(X)
-    plt.plot(cull_age_lim, y_pred, 'C3', linewidth=2, label='f MAT')
-    pval_cull_age = bw_model_f.pvalues['cull_age__']
-    pval_mat = bw_model_f.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{cull\ age}$=' + '{0:.2f}'.format(pval_cull_age) + ' ' + cytometer.stats.pval_to_asterisk(pval_cull_age) + \
-                '\n' + \
-                '$p_{MAT}$=' + '{0:.3f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
-    plt.text(142.75, 26.3, pval_text, va='top', fontsize=12)
-
-    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['PAT', 'PAT']})
-    y_pred = bw_model_m.predict(X)
-    plt.plot(cull_age_lim, y_pred, 'C4', linewidth=2, label='m PAT')
-    X = pd.DataFrame(data={'cull_age__': cull_age__lim, 'ko_parent': ['MAT', 'MAT']})
-    y_pred = bw_model_m.predict(X)
-    plt.plot(cull_age_lim, y_pred, 'C5', linewidth=2, label='m MAT')
-    pval_cull_age = bw_model_m.pvalues['cull_age__']
-    pval_mat = bw_model_m.pvalues['C(ko_parent)[T.MAT]']
-    pval_text = '$p_{cull\ age}$=' + '{0:.2f}'.format(pval_cull_age) + ' ' + cytometer.stats.pval_to_asterisk(pval_cull_age) + \
-                '\n' + \
-                '$p_{MAT}$=' + '{0:.2f}'.format(pval_mat) + ' ' + cytometer.stats.pval_to_asterisk(pval_mat)
-    plt.text(142.75, 44, pval_text, va='bottom', fontsize=12)
-
-    plt.legend(fontsize=12)
-
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.svg'))
-
-
-if SAVEFIG:
-    plt.clf()
-    plt.gcf().set_size_inches([5.48, 4.8 ])
-
-    ax = sns.swarmplot(x='sex', y='BW', hue='ko_parent', data=metainfo, dodge=True)
-    plt.xlabel('')
-    plt.ylabel('Body weight (g)', fontsize=14)
-    plt.tick_params(labelsize=14)
-    plt.xticks([0, 1], labels=['Female', 'Male'])
-    ax.get_legend().set_title('')
-    ax.legend(loc='lower right', fontsize=12)
-
-    plt.plot([-0.2, -0.2, 0.2, 0.2], [42, 44, 44, 42], 'k', lw=1.5)
-    pval_text = '$p$=' + '{0:.3f}'.format(bw_model_f.pvalues['C(ko_parent)[T.MAT]']) + \
-                ' ' + cytometer.stats.pval_to_asterisk(bw_model_f.pvalues['C(ko_parent)[T.MAT]'])
-    plt.text(0, 44.5, pval_text, ha='center', va='bottom', fontsize=14)
-    plt.plot([0.8, 0.8, 1.2, 1.2], [52, 54, 54, 52], 'k', lw=1.5)
-    pval_text = '$p$=' + '{0:.2f}'.format(bw_model_m.pvalues['C(ko_parent)[T.MAT]']) + \
-                ' ' + cytometer.stats.pval_to_asterisk(bw_model_m.pvalues['C(ko_parent)[T.MAT]'])
-    plt.text(1, 54.5, pval_text, ha='center', va='bottom', fontsize=14)
-    plt.ylim(18, 58)
-
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.svg'))
-
-## sex effect on mouse BW
-
-sex_model = sm.RLM.from_formula('BW ~ C(sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
-print(sex_model.summary())
-
-pval_text = 'p=' + '{0:.3e}'.format(sex_model.pvalues['C(sex)[T.m]']) + \
-            ' ' + cytometer.stats.pval_to_asterisk(sex_model.pvalues['C(sex)[T.m]'])
-print(pval_text)
-
-## depot ~ BW * parent models
-
-# scale BW to avoid large condition numbers
-BW_mean = metainfo['BW'].mean()
-metainfo['BW__'] = metainfo['BW'] / BW_mean
-
-# for convenience
-metainfo_f = metainfo[metainfo['sex'] == 'f']
-metainfo_m = metainfo[metainfo['sex'] == 'm']
-
-# models of depot weight ~ BW * ko_parent
-
-# models for Likelihood Ratio Test, to check whether parent variable has an effect
-gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
-gwat_null_model_m = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m).fit()
-sqwat_null_model_f = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f).fit()
-sqwat_null_model_m = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m).fit()
-
-gwat_model_f = sm.OLS.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_f).fit()
-gwat_model_m = sm.OLS.from_formula('gWAT ~ BW__ * C(ko_parent)', data=metainfo_m).fit()
-sqwat_model_f = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_f).fit()
-sqwat_model_m = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_m).fit()
-
-# Likelihood ratio tests of the parent variable
-print('Likelihood Ratio Test')
-
-print('Female')
-lr, pval = cytometer.stats.lrtest(gwat_null_model_f.llf, gwat_model_f.llf)
-pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-print('Gonadal: ' + pval_text)
-print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_f.aic))
-
-lr, pval = cytometer.stats.lrtest(sqwat_null_model_f.llf, sqwat_model_f.llf)
-pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-print('Subcutaneous: ' + pval_text)
-print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_f.aic))
-
-print('Male')
-lr, pval = cytometer.stats.lrtest(gwat_null_model_m.llf, gwat_model_m.llf)
-pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-print('Gonadal: ' + pval_text)
-print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_m.aic))
-
-lr, pval = cytometer.stats.lrtest(sqwat_null_model_m.llf, sqwat_model_m.llf)
-pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
-print('Subcutaneous: ' + pval_text)
-print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m.aic))
-
-## fit robust linear models DW ~ BW__, stratified by sex and parent
-# female PAT and MAT
-gwat_model_f_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-gwat_model_f_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_f_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_f_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
-
-# male PAT and MAT
-gwat_model_m_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-gwat_model_m_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_m_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_m_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
-
-# extract coefficients, errors and p-values from models
-model_names = ['gwat_model_f_pat', 'gwat_model_f_mat',
-         'sqwat_model_f_pat', 'sqwat_model_f_mat',
-         'gwat_model_m_pat', 'gwat_model_m_mat',
-         'sqwat_model_m_pat', 'sqwat_model_m_mat']
-df_coeff, df_ci_lo, df_ci_hi, df_pval = \
-    cytometer.stats.models_coeff_ci_pval(
-        [gwat_model_f_pat, gwat_model_f_mat,
-         sqwat_model_f_pat, sqwat_model_f_mat,
-         gwat_model_m_pat, gwat_model_m_mat,
-         sqwat_model_m_pat, sqwat_model_m_mat],
-    model_names=model_names)
-
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
-
-# convert p-values to asterisks
-df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
-                           index=model_names)
-df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
-                                     columns=df_coeff.columns, index=model_names)
-
-if SAVEFIG:
-    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
-                          axis=1)
-    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
-    df_concat = df_concat.iloc[:, idx]
-    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_depot_weight_models_coeffs_pvals.csv'))
-
-if SAVEFIG:
-    plt.clf()
-    plt.subplot(221)
-    sex = 'f'
-    cytometer.stats.plot_linear_regression(gwat_null_model_f, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
-                                           line_label='Null')
-    cytometer.stats.plot_linear_regression(gwat_model_f_pat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(gwat_model_f_mat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.ylim(0, 2.1)
-    plt.tick_params(labelsize=14)
-    plt.title('Female', fontsize=14)
-    plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
-    plt.legend(loc='lower right')
-
-    plt.subplot(222)
-    sex = 'm'
-    cytometer.stats.plot_linear_regression(gwat_null_model_m, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
-                                           line_label='Null')
-    cytometer.stats.plot_linear_regression(gwat_model_m_pat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(gwat_model_m_mat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.ylim(0, 2.1)
-    plt.tick_params(labelsize=14)
-    plt.title('Male', fontsize=14)
-
-    plt.subplot(223)
-    sex = 'f'
-    cytometer.stats.plot_linear_regression(sqwat_null_model_f, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
-                                           line_label='Null')
-    cytometer.stats.plot_linear_regression(sqwat_model_f_pat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(sqwat_model_f_mat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.tick_params(labelsize=14)
-    plt.ylim(0, 2.1)
-    plt.xlabel('Body weight (g)', fontsize=14)
-    plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
-
-    plt.subplot(224)
-    sex = 'm'
-    cytometer.stats.plot_linear_regression(sqwat_null_model_m, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
-                                           line_label='Null')
-    cytometer.stats.plot_linear_regression(sqwat_model_m_pat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(sqwat_model_m_mat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.ylim(0, 2.1)
-    plt.tick_params(labelsize=14)
-    plt.xlabel('Body weight (g)', fontsize=14)
-
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.svg'))
-
 
 ## one data point per animal
 ## linear regression analysis of quantile_area ~ DW * ko_parent
