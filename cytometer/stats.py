@@ -261,3 +261,42 @@ def plot_linear_regression(model, df, ind_var, other_vars={}, dep_var=None, sx=1
             idx = idx & (df[key] == val[0])
         plt.scatter(df.loc[idx, ind_var] * sx + tx, df.loc[idx, dep_var] * sy + ty, c=c, marker=marker)
     return None
+
+def inverse_variance_method(x, se):
+    """
+    Inverse-variance method to combine different estimates of a statistic and their standard errors.
+
+    Let x be a statistic (mean, median, etc) that gets evaluated by different experiments, each with some estimate
+    error. If x_i, se_i are the estimate and standard error from the i-th experiment, then the inverse-variance method
+    [1, 2] combines the estimates as
+
+    w_i = 1/se_i^2
+
+    x_hat = sum_i (x_i * w_i) / sum_i w_i
+
+    se_hat^2 = 1 / sum_i w_i
+
+    [1] Cochran, W. G. 1937. “Problems Arising in the Analysis of a Series of Similar Experiments.” Supplement to the
+    Journal of the Royal Statistical Society 4 (1): 102–18. https://doi.org/10.2307/2984123.
+
+    [2] Cochran, William G. 1954. “The Combination of Estimates from Different Experiments.” Biometrics 10 (1): 101–29.
+    https://doi.org/10.2307/3001666.
+
+    :param x: Vector of estimates of the statistic. Each corresponds to a different experiment.
+    :param se: Vector of the corresponding standard errors.
+    :return: x_hat, se_hat.
+    """
+
+    x = np.array(x)
+    se = np.array(se)
+    # weights: w(i)=1/se(i)^2
+    w = 1 / (se ** 2)
+
+    # combined estimate
+    sum_w = np.sum(w)
+    x_hat = np.sum(x * w) / sum_w
+
+    # combined standard error
+    se_hat = np.sqrt(1 / sum_w)
+
+    return x_hat, se_hat
