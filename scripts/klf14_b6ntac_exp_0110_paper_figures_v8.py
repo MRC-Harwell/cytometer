@@ -625,7 +625,7 @@ def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, met
 
 
 ########################################################################################################################
-## Data section:
+## For "Data" section in the paper:
 ## Summary tables of hand traced datasets used for
 #   * DeepCytometer training/validation
 #   * Cell population studies
@@ -1047,30 +1047,56 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.svg'))
 
-
-
-## sex effect on mouse BW
-
-sex_model = sm.RLM.from_formula('BW ~ C(sex)', data=metainfo, M=sm.robust.norms.HuberT()).fit()
-print(sex_model.summary())
-
-pval_text = 'p=' + '{0:.3e}'.format(sex_model.pvalues['C(sex)[T.m]']) + \
-            ' ' + cytometer.stats.pval_to_asterisk(sex_model.pvalues['C(sex)[T.m]'])
-print(pval_text)
-
-
-
-## depot ~ BW * parent models
+## effect of genotype, parent and body weight on depot weight
+########################################################################################################################
 
 # scale BW to avoid large condition numbers
 BW_mean = metainfo['BW'].mean()
 metainfo['BW__'] = metainfo['BW'] / BW_mean
 
-# for convenience
+# update the sub-dataframes we created for convenience
 metainfo_f = metainfo[metainfo['sex'] == 'f']
 metainfo_m = metainfo[metainfo['sex'] == 'm']
 
-# models of depot weight ~ BW * ko_parent
+# depot ~ BW * genotype models
+
+# models for Likelihood Ratio Test, to check whether genotype variable has an effect
+gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
+gwat_null_model_m = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m).fit()
+sqwat_null_model_f = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f).fit()
+sqwat_null_model_m = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m).fit()
+
+gwat_model_f = sm.OLS.from_formula('gWAT ~ BW__ * C(genotype)', data=metainfo_f).fit()
+gwat_model_m = sm.OLS.from_formula('gWAT ~ BW__ * C(genotype)', data=metainfo_m).fit()
+sqwat_model_f = sm.OLS.from_formula('SC ~ BW__ * C(genotype)', data=metainfo_f).fit()
+sqwat_model_m = sm.OLS.from_formula('SC ~ BW__ * C(genotype)', data=metainfo_m).fit()
+
+# Likelihood ratio tests of the genotype variable
+print('Likelihood Ratio Tests: Genotype')
+
+print('Female')
+lr, pval = cytometer.stats.lrtest(gwat_null_model_f.llf, gwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_f.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_null_model_f.llf, sqwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_f.aic))
+
+print('Male')
+lr, pval = cytometer.stats.lrtest(gwat_null_model_m.llf, gwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_m.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_null_model_m.llf, sqwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m.aic))
+
+# depot ~ BW * parent models
 
 # models for Likelihood Ratio Test, to check whether parent variable has an effect
 gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
@@ -1084,7 +1110,7 @@ sqwat_model_f = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_f)
 sqwat_model_m = sm.OLS.from_formula('SC ~ BW__ * C(ko_parent)', data=metainfo_m).fit()
 
 # Likelihood ratio tests of the parent variable
-print('Likelihood Ratio Test')
+print('Likelihood Ratio Tests: Parent')
 
 print('Female')
 lr, pval = cytometer.stats.lrtest(gwat_null_model_f.llf, gwat_model_f.llf)
