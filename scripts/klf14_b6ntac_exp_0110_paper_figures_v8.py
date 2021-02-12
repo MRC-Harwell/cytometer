@@ -1058,6 +1058,35 @@ metainfo['BW__'] = metainfo['BW'] / BW_mean
 metainfo_f = metainfo[metainfo['sex'] == 'f']
 metainfo_m = metainfo[metainfo['sex'] == 'm']
 
+## double-check that no parent effect is found on DW if BW is not used
+gwat_model_f = sm.OLS.from_formula('gWAT ~ C(ko_parent)', data=metainfo_f).fit()
+gwat_model_m = sm.OLS.from_formula('gWAT ~ C(ko_parent)', data=metainfo_m).fit()
+sqwat_model_f = sm.OLS.from_formula('SC ~ C(ko_parent)', data=metainfo_f).fit()
+sqwat_model_m = sm.OLS.from_formula('SC ~ C(ko_parent)', data=metainfo_m).fit()
+
+# extract coefficients, errors and p-values from models
+model_names = ['gwat_model_f',
+         'sqwat_model_f',
+         'gwat_model_m',
+         'sqwat_model_m']
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        [gwat_model_f,
+         sqwat_model_f,
+         gwat_model_m,
+         sqwat_model_m],
+    model_names=model_names)
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+# convert p-values to asterisks
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
+
 # depot ~ BW * genotype models
 
 # models for Likelihood Ratio Test, to check whether genotype variable has an effect
