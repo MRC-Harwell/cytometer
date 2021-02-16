@@ -207,14 +207,15 @@ json_annotation_files_dict['gwat'] = [
 
 import matplotlib.pyplot as plt
 import cytometer.data
+import cytometer.stats
 import shapely
 import scipy.stats as stats
 import openslide
 import numpy as np
-# import scipy.stats
 import sklearn.neighbors, sklearn.model_selection
 import pandas as pd
 import PIL
+# import time
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -374,6 +375,17 @@ for method in ['auto', 'corrected']:
                 # compute areas at population quantiles
                 areas_at_quantiles = stats.mstats.hdquantiles(areas, prob=quantiles, axis=0)
                 df['area_at_quantiles'] = [areas_at_quantiles]
+
+                # compute stderr of the areas at population quantiles
+                # Note: We are using my modified hdquantiles_sd() function, which is 70x faster than the current scipy
+                # implementation
+                # Even so, this alone for 2 methods * (75 + 72) slides takes ~ 8.4 h
+                # The problem is that this function's computing time grows with len(areas)**2
+                #   len(areas)==10000   => time =  2.6 s
+                #   len(areas)==30000   => time = 17.4 s
+                #   len(areas)==60190   => time = 53.6 s
+                stderr_at_quantiles = cytometer.stats.hdquantiles_sd(areas, prob=quantiles, axis=0)
+                df['stderr_at_quantiles'] = [stderr_at_quantiles]
 
                 # compute histograms with area binning
                 histo, _ = np.histogram(areas, bins=area_bin_edges, density=True)
@@ -1363,6 +1375,8 @@ if SAVEFIG:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_' + depot + '.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_' + depot + '.svg'))
+
+# table of quantitative values for quantiles
 
 if SAVEFIG:
     plt.clf()
