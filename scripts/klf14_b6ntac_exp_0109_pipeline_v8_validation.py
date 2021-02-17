@@ -365,6 +365,10 @@ quantiles = np.linspace(0, 1, 21)
 area_bin_edges = np.linspace(min_area_um2, max_area_um2, 201)
 area_bin_centers = (area_bin_edges[0:-1] + area_bin_edges[1:]) / 2.0
 
+# 1-alpha is the % of confidence interval, e.g. alpha=0.05 => 95% CI
+alpha = 0.05
+k = stats.norm.ppf(1 - alpha / 2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+
 if SAVE_FIGS:
 
     plt.clf()
@@ -383,10 +387,14 @@ if SAVE_FIGS:
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
     area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
     print('female PAT')
-    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
-    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
-    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
 
     plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
     plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
@@ -406,10 +414,14 @@ if SAVE_FIGS:
     plt.xlim(-1.2, max_area_um2 * 1e-3)
 
     area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
     print('female MAT')
-    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
-    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
-    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
 
     plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
     plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
@@ -430,10 +442,14 @@ if SAVE_FIGS:
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 
     area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
     print('male PAT')
-    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
-    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
-    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
 
     plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
     plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
@@ -454,10 +470,14 @@ if SAVE_FIGS:
     plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 
     area_q = stats.mstats.hdquantiles(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
     print('male MAT')
-    print('Q1 = ' + '{0:.1f}'.format(area_q[0]))
-    print('Q2 = ' + '{0:.1f}'.format(area_q[1]))
-    print('Q3 = ' + '{0:.1f}'.format(area_q[2]))
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
 
     plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
     plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
