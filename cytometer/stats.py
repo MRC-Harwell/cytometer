@@ -316,7 +316,7 @@ def inverse_variance_method(x, se):
     return x_hat, se_hat
 
 # originally copied from scipy/stats/mstats_extras.py
-# I have edited this to speed it up by a factor of ~70x for a data vector with 60190 elements
+# I have edited this to speed it up by a factor of ~537x for a data vector with 60,000 elements
 def hdquantiles_sd(data, prob=list([.25,.5,.75]), axis=None):
     """
     The standard error of the Harrell-Davis quantile estimates by jackknife.
@@ -356,7 +356,7 @@ def hdquantiles_sd(data, prob=list([.25,.5,.75]), axis=None):
         for (i,p) in enumerate(prob):
             _w = betacdf(vv, (n+1)*p, (n+1)*(1-p))
             w = _w[1:] - _w[:-1]
-            mx_ = np.fromiter([np.dot(w, np.delete(xsorted, k))
+            mx_ = np.fromiter([w[:k] @ xsorted[:k] + w[k:] @ xsorted[k+1:]
                                for k in range(n)], dtype=float_)
             mx_var = np.array(mx_.var(), copy=False, ndmin=1) * n / float(n-1)
             hdsd[i] = float(n-1) * np.sqrt(np.diag(mx_var).diagonal() / float(n))
