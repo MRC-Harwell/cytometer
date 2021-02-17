@@ -287,19 +287,28 @@ def inverse_variance_method(x, se):
     [2] Cochran, William G. 1954. “The Combination of Estimates from Different Experiments.” Biometrics 10 (1): 101–29.
     https://doi.org/10.2307/3001666.
 
-    :param x: Vector of estimates of the statistic. Each corresponds to a different experiment.
-    :param se: Vector of the corresponding standard errors.
+    :param x: Array of estimates of the statistic. If x is an (N,) array, it gets converted into an (N,1) array. If x is
+    a multidimensional array, the operations are conducted over axis=0. For example, if x is a matrix (2D array), each
+    column will provide an output value.
+    :param se: Array of the corresponding standard errors. Same size as x.
     :return: x_hat, se_hat.
     """
 
     x = np.array(x)
     se = np.array(se)
+
+    # for code simplicity, if the input is a (N,) array, we turn it into (N,1)
+    if x.ndim == 1:
+        x = x.reshape((len(x), 1))
+    if se.ndim == 1:
+        se = se.reshape((len(x), 1))
+
     # weights: w(i)=1/se(i)^2
     w = 1 / (se ** 2)
 
     # combined estimate
-    sum_w = np.sum(w)
-    x_hat = np.sum(x * w) / sum_w
+    sum_w = np.sum(w, axis=0)
+    x_hat = np.sum(x * w, axis=0) / sum_w
 
     # combined standard error
     se_hat = np.sqrt(1 / sum_w)
