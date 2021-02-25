@@ -1593,6 +1593,292 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
 
 ## one data point per animal
+## linear regression analysis of quantile_area ~ DW * genotype
+## USED IN PAPER
+########################################################################################################################
+
+## (only mode, 25%-, 50%- and 75%-quantiles for illustration purposes and debugging)
+
+# 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
+quantiles = np.linspace(0, 1, 21)  #
+
+# indices of the quantiles we are going to model
+i_quantiles = [5, 10, 15]  # Q1, Q2, Q3
+
+# for convenience
+df_all_f = df_all[df_all['sex'] == 'f']
+df_all_m = df_all[df_all['sex'] == 'm']
+
+depot = 'gwat'
+# depot = 'sqwat'
+
+# fit linear models to area quantiles
+q_models_f_wt = []
+q_models_f_het = []
+q_models_m_wt = []
+q_models_m_het = []
+q_models_f_null = []
+q_models_m_null = []
+q_models_f = []
+q_models_m = []
+for i_q in i_quantiles:
+
+    # choose one area_at_quantile value as the output of the linear model
+    df_all['area_at_quantile'] = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]
+
+    # fit WT/Het linear models
+    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:WT')
+    q_model_f_wt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:Het')
+    q_model_f_het = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:WT')
+    q_model_m_wt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:Het')
+    q_model_m_het = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+
+    # fit null models
+    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
+    q_model_f_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
+    q_model_m_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+
+    # fit models with parent variable
+    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
+    q_model_f = sm.OLS.from_formula('area_at_quantile ~ DW * C(genotype)', data=df_all, subset=idx).fit()
+    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
+    q_model_m = sm.OLS.from_formula('area_at_quantile ~ DW * C(genotype)', data=df_all, subset=idx).fit()
+
+    q_models_f_wt.append(q_model_f_wt)
+    q_models_f_het.append(q_model_f_het)
+    q_models_m_wt.append(q_model_m_wt)
+    q_models_m_het.append(q_model_m_het)
+    q_models_f_null.append(q_model_f_null)
+    q_models_m_null.append(q_model_m_null)
+    q_models_f.append(q_model_f)
+    q_models_m.append(q_model_m)
+
+    if DEBUG:
+        print(q_model_f_wt.summary())
+        print(q_model_f_het.summary())
+        print(q_model_m_wt.summary())
+        print(q_model_m_het.summary())
+        print(q_model_f_null.summary())
+        print(q_model_m_null.summary())
+        print(q_model_f.summary())
+        print(q_model_m.summary())
+
+# extract coefficients, errors and p-values from PAT and MAT models
+model_names = []
+for model_name in ['model_f_wt', 'model_f_het', 'model_m_wt', 'model_m_het']:
+    for i_q in i_quantiles:
+        model_names.append('q_' + '{0:.0f}'.format(quantiles[i_q] * 100) + '_' + model_name)
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        q_models_f_wt + q_models_f_het + q_models_m_wt + q_models_m_het,
+    model_names=model_names)
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+# convert p-values to asterisks
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
+
+if SAVEFIG:
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+                          axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = df_concat.iloc[:, idx]
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_genotype_models_coeffs_pvals_' + depot + '.csv'))
+
+# plot
+if SAVEFIG:
+
+    plt.clf()
+    plt.gcf().set_size_inches([6.4, 7.6])
+
+    plt.subplot(321)
+    # Q1 Female
+    i = 0  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'f'
+    df = df_all_f[df_all_f['depot'] == depot].copy()
+    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    cytometer.stats.plot_linear_regression(q_models_f_null[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_f_wt[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_f_het[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
+    plt.title('Female', fontsize=14)
+    if depot == 'gwat':
+        plt.legend(loc='best', fontsize=12)
+    if depot == 'gwat':
+        plt.ylim(0.9, 4.3)
+    elif depot == 'sqwat':
+        plt.ylim(0.5, 3)
+
+    plt.subplot(322)
+    # Q1 Male
+    i = 0  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'm'
+    df = df_all_m[df_all_m['depot'] == depot].copy()
+    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    cytometer.stats.plot_linear_regression(q_models_m_null[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_m_wt[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_m_het[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.title('Male', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(0.9, 4.3)
+    elif depot == 'sqwat':
+        plt.ylim(0.5, 3)
+
+    plt.subplot(323)
+    # Q2 Female
+    i = 1  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'f'
+    df = df_all_f[df_all_f['depot'] == depot].copy()
+    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    cytometer.stats.plot_linear_regression(q_models_f_null[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_f_wt[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_f_het[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Area$_{\mathrm{Q2}}$ ($10^3\ \mu m^2$)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(1.4, 8.5)
+    elif depot == 'sqwat':
+        plt.ylim(0.8, 6)
+
+    plt.subplot(324)
+    # Q2 Male
+    i = 1  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'm'
+    df = df_all_m[df_all_m['depot'] == depot].copy()
+    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    cytometer.stats.plot_linear_regression(q_models_m_null[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_m_wt[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_m_het[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
+    plt.tick_params(labelsize=14)
+    if depot == 'gwat':
+        plt.ylim(1.4, 8.5)
+    elif depot == 'sqwat':
+        plt.ylim(0.8, 6)
+
+    plt.subplot(325)
+    # Q3 Female
+    i = 2  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'f'
+    df = df_all_f[df_all_f['depot'] == depot].copy()
+    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    cytometer.stats.plot_linear_regression(q_models_f_null[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_f_wt[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_f_het[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Area$_{\mathrm{Q3}}$ ($10^3\ \mu m^2$)', fontsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(1, 14)
+        # plt.text(0.02, 0.98, pval_text, transform=plt.gca().transAxes, va='top', fontsize=12)
+    elif depot == 'sqwat':
+        plt.ylim(1, 10.5)
+
+    plt.subplot(326)
+    # Q3 Male
+    i = 2  # quantile index for "i_quantiles"
+    i_q = i_quantiles[i]  # quantile index for "quantiles"
+    sex = 'm'
+    df = df_all_m[df_all_m['depot'] == depot].copy()
+    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
+    cytometer.stats.plot_linear_regression(q_models_m_null[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(q_models_m_wt[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(q_models_m_het[i], df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           line_label='Het')
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    if depot == 'gwat':
+        plt.ylim(1, 14)
+    elif depot == 'sqwat':
+        plt.ylim(1, 10.5)
+
+    depot_title = depot.replace('gwat', 'Gonadal').replace('sqwat', 'Subcutaneous')
+    plt.suptitle(depot_title, fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_genotype_models_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_genotype_models_' + depot + '.svg'))
+
+# Likelihood ratio tests of the genotype variable
+print('Likelihood Ratio Test')
+
+print('Female')
+for i, i_q in enumerate(i_quantiles):
+    lr, pval = cytometer.stats.lrtest(q_models_f_null[i].llf, q_models_f[i].llf)
+    pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
+    print('AIC_null=' + '{0:.2f}'.format(q_models_f_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_f[i].aic))
+
+print('Male')
+for i, i_q in enumerate(i_quantiles):
+    lr, pval = cytometer.stats.lrtest(q_models_m_null[i].llf, q_models_m[i].llf)
+    pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
+    print('AIC_null=' + '{0:.2f}'.format(q_models_m_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_m[i].aic))
+
+## one data point per animal
 ## linear regression analysis of quantile_area ~ DW * ko_parent
 ## USED IN PAPER
 ########################################################################################################################
@@ -1692,7 +1978,7 @@ if SAVEFIG:
                           axis=1)
     idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
     df_concat = df_concat.iloc[:, idx]
-    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_models_coeffs_pvals_' + depot + '.csv'))
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_' + depot + '.csv'))
 
 # plot
 if SAVEFIG:
@@ -1858,8 +2144,8 @@ if SAVEFIG:
     plt.suptitle(depot_title, fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_models_' + depot + '.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_models_' + depot + '.svg'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_parent_models_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartile_parent_models_' + depot + '.svg'))
 
 # Likelihood ratio tests of the parent variable
 print('Likelihood Ratio Test')
