@@ -424,7 +424,6 @@ for method in ['auto', 'corrected']:
 ########################################################################################################################
 
 import pickle
-# import PIL
 from toolz import interleave
 import matplotlib.pyplot as plt
 import numpy as np
@@ -491,26 +490,6 @@ with np.load(dataframe_areas_extra_filename) as aux:
     area_bin_centers = aux['area_bin_centers']
 
 ## auxiliary functions
-
-# def plot_linear_regression_BW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sy=1.0):
-#     if np.std(df['BW'] / df['BW__']) > 1e-8:
-#         raise ValueError('BW / BW__ is not the same for all rows')
-#     BW__factor = (df['BW'] / df['BW__']).mean()
-#     BW__lim = np.array([df['BW__'].min(), df['BW__'].max()])
-#     X = pd.DataFrame(data={'BW__': BW__lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
-#                            'genotype': [genotype, genotype]})
-#     y_pred = model.predict(X)
-#     plt.plot(BW__lim * BW__factor, y_pred * sy, style)
-#
-# def plot_linear_regression_DW(model, df, sex=None, ko_parent=None, genotype=None, style=None, sx=1.0, sy=1.0, label=None):
-#     DW_BW = df['DW'] / df['BW']
-#     DW_BW_lim = np.array([DW_BW.min(), DW_BW.max()])
-#     X = pd.DataFrame(data={'DW_BW': DW_BW_lim, 'sex': [sex, sex], 'ko_parent': [ko_parent, ko_parent],
-#                            'genotype': [genotype, genotype]})
-#     y_pred = model.predict(X)
-#     plt.plot(DW_BW_lim * sx, y_pred * sy, style, label=label)
-
-
 def table_of_hand_traced_regions(file_svg_list):
     """
     Open SVG files in a list, and count the number of different types of regions (Cells, Other, Background, Windows,
@@ -581,68 +560,6 @@ def table_of_hand_traced_regions(file_svg_list):
     table = table.sort_index()
 
     return table
-
-def read_contours_compute_areas(metainfo, json_annotation_files_dict, depot, method='corrected'):
-
-    # dataframe to keep all results, one row per cell
-    df_all = pd.DataFrame()
-
-    # list of annotation files for this depot
-    json_annotation_files = json_annotation_files_dict[depot]
-
-    # modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
-    json_annotation_files = [x.replace('.json', '_exp_0106_' + method + '_aggregated.json') for x in
-                             json_annotation_files]
-    json_annotation_files = [os.path.join(annotations_dir, x) for x in json_annotation_files]
-
-    for i_file, json_file in enumerate(json_annotation_files):
-
-        print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': '
-              + os.path.basename(json_file))
-
-        if not os.path.isfile(json_file):
-            print('Missing annotations file')
-            continue
-
-        # open full resolution histology slide
-        ndpi_file = json_file.replace('_exp_0106_' + method + '_aggregated.json', '.ndpi')
-        ndpi_file = os.path.join(ndpi_dir, os.path.basename(ndpi_file))
-        im = openslide.OpenSlide(ndpi_file)
-
-        # pixel size
-        assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-        xres = float(im.properties['openslide.mpp-x'])  # um/pixel
-        yres = float(im.properties['openslide.mpp-y'])  # um/pixel
-
-        # create dataframe for this image
-        if depot == 'sqwat':
-            df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
-                                                           values=[depot, ], values_tag='depot',
-                                                           tags_to_keep=['id', 'ko_parent', 'sex', 'genotype',
-                                                                         'BW', 'SC'])
-            df.rename(columns={'SC': 'DW'}, inplace=True)
-        elif depot == 'gwat':
-            df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(json_file),
-                                                           values=[depot, ], values_tag='depot',
-                                                           tags_to_keep=['id', 'ko_parent', 'sex', 'genotype',
-                                                                         'BW', 'gWAT'])
-            df.rename(columns={'gWAT': 'DW'}, inplace=True)
-        else:
-            raise RuntimeError('Unknown depot type')
-
-        # load contours and their confidence measure from annotation file
-        cells, props = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*',
-                                                        return_props=True)
-
-        # compute areas of the cells (um^2)
-        areas = np.array([shapely.geometry.Polygon(cell).area for cell in cells]) * xres * yres  # (um^2)
-        df = df.reindex(df.index.repeat(len(areas)))
-        df.loc[:, 'area'] = areas
-
-        # add results to total dataframe
-        df_all = pd.concat([df_all, df], ignore_index=True)
-
-    return df_all
 
 
 ########################################################################################################################
