@@ -258,7 +258,7 @@ tput setaf 1; echo "** Install cytometer python dependencies in the local conda 
 
 # install other python packages
 pip install git+https://www.github.com/keras-team/keras-contrib.git
-conda install -y matplotlib==3.2.2 pillow==7.2.0
+conda install -y matplotlib==3.3.4 pillow==7.2.0
 conda install -y scikit-image==0.15.0 scikit-learn==0.23.1
 conda install -y nose==1.3.7 pytest==5.4.3
 pip install setuptools==45
