@@ -807,9 +807,6 @@ print('m MAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_mat, 'Cells'])))
 ## USED IN PAPER
 ########################################################################################################################
 
-## cull_age of body weight
-########################################################################################################################
-
 ## some data preparations
 
 print('Min cull age: ' + str(metainfo['cull_age'].min()) + ' days')
@@ -964,7 +961,7 @@ if SAVEFIG:
     plt.tick_params(labelsize=14)
     plt.xticks([0, 1], labels=['Female', 'Male'])
     ax.get_legend().set_title('')
-    ax.legend(['WT', 'Het'], loc='lower right', fontsize=12, labelcolor=['C2', 'C3'])
+    ax.legend(['WT', 'Het'], loc='lower right', fontsize=12)
 
     plt.plot([-0.2, -0.2, 0.2, 0.2], [42, 44, 44, 42], 'k', lw=1.5)
     pval_text = '$p$=' + '{0:.2f}'.format(bw_model_f.pvalues['C(genotype)[T.KLF14-KO:Het]']) + \
