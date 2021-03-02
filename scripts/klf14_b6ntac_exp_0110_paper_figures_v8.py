@@ -2438,22 +2438,22 @@ if SAVEFIG:
 
 # fit models kN ~ DW
 idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'PAT')
-gwat_model_f_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_f_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'MAT')
-gwat_model_f_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_f_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'PAT')
-gwat_model_m_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_m_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'MAT')
-gwat_model_m_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_m_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 
 idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'PAT')
-sqwat_model_f_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_f_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'MAT')
-sqwat_model_f_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_f_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'PAT')
-sqwat_model_m_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_m_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'MAT')
-sqwat_model_m_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_m_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 
 # fit null models and models with effect variable
 idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat')
@@ -2493,12 +2493,12 @@ pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' '
 print('\t' + 'sqwat: ' + pval_text)
 
 # extract coefficients, errors and p-values from PAT and MAT models
-model_names = ['gwat_model_f_pat', 'gwat_model_f_mat', 'gwat_model_m_pat', 'gwat_model_m_mat',
-               'sqwat_model_f_pat', 'sqwat_model_f_mat', 'sqwat_model_m_pat', 'sqwat_model_m_mat']
+model_names = ['gwat_model_f_pat', 'gwat_model_f_mat', 'sqwat_model_f_pat', 'sqwat_model_f_mat',
+               'gwat_model_m_pat', 'gwat_model_m_mat', 'sqwat_model_m_pat', 'sqwat_model_m_mat']
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        [gwat_model_f_wt, gwat_model_f_het, gwat_model_m_wt, gwat_model_m_het,
-         sqwat_model_f_wt, sqwat_model_f_het, sqwat_model_m_wt, sqwat_model_m_het],
+        [gwat_model_f_pat, gwat_model_f_mat, sqwat_model_f_pat, sqwat_model_f_mat,
+         gwat_model_m_pat, gwat_model_m_mat, sqwat_model_m_pat, sqwat_model_m_mat],
         model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
@@ -2531,11 +2531,11 @@ if SAVEFIG:
     cytometer.stats.plot_linear_regression(gwat_model_f_null, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(gwat_model_f_wt, df, 'DW',
+    cytometer.stats.plot_linear_regression(gwat_model_f_pat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
                                            line_label='PAT')
-    cytometer.stats.plot_linear_regression(gwat_model_f_het, df, 'DW',
+    cytometer.stats.plot_linear_regression(gwat_model_f_mat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
                                            line_label='MAT')
@@ -2553,11 +2553,11 @@ if SAVEFIG:
     cytometer.stats.plot_linear_regression(gwat_model_m_null, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(gwat_model_m_wt, df, 'DW',
+    cytometer.stats.plot_linear_regression(gwat_model_m_pat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
                                            line_label='PAT')
-    cytometer.stats.plot_linear_regression(gwat_model_m_het, df, 'DW',
+    cytometer.stats.plot_linear_regression(gwat_model_m_mat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
                                            line_label='MAT')
@@ -2572,11 +2572,11 @@ if SAVEFIG:
     cytometer.stats.plot_linear_regression(sqwat_model_f_null, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(sqwat_model_f_wt, df, 'DW',
+    cytometer.stats.plot_linear_regression(sqwat_model_f_pat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
                                            line_label='PAT')
-    cytometer.stats.plot_linear_regression(sqwat_model_f_het, df, 'DW',
+    cytometer.stats.plot_linear_regression(sqwat_model_f_mat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
                                            line_label='MAT')
@@ -2593,11 +2593,11 @@ if SAVEFIG:
     cytometer.stats.plot_linear_regression(sqwat_model_m_null, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(sqwat_model_m_wt, df, 'DW',
+    cytometer.stats.plot_linear_regression(sqwat_model_m_pat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
                                            line_label='PAT')
-    cytometer.stats.plot_linear_regression(sqwat_model_m_het, df, 'DW',
+    cytometer.stats.plot_linear_regression(sqwat_model_m_mat, df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
                                            line_label='MAT')
