@@ -433,10 +433,10 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
-import openslide
+# import openslide
 import cytometer.data
 import cytometer.stats
-import shapely
+# import shapely
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -947,6 +947,40 @@ bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent) * C(genotype)', data=metainf
 print(bw_model_f.summary())
 print(bw_model_m.summary())
 
+# refit removing the parent variable
+bw_model_f = sm.RLM.from_formula('BW ~ C(genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
+bw_model_m = sm.RLM.from_formula('BW ~ C(genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+
+print(bw_model_f.summary())
+print(bw_model_m.summary())
+
+if SAVEFIG:
+    plt.clf()
+    plt.gcf().set_size_inches([5.48, 4.8 ])
+
+    ax = sns.swarmplot(x='sex', y='BW', hue='genotype', data=metainfo, dodge=True, palette=['C2', 'C3'])
+    plt.xlabel('')
+    plt.ylabel('Body weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xticks([0, 1], labels=['Female', 'Male'])
+    ax.get_legend().set_title('')
+    ax.legend(['WT', 'Het'], loc='lower right', fontsize=12, labelcolor=['C2', 'C3'])
+
+    plt.plot([-0.2, -0.2, 0.2, 0.2], [42, 44, 44, 42], 'k', lw=1.5)
+    pval_text = '$p$=' + '{0:.2f}'.format(bw_model_f.pvalues['C(genotype)[T.KLF14-KO:Het]']) + \
+                ' ' + cytometer.stats.pval_to_asterisk(bw_model_f.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+    plt.text(0, 44.5, pval_text, ha='center', va='bottom', fontsize=14)
+    plt.plot([0.8, 0.8, 1.2, 1.2], [52, 54, 54, 52], 'k', lw=1.5)
+    pval_text = '$p$=' + '{0:.2f}'.format(bw_model_m.pvalues['C(genotype)[T.KLF14-KO:Het]']) + \
+                ' ' + cytometer.stats.pval_to_asterisk(bw_model_m.pvalues['C(genotype)[T.KLF14-KO:Het]'])
+    plt.text(1, 54.5, pval_text, ha='center', va='bottom', fontsize=14)
+    plt.ylim(18, 58)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_genotype.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_genotype.svg'))
+
 # refit removing the genotype variable
 bw_model_f = sm.RLM.from_formula('BW ~ C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
 bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
@@ -982,8 +1016,8 @@ if SAVEFIG:
 
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw.svg'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_parent.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_parent.svg'))
 
 ## effect of genotype, parent and body weight on depot weight
 ########################################################################################################################
@@ -1025,7 +1059,7 @@ df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=Fa
 df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
                                      columns=df_coeff.columns, index=model_names)
 
-# depot ~ BW * genotype models
+## depot ~ BW * genotype models
 
 # models for Likelihood Ratio Test, to check whether genotype variable has an effect
 gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
@@ -1063,7 +1097,133 @@ pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' '
 print('Subcutaneous: ' + pval_text)
 print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m.aic))
 
-# depot ~ BW * parent models
+## fit robust linear models DW ~ BW__, stratified by sex and genotype
+# female WT and Het
+gwat_model_f_wt = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_f_het = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_f_wt = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_f_het = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
+
+# male PAT and MAT
+gwat_model_m_wt = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_m_het = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_m_wt = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
+sqwat_model_m_het = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
+
+# extract coefficients, errors and p-values from models
+model_names = ['gwat_model_f_wt', 'gwat_model_f_het',
+         'sqwat_model_f_wt', 'sqwat_model_f_het',
+         'gwat_model_m_wt', 'gwat_model_m_het',
+         'sqwat_model_m_wt', 'sqwat_model_m_het']
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        [gwat_model_f_wt, gwat_model_f_het,
+         sqwat_model_f_wt, sqwat_model_f_het,
+         gwat_model_m_wt, gwat_model_m_het,
+         sqwat_model_m_wt, sqwat_model_m_het],
+    model_names=model_names)
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+# convert p-values to asterisks
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
+
+if SAVEFIG:
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+                          axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = df_concat.iloc[:, idx]
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_depot_weight_models_coeffs_pvals_genotype.csv'))
+
+if SAVEFIG:
+    plt.clf()
+    plt.subplot(221)
+    sex = 'f'
+    cytometer.stats.plot_linear_regression(gwat_null_model_f, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_f_wt, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:WT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C2', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(gwat_model_f_het, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:Het'},
+                                           dep_var='gWAT', sx=BW_mean, c='C3', marker='+',
+                                           line_label='Het')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
+    plt.tick_params(labelsize=14)
+    plt.title('Female', fontsize=14)
+    plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
+
+    plt.subplot(222)
+    sex = 'm'
+    cytometer.stats.plot_linear_regression(gwat_null_model_m, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_m_wt, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:WT'},
+                                           dep_var='gWAT', sx=BW_mean, c='C2', marker='x',
+                                           line_label='KLF14-KO:WT')
+    cytometer.stats.plot_linear_regression(gwat_model_m_het, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:Het'},
+                                           dep_var='gWAT', sx=BW_mean, c='C3', marker='+',
+                                           line_label='KLF14-KO:Het')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
+    plt.tick_params(labelsize=14)
+    plt.title('Male', fontsize=14)
+
+    plt.subplot(223)
+    sex = 'f'
+    cytometer.stats.plot_linear_regression(sqwat_null_model_f, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_wt, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:WT'},
+                                           dep_var='SC', sx=BW_mean, c='C2', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_het, metainfo_f, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:Het'},
+                                           dep_var='SC', sx=BW_mean, c='C3', marker='+',
+                                           line_label='Het')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.tick_params(labelsize=14)
+    plt.ylim(0, 2.1)
+    plt.xlabel('Body weight (g)', fontsize=14)
+    plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
+    plt.legend(loc='upper right')
+
+    plt.subplot(224)
+    sex = 'm'
+    cytometer.stats.plot_linear_regression(sqwat_null_model_m, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_wt, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:WT'},
+                                           dep_var='SC', sx=BW_mean, c='C2', marker='x',
+                                           line_label='KLF14-KO:WT')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_het, metainfo_m, 'BW__',
+                                           other_vars={'sex':sex, 'genotype':'KLF14-KO:Het'},
+                                           dep_var='SC', sx=BW_mean, c='C3', marker='+',
+                                           line_label='KLF14-KO:Het')
+    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    plt.ylim(0, 2.1)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Body weight (g)', fontsize=14)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model_genotype.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model_genotype.svg'))
+
+
+## depot ~ BW * parent models
 
 # models for Likelihood Ratio Test, to check whether parent variable has an effect
 gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
@@ -1142,7 +1302,7 @@ if SAVEFIG:
                           axis=1)
     idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
     df_concat = df_concat.iloc[:, idx]
-    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_depot_weight_models_coeffs_pvals.csv'))
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_depot_weight_models_coeffs_pvals_parent.csv'))
 
 if SAVEFIG:
     plt.clf()
@@ -1223,8 +1383,8 @@ if SAVEFIG:
 
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model.svg'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model_parent.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_depot_linear_model_parent.svg'))
 
 
 ########################################################################################################################
@@ -1640,11 +1800,11 @@ if SAVEFIG:
                                            line_label='Null')
     cytometer.stats.plot_linear_regression(q_models_f_wt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='WT')
     cytometer.stats.plot_linear_regression(q_models_f_het[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
@@ -1668,11 +1828,11 @@ if SAVEFIG:
                                            line_label='Null')
     cytometer.stats.plot_linear_regression(q_models_m_wt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='WT')
     cytometer.stats.plot_linear_regression(q_models_m_het[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
@@ -1693,11 +1853,11 @@ if SAVEFIG:
                                            line_label='Null')
     cytometer.stats.plot_linear_regression(q_models_f_wt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='WT')
     cytometer.stats.plot_linear_regression(q_models_f_het[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q2}}$ ($10^3\ \mu m^2$)', fontsize=14)
@@ -1718,11 +1878,11 @@ if SAVEFIG:
                                            line_label='Null')
     cytometer.stats.plot_linear_regression(q_models_m_wt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='WT')
     cytometer.stats.plot_linear_regression(q_models_m_het[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     if depot == 'gwat':
@@ -1742,11 +1902,11 @@ if SAVEFIG:
                                            line_label='Null')
     cytometer.stats.plot_linear_regression(q_models_f_wt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='WT')
     cytometer.stats.plot_linear_regression(q_models_f_het[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     plt.ylabel('Area$_{\mathrm{Q3}}$ ($10^3\ \mu m^2$)', fontsize=14)
@@ -1769,11 +1929,11 @@ if SAVEFIG:
                                            line_label='Null')
     cytometer.stats.plot_linear_regression(q_models_m_wt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='WT')
     cytometer.stats.plot_linear_regression(q_models_m_het[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
+                                           dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     plt.xlabel('Depot weight (g)', fontsize=14)
@@ -2097,50 +2257,69 @@ for i, i_q in enumerate(i_quantiles):
 ## USED IN PAPER
 ########################################################################################################################
 
-# for convenience
-df_all_f = df_all[df_all['sex'] == 'f']
-df_all_m = df_all[df_all['sex'] == 'm']
-
-depot = 'gwat'
-# depot = 'sqwat'
-
 # fit models kN ~ DW
-idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:WT')
-model_f_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:Het')
-model_f_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:WT')
-model_m_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['genotype'] == 'KLF14-KO:Het')
-model_m_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:WT')
+gwat_model_f_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:Het')
+gwat_model_f_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:WT')
+gwat_model_m_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:Het')
+gwat_model_m_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:WT')
+sqwat_model_f_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:Het')
+sqwat_model_f_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:WT')
+sqwat_model_m_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:Het')
+sqwat_model_m_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
 
 # fit null models and models with effect variable
-idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
-model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-model_f = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
-idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
-model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-model_m = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat')
+gwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_f = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat')
+gwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_m = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
+
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat')
+sqwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_f = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat')
+sqwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_m = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
 
 # Likelihood Ratio Tests
 print('Genotype effect')
 print('Female')
-lr, pval = cytometer.stats.lrtest(model_f_null.llf, model_f.llf)
+lr, pval = cytometer.stats.lrtest(gwat_model_f_null.llf, gwat_model_f.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
     pval)
-print('\t' + depot + ': ' + pval_text)
+print('\t' + 'gwat: ' + pval_text)
+lr, pval = cytometer.stats.lrtest(sqwat_model_f_null.llf, sqwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
+    pval)
+print('\t' + 'sqwat: ' + pval_text)
 
 print('Male')
-lr, pval = cytometer.stats.lrtest(model_m_null.llf, model_m.llf)
+lr, pval = cytometer.stats.lrtest(gwat_model_m_null.llf, gwat_model_m.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
     pval)
-print('\t' + depot + ': ' + pval_text)
+print('\t' + 'gwat: ' + pval_text)
+lr, pval = cytometer.stats.lrtest(sqwat_model_m_null.llf, sqwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
+    pval)
+print('\t' + 'sqwat: ' + pval_text)
 
 # extract coefficients, errors and p-values from PAT and MAT models
-model_names = ['model_f_wt', 'model_f_het', 'model_m_wt', 'model_m_het']
+model_names = ['gwat_model_f_wt', 'gwat_model_f_het', 'gwat_model_m_wt', 'gwat_model_m_het',
+               'sqwat_model_f_wt', 'sqwat_model_f_het', 'sqwat_model_m_wt', 'sqwat_model_m_het']
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        [model_f_wt, model_f_het, model_m_wt, model_m_het],
+        [gwat_model_f_wt, gwat_model_f_het, gwat_model_m_wt, gwat_model_m_het,
+         sqwat_model_f_wt, sqwat_model_f_het, sqwat_model_m_wt, sqwat_model_m_het],
         model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
@@ -2158,145 +2337,275 @@ if SAVEFIG:
                           axis=1)
     idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
     df_concat = df_concat.iloc[:, idx]
-    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_kN_genotype_models_coeffs_pvals_' + depot + '.csv'))
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_kN_genotype_models_coeffs_pvals.csv'))
 
 # plot
 if SAVEFIG:
 
     plt.clf()
-    plt.gcf().set_size_inches([6.4, 7.6])
 
     plt.subplot(221)
     # Female
-    i = 0  # quantile index for "i_quantiles"
-    i_q = i_quantiles[i]  # quantile index for "quantiles"
-    sex = 'f'
-    df = df_all_f[df_all_f['depot'] == depot].copy()
-    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_f_null[i], df, 'DW',
-                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
+    depot = 'gwat'; sex = 'f'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(gwat_model_f_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(q_models_f_pat[i], df, 'DW',
-                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(q_models_f_mat[i], df, 'DW',
-                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                                           line_label='MAT')
+    cytometer.stats.plot_linear_regression(gwat_model_f_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='kN', sy=1e-6, c='C2', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(gwat_model_f_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='kN', sy=1e-6, c='C3', marker='x',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
-    plt.ylabel('Area$_{\mathrm{Q1}}$ ($10^3\ \mu m^2$)', fontsize=14)
+    plt.ylabel('Gonadal\nk N ($10^6$ cells)', fontsize=14)
     plt.title('Female', fontsize=14)
-    if depot == 'gwat':
-        plt.legend(loc='best', fontsize=12)
-    if depot == 'gwat':
-        plt.ylim(0.9, 4.3)
-    elif depot == 'sqwat':
-        plt.ylim(0.5, 3)
-
-    plt.subplot(322)
-    # Q1 Male
-    i = 0  # quantile index for "i_quantiles"
-    i_q = i_quantiles[i]  # quantile index for "quantiles"
-    sex = 'm'
-    df = df_all_m[df_all_m['depot'] == depot].copy()
-    df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_m_null[i], df, 'DW',
-                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-3, c='k',
-                                           line_label='Null')
-    cytometer.stats.plot_linear_regression(q_models_m_pat[i], df, 'DW',
-                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(q_models_m_mat[i], df, 'DW',
-                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
-                                           dep_var='area_at_quantile', sy=1e-3, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.tick_params(labelsize=14)
-    plt.title('Male', fontsize=14)
-    if depot == 'gwat':
-        plt.ylim(0.9, 4.3)
-    elif depot == 'sqwat':
-        plt.ylim(0.5, 3)
-
-if SAVEFIG:
-    plt.clf()
-    plt.subplot(221)
-    sex = 'f'
-    cytometer.stats.plot_linear_regression(gwat_null_model_f, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
-                                           line_label='Null')
-    cytometer.stats.plot_linear_regression(gwat_model_f_pat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(gwat_model_f_mat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.ylim(0, 2.1)
-    plt.tick_params(labelsize=14)
-    plt.title('Female', fontsize=14)
-    plt.ylabel('Gonadal\ndepot weight (g)', fontsize=14)
-    plt.legend(loc='lower right')
+    plt.legend(loc='best', fontsize=12)
+    plt.ylim(-1, 16)
 
     plt.subplot(222)
-    sex = 'm'
-    cytometer.stats.plot_linear_regression(gwat_null_model_m, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+    # Male
+    depot = 'gwat'; sex = 'm'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(gwat_model_m_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(gwat_model_m_pat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(gwat_model_m_mat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='gWAT', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.ylim(0, 2.1)
+    cytometer.stats.plot_linear_regression(gwat_model_m_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='kN', sy=1e-6, c='C2', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(gwat_model_m_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='kN', sy=1e-6, c='C3', marker='x',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
+    plt.ylim(-1, 16)
 
     plt.subplot(223)
-    sex = 'f'
-    cytometer.stats.plot_linear_regression(sqwat_null_model_f, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+    depot = 'sqwat'; sex = 'f'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(sqwat_model_f_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(sqwat_model_f_pat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(sqwat_model_f_mat, metainfo_f, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
+    cytometer.stats.plot_linear_regression(sqwat_model_f_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='kN', sy=1e-6, c='C2', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='kN', sy=1e-6, c='C3', marker='x',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
-    plt.ylim(0, 2.1)
-    plt.xlabel('Body weight (g)', fontsize=14)
-    plt.ylabel('Subcutaneous\ndepot weight (g)', fontsize=14)
+    plt.ylabel('Subcutaneous\nk N ($10^6$ cells)', fontsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    plt.ylim(-1, 16)
 
     plt.subplot(224)
-    sex = 'm'
-    cytometer.stats.plot_linear_regression(sqwat_null_model_m, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex}, sx=BW_mean, c='k',
+    # Male
+    depot = 'sqwat'; sex = 'm'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(sqwat_model_m_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
                                            line_label='Null')
-    cytometer.stats.plot_linear_regression(sqwat_model_m_pat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'PAT'},
-                                           dep_var='SC', sx=BW_mean, c='C0', marker='x',
-                                           line_label='PAT')
-    cytometer.stats.plot_linear_regression(sqwat_model_m_mat, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'ko_parent':'MAT'},
-                                           dep_var='SC', sx=BW_mean, c='C1', marker='+',
-                                           line_label='MAT')
-    plt.yticks([0.0, 0.5, 1.0, 1.5, 2.0])
-    plt.ylim(0, 2.1)
+    cytometer.stats.plot_linear_regression(sqwat_model_m_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
+                                           dep_var='kN', sy=1e-6, c='C2', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
+                                           dep_var='kN', sy=1e-6, c='C3', marker='x',
+                                           line_label='Het')
     plt.tick_params(labelsize=14)
-    plt.xlabel('Body weight (g)', fontsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    plt.ylim(-1, 16)
 
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_genotype_model.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_genotype_model.svg'))
+
+## one data point per animal
+## linear regression analysis of kN ~ DW * parent
+## USED IN PAPER
+########################################################################################################################
+
+# fit models kN ~ DW
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'PAT')
+gwat_model_f_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'MAT')
+gwat_model_f_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'PAT')
+gwat_model_m_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'MAT')
+gwat_model_m_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'PAT')
+sqwat_model_f_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'MAT')
+sqwat_model_f_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'PAT')
+sqwat_model_m_wt = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'MAT')
+sqwat_model_m_het = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+
+# fit null models and models with effect variable
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat')
+gwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_f = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat')
+gwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+gwat_model_m = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
+
+idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat')
+sqwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_f = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
+idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat')
+sqwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
+sqwat_model_m = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
+
+# Likelihood Ratio Tests
+print('Parent effect')
+print('Female')
+lr, pval = cytometer.stats.lrtest(gwat_model_f_null.llf, gwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
+    pval)
+print('\t' + 'gwat: ' + pval_text)
+lr, pval = cytometer.stats.lrtest(sqwat_model_f_null.llf, sqwat_model_f.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
+    pval)
+print('\t' + 'sqwat: ' + pval_text)
+
+print('Male')
+lr, pval = cytometer.stats.lrtest(gwat_model_m_null.llf, gwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
+    pval)
+print('\t' + 'gwat: ' + pval_text)
+lr, pval = cytometer.stats.lrtest(sqwat_model_m_null.llf, sqwat_model_m.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
+    pval)
+print('\t' + 'sqwat: ' + pval_text)
+
+# extract coefficients, errors and p-values from PAT and MAT models
+model_names = ['gwat_model_f_pat', 'gwat_model_f_mat', 'gwat_model_m_pat', 'gwat_model_m_mat',
+               'sqwat_model_f_pat', 'sqwat_model_f_mat', 'sqwat_model_m_pat', 'sqwat_model_m_mat']
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        [gwat_model_f_wt, gwat_model_f_het, gwat_model_m_wt, gwat_model_m_het,
+         sqwat_model_f_wt, sqwat_model_f_het, sqwat_model_m_wt, sqwat_model_m_het],
+        model_names=model_names)
+
+# multitest correction using Benjamini-Yekuteli
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+# convert p-values to asterisks
+df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+                           index=model_names)
+df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
+
+if SAVEFIG:
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+                          axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = df_concat.iloc[:, idx]
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_kN_parent_models_coeffs_pvals.csv'))
+
+# plot
+if SAVEFIG:
+
+    plt.clf()
+
+    plt.subplot(221)
+    # Female
+    depot = 'gwat'; sex = 'f'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(gwat_model_f_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_f_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
+                                           dep_var='kN', sy=1e-6, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(gwat_model_f_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
+                                           dep_var='kN', sy=1e-6, c='C1', marker='x',
+                                           line_label='MAT')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Gonadal\nk N ($10^6$ cells)', fontsize=14)
+    plt.title('Female', fontsize=14)
+    plt.legend(loc='best', fontsize=12)
+    plt.ylim(-1, 16)
+
+    plt.subplot(222)
+    # Male
+    depot = 'gwat'; sex = 'm'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(gwat_model_m_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(gwat_model_m_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
+                                           dep_var='kN', sy=1e-6, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(gwat_model_m_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
+                                           dep_var='kN', sy=1e-6, c='C1', marker='x',
+                                           line_label='MAT')
+    plt.tick_params(labelsize=14)
+    plt.title('Male', fontsize=14)
+    plt.ylim(-1, 16)
+
+    plt.subplot(223)
+    depot = 'sqwat'; sex = 'f'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(sqwat_model_f_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
+                                           dep_var='kN', sy=1e-6, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(sqwat_model_f_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
+                                           dep_var='kN', sy=1e-6, c='C1', marker='x',
+                                           line_label='MAT')
+    plt.tick_params(labelsize=14)
+    plt.ylabel('Subcutaneous\nk N ($10^6$ cells)', fontsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    plt.ylim(-1, 16)
+
+    plt.subplot(224)
+    # Male
+    depot = 'sqwat'; sex = 'm'
+    idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
+    df = df_all[idx]
+    cytometer.stats.plot_linear_regression(sqwat_model_m_null, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
+                                           line_label='Null')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_wt, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
+                                           dep_var='kN', sy=1e-6, c='C0', marker='x',
+                                           line_label='PAT')
+    cytometer.stats.plot_linear_regression(sqwat_model_m_het, df, 'DW',
+                                           other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
+                                           dep_var='kN', sy=1e-6, c='C1', marker='x',
+                                           line_label='MAT')
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    plt.ylim(-1, 16)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_parent_model.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_parent_model.svg'))
