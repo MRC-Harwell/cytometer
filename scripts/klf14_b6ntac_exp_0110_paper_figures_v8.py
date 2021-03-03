@@ -2311,12 +2311,12 @@ pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' '
 print('\t' + 'sqwat: ' + pval_text)
 
 # extract coefficients, errors and p-values from PAT and MAT models
-model_names = ['gwat_model_f_wt', 'gwat_model_f_het', 'gwat_model_m_wt', 'gwat_model_m_het',
-               'sqwat_model_f_wt', 'sqwat_model_f_het', 'sqwat_model_m_wt', 'sqwat_model_m_het']
+model_names = ['gwat_model_f_wt', 'gwat_model_f_het', 'sqwat_model_f_wt', 'sqwat_model_f_het',
+               'gwat_model_m_wt', 'gwat_model_m_het', 'sqwat_model_m_wt', 'sqwat_model_m_het']
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        [gwat_model_f_wt, gwat_model_f_het, gwat_model_m_wt, gwat_model_m_het,
-         sqwat_model_f_wt, sqwat_model_f_het, sqwat_model_m_wt, sqwat_model_m_het],
+        [gwat_model_f_wt, gwat_model_f_het, sqwat_model_f_wt, sqwat_model_f_het,
+         gwat_model_m_wt, gwat_model_m_het, sqwat_model_m_wt, sqwat_model_m_het],
         model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
@@ -2381,7 +2381,7 @@ if SAVEFIG:
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
-    plt.ylim(-1, 16)
+    plt.ylim(-1, 10)
 
     plt.subplot(223)
     depot = 'sqwat'; sex = 'f'
@@ -2421,7 +2421,7 @@ if SAVEFIG:
                                            line_label='Het')
     plt.tick_params(labelsize=14)
     plt.xlabel('Depot weight (g)', fontsize=14)
-    plt.ylim(-1, 16)
+    plt.ylim(-1, 10)
 
     plt.tight_layout()
 
@@ -2560,7 +2560,7 @@ if SAVEFIG:
                                            line_label='MAT')
     plt.tick_params(labelsize=14)
     plt.title('Male', fontsize=14)
-    plt.ylim(-1, 16)
+    plt.ylim(-1, 10)
 
     plt.subplot(223)
     depot = 'sqwat'; sex = 'f'
@@ -2600,7 +2600,7 @@ if SAVEFIG:
                                            line_label='MAT')
     plt.tick_params(labelsize=14)
     plt.xlabel('Depot weight (g)', fontsize=14)
-    plt.ylim(-1, 16)
+    plt.ylim(-1, 10)
 
     plt.tight_layout()
 
