@@ -136,7 +136,7 @@ def models_coeff_ci_pval(models, extra_hypotheses=None, model_names=None):
         df_coeff = pd.DataFrame(data=model.params).transpose()
         # values of coefficient's confidence interval
         df_ci_lo = pd.DataFrame(data=model.conf_int()[0]).transpose()
-        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose().reset_index()
+        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose()
         # p-values
         df_pval = pd.DataFrame(data=model.pvalues).transpose()
         # extra p-values
