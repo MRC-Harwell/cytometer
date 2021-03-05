@@ -836,10 +836,23 @@ print('Males are ' + str(bw_model.params['C(sex)[T.m]'] / bw_model.params['Inter
 ## effect of cull age on body weight
 ########################################################################################################################
 
+# check whether mice killed later are bigger
 bw_model_f = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_f).fit()
 print(bw_model_f.summary())
 bw_model_m = sm.OLS.from_formula('BW ~ cull_age', data=metainfo_m).fit()
 print(bw_model_m.summary())
+
+# check whether mice in groups that are going to be compared (PAT vs MAT and WT vs Het) don't have a cull age effect
+cull_model_f = sm.OLS.from_formula('cull_age ~ genotype', data=metainfo_f).fit()
+print(cull_model_f.summary())
+cull_model_m = sm.OLS.from_formula('cull_age ~ genotype', data=metainfo_m).fit()
+print(cull_model_m.summary())
+
+cull_model_f = sm.OLS.from_formula('cull_age ~ ko_parent', data=metainfo_f).fit()
+print(cull_model_f.summary())
+cull_model_m = sm.OLS.from_formula('cull_age ~ ko_parent', data=metainfo_m).fit()
+print(cull_model_m.summary())
+
 
 # logistic regression of parent ~ cull_age
 cull_model_f = smf.logit('ko_parent_num ~ cull_age', data=metainfo_f).fit()
@@ -853,17 +866,13 @@ print(cull_model_f.summary())
 cull_model_m = smf.logit('genotype_num ~ cull_age', data=metainfo_m).fit()
 print(cull_model_m.summary())
 
-# does cull_age make a difference in the BW ~ parent model?
-bw_null_model_f = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_f).fit()
-bw_null_model_m = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_m).fit()
-bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_f).fit()
-bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_m).fit()
+## does cull_age make a difference in the BW ~ genotype model?
+bw_null_model_f = sm.OLS.from_formula('BW ~ C(genotype)', data=metainfo_f).fit()
+bw_null_model_m = sm.OLS.from_formula('BW ~ C(genotype)', data=metainfo_m).fit()
+bw_model_f = sm.OLS.from_formula('BW ~ C(genotype) * cull_age__', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(genotype) * cull_age__', data=metainfo_m).fit()
 
-print(bw_null_model_f.summary())
-print(bw_null_model_m.summary())
-print(bw_model_f.summary())
-print(bw_model_m.summary())
-
+print('Cull age effect in BW ~ Genotype')
 print('Female')
 null_model = bw_null_model_f
 alt_model = bw_model_f
@@ -882,27 +891,40 @@ print('p-val: ' + pval_text)
 print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
       + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
 
-print(bw_null_model_f.summary())
-print(bw_model_f.summary())
+## does cull_age make a difference in the BW ~ parent model?
+bw_null_model_f = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_f).fit()
+bw_null_model_m = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_m).fit()
+bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent) * cull_age__', data=metainfo_m).fit()
 
-# extract coefficients, errors and p-values from models
-# 'BW ~ C(ko_parent) * cull_age__'
-df_coeff_f, df_ci_lo_f, df_ci_hi_f, df_pval_f = \
-    cytometer.stats.models_coeff_ci_pval([bw_model_f])
-df_coeff_m, df_ci_lo_m, df_ci_hi_m, df_pval_m = \
-    cytometer.stats.models_coeff_ci_pval([bw_model_m])
+if DEBUG:
+    print(bw_null_model_f.summary())
+    print(bw_null_model_m.summary())
+    print(bw_model_f.summary())
+    print(bw_model_m.summary())
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval_f, _, _ = multipletests(df_pval_f.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval_f = pd.DataFrame(df_corrected_pval_f.reshape(df_pval_f.shape), columns=df_pval_f.columns)
-_, df_corrected_pval_m, _, _ = multipletests(df_pval_m.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
-df_corrected_pval_m = pd.DataFrame(df_corrected_pval_m.reshape(df_pval_m.shape), columns=df_pval_m.columns)
+print('Cull age effect in BW ~ Parent')
+print('Female')
+null_model = bw_null_model_f
+alt_model = bw_model_f
+lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('p-val: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
+      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
 
-# convert p-values to asterisks
-df_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval_m, brackets=False), columns=df_coeff_m.columns)
-df_corrected_asterisk_f = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_f, brackets=False), columns=df_coeff_f.columns)
-df_corrected_asterisk_m = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval_m, brackets=False), columns=df_coeff_m.columns)
+print('Male')
+null_model = bw_null_model_m
+alt_model = bw_model_m
+lr, pval = cytometer.stats.lrtest(null_model.llf, alt_model.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.3g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('p-val: ' + pval_text)
+print('AIC_null=' + '{0:.2f}'.format(null_model.aic) + ', AIC_alt=' + '{0:.2f}'.format(alt_model.aic)
+      + ', ΔAIC=' + '{0:.2f}'.format(alt_model.aic - null_model.aic))
+
+if DEBUG:
+    print(bw_null_model_f.summary())
+    print(bw_model_f.summary())
 
 if SAVEFIG:
     # plot body weight vs. age of culling
@@ -937,16 +959,16 @@ if SAVEFIG:
 ## effect of parent and genotype on body weight
 ########################################################################################################################
 
-# robust model BW ~ parent * genotype for female/male to account for outliers
-bw_model_f = sm.RLM.from_formula('BW ~ C(ko_parent) * C(genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent) * C(genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+# BW ~ parent * genotype for female/male
+bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent) * C(genotype)', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent) * C(genotype)', data=metainfo_m).fit()
 
 print(bw_model_f.summary())
 print(bw_model_m.summary())
 
-# refit removing the parent variable
-bw_model_f = sm.RLM.from_formula('BW ~ C(genotype)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-bw_model_m = sm.RLM.from_formula('BW ~ C(genotype)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+# BW ~ genotype
+bw_model_f = sm.OLS.from_formula('BW ~ C(genotype)', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(genotype)', data=metainfo_m).fit()
 
 print(bw_model_f.summary())
 print(bw_model_m.summary())
@@ -978,9 +1000,9 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_genotype.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_genotype.svg'))
 
-# refit removing the genotype variable
-bw_model_f = sm.RLM.from_formula('BW ~ C(ko_parent)', data=metainfo_f, M=sm.robust.norms.HuberT()).fit()
-bw_model_m = sm.RLM.from_formula('BW ~ C(ko_parent)', data=metainfo_m, M=sm.robust.norms.HuberT()).fit()
+# BW ~ parent
+bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent)', data=metainfo_m).fit()
 
 print(bw_model_f.summary())
 print(bw_model_f.pvalues)
@@ -1016,6 +1038,18 @@ if SAVEFIG:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_parent.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_swarm_bw_parent.svg'))
 
+# BW ~ parent + cull_age
+bw_model_f = sm.OLS.from_formula('BW ~ C(ko_parent) + cull_age', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(ko_parent) + cull_age', data=metainfo_m).fit()
+
+print(bw_model_f.summary())
+print(bw_model_f.pvalues)
+print('MAT females are ' + str(bw_model_f.params['C(ko_parent)[T.MAT]'] / bw_model_f.params['Intercept'] * 100)
+      + ' % larger than PATs')
+
+print(bw_model_m.summary())
+
+
 ## effect of genotype, parent and body weight on depot weight
 ########################################################################################################################
 
@@ -1047,7 +1081,7 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
 df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
@@ -1121,7 +1155,7 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
 df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
@@ -1285,7 +1319,7 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
 df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
@@ -1763,7 +1797,7 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
 df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
@@ -2049,7 +2083,7 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
 df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
@@ -2320,7 +2354,7 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
         model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
 df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
@@ -2499,7 +2533,7 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
         model_names=model_names)
 
 # multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_by', alpha=0.05, returnsorted=False)
+_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
 df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
 
 # convert p-values to asterisks
