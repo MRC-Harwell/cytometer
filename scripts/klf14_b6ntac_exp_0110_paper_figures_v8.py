@@ -853,20 +853,7 @@ print(cull_model_f.summary())
 cull_model_m = sm.OLS.from_formula('cull_age ~ ko_parent', data=metainfo_m).fit()
 print(cull_model_m.summary())
 
-
-# logistic regression of parent ~ cull_age
-cull_model_f = smf.logit('ko_parent_num ~ cull_age', data=metainfo_f).fit()
-print(cull_model_f.summary())
-cull_model_m = smf.logit('ko_parent_num ~ cull_age', data=metainfo_m).fit()
-print(cull_model_m.summary())
-
-# logistic regression of genotype ~ cull_age
-cull_model_f = smf.logit('genotype_num ~ cull_age', data=metainfo_f).fit()
-print(cull_model_f.summary())
-cull_model_m = smf.logit('genotype_num ~ cull_age', data=metainfo_m).fit()
-print(cull_model_m.summary())
-
-## does cull_age make a difference in the BW ~ genotype model?
+# does cull_age make a difference in the BW ~ genotype model?
 bw_null_model_f = sm.OLS.from_formula('BW ~ C(genotype)', data=metainfo_f).fit()
 bw_null_model_m = sm.OLS.from_formula('BW ~ C(genotype)', data=metainfo_m).fit()
 bw_model_f = sm.OLS.from_formula('BW ~ C(genotype) * cull_age__', data=metainfo_f).fit()
@@ -1080,9 +1067,11 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
          sqwat_model_m],
     model_names=model_names)
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+# multitest correction of slope p-values using Benjamini-Krieger-Yekutieli
+col = df_pval.columns[1]
+df_corrected_pval = df_pval.copy()
+_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval['Intercept'] = -1.0
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
@@ -1128,18 +1117,18 @@ pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' '
 print('Subcutaneous: ' + pval_text)
 print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m.aic))
 
-## fit robust linear models DW ~ BW__, stratified by sex and genotype
+## fit linear models DW ~ BW__, stratified by sex and genotype
 # female WT and Het
-gwat_model_f_wt = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
-gwat_model_f_het = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_f_wt = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_f_het = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
+gwat_model_f_wt = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:WT').fit()
+gwat_model_f_het = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:Het').fit()
+sqwat_model_f_wt = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:WT').fit()
+sqwat_model_f_het = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['genotype'] == 'KLF14-KO:Het').fit()
 
 # male PAT and MAT
-gwat_model_m_wt = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
-gwat_model_m_het = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_m_wt = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:WT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_m_het = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:Het', M=sm.robust.norms.HuberT()).fit()
+gwat_model_m_wt = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:WT').fit()
+gwat_model_m_het = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:Het').fit()
+sqwat_model_m_wt = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:WT').fit()
+sqwat_model_m_het = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['genotype'] == 'KLF14-KO:Het').fit()
 
 # extract coefficients, errors and p-values from models
 model_names = ['gwat_model_f_wt', 'gwat_model_f_het',
@@ -1154,9 +1143,11 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
          sqwat_model_m_wt, sqwat_model_m_het],
     model_names=model_names)
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+# multitest correction using Benjamini-Krieger-Yekutieli
+col = df_pval.columns[1]
+df_corrected_pval = df_pval.copy()
+_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval['Intercept'] = -1.0
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
@@ -1294,16 +1285,16 @@ print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', 
 
 ## fit robust linear models DW ~ BW__, stratified by sex and parent
 # female PAT and MAT
-gwat_model_f_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-gwat_model_f_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_f_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_f_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_f_pat = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT').fit()
+gwat_model_f_mat = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT').fit()
+sqwat_model_f_pat = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='PAT').fit()
+sqwat_model_f_mat = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['ko_parent']=='MAT').fit()
 
 # male PAT and MAT
-gwat_model_m_pat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-gwat_model_m_mat = sm.RLM.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_m_pat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
-sqwat_model_m_mat = sm.RLM.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT', M=sm.robust.norms.HuberT()).fit()
+gwat_model_m_pat = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT').fit()
+gwat_model_m_mat = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT').fit()
+sqwat_model_m_pat = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='PAT').fit()
+sqwat_model_m_mat = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['ko_parent']=='MAT').fit()
 
 # extract coefficients, errors and p-values from models
 model_names = ['gwat_model_f_pat', 'gwat_model_f_mat',
@@ -1318,9 +1309,11 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
          sqwat_model_m_pat, sqwat_model_m_mat],
     model_names=model_names)
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+# multitest correction using Benjamini-Krieger-Yekutieli
+col = df_pval.columns[1]
+df_corrected_pval = df_pval.copy()
+_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval['Intercept'] = -1.0
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
@@ -1796,9 +1789,15 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
         q_models_f_wt + q_models_f_het + q_models_m_wt + q_models_m_het,
     model_names=model_names)
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+# multitest correction using Benjamini-Krieger-Yekutieli
+
+# _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
+# df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+col = df_pval.columns[1]
+df_corrected_pval = df_pval.copy()
+_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval['Intercept'] = -1.0
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
@@ -2082,9 +2081,15 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
         q_models_f_pat + q_models_f_mat + q_models_m_pat + q_models_m_mat,
     model_names=model_names)
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+# multitest correction using Benjamini-Krieger-Yekutieli
+
+# _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
+# df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+col = df_pval.columns[1]
+df_corrected_pval = df_pval.copy()
+_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval['Intercept'] = -1.0
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
@@ -2353,9 +2358,15 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
          gwat_model_m_wt, gwat_model_m_het, sqwat_model_m_wt, sqwat_model_m_het],
         model_names=model_names)
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+# multitest correction using Benjamini-Krieger-Yekutieli
+
+# _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
+# df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+col = df_pval.columns[1]
+df_corrected_pval = df_pval.copy()
+_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval['Intercept'] = -1.0
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
@@ -2532,9 +2543,15 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
          gwat_model_m_pat, gwat_model_m_mat, sqwat_model_m_pat, sqwat_model_m_mat],
         model_names=model_names)
 
-# multitest correction using Benjamini-Yekuteli
-_, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+# multitest correction using Benjamini-Krieger-Yekutieli
+
+# _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
+# df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
+
+col = df_pval.columns[1]
+df_corrected_pval = df_pval.copy()
+_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval['Intercept'] = -1.0
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
