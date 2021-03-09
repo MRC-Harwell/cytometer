@@ -1790,10 +1790,6 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     model_names=model_names)
 
 # multitest correction using Benjamini-Krieger-Yekutieli
-
-# _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-# df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
-
 col = df_pval.columns[1]
 df_corrected_pval = df_pval.copy()
 _, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
@@ -2082,10 +2078,6 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     model_names=model_names)
 
 # multitest correction using Benjamini-Krieger-Yekutieli
-
-# _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-# df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
-
 col = df_pval.columns[1]
 df_corrected_pval = df_pval.copy()
 _, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
