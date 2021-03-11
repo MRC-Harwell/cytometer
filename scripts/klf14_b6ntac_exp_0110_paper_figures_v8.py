@@ -1789,22 +1789,14 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
         q_models_f_wt + q_models_f_het + q_models_m_wt + q_models_m_het,
     model_names=model_names)
 
-# multitest correction using Benjamini-Krieger-Yekutieli
-col = df_pval.columns[1]
-df_corrected_pval = df_pval.copy()
-_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval['Intercept'] = -1.0
-
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
                            index=model_names)
-df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
-                                     columns=df_coeff.columns, index=model_names)
 
 if SAVEFIG:
-    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk],
                           axis=1)
-    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 3)))
     df_concat = df_concat.iloc[:, idx]
     df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_genotype_models_coeffs_pvals_' + depot + '.csv'))
 
@@ -1992,6 +1984,35 @@ for i, i_q in enumerate(i_quantiles):
     print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
     print('AIC_null=' + '{0:.2f}'.format(q_models_m_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_m[i].aic))
 
+## multitest correction of all betas from both depots
+
+gwat_df = pd.read_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_genotype_models_coeffs_pvals_gwat.csv'))
+sqwat_df = pd.read_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_genotype_models_coeffs_pvals_sqwat.csv'))
+
+# add a depot tag to the model name
+gwat_df['model'] = ['gwat_' + x for x in gwat_df['model']]
+sqwat_df['model'] = ['sqwat_' + x for x in gwat_df['model']]
+
+# concatenate p-values from gwat and sqwat, so that we have: female gwat, female sqwat, male gwat, male sqwat
+col = 'DW.1'  # column name with the uncorrected p-values for the slope coefficients
+pval = np.concatenate((gwat_df[col], sqwat_df[col]))
+
+# multitest correction using Benjamini-Krieger-Yekutieli
+_, corrected_pval, _, _ = multipletests(pval, method='fdr_tsbky', alpha=0.05, returnsorted=False)
+
+# convert p-values to asterisks
+corrected_asterisk = cytometer.stats.pval_to_asterisk(corrected_pval, brackets=False)
+
+# add to dataframe
+gwat_df['DW.3'] = corrected_pval[0:12]
+gwat_df['DW.4'] = corrected_asterisk[0:12]
+sqwat_df['DW.3'] = corrected_pval[12:]
+sqwat_df['DW.4'] = corrected_asterisk[12:]
+
+if SAVEFIG:
+    gwat_df.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_genotype_models_coeffs_pvals_gwat.csv'))
+    sqwat_df.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_genotype_models_coeffs_pvals_sqwat.csv'))
+
 ## one data point per animal
 ## linear regression analysis of quantile_area ~ DW * ko_parent
 ## USED IN PAPER
@@ -2077,22 +2098,14 @@ df_coeff, df_ci_lo, df_ci_hi, df_pval = \
         q_models_f_pat + q_models_f_mat + q_models_m_pat + q_models_m_mat,
     model_names=model_names)
 
-# multitest correction using Benjamini-Krieger-Yekutieli
-col = df_pval.columns[1]
-df_corrected_pval = df_pval.copy()
-_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval['Intercept'] = -1.0
-
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
                            index=model_names)
-df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
-                                     columns=df_coeff.columns, index=model_names)
 
 if SAVEFIG:
-    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk],
                           axis=1)
-    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 3)))
     df_concat = df_concat.iloc[:, idx]
     df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_' + depot + '.csv'))
 
@@ -2279,6 +2292,36 @@ for i, i_q in enumerate(i_quantiles):
     pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
     print('q=' + str(quantiles[i_q]) + ', ' + depot + ': ' + pval_text)
     print('AIC_null=' + '{0:.2f}'.format(q_models_m_null[i].aic) + ', AIC_alt=' + '{0:.2f}'.format(q_models_m[i].aic))
+
+## multitest correction of all betas from both depots
+
+gwat_df = pd.read_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_gwat.csv'))
+sqwat_df = pd.read_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_sqwat.csv'))
+
+# add a depot tag to the model name
+gwat_df['model'] = ['gwat_' + x for x in gwat_df['model']]
+sqwat_df['model'] = ['sqwat_' + x for x in gwat_df['model']]
+
+# concatenate p-values from gwat and sqwat, so that we have: female gwat, female sqwat, male gwat, male sqwat
+col = 'DW.1'  # column name with the uncorrected p-values for the slope coefficients
+pval = np.concatenate((gwat_df[col], sqwat_df[col]))
+
+# multitest correction using Benjamini-Krieger-Yekutieli
+_, corrected_pval, _, _ = multipletests(pval, method='fdr_tsbky', alpha=0.05, returnsorted=False)
+
+# convert p-values to asterisks
+corrected_asterisk = cytometer.stats.pval_to_asterisk(corrected_pval, brackets=False)
+
+# add to dataframe
+gwat_df['DW.3'] = corrected_pval[0:12]
+gwat_df['DW.4'] = corrected_asterisk[0:12]
+sqwat_df['DW.3'] = corrected_pval[12:]
+sqwat_df['DW.4'] = corrected_asterisk[12:]
+
+if SAVEFIG:
+    gwat_df.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_gwat.csv'))
+    sqwat_df.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_sqwat.csv'))
+
 
 ## one data point per animal
 ## linear regression analysis of kN ~ DW * genotype
