@@ -419,6 +419,53 @@ for method in ['auto', 'corrected']:
         df_all.to_pickle(dataframe_areas_filename)
 
 ########################################################################################################################
+## Count cells from automatic segmentation
+## USED IN PAPER
+########################################################################################################################
+
+# we could use the loop above, but that's very slow
+
+for method in ['auto', 'corrected']:
+
+    # dataframe with histograms and smoothed histograms of cell populations in each slide
+    dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.pkl')
+
+    for depot in ['sqwat', 'gwat']:
+
+        # list of annotation files for this depot
+        json_annotation_files = json_annotation_files_dict[depot]
+
+        # modify filenames to select the particular segmentation we want (e.g. the automatic ones, or the manually refined ones)
+        json_annotation_files = [x.replace('.json', '_exp_0106_' + method + '_aggregated.json') for x in
+                                 json_annotation_files]
+        json_annotation_files = [os.path.join(annotations_dir, x) for x in json_annotation_files]
+
+        # init cell counter
+        count = 0
+
+        # process annotation files and coarse masks
+        filename_coarse_mask_area = os.path.join(figures_dir,
+                                                 'klf14_b6ntac_exp_0110_coarse_mask_area_' + depot + '.npz')
+        for i_file, json_file in enumerate(json_annotation_files):
+
+            print('File ' + str(i_file) + '/' + str(len(json_annotation_files)-1) + ': '
+                  + os.path.basename(json_file))
+
+            if not os.path.isfile(json_file):
+                print('Missing annotations file')
+                continue
+
+            # load contours and their confidence measure from annotation file
+            cells, props = cytometer.data.aida_get_contours(json_file, layer_name='White adipocyte.*', return_props=True)
+
+            # increase cell counter
+            count += len(cells)
+
+        print('Method = ' + method + ', depot = ' + depot + ', count = ' + str(count))
+
+
+
+########################################################################################################################
 ## Import packages and auxiliary functions common to all analysis sections
 ## USED IN PAPER
 ########################################################################################################################
