@@ -16,6 +16,8 @@ Changes over klf14_b6ntac_exp_0108_pipeline_v7_validation:
 
 
 # script name to identify this experiment
+import time
+
 experiment_id = 'klf14_b6ntac_exp_0109_pipeline_v8_validation'
 
 # cross-platform home directory
@@ -492,6 +494,16 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.svg'))
 
+
+########################################################################################################################
+## Segmentation sub-pipeline diagram
+########################################################################################################################
+
+# For the diagram of the DeepCytometer segmentation sub-pipeline in the paper, you need to run the segmentation code
+# in section "Find matches" below step by step to generate the images. The example image we use corresponds to
+i = 5; file_svg = file_svg_list[i]
+
+# which corresponds to "KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_019228_col_015060.svg"
 
 ########################################################################################################################
 ## Find matches between hand traced contours and pipeline segmentations
