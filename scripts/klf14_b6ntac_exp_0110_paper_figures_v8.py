@@ -20,10 +20,6 @@ import os
 import sys
 sys.path.extend([os.path.join(home, 'Software/cytometer')])
 
-import openslide
-import numpy as np
-import matplotlib.pyplot as plt
-
 DEBUG = False
 SAVE_FIGS = False
 
@@ -211,11 +207,43 @@ json_annotation_files_dict['gwat'] = [
 # klf14_b6ntac_exp_0109_pipeline_v8_validation)
 ########################################################################################################################
 
+import openslide
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy
+import scipy.stats as stats
+import cytometer.utils
 
 # data paths
 histology_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 annotations_dir = os.path.join(home, 'bit/cytometer_data/aida_data_Klf14_v8/annotations')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
+
+# file with RGB modes from all training data
+klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
+
+# model names
+dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
+contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
+classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
+correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
+
+# statistical mode of the background colour (typical colour value) from the training dataset
+with np.load(klf14_training_colour_histogram_file) as data:
+    mode_r_target = data['mode_r']
+    mode_g_target = data['mode_g']
+    mode_b_target = data['mode_b']
+
+# segmentation parameters
+min_cell_area = 200  # pixel
+max_cell_area = 200e3  # pixel
+min_mask_overlap = 0.8
+phagocytosis = True
+# min_class_prop = 0.65
+min_class_prop = 0.5
+correction_window_len = 401
+correction_smoothing = 11
 
 # json_annotation_files_dict['sqwat'][32]
 i_file = 32
@@ -255,6 +283,7 @@ with np.load(coarse_mask_file) as aux:
     prev_first_col = aux['prev_first_col'].item()
     prev_last_col = aux['prev_last_col'].item()
 
+# plot whole slide
 if SAVE_FIGS:
     plt.clf()
     plt.imshow(im_downsampled)
@@ -267,6 +296,20 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_whole_slide.svg'),
                 bbox_inches='tight', pad_inches=0)
 
+# plot coarse mask
+if SAVE_FIGS:
+    plt.clf()
+    plt.imshow(lores_istissue0)
+    plt.axis('off')
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_coarse_mask.png'),
+                bbox_inches='tight', pad_inches=0)
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_coarse_mask.svg'),
+                bbox_inches='tight', pad_inches=0)
+
+# plot tile
 if SAVE_FIGS:
     box_row = np.round(19228 / 2).astype(np.int)
     box_col = np.round(15060 / 2).astype(np.int)
@@ -299,14 +342,82 @@ if SAVE_FIGS:
     tile = tile[:, :, 0:3]
 
     plt.clf()
-    plt.imshow(tile)
+    plt.imshow(im_downsampled)
+    plt.plot(np.array([box_corner_col, box_corner_col+box_size, box_corner_col+box_size, box_corner_col, box_corner_col]) / 16,
+             np.array([box_corner_row, box_corner_row, box_corner_row+box_size, box_corner_row+box_size, box_corner_row]) / 16,
+             'k', linewidth=3)
+    plt.arrow(1278, 826, -292, 331, color='k', linewidth=3, length_includes_head=True, width=100, head_width=300, head_length=200)
+    plt.axis('off')
 
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_whole_slide.png'))
-    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_whole_slide.svg'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_whole_slide_and_tile.png'),
+                bbox_inches='tight', pad_inches=0)
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_whole_slide_and_tile.svg'),
+                bbox_inches='tight', pad_inches=0)
 
+# zoom in
+if SAVE_FIGS:
+    plt.xlim(777, 1420)
+    plt.ylim(1321, 712)
 
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_whole_slide_and_tile_zoomed.png'),
+                bbox_inches='tight', pad_inches=0)
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_whole_slide_and_tile_zoomed.svg'),
+                bbox_inches='tight', pad_inches=0)
+
+# segmentation of the training image
+mode_r_tile = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
+mode_g_tile = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
+mode_b_tile = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
+
+tile[:, :, 0] = tile[:, :, 0] + (mode_r_target - mode_r_tile)
+tile[:, :, 1] = tile[:, :, 1] + (mode_g_target - mode_g_tile)
+tile[:, :, 2] = tile[:, :, 2] + (mode_b_target - mode_b_tile)
+
+if SAVE_FIGS:
+    plt.clf()
+    plt.imshow(tile)
+
+# names of contour, dmap and tissue classifier models
+dmap_model_filename = \
+    os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+contour_model_filename = \
+    os.path.join(saved_models_dir, contour_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+correction_model_filename = \
+    os.path.join(saved_models_dir, correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+classifier_model_filename = \
+    os.path.join(saved_models_dir, classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+
+# segment histology, split into individual objects, and apply segmentation correction
+labels, labels_class, todo_edge, \
+window_im, window_labels, window_labels_corrected, window_labels_class, index_list, scaling_factor_list \
+    = cytometer.utils.segmentation_pipeline6(im=tile,
+                                             dmap_model=dmap_model_filename,
+                                             contour_model=contour_model_filename,
+                                             correction_model=correction_model_filename,
+                                             classifier_model=classifier_model_filename,
+                                             min_cell_area=min_cell_area,
+                                             max_cell_area=max_cell_area,
+                                             remove_edge_labels=True,
+                                             phagocytosis=phagocytosis,
+                                             min_class_prop=min_class_prop,
+                                             correction_window_len=correction_window_len,
+                                             correction_smoothing=correction_smoothing,
+                                             return_bbox=True, return_bbox_coordinates='xy')
+
+if SAVE_FIGS:
+    plt.clf()
+    plt.imshow(todo_edge)
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_todo.png'),
+                bbox_inches='tight', pad_inches=0)
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_pipeline_diagram_todo.svg'),
+                bbox_inches='tight', pad_inches=0)
 
 ########################################################################################################################
 ## Compute cell populations from automatically segmented images in two depots: SQWAT and GWAT:
