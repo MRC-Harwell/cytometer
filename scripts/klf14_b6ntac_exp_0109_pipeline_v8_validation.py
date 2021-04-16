@@ -356,6 +356,9 @@ for i, file_svg in enumerate(hand_file_svg_list):
     df['depot'] = depot
     df_all = df_all.append(df, ignore_index=True)
 
+# save dataframe for use in klf14_b6ntac_exp_0110_paper_figures_v8.py
+df_all.to_csv(os.path.join(paper_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.csv'),
+              index=False)
 
 print('Min cell size = ' + '{0:.1f}'.format(np.min(df_all['area'])) + ' um^2 = '
       + '{0:.1f}'.format(np.min(df_all['area']) / xres_ref / yres_ref) + ' pixels')
