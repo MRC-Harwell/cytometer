@@ -1072,7 +1072,7 @@ print('m MAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_mat, 'Cells'])))
 ########################################################################################################################
 ## smoothed histograms
 ##
-## We can use all animals for this, because we don't need BW or DW
+## We can use all animals for this, even the ones where BW=NaN, because we don't need BW or DW
 ## USED IN THE PAPER
 ########################################################################################################################
 
@@ -1679,7 +1679,6 @@ metainfo_m = metainfo[metainfo['sex'] == 'm']
 ## effect of sex on body weight
 ########################################################################################################################
 
-# Warning! For the
 df_all = df_all[~np.isnan(df_all['BW'])]
 
 bw_model = sm.RLM.from_formula('BW ~ C(sex)', data=metainfo, subset=metainfo['ko_parent']=='PAT', M=sm.robust.norms.HuberT()).fit()
