@@ -587,6 +587,9 @@ for method in ['auto', 'corrected']:
                 # compute areas of the cells (um^2)
                 areas = np.array([shapely.geometry.Polygon(cell).area for cell in cells]) * xres * yres  # um^2
 
+                # number of cells for the calculations (can be used to compute degrees of freedom in t-test)
+                df['n'] = len(areas)
+
                 # smooth out histogram
                 kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(areas.reshape(-1, 1))
                 log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
@@ -1667,18 +1670,215 @@ if SAVEFIG:
 ## USED IN THE PAPER
 ########################################################################################################################
 
+# indices for the quartiles
+idx_q1 = np.where(quantiles == 0.25)[0][0]
+idx_q2 = np.where(quantiles == 0.50)[0][0]
+idx_q3 = np.where(quantiles == 0.75)[0][0]
+
 depot = 'sqwat'
 
 # load hand traced areas
 df_hand_all = pd.read_csv(os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.csv'))
 
+# identify whole slides used for the hand traced dataset
+idx_used_in_hand_traced = np.full((df_all.shape[0],), False)
+for hand_file_svg in hand_file_svg_list:
+    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(hand_file_svg),
+                                                   values=[depot, ], values_tag='depot',
+                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
+
+    idx_used_in_hand_traced[(df_all[df.columns] == df.values).all(1)] = True
+
+## whole slides used for hand tracing compared to hand tracing
+
+print('DeepCytometer whole slide quartiles compared to hand tracing, same slides both')
+
 # f PAT
 df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'PAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
 
-
-df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
-areas_at_quantiles = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
 stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('f PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# f MAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'MAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('f MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m PAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'PAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('m PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m MAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'MAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('m MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+
+## whole slides used for hand tracing compared to hand tracing
+
+print('DeepCytometer whole slide quartiles compared to DeepCytometer segmentations from hand traced whole slides')
+
+# f PAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('f PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# f MAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('f MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m PAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('m PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m MAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('m MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+
 
 @@@@@
 
