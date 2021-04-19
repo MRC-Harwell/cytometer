@@ -688,7 +688,8 @@ for method in ['auto', 'corrected']:
 
 
 ########################################################################################################################
-## Import packages and auxiliary functions common to all analysis sections
+## Common code to the rest of this script:
+## Import packages and auxiliary functions
 ## USED IN PAPER
 ########################################################################################################################
 
@@ -1075,6 +1076,11 @@ print('m MAT: ' + str(np.sum(hand_traced_table.loc[idx_m * idx_mat, 'Cells'])))
 ## We can use all animals for this, even the ones where BW=NaN, because we don't need BW or DW
 ## USED IN THE PAPER
 ########################################################################################################################
+
+## only training windows used for hand tracing
+
+# this figure is generated in klf14_b6ntac_exp_0109_pipeline_v8_validation.py
+# the area values can be loaded from file dataframe_dir/'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_sqwat.csv'
 
 ## only slides used for hand tracing
 
@@ -1653,6 +1659,28 @@ if SAVEFIG:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
+
+########################################################################################################################
+## comparison of populations quartiles from smoothed histograms of DeepCytometer whole slides and hand tracing
+##
+## We can use all animals for this, even the ones where BW=NaN, because we don't need BW or DW
+## USED IN THE PAPER
+########################################################################################################################
+
+depot = 'sqwat'
+
+# load hand traced areas
+df_hand_all = pd.read_csv(os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.csv'))
+
+# f PAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'PAT')]
+
+
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+areas_at_quantiles = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+@@@@@
 
 ########################################################################################################################
 ## Whole animal studies (cull age, body weight, depot weight)
