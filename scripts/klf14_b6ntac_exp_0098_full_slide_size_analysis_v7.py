@@ -64,8 +64,8 @@ metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 # k-folds file
 saved_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
 
-# # rough_foreground_mask() parameters
-# downsample_factor = 8.0
+# rough_foreground_mask() parameters
+downsample_factor = 8.0
 # dilation_size = 25
 # component_size_threshold = 1e6
 # hole_size_treshold = 8000
@@ -644,8 +644,8 @@ filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_
 
 if os.path.isfile(filename_area2quantile):
     with np.load(filename_area2quantile, allow_pickle=True) as aux:
-        f_area2quantile_f = aux['f_area2quantile_f']
-        f_area2quantile_m = aux['f_area2quantile_m']
+        f_area2quantile_f = aux['f_area2quantile_f'].item()
+        f_area2quantile_m = aux['f_area2quantile_m'].item()
 else:
     # compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
     # to area quantiles
@@ -817,6 +817,7 @@ cbar = plt.colorbar(orientation='horizontal', cax=cax)
 cbar.ax.tick_params(labelsize=14)
 plt.title('Cell area quantile (w.r.t. manual dataset)', rotation=0, fontsize=14)
 plt.tight_layout()
+
 plt.savefig(os.path.join(figures_dir, 'exp_0098_aida_colourmap.png'), bbox_inches='tight')
 
 # plot area distributions
@@ -830,6 +831,7 @@ plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 plt.ylabel('Density', fontsize=14)
 plt.yticks([])
 plt.tight_layout()
+
 plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_manual_f.png'), bbox_inches='tight')
 
 plt.clf()
@@ -842,6 +844,7 @@ plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 plt.ylabel('Density', fontsize=14)
 plt.yticks([])
 plt.tight_layout()
+
 plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_manual_m.png'), bbox_inches='tight')
 
 ## Colourmaps for all slides Corrected data
@@ -857,6 +860,7 @@ plt.xlabel('White adipocyte area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 plt.yticks([])
 plt.ylabel('Density', fontsize=14)
 plt.tight_layout()
+
 plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_corrected_all_f.png'), bbox_inches='tight')
 
 # plot area distributions
@@ -870,6 +874,7 @@ plt.xlabel('White adipocyte area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
 plt.yticks([])
 plt.ylabel('Density', fontsize=14)
 plt.tight_layout()
+
 plt.savefig(os.path.join(figures_dir, 'exp_0098_dist_quantiles_corrected_all_m.png'), bbox_inches='tight')
 
 # colourmap plot
@@ -886,4 +891,5 @@ cbar.set_ticks(np.linspace(0, 1, 11))
 plt.title('Quantile colour map', rotation=0, fontsize=14)
 cbar.ax.set_xlabel('Quantile', fontsize=14)
 plt.tight_layout()
+
 plt.savefig(os.path.join(figures_dir, 'exp_0098_aida_colourmap.png'), bbox_inches='tight')
