@@ -120,6 +120,7 @@ import PIL
 from keras import backend as K
 import scipy.stats
 from shapely.geometry import Polygon
+import pandas as pd
 
 import tensorflow as tf
 if tf.test.is_gpu_available():
@@ -142,6 +143,8 @@ histology_ext = '.ndpi'
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 annotations_dir = os.path.join(home, 'bit/cytometer_data/aida_data_Klf14_v8/annotations')
+figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
+metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
@@ -372,7 +375,7 @@ if DEBUG:
         print('File ' + str(i) + ': Fold ' + str(histo_files_list[key]) + ': ' + key)
 
 ########################################################################################################################
-# target background colour and colourmap
+# target background colour
 ########################################################################################################################
 
 # statistical mode of the background colour (typical colour value) from the training dataset
@@ -381,14 +384,14 @@ with np.load(klf14_training_colour_histogram_file) as data:
     mode_g_target = data['mode_g']
     mode_b_target = data['mode_b']
 
-# colourmap for AIDA, based on KLF14 automatically segmented data
-if os.path.isfile(filename_area2quantile):
-    with np.load(filename_area2quantile, allow_pickle=True) as aux:
-        f_area2quantile_f = aux['f_area2quantile_f']
-        f_area2quantile_m = aux['f_area2quantile_m']
-else:
-    raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
-                            ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
+# # colourmap for AIDA, based on KLF14 automatically segmented data
+# if os.path.isfile(filename_area2quantile):
+#     with np.load(filename_area2quantile, allow_pickle=True) as aux:
+#         f_area2quantile_f = aux['f_area2quantile_f']
+#         f_area2quantile_m = aux['f_area2quantile_m']
+# else:
+#     raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
+#                             ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
 
 ########################################################################################################################
 ## Segmentation loop
@@ -821,3 +824,93 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
         K.clear_session()
 
     # end of "keep extracting histology windows until we have finished"
+
+########################################################################################################################
+## Compute colourmap for AIDA (using all automatically segmented data)
+########################################################################################################################
+
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# auxiliary file to keep all Corrected areas
+filename_corrected_areas = os.path.join(figures_dir, 'klf14_b6ntac_exp_0106_corrected_areas.npz')
+
+if os.path.isfile(filename_corrected_areas):
+
+    with np.load(filename_corrected_areas, allow_pickle=True) as aux:
+        areas_corrected_f = aux['areas_corrected_f']
+        areas_corrected_m = aux['areas_corrected_m']
+
+else:
+
+    areas_corrected_f = []
+    areas_corrected_m = []
+    for i_file, histo_file in enumerate(histo_files_list.keys()):
+
+        print('file ' + str(i_file) + '/' + str(len(histo_files_list.keys()) - 1) + ': ' + os.path.basename(histo_file))
+
+        # change file extension from .svg to .tif
+        file_ndpi = histo_file + histology_ext
+        file_ndpi = os.path.join(histology_dir, file_ndpi)
+
+        # open histology training image
+        im = openslide.OpenSlide(file_ndpi)
+
+        # pixel size
+        assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+        xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
+        yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
+
+        # create dataframe for this image
+        df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(histo_file),
+                                                              values=[i_file,], values_tag='i',
+                                                              tags_to_keep=['id', 'ko_parent', 'sex'])
+
+        # mouse ID as a string
+        id = df_common['id'].values[0]
+        sex = df_common['sex'].values[0]
+        ko = df_common['ko_parent'].values[0]
+
+        # load list of contours in Corrected segmentations
+        json_file_corrected = os.path.join(annotations_dir, histo_file + '_exp_0106_corrected.json')
+        contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
+
+        # loop items (one contour per item)
+        areas_all = []
+        for c in contours_corrected:
+            # compute cell area
+            area = Polygon(c).area * xres * yres  # (um^2)
+            areas_all.append(area)
+        if sex == 'f':
+            areas_corrected_f.append(np.array(areas_all))
+        elif sex == 'm':
+            areas_corrected_m.append(np.array(areas_all))
+
+    # save cell areas
+    # areas_corrected_f = np.array(areas_corrected_f)
+    # areas_corrected_m = np.array(areas_corrected_m)
+    np.savez(filename_corrected_areas, areas_corrected_f=areas_corrected_f, areas_corrected_m=areas_corrected_m)
+
+## HERE
+
+# clean outliers from the Corrected data, in dataframe and in vectors of vectors
+max_cell_size = 22500
+df_all = df_all.loc[df_all['Area'] <= max_cell_size]
+
+areas_corrected_f = [x[x <= max_cell_size] for x in areas_corrected_f]
+areas_corrected_m = [x[x <= max_cell_size] for x in areas_corrected_m]
+
+# file that contains quantile-to-area functions
+filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
+
+if os.path.isfile(filename_area2quantile):
+    with np.load(filename_area2quantile, allow_pickle=True) as aux:
+        f_area2quantile_f = aux['f_area2quantile_f'].item()
+        f_area2quantile_m = aux['f_area2quantile_m'].item()
+else:
+    # compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
+    # to area quantiles
+    f_area2quantile_f = cytometer.data.area2quantile(np.concatenate(areas_corrected_f), quantiles=np.linspace(0.0, 1.0, 1001))
+    f_area2quantile_m = cytometer.data.area2quantile(np.concatenate(areas_corrected_m), quantiles=np.linspace(0.0, 1.0, 1001))
+    np.savez(filename_area2quantile, f_area2quantile_f=f_area2quantile_f, f_area2quantile_m=f_area2quantile_m)

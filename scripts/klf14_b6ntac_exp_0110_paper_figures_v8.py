@@ -433,17 +433,16 @@ import cytometer.data
 import cytometer.stats
 import shapely
 import scipy.stats as stats
-import openslide
 import numpy as np
 import sklearn.neighbors, sklearn.model_selection
 import pandas as pd
 import PIL
-# import time
+import openslide
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
-ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+histo_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 dataframe_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -520,7 +519,7 @@ for method in ['auto', 'corrected']:
 
                 # open full resolution histology slide
                 ndpi_file = json_file.replace('_exp_0106_' + method + '_aggregated.json', '.ndpi')
-                ndpi_file = os.path.join(ndpi_dir, os.path.basename(ndpi_file))
+                ndpi_file = os.path.join(histo_dir, os.path.basename(ndpi_file))
                 im = openslide.OpenSlide(ndpi_file)
 
                 # pixel size
@@ -701,21 +700,23 @@ from toolz import interleave
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy
 import scipy.stats as stats
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
-# import openslide
+import openslide
+import PIL
 import cytometer.data
 import cytometer.stats
-# import shapely
+import shapely
 
 # directories
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 hand_traced_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_v2')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
-ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
+histo_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 dataframe_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
@@ -3483,3 +3484,160 @@ if SAVEFIG:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_parent_model.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_parent_model.svg'))
+
+########################################################################################################################
+## Heatmaps of whole slides
+########################################################################################################################
+
+area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
+
+# downsample factor that we used in klf14_b6ntac_exp_0106_full_slide_pipeline_v8
+downsample_factor = 16
+
+# put all the annotation files in a single list
+json_annotation_files = json_annotation_files_dict['sqwat'] + json_annotation_files_dict['gwat']
+
+# loop annotations files
+for i_file, json_file in enumerate(json_annotation_files):
+
+    print('File: ' + str(i_file) + ': JSON annotations file: ' + json_file)
+
+    # name of corresponding .ndpi file
+    ndpi_file = json_file.replace('.json', '.ndpi')
+    kernel_file = os.path.splitext(ndpi_file)[0]
+
+    # add path to file
+    json_file = os.path.join(annotations_dir, json_file)
+    ndpi_file = os.path.join(histo_dir, ndpi_file)
+
+    # open full resolution histology slide
+    im = openslide.OpenSlide(ndpi_file)
+
+    # pixel size
+    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
+    yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
+
+    # downsampled pixel size
+    xres_down = xres * downsample_factor
+    yres_down = yres * downsample_factor
+
+    # name of file where rough mask was saved to
+    coarse_mask_file = os.path.basename(ndpi_file)
+    coarse_mask_file = coarse_mask_file.replace('.ndpi', '_coarse_mask.npz')
+    coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
+
+    # load coarse tissue mask
+    with np.load(coarse_mask_file) as aux:
+        lores_istissue0 = aux['lores_istissue0']
+        im_downsampled = aux['im_downsampled']
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
+        plt.subplot(212)
+        plt.imshow(lores_istissue0)
+
+    # load list of contours in Corrected segmentations
+    json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0106_corrected.json'))
+
+    # list of items (there's a contour in each item)
+    contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
+
+    # init array for interpolated quantiles
+    quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
+
+    # init array for mask where there are segmentations
+    areas_mask = PIL.Image.new("1", lores_istissue0.shape[::-1], "black")
+    draw = PIL.ImageDraw.Draw(areas_mask)
+
+    # init lists for contour centroids and areas
+    areas_all = []
+    centroids_all = []
+
+    # loop items (one contour per item)
+    for c in contours_corrected:
+
+        # convert to downsampled coordinates
+        c = np.array(c) / downsample_factor
+
+        if DEBUG:
+            plt.fill(c[:, 0], c[:, 1], fill=False, color='r')
+
+        # compute cell area
+        area = shapely.geometry.Polygon(c).area * xres * yres  # (um^2)
+        areas_all.append(area)
+
+        # compute centroid of contour
+        centroid = np.mean(c, axis=0)
+        centroids_all.append(centroid)
+
+        # add object described by contour to mask
+        draw.polygon(list(c.flatten()), outline="white", fill="white")
+
+    # convert mask
+    areas_mask = np.array(areas_mask, dtype=np.bool)
+
+    areas_all = np.array(areas_all)
+
+    # interpolate scattered area data to regular grid
+    idx = areas_mask
+    xi = np.transpose(np.array(np.where(idx)))[:, [1, 0]]
+    quantiles_grid[idx] = scipy.interpolate.griddata(centroids_all, areas_all, xi, method='linear', fill_value=0)
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
+        plt.axis('off')
+        plt.subplot(212)
+        plt.imshow(quantiles_grid)
+
+    # create dataframe for this image
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(ndpi_file),
+                                                          values=[i_file,], values_tag='i',
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko_parent'].values[0]
+
+    # convert area values to quantiles
+    if sex == 'f':
+        quantiles_grid = f_area2quantile_f(quantiles_grid)
+    elif sex == 'm':
+        quantiles_grid = f_area2quantile_m(quantiles_grid)
+    else:
+        raise ValueError('Wrong sex value')
+
+    # make background white in the plot
+    quantiles_grid[~areas_mask] = np.nan
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
+        plt.axis('off')
+        plt.subplot(212)
+        # plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
+        plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
+        cbar = plt.colorbar(shrink=1.0)
+        cbar.ax.tick_params(labelsize=14)
+        cbar.ax.set_ylabel('Cell area quantile', rotation=90, fontsize=14)
+        plt.axis('off')
+        plt.tight_layout()
+
+    if DEBUG:
+        plt.clf()
+        plt.hist(areas_all, bins=50, density=True, histtype='step')
+
+    # plot cell areas for paper
+    plt.clf()
+    plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_segmentation.png'),
+                bbox_inches='tight')
