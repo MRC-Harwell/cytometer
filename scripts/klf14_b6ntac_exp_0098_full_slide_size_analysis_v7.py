@@ -351,7 +351,7 @@ for i_file, file in enumerate(file_training_full_slide_svg_list):
 
     # create dataframe for this image
     df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file),
-                                                          values=[i, ], values_tag='i',
+                                                          values=[i_file, ], values_tag='i',
                                                           tags_to_keep=['id', 'ko_parent', 'sex'])
 
     # mouse ID as a string
