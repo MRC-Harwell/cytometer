@@ -892,16 +892,7 @@ else:
     # areas_corrected_m = np.array(areas_corrected_m)
     np.savez(filename_corrected_areas, areas_corrected_f=areas_corrected_f, areas_corrected_m=areas_corrected_m)
 
-## HERE
-
-# clean outliers from the Corrected data, in dataframe and in vectors of vectors
-max_cell_size = 22500
-df_all = df_all.loc[df_all['Area'] <= max_cell_size]
-
-areas_corrected_f = [x[x <= max_cell_size] for x in areas_corrected_f]
-areas_corrected_m = [x[x <= max_cell_size] for x in areas_corrected_m]
-
-# file that contains quantile-to-area functions
+# file to store quantile-to-area functions
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
 
 if os.path.isfile(filename_area2quantile):
