@@ -436,7 +436,7 @@ import scipy.stats as stats
 import numpy as np
 import sklearn.neighbors, sklearn.model_selection
 import pandas as pd
-import PIL
+from PIL import Image, ImageDraw
 import openslide
 
 # directories
@@ -536,7 +536,7 @@ for method in ['auto', 'corrected']:
 
                     if DEBUG:
                         foo = aux['im_downsampled']
-                        foo = PIL.Image.fromarray(foo)
+                        foo = Image.fromarray(foo)
                         foo = foo.resize(tuple((np.round(np.array(foo.size[0:2]) / 4)).astype(np.int)))
                         plt.imshow(foo)
                         plt.title(os.path.basename(ndpi_file))
@@ -707,7 +707,7 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
 import openslide
-import PIL
+from PIL import Image, ImageDraw
 import cytometer.data
 import cytometer.stats
 import shapely
@@ -720,6 +720,7 @@ histo_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 dataframe_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
+area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 
 DEBUG = False
@@ -3489,7 +3490,25 @@ if SAVEFIG:
 ## Heatmaps of whole slides
 ########################################################################################################################
 
-area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
+# CSV file with metainformation of all mice
+metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
+metainfo = pd.read_csv(metainfo_csv_file)
+
+# make sure that in the boxplots PAT comes before MAT
+metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+metainfo['ko_parent'] = metainfo['ko_parent'].astype(
+    pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+metainfo['genotype'] = metainfo['genotype'].astype(
+    pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+
+# load colourmaps computed in exp_0106
+filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
+with np.load(filename_area2quantile, allow_pickle=True) as aux:
+    f_area2quantile_f = aux['f_area2quantile_f'].item()
+    f_area2quantile_m = aux['f_area2quantile_m'].item()
+
+# load AIDA's colourmap
+cm = cytometer.data.aida_colourmap()
 
 # downsample factor that we used in klf14_b6ntac_exp_0106_full_slide_pipeline_v8
 downsample_factor = 16
@@ -3500,7 +3519,10 @@ json_annotation_files = json_annotation_files_dict['sqwat'] + json_annotation_fi
 # loop annotations files
 for i_file, json_file in enumerate(json_annotation_files):
 
-    print('File: ' + str(i_file) + ': JSON annotations file: ' + json_file)
+    print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': ' + json_file)
+    # HACK
+    if i_file <= 39:
+        continue
 
     # name of corresponding .ndpi file
     ndpi_file = json_file.replace('.json', '.ndpi')
@@ -3517,10 +3539,6 @@ for i_file, json_file in enumerate(json_annotation_files):
     assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
     xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
     yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
-
-    # downsampled pixel size
-    xres_down = xres * downsample_factor
-    yres_down = yres * downsample_factor
 
     # name of file where rough mask was saved to
     coarse_mask_file = os.path.basename(ndpi_file)
@@ -3549,21 +3567,23 @@ for i_file, json_file in enumerate(json_annotation_files):
     quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
 
     # init array for mask where there are segmentations
-    areas_mask = PIL.Image.new("1", lores_istissue0.shape[::-1], "black")
-    draw = PIL.ImageDraw.Draw(areas_mask)
+    areas_mask = Image.new("1", lores_istissue0.shape[::-1], "black")
+    draw = ImageDraw.Draw(areas_mask)
 
     # init lists for contour centroids and areas
     areas_all = []
     centroids_all = []
+    centroids_down_all = []
 
     # loop items (one contour per item)
     for c in contours_corrected:
 
         # convert to downsampled coordinates
-        c = np.array(c) / downsample_factor
+        c = np.array(c)
+        c_down = c / downsample_factor
 
         if DEBUG:
-            plt.fill(c[:, 0], c[:, 1], fill=False, color='r')
+            plt.fill(c_down[:, 0], c_down[:, 1], fill=False, color='r')
 
         # compute cell area
         area = shapely.geometry.Polygon(c).area * xres * yres  # (um^2)
@@ -3572,19 +3592,24 @@ for i_file, json_file in enumerate(json_annotation_files):
         # compute centroid of contour
         centroid = np.mean(c, axis=0)
         centroids_all.append(centroid)
+        centroids_down_all.append(centroid / downsample_factor)
 
-        # add object described by contour to mask
-        draw.polygon(list(c.flatten()), outline="white", fill="white")
+        # add object described by contour to areas_mask
+        draw.polygon(list(c_down.flatten()), outline="white", fill="white")
 
-    # convert mask
+    # convert mask from RGBA to binary
     areas_mask = np.array(areas_mask, dtype=np.bool)
 
     areas_all = np.array(areas_all)
 
     # interpolate scattered area data to regular grid
-    idx = areas_mask
-    xi = np.transpose(np.array(np.where(idx)))[:, [1, 0]]
-    quantiles_grid[idx] = scipy.interpolate.griddata(centroids_all, areas_all, xi, method='linear', fill_value=0)
+    grid_row, grid_col = np.mgrid[0:areas_mask.shape[0], 0:areas_mask.shape[1]]
+    quantiles_grid = scipy.interpolate.griddata(centroids_down_all, areas_all, (grid_col, grid_row), method='linear', fill_value=0)
+    quantiles_grid[~areas_mask] = 0
+    #
+    # idx = areas_mask
+    # xi = np.transpose(np.array(np.where(idx)))[:, [1, 0]]
+    # quantiles_grid[idx] = scipy.interpolate.griddata(centroids_all, areas_all, xi, method='linear', fill_value=0)
 
     if DEBUG:
         plt.clf()
