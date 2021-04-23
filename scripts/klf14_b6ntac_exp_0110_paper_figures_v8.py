@@ -3516,13 +3516,10 @@ downsample_factor = 16
 # put all the annotation files in a single list
 json_annotation_files = json_annotation_files_dict['sqwat'] + json_annotation_files_dict['gwat']
 
-# loop annotations files
+# loop annotations files to compute the heatmaps
 for i_file, json_file in enumerate(json_annotation_files):
 
     print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': ' + json_file)
-    # HACK
-    if i_file <= 39:
-        continue
 
     # name of corresponding .ndpi file
     ndpi_file = json_file.replace('.json', '.ndpi')
