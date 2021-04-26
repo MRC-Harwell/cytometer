@@ -384,14 +384,14 @@ with np.load(klf14_training_colour_histogram_file) as data:
     mode_g_target = data['mode_g']
     mode_b_target = data['mode_b']
 
-# # colourmap for AIDA, based on KLF14 automatically segmented data
-# if os.path.isfile(filename_area2quantile):
-#     with np.load(filename_area2quantile, allow_pickle=True) as aux:
-#         f_area2quantile_f = aux['f_area2quantile_f']
-#         f_area2quantile_m = aux['f_area2quantile_m']
-# else:
-#     raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
-#                             ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
+# colourmap for AIDA, based on KLF14 automatically segmented data
+if os.path.isfile(filename_area2quantile):
+    with np.load(filename_area2quantile, allow_pickle=True) as aux:
+        f_area2quantile_f = aux['f_area2quantile_f'].item()
+        f_area2quantile_m = aux['f_area2quantile_m'].item()
+else:
+    raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
+                            ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
 
 ########################################################################################################################
 ## Segmentation loop
@@ -755,9 +755,9 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
 
             # convert non-overlap contours to AIDA items
             # TODO: check whether the mouse is male or female, and use corresponding f_area2quantile
-            contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile_m.item(),
+            contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile_m,
                                                               cell_prob=window_white_adipocyte_prob,
-                                                              xres=xres*1e6, yres=yres*1e6)
+                                                              xres=xres, yres=yres)
             rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
             rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
 
@@ -772,7 +772,7 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
                 cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer', number_of_attempts=5)
 
             # convert corrected contours to AIDA items
-            contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
+            contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m,
                                                                         cell_prob=window_white_adipocyte_prob_corrected,
                                                                         xres=xres, yres=yres)
 
