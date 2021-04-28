@@ -702,6 +702,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import scipy.stats as stats
+import skimage
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
@@ -3603,10 +3604,6 @@ for i_file, json_file in enumerate(json_annotation_files):
     grid_row, grid_col = np.mgrid[0:areas_mask.shape[0], 0:areas_mask.shape[1]]
     quantiles_grid = scipy.interpolate.griddata(centroids_down_all, areas_all, (grid_col, grid_row), method='linear', fill_value=0)
     quantiles_grid[~areas_mask] = 0
-    #
-    # idx = areas_mask
-    # xi = np.transpose(np.array(np.where(idx)))[:, [1, 0]]
-    # quantiles_grid[idx] = scipy.interpolate.griddata(centroids_all, areas_all, xi, method='linear', fill_value=0)
 
     if DEBUG:
         plt.clf()
@@ -3616,7 +3613,7 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.subplot(212)
         plt.imshow(quantiles_grid)
 
-    # create dataframe for this image
+    # get metainfo for this slide
     df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(ndpi_file),
                                                           values=[i_file,], values_tag='i',
                                                           tags_to_keep=['id', 'ko_parent', 'sex'])
@@ -3661,13 +3658,18 @@ for i_file, json_file in enumerate(json_annotation_files):
     plt.axis('off')
     plt.tight_layout()
 
-    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_segmentation.png'),
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png'),
                 bbox_inches='tight')
 
-# [x0, xend, y0, yend]
+    # save heatmap at full size
+    quantiles_grid_im = Image.fromarray((cm(quantiles_grid) * 255).astype(np.uint8))
+    quantiles_grid_im.save(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large.png'))
 
 
+# auxiliary function to keep a list of cropping coordinates for each image
+# this coordinates correspond to the reduced size when saving figures to kernel_file + '_exp_0110_cell_size_heatmap.png'
 def get_crop_box(i_file):
+    # [x0, xend, y0, yend]
     crop_box = {
         0: [22, 353, 99, 333],
         1: [30, 507, 37, 446],
@@ -3749,27 +3751,129 @@ def get_crop_box(i_file):
         77: [62, 288, 29, 341],
         78: [54, 406, 28, 310],
         79: [58, 328, 25, 347],
-        80: [],
+        80: [8, 275, 26, 339],
+        81: [11, 260, 7, 329],
+        82: [348, 610, 17, 336],
+        83: [7, 327, 22, 358],
+        84: [8, 170, 57, 208],
+        85: [19, 241, 40, 257],
+        86: [382, 600, 50, 246],
+        87: [436, 605, 33, 253],
+        88: [389, 563, 20, 227],
+        89: [31, 289, 32, 276],
+        90: [308, 602, 7, 343],
+        91: [6, 276, 25, 303],
+        92: [15, 268, 6, 305],
+        93: [82, 520, 47, 314],
+        94: [46, 520, 27, 431],
+        95: [15, 519, 11, 396],
+        96: [30, 594, 4, 406],
+        97: [27, 612, 18, 404],
+        98: [22, 246, 17, 293],
+        99: [102, 550, 36, 462],
+        100: [43, 221, 30, 237],
+        101: [52, 504, 85, 361],
+        102: [29, 440, 24, 435],
+        103: [283, 598, 151, 392],
+        104: [46, 232, 26, 274],
+        105: [45, 243, 31, 264],
+        106: [48, 556, 42, 305],
+        107: [52, 572, 3, 347],
+        108: [98, 547, 25, 425],
+        109: [19, 570, 13, 350],
+        110: [395, 618, 8, 304],
+        111: [51, 508, 46, 426],
+        112: [52, 608, 9, 330],
+        113: [34, 538, 55, 427],
+        114: [127, 530, 31, 405],
+        115: [406, 605, 35, 264],
+        116: [42, 577, 38, 440],
+        117: [50, 590, 63, 413],
+        118: [33, 259, 37, 216],
+        119: [12, 486, 32, 346],
+        120: [56, 612, 37, 421],
+        121: [429, 599, 66, 243],
+        122: [78, 458, 24, 349],
+        123: [25, 278, 24, 278],
+        124: [8, 585, 60, 450],
+        125: [372, 591, 41, 224],
+        126: [6, 242, 11, 269],
+        127: [41, 543, 18, 301],
+        128: [52, 415, 25, 369],
+        129: [231, 616, 34, 302],
+        130: [17, 278, 17, 324],
+        131: [358, 604, 67, 303],
+        132: [17, 583, 18, 415],
+        133: [24, 214, 23, 256],
+        134: [71, 228, 19, 228],
+        135: [43, 199, 28, 254],
+        136: [26, 481, 63, 332],
+        137: [157, 594, 9, 295],
+        138: [140, 529, 11, 399],
+        139: [52, 541, 9, 404],
+        140: [44, 572, 38, 361],
+        141: [344, 599, 11, 305],
+        142: [7, 549, 36, 440],
+        143: [64, 593, 32, 377],
+        144: [20, 270, 14, 254],
+        145: [39, 220, 32, 303],
+        146: [9, 552, 30, 344]
     }
     return crop_box.get(i_file, 'Invalid file index')
 
 # crop heatmaps for paper
 
 for i_file, json_file in enumerate(json_annotation_files):
-    i_file += 1;  json_file = json_annotation_files[i_file]
+    # i_file += 1;  json_file = json_annotation_files[i_file]  # hack: for manual looping, one by one
 
     print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': ' + json_file)
 
     # name of heatmap
     kernel_file = json_file.replace('.json', '')
     heatmap_file = os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png')
+    heatmap_large_file = os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large.png')
     cropped_heatmap_file = os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png')
 
-    # if DEBUG:
-        heatmap = Image.open(heatmap_file)
+    # load heatmaps. We have to load two of them, because first I saved them using the regular savefig(), which reduces
+    # the image resolution and modifies the borders. I defined the crop boxes on those image, so in order to avoid having
+    # to redo the crop boxes, now we have to figure out where those low resolution crop boxes map in the full resolution
+    # image
+    heatmap = Image.open(heatmap_file)
+    heatmap_large = Image.open(heatmap_large_file)
+
+    # convert cropping coordinates from smaller PNG to full size PNG
+    x0, xend, y0, yend = np.array(get_crop_box(i_file))
+    cropped_heatmap = np.array(heatmap)[y0:yend+1, x0:xend+1]
+
+    if DEBUG:
         plt.clf()
+        plt.subplot(211)
         plt.imshow(heatmap)
-        x0, xend, y0, yend = get_crop_box(i_file)
         plt.plot([x0, xend, xend, x0, x0], [yend, yend, y0, y0, yend], 'r')
+        plt.subplot(212)
+        plt.imshow(cropped_heatmap)
 
+    # when saving a figure to PNG with savefig() and our options above, it adds a white border of 9 pixels on each side.
+    # We need to remove that border before coordinate interpolation
+    x0, xend = np.interp((x0 - 9, xend - 9), (0, heatmap.size[0] - 1 - 18), (0, heatmap_large.size[0] - 1))
+    y0, yend = np.interp((y0 - 9, yend - 9), (0, heatmap.size[1] - 1 - 18), (0, heatmap_large.size[1] - 1))
+    x0, xend, y0, yend = np.round([x0, xend, y0, yend]).astype(np.int)
 
+    cropped_heatmap_large = np.array(heatmap_large)[y0:yend+1, x0:xend+1]
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(heatmap_large)
+        plt.plot([x0, xend, xend, x0, x0], [yend, yend, y0, y0, yend], 'r')
+        plt.subplot(212)
+        plt.imshow(cropped_heatmap_large)
+
+    plt.clf()
+    plt.gcf().set_size_inches([12.8, 9.6])
+    plt.imshow(cropped_heatmap_large, interpolation='none')
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large_cropped.png'),
+                bbox_inches='tight')
