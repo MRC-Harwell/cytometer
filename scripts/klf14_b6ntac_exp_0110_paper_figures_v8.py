@@ -3491,6 +3491,14 @@ if SAVEFIG:
 ## Heatmaps of whole slides
 ########################################################################################################################
 
+# parameters to constrain cell areas
+min_cell_area = 0  # pixel; we want all small objects
+max_cell_area = 200e3  # pixel
+xres_ref = 0.4538234626730202
+yres_ref = 0.4537822752643282
+min_cell_area_um2 = min_cell_area * xres_ref * yres_ref
+max_cell_area_um2 = max_cell_area * xres_ref * yres_ref
+
 # CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
@@ -3502,7 +3510,7 @@ metainfo['ko_parent'] = metainfo['ko_parent'].astype(
 metainfo['genotype'] = metainfo['genotype'].astype(
     pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
 
-# load colourmaps computed in exp_0106
+# load area to quantile maps computed in exp_0106
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
 with np.load(filename_area2quantile, allow_pickle=True) as aux:
     f_area2quantile_f = aux['f_area2quantile_f'].item()
@@ -3513,158 +3521,6 @@ cm = cytometer.data.aida_colourmap()
 
 # downsample factor that we used in klf14_b6ntac_exp_0106_full_slide_pipeline_v8
 downsample_factor = 16
-
-# put all the annotation files in a single list
-json_annotation_files = json_annotation_files_dict['sqwat'] + json_annotation_files_dict['gwat']
-
-# loop annotations files to compute the heatmaps
-for i_file, json_file in enumerate(json_annotation_files):
-
-    print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': ' + json_file)
-
-    # name of corresponding .ndpi file
-    ndpi_file = json_file.replace('.json', '.ndpi')
-    kernel_file = os.path.splitext(ndpi_file)[0]
-
-    # add path to file
-    json_file = os.path.join(annotations_dir, json_file)
-    ndpi_file = os.path.join(histo_dir, ndpi_file)
-
-    # open full resolution histology slide
-    im = openslide.OpenSlide(ndpi_file)
-
-    # pixel size
-    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-    xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
-    yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
-
-    # name of file where rough mask was saved to
-    coarse_mask_file = os.path.basename(ndpi_file)
-    coarse_mask_file = coarse_mask_file.replace('.ndpi', '_coarse_mask.npz')
-    coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
-
-    # load coarse tissue mask
-    with np.load(coarse_mask_file) as aux:
-        lores_istissue0 = aux['lores_istissue0']
-        im_downsampled = aux['im_downsampled']
-
-    if DEBUG:
-        plt.clf()
-        plt.subplot(211)
-        plt.imshow(im_downsampled)
-        plt.subplot(212)
-        plt.imshow(lores_istissue0)
-
-    # load list of contours in Corrected segmentations
-    json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0106_corrected.json'))
-
-    # list of items (there's a contour in each item)
-    contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
-
-    # init array for interpolated quantiles
-    quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
-
-    # init array for mask where there are segmentations
-    areas_mask = Image.new("1", lores_istissue0.shape[::-1], "black")
-    draw = ImageDraw.Draw(areas_mask)
-
-    # init lists for contour centroids and areas
-    areas_all = []
-    centroids_all = []
-    centroids_down_all = []
-
-    # loop items (one contour per item)
-    for c in contours_corrected:
-
-        # convert to downsampled coordinates
-        c = np.array(c)
-        c_down = c / downsample_factor
-
-        if DEBUG:
-            plt.fill(c_down[:, 0], c_down[:, 1], fill=False, color='r')
-
-        # compute cell area
-        area = shapely.geometry.Polygon(c).area * xres * yres  # (um^2)
-        areas_all.append(area)
-
-        # compute centroid of contour
-        centroid = np.mean(c, axis=0)
-        centroids_all.append(centroid)
-        centroids_down_all.append(centroid / downsample_factor)
-
-        # add object described by contour to areas_mask
-        draw.polygon(list(c_down.flatten()), outline="white", fill="white")
-
-    # convert mask from RGBA to binary
-    areas_mask = np.array(areas_mask, dtype=np.bool)
-
-    areas_all = np.array(areas_all)
-
-    # interpolate scattered area data to regular grid
-    grid_row, grid_col = np.mgrid[0:areas_mask.shape[0], 0:areas_mask.shape[1]]
-    quantiles_grid = scipy.interpolate.griddata(centroids_down_all, areas_all, (grid_col, grid_row), method='linear', fill_value=0)
-    quantiles_grid[~areas_mask] = 0
-
-    if DEBUG:
-        plt.clf()
-        plt.subplot(211)
-        plt.imshow(im_downsampled)
-        plt.axis('off')
-        plt.subplot(212)
-        plt.imshow(quantiles_grid)
-
-    # get metainfo for this slide
-    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(ndpi_file),
-                                                          values=[i_file,], values_tag='i',
-                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
-
-    # mouse ID as a string
-    id = df_common['id'].values[0]
-    sex = df_common['sex'].values[0]
-    ko = df_common['ko_parent'].values[0]
-
-    # convert area values to quantiles
-    if sex == 'f':
-        quantiles_grid = f_area2quantile_f(quantiles_grid)
-    elif sex == 'm':
-        quantiles_grid = f_area2quantile_m(quantiles_grid)
-    else:
-        raise ValueError('Wrong sex value')
-
-    # make background white in the plot
-    quantiles_grid[~areas_mask] = np.nan
-
-    if DEBUG:
-        plt.clf()
-        plt.subplot(211)
-        plt.imshow(im_downsampled)
-        plt.axis('off')
-        plt.subplot(212)
-        # plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
-        plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
-        cbar = plt.colorbar(shrink=1.0)
-        cbar.ax.tick_params(labelsize=14)
-        cbar.ax.set_ylabel('Cell area quantile', rotation=90, fontsize=14)
-        plt.axis('off')
-        plt.tight_layout()
-
-    if DEBUG:
-        plt.clf()
-        plt.hist(areas_all, bins=50, density=True, histtype='step')
-
-    # plot cell areas for paper
-    plt.clf()
-    plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
-    plt.axis('off')
-    plt.tight_layout()
-
-    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png'),
-                bbox_inches='tight')
-
-    # save heatmap at full size
-    quantiles_grid_im = Image.fromarray((cm(quantiles_grid) * 255).astype(np.uint8))
-    quantiles_grid_im.save(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large.png'))
-
 
 # auxiliary function to keep a list of cropping coordinates for each image
 # this coordinates correspond to the reduced size when saving figures to kernel_file + '_exp_0110_cell_size_heatmap.png'
@@ -3821,7 +3677,161 @@ def get_crop_box(i_file):
     }
     return crop_box.get(i_file, 'Invalid file index')
 
-# crop heatmaps for paper
+## compute whole slide heatmaps
+
+# put all the annotation files in a single list
+json_annotation_files = json_annotation_files_dict['sqwat'] + json_annotation_files_dict['gwat']
+
+# loop annotations files to compute the heatmaps
+for i_file, json_file in enumerate(json_annotation_files):
+
+    print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': ' + json_file)
+
+    # name of corresponding .ndpi file
+    ndpi_file = json_file.replace('.json', '.ndpi')
+    kernel_file = os.path.splitext(ndpi_file)[0]
+
+    # add path to file
+    json_file = os.path.join(annotations_dir, json_file)
+    ndpi_file = os.path.join(histo_dir, ndpi_file)
+
+    # open full resolution histology slide
+    im = openslide.OpenSlide(ndpi_file)
+
+    # pixel size
+    assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
+    xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
+    yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
+
+    # name of file where rough mask was saved to
+    coarse_mask_file = os.path.basename(ndpi_file)
+    coarse_mask_file = coarse_mask_file.replace('.ndpi', '_coarse_mask.npz')
+    coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
+
+    # load coarse tissue mask
+    with np.load(coarse_mask_file) as aux:
+        lores_istissue0 = aux['lores_istissue0']
+        im_downsampled = aux['im_downsampled']
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
+        plt.subplot(212)
+        plt.imshow(lores_istissue0)
+
+    # load list of contours in Corrected segmentations
+    json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0106_corrected.json'))
+
+    # list of items (there's a contour in each item)
+    contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
+
+    # init array for interpolated quantiles
+    quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
+
+    # init array for mask where there are segmentations
+    areas_mask = Image.new("1", lores_istissue0.shape[::-1], "black")
+    draw = ImageDraw.Draw(areas_mask)
+
+    # init lists for contour centroids and areas
+    areas_all = []
+    centroids_all = []
+    centroids_down_all = []
+
+    # loop items (one contour per item)
+    for c in contours_corrected:
+
+        # convert to downsampled coordinates
+        c = np.array(c)
+        c_down = c / downsample_factor
+
+        if DEBUG:
+            plt.fill(c_down[:, 0], c_down[:, 1], fill=False, color='r')
+
+        # compute cell area
+        area = shapely.geometry.Polygon(c).area * xres * yres  # (um^2)
+        areas_all.append(area)
+
+        # compute centroid of contour
+        centroid = np.mean(c, axis=0)
+        centroids_all.append(centroid)
+        centroids_down_all.append(centroid / downsample_factor)
+
+        # add object described by contour to areas_mask
+        draw.polygon(list(c_down.flatten()), outline="white", fill="white")
+
+    # convert mask from RGBA to binary
+    areas_mask = np.array(areas_mask, dtype=np.bool)
+
+    areas_all = np.array(areas_all)
+
+    # interpolate scattered area data to regular grid
+    grid_row, grid_col = np.mgrid[0:areas_mask.shape[0], 0:areas_mask.shape[1]]
+    quantiles_grid = scipy.interpolate.griddata(centroids_down_all, areas_all, (grid_col, grid_row), method='linear', fill_value=0)
+    quantiles_grid[~areas_mask] = 0
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
+        plt.axis('off')
+        plt.subplot(212)
+        plt.imshow(quantiles_grid)
+
+    # get metainfo for this slide
+    df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(ndpi_file),
+                                                          values=[i_file,], values_tag='i',
+                                                          tags_to_keep=['id', 'ko_parent', 'sex'])
+
+    # mouse ID as a string
+    id = df_common['id'].values[0]
+    sex = df_common['sex'].values[0]
+    ko = df_common['ko_parent'].values[0]
+
+    # convert area values to quantiles
+    if sex == 'f':
+        quantiles_grid = f_area2quantile_f(quantiles_grid)
+    elif sex == 'm':
+        quantiles_grid = f_area2quantile_m(quantiles_grid)
+    else:
+        raise ValueError('Wrong sex value')
+
+    # make background white in the plot
+    quantiles_grid[~areas_mask] = np.nan
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(211)
+        plt.imshow(im_downsampled)
+        plt.axis('off')
+        plt.subplot(212)
+        # plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
+        plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
+        cbar = plt.colorbar(shrink=1.0)
+        cbar.ax.tick_params(labelsize=14)
+        cbar.ax.set_ylabel('Cell area quantile', rotation=90, fontsize=14)
+        plt.axis('off')
+        plt.tight_layout()
+
+    if DEBUG:
+        plt.clf()
+        plt.hist(areas_all, bins=50, density=True, histtype='step')
+
+    # plot cell areas for paper
+    plt.clf()
+    plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png'),
+                bbox_inches='tight')
+
+    # save heatmap at full size
+    quantiles_grid_im = Image.fromarray((cm(quantiles_grid) * 255).astype(np.uint8))
+    quantiles_grid_im.save(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large.png'))
+
+
+## crop heatmaps for paper
 
 for i_file, json_file in enumerate(json_annotation_files):
     # i_file += 1;  json_file = json_annotation_files[i_file]  # hack: for manual looping, one by one
@@ -3877,3 +3887,62 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large_cropped.png'),
                 bbox_inches='tight')
+
+## plot colourmaps and cell area density functions
+
+# colourmap plot
+a = np.array([[0,1]])
+plt.figure(figsize=(9, 1.5))
+img = plt.imshow(a, cmap=cm)
+plt.gca().set_visible(False)
+cax = plt.axes([0.1, 0.2, 0.8, 0.6])
+cbar = plt.colorbar(orientation='horizontal', cax=cax)
+for q in np.linspace(0, 1, 11):
+    plt.plot([q, q], [0, 0.5], 'k', linewidth=2, zorder=1)
+cbar.ax.tick_params(labelsize=14)
+plt.title('Cell area colourmap with decile divisions', rotation=0, fontsize=14)
+plt.xlabel('Quantile', fontsize=14)
+plt.tight_layout()
+
+plt.savefig(os.path.join(figures_dir, 'exp_0110_aida_colourmap.png'), bbox_inches='tight')
+
+## plot area distributions
+
+# load auxiliary file with all Corrected areas
+filename_corrected_areas = os.path.join(figures_dir, 'klf14_b6ntac_exp_0106_corrected_areas.npz')
+with np.load(filename_corrected_areas, allow_pickle=True) as aux:
+    areas_corrected_f = aux['areas_corrected_f']
+    areas_corrected_m = aux['areas_corrected_m']
+
+plt.close()
+plt.clf()
+areas = np.concatenate(areas_corrected_f)
+areas = areas[(areas >= min_cell_area_um2) & (areas <= max_cell_area_um2)]
+aq = stats.mstats.hdquantiles(areas, prob=np.linspace(0, 1, 11), axis=0)
+for a in aq:
+    plt.plot([a * 1e-3, a * 1e-3], [0, 0.335], 'k', linewidth=2, zorder=0)
+plt.hist(areas * 1e-3, histtype='step', bins=100, density=True, linewidth=4, zorder=1, color='r')
+plt.tick_params(labelsize=14)
+plt.title('Cell area density with decile divisions', fontsize=14)
+plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+plt.ylabel('Density', fontsize=14)
+plt.yticks([])
+plt.tight_layout()
+
+plt.savefig(os.path.join(figures_dir, 'exp_0106_dist_quantiles_corrected_f.png'), bbox_inches='tight')
+
+plt.clf()
+areas = np.concatenate(areas_corrected_m)
+areas = areas[(areas >= min_cell_area_um2) & (areas <= max_cell_area_um2)]
+aq = stats.mstats.hdquantiles(areas, prob=np.linspace(0, 1, 11), axis=0)
+for a in aq:
+    plt.plot([a * 1e-3, a * 1e-3], [0, 0.242], 'k', linewidth=2, zorder=0)
+plt.hist(areas * 1e-3, histtype='step', bins=100, density=True, linewidth=4, zorder=1, color='r')
+plt.tick_params(labelsize=14)
+plt.title('Cell area density with decile divisions', fontsize=14)
+plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+plt.ylabel('Density', fontsize=14)
+plt.yticks([])
+plt.tight_layout()
+
+plt.savefig(os.path.join(figures_dir, 'exp_0106_dist_quantiles_corrected_m.png'), bbox_inches='tight')
