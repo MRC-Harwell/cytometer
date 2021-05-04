@@ -384,7 +384,7 @@ with np.load(klf14_training_colour_histogram_file) as data:
     mode_g_target = data['mode_g']
     mode_b_target = data['mode_b']
 
-# colourmap for AIDA, based on KLF14 automatically segmented data
+# area to quantile map, based on KLF14 automatically segmented data
 if os.path.isfile(filename_area2quantile):
     with np.load(filename_area2quantile, allow_pickle=True) as aux:
         f_area2quantile_f = aux['f_area2quantile_f'].item()
@@ -826,12 +826,17 @@ for i_file, histo_file in enumerate(histo_files_list.keys()):
     # end of "keep extracting histology windows until we have finished"
 
 ########################################################################################################################
-## Compute colourmap for AIDA (using all automatically segmented data)
+## Compute area to quantile map used for colourmaps (using all automatically segmented data)
 ########################################################################################################################
 
 # CSV file with metainformation of all mice
 metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
 metainfo = pd.read_csv(metainfo_csv_file)
+
+xres_ref = 0.4538234626730202
+yres_ref = 0.4537822752643282
+min_cell_area_um2 = min_cell_area * xres_ref * yres_ref
+max_cell_area_um2 = max_cell_area * xres_ref * yres_ref
 
 # auxiliary file to keep all Corrected areas
 filename_corrected_areas = os.path.join(figures_dir, 'klf14_b6ntac_exp_0106_corrected_areas.npz')
@@ -902,6 +907,10 @@ if os.path.isfile(filename_area2quantile):
 else:
     # compute function to map between cell areas and [0.0, 1.0], that we can use to sample the colourmap uniformly according
     # to area quantiles
-    f_area2quantile_f = cytometer.data.area2quantile(np.concatenate(areas_corrected_f), quantiles=np.linspace(0.0, 1.0, 1001))
-    f_area2quantile_m = cytometer.data.area2quantile(np.concatenate(areas_corrected_m), quantiles=np.linspace(0.0, 1.0, 1001))
+    areas = np.concatenate(areas_corrected_f)
+    areas = areas[(areas > 0) & (areas >= min_cell_area_um2) & (areas <= max_cell_area_um2)]
+    f_area2quantile_f = cytometer.data.area2quantile(areas, quantiles=np.linspace(0.0, 1.0, 1001))
+    areas = np.concatenate(areas_corrected_m)
+    areas = areas[(areas > 0) & (areas >= min_cell_area_um2) & (areas <= max_cell_area_um2)]
+    f_area2quantile_m = cytometer.data.area2quantile(areas, quantiles=np.linspace(0.0, 1.0, 1001))
     np.savez(filename_area2quantile, f_area2quantile_f=f_area2quantile_f, f_area2quantile_m=f_area2quantile_m)
