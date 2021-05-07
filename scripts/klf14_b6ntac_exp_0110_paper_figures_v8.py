@@ -3853,7 +3853,8 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     # convert cropping coordinates from smaller PNG to full size PNG
     x0, xend, y0, yend = np.array(get_crop_box(i_file))
-    cropped_heatmap = np.array(heatmap)[y0:yend+1, x0:xend+1]
+    heatmap_array = np.array(Image.open(heatmap_file))  # hack: because passing heatmap sometimes doesn't work, due to some bug
+    cropped_heatmap = heatmap_array[y0:yend+1, x0:xend+1]
 
     if DEBUG:
         plt.clf()
@@ -3869,7 +3870,7 @@ for i_file, json_file in enumerate(json_annotation_files):
     y0, yend = np.interp((y0 - 9, yend - 9), (0, heatmap.size[1] - 1 - 18), (0, heatmap_large.size[1] - 1))
     x0, xend, y0, yend = np.round([x0, xend, y0, yend]).astype(np.int)
 
-    cropped_heatmap_large = np.array(heatmap_large)[y0:yend+1, x0:xend+1]
+    cropped_heatmap_large = np.array(Image.open(heatmap_large_file))[y0:yend+1, x0:xend+1] # hack for same bug as above
 
     if DEBUG:
         plt.clf()
