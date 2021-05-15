@@ -1,19 +1,20 @@
 """
 Generate figures for the DeepCytometer paper for v8 of the pipeline.
 
-Here's the analysis for automatically segmented cells. Hand traced cells are analysed in
-klf14_b6ntac_exp_0109_pipeline_v8_validation.py.
-
-We compare PAT to MAT and WT to Het. This is deprecated by the new phenotyping in
-klf14_b6ntac_exp_0111_paper_figures_v8.py.
+We repeat the phenotyping from klf14_b6ntac_exp_0110_paper_figures_v8.py, but change the stratification of the data so
+that we have Control (PATs + WT MATs) vs. Het MATs.
 
 This script partly deprecates klf14_b6ntac_exp_0099_paper_figures_v7.py:
-* Some figures have been updated to have v8 of the pipeline in the paper.
+* Figures have been updated to have v8 of the pipeline in the paper.
+
+This script partly deprecates klf14_b6ntac_exp_0110_paper_figures_v8.py:
+* We repeat the phenotyping, but change the stratification of the data so that we have Control (PATs + WT MATs) vs.
+  Het MATs.
 
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0110_paper_figures'
+experiment_id = 'klf14_b6ntac_exp_0111_paper_figures'
 
 # cross-platform home directory
 from pathlib import Path
