@@ -3873,6 +3873,14 @@ for i_file, json_file in enumerate(json_annotation_files):
     y0, yend = np.interp((y0 - 9, yend - 9), (0, heatmap.size[1] - 1 - 18), (0, heatmap_large.size[1] - 1))
     x0, xend, y0, yend = np.round([x0, xend, y0, yend]).astype(np.int)
 
+    # open histology image at 16x downsampled size
+    ndpi_file = json_file.replace('.json', '.ndpi')
+    ndpi_file = os.path.join(histo_dir, ndpi_file)
+    im = openslide.OpenSlide(ndpi_file)
+    im_large = im.read_region(location=(0, 0), level=im.get_best_level_for_downsample(16), size=heatmap_large.size)
+
+    # crop image and heatmap
+    cropped_im_large = np.array(im_large)[y0:yend+1, x0:xend+1, 0:3]
     cropped_heatmap_large = np.array(Image.open(heatmap_large_file))[y0:yend+1, x0:xend+1] # hack for same bug as above
 
     if DEBUG:
@@ -3883,6 +3891,17 @@ for i_file, json_file in enumerate(json_annotation_files):
         plt.subplot(212)
         plt.imshow(cropped_heatmap_large)
 
+    # print cropped histology
+    plt.clf()
+    plt.gcf().set_size_inches([12.8, 9.6])
+    plt.imshow(cropped_im_large, interpolation='none')
+    plt.axis('off')
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_histo_large_cropped.png'),
+                bbox_inches='tight')
+
+    # print cropped heatmap
     plt.clf()
     plt.gcf().set_size_inches([12.8, 9.6])
     plt.imshow(cropped_heatmap_large, interpolation='none')
