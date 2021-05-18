@@ -633,7 +633,7 @@ for method in ['auto', 'corrected']:
                 if DEBUG:
                     plt.clf()
                     plt.plot(1e-3 * area_bin_centers, df['histo'][0], label='Areas')
-                    plt.plot(1e-3 * area_bin_centers, df['smoothed_histo'], label='Kernel')
+                    plt.plot(1e-3 * area_bin_centers, df['smoothed_histo'][0], label='Kernel')
                     plt.plot([df['area_smoothed_mode'] * 1e-3, df['area_smoothed_mode'] * 1e-3],
                              [0, df['smoothed_histo'].max()], 'k', label='Mode')
                     plt.legend()
@@ -3727,7 +3727,12 @@ for i_file, json_file in enumerate(json_annotation_files):
     json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0106_corrected.json'))
 
     # list of items (there's a contour in each item)
-    contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
+    contours_corrected, props = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*', return_props=True)
+
+    # filter out objects that are not white adipocytes
+    idx = np.array(props['cell_prob']) >= min_class_prop  # indices of white adipocytes
+    contours_corrected = list(np.array(contours_corrected, dtype="object")[idx])
+    props['cell_prob'] = list(np.array(props['cell_prob'], dtype="object")[idx])
 
     # init array for interpolated quantiles
     quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
