@@ -1,29 +1,12 @@
 # Summary
 
-This is project "cytometer" by Ramón Casero working at the Mammalian Genetics 
-Unit (MGU) Medical Research Council (MRC) Harwell, UK.
+This is project "cytometer" by Ramón Casero, Mammalian Genetics 
+Unit (MGU), Medical Research Council (MRC) Harwell, UK.
 
-The current goal of this project is to create a deep convolutional neural
-network (CNN) to segment adipocytes from histology images.
+This project contains python modules and scripts and shell scripts: 
 
-# Common problems when running scripts
+* to segment white adipocytes from whole slides of H&E white adipose tissue histology 
+(usually in NDPI files from the microscope, although any other format that can 
+be read by `openslide` should work too)
+* to phenotype white adipose tissue in Klf14 mice
 
-* From the spyder IDE, sometimes loading or running models will produce a 
-
-        Kernel died, restarting
-    
-    Restarting the kernel will not fix the problem. You need to reset the GPU, 
-    by logging out and back in again into Ubuntu.
-    
-* Sometimes trying to import keras or theano will throw an error saying that 
-pygpu is not available. This error can be fixed by deleting the local environment
-
-        conda remove --name DeepCell --all
-    
-    and then reinstalling again
-    
-        ./install_dependencies.sh
-        
-* Spyder IDE hangs when `%matplotlib qt5` and `import theano` or `import keras`
-are combined. The solution is to not use `%matplotlib qt5` and instead configure
-Spyder with `Tools->Preferences->IPython console->Graphics->Backend = Automatic`.
