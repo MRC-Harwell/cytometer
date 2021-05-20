@@ -1,4 +1,4 @@
-'''
+"""
 Combine the contours estimated:
 * directly with the classification CNN
 * computing normal curvature on dmap estimated with the regression CNN
@@ -6,7 +6,14 @@ Combine the contours estimated:
 Extract cells using watershed.
 
 Compute post dmap from estimated segmentation, and compare to estimated dmap.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # cross-platform home directory
 from pathlib import Path

@@ -22,6 +22,13 @@ For cross validation, we assign cells to train or test sets grouped by image. Th
 time, the network has not seen neighbour cells to the ones used for training.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
 print('Experiment ID: ' + experiment_id)

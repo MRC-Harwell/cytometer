@@ -2,6 +2,13 @@
 Compare the number of blocks with a uniform tiling vs. the adaptive block algorithm
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

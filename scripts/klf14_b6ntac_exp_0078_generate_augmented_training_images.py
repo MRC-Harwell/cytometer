@@ -9,6 +9,13 @@ the training dataset with random rotations, flips and scale changes (consistent 
 This script creates dmap, im, mask, contour and lab in klf14_b6ntac_training_augmented.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

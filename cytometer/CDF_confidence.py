@@ -15,6 +15,7 @@
 # Y=sorted_data[Y_index]
 # 90% confidence interval is [X,Y]
 
+# This file is provided with Cytometer but does not fall under the same copyright or license
 # Author: wfbradley
 # URL: https://github.com/wfbradley/CDF-confidence/blob/master/CDF_confidence.py
 # commit cb0fedcde83f6cede12f5b4ab7e8f05ec258d67a

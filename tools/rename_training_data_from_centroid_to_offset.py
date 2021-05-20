@@ -1,6 +1,13 @@
 # quick and dirty script to change the row, col offset values in filenames from the centre of the window,
 # to the first pixel of the window
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 import os
 import shutil
 

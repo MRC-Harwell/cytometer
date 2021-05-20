@@ -4,6 +4,13 @@ cytometer/data.py
 Functions to load, save and pre-process data related to the cytometer project.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 import os
 import glob
 import warnings

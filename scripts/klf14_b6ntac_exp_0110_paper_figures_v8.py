@@ -12,6 +12,13 @@ This script partly deprecates klf14_b6ntac_exp_0099_paper_figures_v7.py:
 
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0110_paper_figures'
 

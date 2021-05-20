@@ -6,7 +6,14 @@ Created on Wed Sep 27 11:01:09 2017
 Process several synthetic images with DeepCell's HeLa model, to study how
 changes in input intensities affect the output.
 
-@author: rcasero
+@author: Ramon Casero <rcasero@gmail.com>
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
 """
 
 import sys

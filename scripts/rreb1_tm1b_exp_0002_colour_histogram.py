@@ -6,6 +6,13 @@ This is where we create the file with the median, Q1 and Q3 curves for the colou
 that we use to correct the histology colour before passing it to DeepCytometer.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # load all the training images
 
 # script name to identify this experiment

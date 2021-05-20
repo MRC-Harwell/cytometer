@@ -10,6 +10,13 @@ of the cell (equivalent radius is the radius of a circle with the same area as t
 This is part of a series of experiments with different types of masks: 0039, 0040, 0041, 0042 and 0045.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

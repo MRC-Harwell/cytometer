@@ -1,4 +1,4 @@
-'''
+"""
 Tissue classifier, using sherrah2016 CNN.
 
 Like 0061, but:
@@ -20,7 +20,14 @@ Use hand traced areas of white adipocytes and "other" tissues to train classifie
 
 We assign cells to train or test sets grouped by image. This way, we guarantee that at testing time, the
 network has not seen neighbour cells to the ones used for training.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_inspect_exp_0095_cnn_tissue_classifier_fcn'

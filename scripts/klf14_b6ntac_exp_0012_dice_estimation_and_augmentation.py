@@ -1,9 +1,16 @@
-'''
+"""
 Take the models for fold 0, and segment all 55 images (train+test). Compute Dice coeffs for each segmented cell.
 Augment Dice images to prepare training of classifier.
 
 This script creates files dice_kfold_00_seed_XXX_*.tif in klf14_b6ntac_training_augmented.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # cross-platform home directory
 from pathlib import Path

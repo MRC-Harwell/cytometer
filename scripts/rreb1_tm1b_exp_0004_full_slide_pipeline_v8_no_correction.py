@@ -72,6 +72,13 @@ Difference with rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py:
 
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # script name to identify this experiment
 experiment_id = 'rreb1_tm1b_exp_0004_full_slide_pipeline_v8_no_correction.py'
 

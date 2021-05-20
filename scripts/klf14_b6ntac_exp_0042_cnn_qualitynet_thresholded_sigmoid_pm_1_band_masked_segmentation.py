@@ -9,6 +9,13 @@ Mask one-cell histology windows with 0/-1/+1 mask. The band has a fixed width of
 It adds augmented training data to exp 0039.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

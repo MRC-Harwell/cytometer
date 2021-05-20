@@ -7,7 +7,14 @@ Script to run the training of a DeepCell network
 
 This on current hardware (NVIDIA K4000) would take around 29 h for 25 epoch
 
-@author: rcasero
+@author: Ramon Casero <rcasero@gmail.com>
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
 """
 
 import os

@@ -4,6 +4,13 @@ Validate exp 0057 (tissue classifier).
 Load testing data from each fold, and apply both t-SNE embedding and the classifier from exp 0057.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())
