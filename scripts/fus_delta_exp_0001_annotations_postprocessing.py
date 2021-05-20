@@ -3,6 +3,13 @@ This script aggregates all the cells in each '*_exp_0001_[auto | corrected].json
 '*_exp_0001_[auto | corrected]_aggregate.json', then creates a soft links to it that will be read by AIDA.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

@@ -9,6 +9,13 @@ We also mask the segmentation with a -1/+1 mask, rather than a 0/+1 mask, to los
 Based on exp 0037.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

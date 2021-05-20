@@ -3,7 +3,14 @@
 """
 Created on Wed Jan 17 15:40:00 2018
 
-@author: rcasero
+@author: Ramon Casero <rcasero@gmail.com>
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
 """
 
 DEBUG = False

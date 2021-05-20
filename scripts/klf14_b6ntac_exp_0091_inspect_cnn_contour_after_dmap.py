@@ -18,6 +18,13 @@ Training for the CNN:
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # script name to identify this experiment
 original_experiment_id = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
 experiment_id = 'klf14_b6ntac_inspect_exp_0091_cnn_contour_after_dmap'

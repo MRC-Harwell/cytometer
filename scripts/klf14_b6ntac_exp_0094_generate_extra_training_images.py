@@ -7,6 +7,13 @@ The windows are saved with row_R_col_C, where R, C are the row, col centroid of 
 image from the centroid as offset = centroid - box_half_size = centroid - 500.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0094_generate_extra_training_images'
 

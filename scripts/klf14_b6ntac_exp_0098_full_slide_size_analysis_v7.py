@@ -2,6 +2,13 @@
 Read annotation files from full slides processed by pipeline v7.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0098_full_slide_size_analysis_v7'
 

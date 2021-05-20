@@ -3,6 +3,13 @@ Rasterise hand traced contours as polygons, and split overlapping areas between 
 This script creates the data in klf14_b6ntac_training_non_overlap.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

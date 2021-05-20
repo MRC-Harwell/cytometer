@@ -7,6 +7,13 @@ To avoid interference from adjacent cells during training, we do a colouring of 
 ensures that if we mask one colour, the receptive field of the network doesn't see more than one cell at a time.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # cross-platform home directory
 from pathlib import Path
 home = str(Path.home())

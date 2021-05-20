@@ -1,11 +1,18 @@
-'''
+"""
 Dmap regression for all folds.
 
 (klf14_b6ntac_exp_0015_cnn_dmap.py only computes fold 0.)
 
 Training vs testing is done at the histology slide level, not at the window level. This way, we really guarantee that
 the network has not been trained with data sampled from the same image as the test data.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0056_cnn_dmap'

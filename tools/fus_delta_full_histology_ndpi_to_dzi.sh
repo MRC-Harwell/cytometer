@@ -6,6 +6,11 @@
 # Syntax:
 #    ./fus_delta_full_histology_ndpi_to_dzi.sh
 
+# This file is part of Cytometer
+# Copyright 2021 Medical Research Council
+# SPDX-License-Identifier: Apache-2.0
+# Author: Ramon Casero <rcasero@gmail.com>
+
 ndpi_dir=${HOME}/AAcevedo_images/FUS-DELTA-DBA-B6/"Histology scans"/"iWAT scans"
 dzi_dir=${HOME}/Data/cytometer_data/aida_data_Fus_Delta/images
 

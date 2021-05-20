@@ -6,6 +6,13 @@ Created on Thu Jun 29 18:08:31 2017
 @author: Ramón Casero <rcasero@gmail.com>
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 from pkg_resources import parse_version
 
 from keras import __version__ as keras_version

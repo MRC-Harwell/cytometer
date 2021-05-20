@@ -1,6 +1,13 @@
-'''
+"""
 Reduce loss weight of classification error to 1.0.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # cross-platform home directory
 from pathlib import Path

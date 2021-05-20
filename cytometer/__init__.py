@@ -3,10 +3,17 @@
 """
 Created on Thu Jun 29 18:21:57 2017
 
-@author: rcasero
+@author: Ramon Casero <rcasero@gmail.com>
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
 """
 
 from __future__ import absolute_import
 
 # cytometer package version (note: duplicated in /setup.py)
-__version__ = '0.1.0'
+__version__ = '1.0.0'

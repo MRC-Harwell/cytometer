@@ -5,7 +5,14 @@ Created on Thu Aug 31 12:07:23 2017
 
 Run DeepCell trained networks on validation data and compute ROC
 
-@author: rcasero
+@author: Ramon Casero <rcasero@gmail.com>
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
 """
 
 import sys

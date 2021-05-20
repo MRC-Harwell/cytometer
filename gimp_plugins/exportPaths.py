@@ -32,6 +32,13 @@
 #
 # To enable this plugin, save it to or link to it from ~/.gimp-2.8/plug-ins
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 #!/usr/bin/env python
 
 import os

@@ -16,6 +16,13 @@ nVidia Quadro K4000 GPU):
 
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 import os
 os.environ['KERAS_BACKEND'] = 'theano'
 #os.environ['KERAS_BACKEND'] = 'tensorflow'

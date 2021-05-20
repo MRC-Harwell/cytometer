@@ -1,4 +1,4 @@
-'''
+"""
 Contour segmentation of dmaps for all folds using binary crossentropy (only KLF14).
 
 Like 0070, but with:
@@ -12,7 +12,14 @@ Training for the CNN:
 * Input: dmaps
 * Output: hand tracked contours, dilated a bit.
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 experiment_id = 'klf14_b6ntac_exp_0083_cnn_contour_after_dmap'
 

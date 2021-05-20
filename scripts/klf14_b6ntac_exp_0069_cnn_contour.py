@@ -1,4 +1,4 @@
-'''
+"""
 Contour segmentation for all folds using binary crossentropy. Use transfer learning from dmap networks.
 The CNN has 3 dimensionality reduction layers at the end, instead of 1.
 
@@ -16,7 +16,14 @@ Training for the CNN:
 * Input: histology
 * Output: hand tracked contours, dilated a bit.
 * Other: mask for the loss function, to avoid looking outside of where we have contours.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 experiment_id = 'klf14_b6ntac_exp_0069_cnn_contour'
 

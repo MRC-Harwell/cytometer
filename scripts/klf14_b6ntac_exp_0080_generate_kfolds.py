@@ -1,4 +1,4 @@
-'''
+"""
 Generate k-folds split of training and testing data.
 
 * KLF14 data hand segmented by Ramon Casero.
@@ -15,7 +15,14 @@ C3H: 248 files
     Cells: 1110
     Other: 185
     Brown: 0
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0080_generate_kfolds'

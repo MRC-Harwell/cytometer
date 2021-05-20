@@ -1,4 +1,4 @@
-'''
+"""
 Dmap regression for all folds (KLF14 dataset).
 
 Training vs testing is done at the histology slide level, not at the window level. This way, we really guarantee that
@@ -10,7 +10,14 @@ Like 0056, but:
     * Save training history variable, instead of relying on text output.
 Like 0081, but:
     * 500 epochs instead of 100.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_inspect_exp_0086_cnn_dmap'

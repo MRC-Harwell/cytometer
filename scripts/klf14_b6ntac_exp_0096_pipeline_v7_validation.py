@@ -15,6 +15,13 @@ Validate pipeline v7 with 10-fold cross validation:
 Segmentation validation in this script: DEPRECATED by klf14_b6ntac_exp_0108_pipeline_v7_validation.py.
 """
 
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
+
 # script name to identify this experiment
 experiment_id = 'klf14_b6ntac_exp_0096_pipeline_v7_validation'
 

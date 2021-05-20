@@ -1,9 +1,16 @@
-'''
+"""
 Dmap regression
 
 BUG: The sample_weights have been forgotten for gpu_number > 1.
 Corrected in: klf14_b6ntac_exp_0015_cnn_dmap.py
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # cross-platform home directory
 from pathlib import Path

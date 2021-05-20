@@ -1,4 +1,4 @@
-'''
+"""
 Take the dmap and contour models for each fold, and use them to segment all images
 (this way we'll have a train and test datasets to train the quality net).
 Find correspondences between the segmented cells and the hand traced ground truth cells.
@@ -10,7 +10,14 @@ This script creates files predlab_kfold_00_seed_XXX_*.tif, predseg_kfold_00_seed
 klf14_b6ntac_training_augmented.
 
 Deprecates 0024, which only computes fold 0.
-'''
+"""
+
+"""
+This file is part of Cytometer
+Copyright 2021 Medical Research Council
+SPDX-License-Identifier: Apache-2.0
+Author: Ramon Casero <rcasero@gmail.com>
+"""
 
 # cross-platform home directory
 from pathlib import Path

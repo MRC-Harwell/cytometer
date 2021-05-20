@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# This file is part of Cytometer
+# Copyright 2021 Medical Research Council
+# SPDX-License-Identifier: Apache-2.0
+# Author: Ramon Casero <rcasero@gmail.com>
+
 #$ -P rittscher.prjc -q gpu8.q
 #$ -l gpu=4 -l gputype=p100
 #$ -cwd -V
