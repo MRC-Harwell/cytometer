@@ -39,18 +39,7 @@ You can run this script limiting it to one GPU with:
 
  2) Run ./install_dependencies.sh in cytometer.
 
- 3) Mount the network share //scan-srv2/cox/"Maz Yon" on ~/scan_srv2_cox with CIFS so that we have access to
-    KLF14 .ndpi files. You can do it by creating an empty directory
-
-    mkdir ~/scan_srv2_cox
-
-    and adding a line like this to /etc/fstab in the server (adjusting the uid and gid to your own).
-
-    //scan-srv2/cox /home/rcasero/scan_srv2_cox cifs credentials=/home/rcasero/.smbcredentials,vers=3.0,domain=MRCH,sec=ntlmv2,uid=1003,gid=1003,user 0 0
-
-    Then
-
-    mount ~/scan_srv2_cox
+ 3) Mount the network share with the histology slides onto ~/scan_srv2_cox.
 
  4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to

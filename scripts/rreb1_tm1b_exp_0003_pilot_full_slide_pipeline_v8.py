@@ -28,18 +28,7 @@ Difference with rreb1_tm1b_exp_0001_pilot_full_slide_pipeline_v7.py:
 
  2) Run ./install_dependencies.sh in cytometer.
 
- 3) Mount the network share //scan-srv2/cox on ~/scan_srv2_cox with CIFS so that we have access to Roger and Liz's .ndpi
-    files. You can do it by creating an empty directory
-
-    mkdir ~/scan_srv2_cox
-
-    and adding a line like this to /etc/fstab in the server.
-
-    //scan-srv2/cox on /home/rcasero/scan_srv2_cox type cifs (rw,nosuid,nodev,noexec,relatime,vers=default,sec=ntlmv2,cache=strict,username=r.casero,domain=MRCH,uid=1003,forceuid,gid=1003,forcegid,addr=10.100.0.229,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,rsize=4194304,wsize=4194304,bsize=1048576,echo_interval=60,actimeo=1,user)
-
-    Then
-
-    mount ~/scan_srv2_cox
+ 3) Mount the network share with the histology slides onto ~/scan_srv2_cox.
 
  4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
