@@ -1,3 +1,4 @@
+#!/bin/bash
 # install_dependencies.sh
 #
 #    Script to install the dependencies to run cytometer scripts.
@@ -10,8 +11,6 @@
 # Copyright 2021 Medical Research Council
 # SPDX-License-Identifier: Apache-2.0
 # Author: Ramon Casero <rcasero@gmail.com>
-
-#!/bin/bash
 
 # exit immediately on errors that are not inside an if test, etc.
 set -e
@@ -137,7 +136,7 @@ esac
 # we add the python packages to it
 
 # check whether the environment already exists
-if [[ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -w ${CONDA_LOCAL_ENV})" ]]; then
+if [[ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -x ${CONDA_LOCAL_ENV})" ]]; then
     tput setaf 1; echo "** Create conda local environment: ${CONDA_LOCAL_ENV}"; tput sgr0
     conda create -y --name ${CONDA_LOCAL_ENV} python=${PYTHON_VERSION}
 else
@@ -166,6 +165,10 @@ then
     fi
 fi
 
+# We need tensorflow-gpu 1.15.0 because that's the latest version that still works with our modified Keras 2.2.5
+# https://www.tensorflow.org/install/source#gpu
+# Version	              Python version	Compiler	Build tools	  cuDNN	CUDA
+# tensorflow_gpu-1.15.0	2.7, 3.3-3.7	  GCC 7.3.1	Bazel 0.26.1	7.4	  10.0
 echo "** Dependencies for Tensorflow backend"
 pip install tensorflow-gpu==1.15.0
 
@@ -178,12 +181,13 @@ NVIDIA_DRIVER_VERSION=`nvidia-smi --query-gpu=driver_version --format=csv,nohead
 # https://docs.nvidia.com/deeplearning/sdk/cudnn-support-matrix/index.html
 case ${NVIDIA_DRIVER_VERSION}
 in
-    450.*)  # CUDA 10.2
+    450.*|465.*)  # CUDA 10.2
 
         conda install -y cudnn==7.6.5=cuda10.2_0
         ;;
     *)
         echo "cudnn version for detected nVidia driver version (v. *${NVIDIA_DRIVER_VERSION}*) not implemented"
+        echo "You need to edit script ./install_dependencies.sh and add an instruction to install the correct cudnn version for this nVidia driver version"
         exit 1
         ;;
 esac
@@ -230,7 +234,7 @@ in
         # loop array indices
         for i in "${!source_missing_libraries[@]}"; do
 
-            source_missing_library=${HOME}/Software/miniconda3/envs/cytometer_tensorflow/lib/${source_missing_libraries[i]}
+            source_missing_library=${HOME}/Software/miniconda3/envs/${CONDA_LOCAL_ENV}/lib/${source_missing_libraries[i]}
             target_missing_library=${target_missing_libraries[i]}
 
             # create symlinks
