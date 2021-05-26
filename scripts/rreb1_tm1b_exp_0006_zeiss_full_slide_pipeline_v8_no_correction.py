@@ -1,5 +1,5 @@
 """
-Processing full slides of Grace Yu's RREB1-TM1B_B6N-IC with pipeline v8, but without segmentation correction:
+Processing Grace Yu's new Zeiss scanner RREB1-TM1B_B6N-IC whole slides with pipeline v8, without segmentation correction:
 
  * data generation
    * training images (*0076*)
@@ -21,26 +21,18 @@ Difference with pipeline v7:
 Difference with rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8.py:
   * No segmentation correction.
 
+Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.py:
+  * Applied to Zeiss .czi files instead of Hamamatsu .ndpi files.
+
  Requirements for this script to work:
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
 
  2) Run ./install_dependencies.sh in cytometer.
 
- 3) Mount the network share //scan-srv2/cox on ~/scan_srv2_cox with CIFS so that we have access to Roger and Liz's .ndpi
-    files. You can do it by creating an empty directory
+ 3) Mount the network share that contains the histology to ~/coxgroup_zeiss_test.
 
-    mkdir ~/scan_srv2_cox
-
-    and adding a line like this to /etc/fstab in the server.
-
-    //scan-srv2/cox on /home/rcasero/scan_srv2_cox type cifs (rw,nosuid,nodev,noexec,relatime,vers=default,sec=ntlmv2,cache=strict,username=r.casero,domain=MRCH,uid=1003,forceuid,gid=1003,forcegid,addr=10.100.0.229,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,rsize=4194304,wsize=4194304,bsize=1048576,echo_interval=60,actimeo=1,user)
-
-    Then
-
-    mount ~/scan_srv2_cox
-
- 4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
+ 4) Convert the .czi files to AIDA .dzi files, so that we can see the results of the segmentation.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
     ~/Software/cytometer/tools/rebb1_full_histology_ndpi_to_dzi.sh
 
