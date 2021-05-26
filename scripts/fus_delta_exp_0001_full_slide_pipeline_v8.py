@@ -20,7 +20,7 @@ Difference with pipeline v7:
     which ones we want to keep, and which ones we want to reject.
   * If a processing window overlaps the previous one by 90% or more, we wipe it out.
 
-Difference with rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py:
+Difference with rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8.py:
   * Only the images it is applied to.
 
  Requirements for this script to work:

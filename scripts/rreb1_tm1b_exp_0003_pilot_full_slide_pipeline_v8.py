@@ -1,5 +1,5 @@
 """
-Processing full slides of Grace Yu's RREB1-TM1B_B6N-IC with pipeline v8, but without segmentation correction:
+Processing full slides of Grace Yu's RREB1-TM1B_B6N-IC with pipeline v8:
 
  * data generation
    * training images (*0076*)
@@ -10,6 +10,7 @@ Processing full slides of Grace Yu's RREB1-TM1B_B6N-IC with pipeline v8, but wit
    * dmap (*0086*)
    * contour from dmap (*0091*)
  * classifier (*0095*)
+ * segmentation correction (*0089*) networks"
  * validation (*0096*)
 
 Difference with pipeline v7:
@@ -18,8 +19,8 @@ Difference with pipeline v7:
   * All segmented objects are saved, together with the white adipocyte probability score. That way, we can decide later
     which ones we want to keep, and which ones we want to reject.
 
-Difference with rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py:
-  * No segmentation correction.
+Difference with rreb1_tm1b_exp_0001_pilot_full_slide_pipeline_v7.py:
+  *
 
  Requirements for this script to work:
 
@@ -80,7 +81,7 @@ Author: Ramon Casero <rcasero@gmail.com>
 """
 
 # script name to identify this experiment
-experiment_id = 'rreb1_tm1b_exp_0004_full_slide_pipeline_v8_no_correction.py'
+experiment_id = 'rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8.py'
 
 # cross-platform home directory
 from pathlib import Path
@@ -143,6 +144,7 @@ klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_tra
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
 contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
 classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
+correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
 # full resolution image window and network expected receptive field parameters
 fullres_box_size = np.array([2751, 2751])
@@ -261,8 +263,8 @@ else:
     raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
                             ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
 
-# load AIDA's colourmap
-cm = cytometer.data.aida_colourmap()
+# # load AIDA's colourmap
+# cm = cytometer.data.aida_colourmap()
 
 ########################################################################################################################
 ## Segmentation loop
@@ -293,11 +295,17 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     classifier_model_file = os.path.join(saved_models_dir,
                                          classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    correction_model_file = os.path.join(saved_models_dir,
+                                         correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # name of file to save annotations to
     annotations_file = os.path.basename(ndpi_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0004_auto.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0003_auto.json')
+
+    annotations_corrected_file = os.path.basename(ndpi_file)
+    annotations_corrected_file = os.path.splitext(annotations_corrected_file)[0]
+    annotations_corrected_file = os.path.join(annotations_dir, annotations_corrected_file + '_exp_0003_corrected.json')
 
     # name of file to save rough mask, current mask, and time steps
     rough_mask_file = os.path.basename(ndpi_file)
@@ -465,7 +473,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             = cytometer.utils.segmentation_pipeline6(im=tile,
                                                      dmap_model=dmap_model_file,
                                                      contour_model=contour_model_file,
-                                                     correction_model=None,
+                                                     correction_model=correction_model_file,
                                                      classifier_model=classifier_model_file,
                                                      min_cell_area=0,
                                                      max_cell_area=np.inf,
@@ -483,8 +491,11 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         if len(window_labels) > 0:
             window_white_adipocyte_prob = np.sum(window_labels * window_labels_class, axis=(1, 2)) \
                                           / np.sum(window_labels, axis=(1, 2))
+            window_white_adipocyte_prob_corrected = np.sum(window_labels_corrected * window_labels_class, axis=(1, 2)) \
+                                                    / np.sum(window_labels_corrected, axis=(1, 2))
         else:
             window_white_adipocyte_prob = np.array([])
+            window_white_adipocyte_prob_corrected = np.array([])
 
         # if no cells found, wipe out current window from tissue segmentation, and go to next iteration. Otherwise we'd
         # enter an infinite loop
@@ -547,6 +558,8 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             offset_xy = index_list[:, [2, 3]]  # index_list: [i, lab, x0, y0, xend, yend]
             contours = cytometer.utils.labels2contours(window_labels, offset_xy=offset_xy,
                                                        scaling_factor_xy=scaling_factor_list)
+            contours_corrected = cytometer.utils.labels2contours(window_labels_corrected, offset_xy=offset_xy,
+                                                                 scaling_factor_xy=scaling_factor_list)
 
             if DEBUG:
                 # no overlap
@@ -556,11 +569,23 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                     plt.fill(contours[j][:, 0], contours[j][:, 1], edgecolor='C0', fill=False)
                     # plt.text(contours[j][0, 0], contours[j][0, 1], str(j))
 
+                # overlap
+                plt.clf()
+                plt.imshow(tile)
+                for j in range(len(contours_corrected)):
+                    plt.fill(contours_corrected[j][:, 0], contours_corrected[j][:, 1], edgecolor='C0', fill=False)
+                    # plt.text(contours_corrected[j][0, 0], contours_corrected[j][0, 1], str(j))
+
             # downsample contours for AIDA annotations file
             lores_contours = []
             for c in contours:
                 lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
                 lores_contours.append(lores_c)
+
+            lores_contours_corrected = []
+            for c in contours_corrected:
+                lores_c = bspline_resample(c, factor=contour_downsample_factor, min_n=10, k=bspline_k, is_closed=True)
+                lores_contours_corrected.append(lores_c)
 
             if DEBUG:
                 # no overlap
@@ -569,16 +594,26 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                 for j in range(len(contours)):
                     plt.fill(lores_contours[j][:, 0], lores_contours[j][:, 1], edgecolor='C1', fill=False)
 
+                # overlap
+                plt.clf()
+                plt.imshow(tile)
+                for j in range(len(contours_corrected)):
+                    plt.fill(lores_contours_corrected[j][:, 0], lores_contours_corrected[j][:, 1], edgecolor='C1', fill=False)
+
             # add tile offset, so that contours are in full slide coordinates
             for j in range(len(contours)):
                 lores_contours[j][:, 0] += first_col
                 lores_contours[j][:, 1] += first_row
 
+            for j in range(len(contours_corrected)):
+                lores_contours_corrected[j][:, 0] += first_col
+                lores_contours_corrected[j][:, 1] += first_row
+
             # convert non-overlap contours to AIDA items
             # TODO: check whether the mouse is male or female, and use corresponding f_area2quantile
             contour_items = cytometer.data.aida_contour_items(lores_contours, f_area2quantile_m.item(),
                                                               cell_prob=window_white_adipocyte_prob,
-                                                              xres=xres*1e6, yres=yres*1e6)
+                                                              xres=xres, yres=yres)
             rectangle = (first_col, first_row, last_col - first_col, last_row - first_row)  # (x0, y0, width, height)
             rectangle_item = cytometer.data.aida_rectangle_items([rectangle,])
 
@@ -590,6 +625,20 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                 # in next steps, add contours to previous layer
                 cytometer.data.aida_write_new_items(annotations_file, rectangle_item, mode='append_to_last_layer')
                 cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
+
+            # convert corrected contours to AIDA items
+            contour_items_corrected = cytometer.data.aida_contour_items(lores_contours_corrected, f_area2quantile_m.item(),
+                                                                        cell_prob=window_white_adipocyte_prob_corrected,
+                                                                        xres=xres, yres=yres)
+
+            if step == 1:
+                # in the first step, overwrite previous annotations file, or create new one
+                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='w')
+                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
+            else:
+                # in next steps, add contours to previous layer
+                cytometer.data.aida_write_new_items(annotations_corrected_file, rectangle_item, mode='append_to_last_layer')
+                cytometer.data.aida_write_new_items(annotations_corrected_file, contour_items_corrected, mode='append_new_layer')
 
             # update the tissue segmentation mask with the current window
             if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):

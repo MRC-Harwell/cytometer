@@ -18,7 +18,7 @@ Difference with pipeline v7:
   * All segmented objects are saved, together with the white adipocyte probability score. That way, we can decide later
     which ones we want to keep, and which ones we want to reject.
 
-Difference with rreb1_tm1b_exp_0003_full_slide_pipeline_v8.py:
+Difference with rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8.py:
   * No segmentation correction.
 
  Requirements for this script to work:
@@ -80,7 +80,7 @@ Author: Ramon Casero <rcasero@gmail.com>
 """
 
 # script name to identify this experiment
-experiment_id = 'rreb1_tm1b_exp_0004_full_slide_pipeline_v8_no_correction.py'
+experiment_id = 'rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.py'
 
 # cross-platform home directory
 from pathlib import Path
