@@ -1,7 +1,7 @@
 #!/bin/bash
 # install_dependencies.sh
 #
-#    Script to install the dependencies to run cytometer scripts.
+#    Script to install the dependencies to run the DeepCytometer pipeline and experiments.
 #
 #    This script installs several Ubuntu packages, and creates two local conda environments:
 #      * cytometer: With the latest versions of Keras/Theano/Tensorflow to run cytometer scripts.
