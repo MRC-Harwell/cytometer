@@ -193,7 +193,7 @@ in
 esac
 
 # install dependencies for Keras
-conda install -y h5py==2.10.0       # to save Keras models to disk
+conda install -y h5py==3.1.0       # to save Keras models to disk
 conda install -y graphviz==2.40.1   # used by visualization utilities to plot model graphs
 pip install cython==0.29.21         # dependency of mkl-random/mkl-fft via pydot
 pip install pydot==1.4.1            # used by visualization utilities to plot model graphs
