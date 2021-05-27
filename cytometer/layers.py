@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+
 """
 Created on Wed Jul 19 18:13:57 2017
 
@@ -12,8 +14,6 @@ Copyright 2021 Medical Research Council
 SPDX-License-Identifier: Apache-2.0
 Author: Ramon Casero <rcasero@gmail.com>
 """
-
-from __future__ import absolute_import
 
 import keras.backend as K
 from keras.engine import Layer
