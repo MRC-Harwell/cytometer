@@ -4,6 +4,10 @@ Generate figures for the DeepCytometer paper for v8 of the pipeline.
 We repeat the phenotyping from klf14_b6ntac_exp_0110_paper_figures_v8.py, but change the stratification of the data so
 that we have Control (PATs + WT MATs) vs. Het MATs.
 
+The comparisons we do are:
+  * Control vs. MAT WT
+  * MAT WT vs. MAT Het
+
 This script partly deprecates klf14_b6ntac_exp_0099_paper_figures_v7.py:
 * Figures have been updated to have v8 of the pipeline in the paper.
 
@@ -748,48 +752,105 @@ if SAVE_FIGS:
 BW_mean = metainfo['BW'].mean()
 metainfo['BW__'] = metainfo['BW'] / BW_mean
 
-# update the sub-dataframes we created for convenience
-metainfo_f = metainfo[metainfo['sex'] == 'f']
-metainfo_m = metainfo[metainfo['sex'] == 'm']
-
 
 ## depot ~ BW * kfo models
 
-# models for Likelihood Ratio Test, to check whether KFO variable has an effect
-gwat_null_model_f = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f).fit()
-gwat_null_model_m = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m).fit()
-sqwat_null_model_f = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f).fit()
-sqwat_null_model_m = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m).fit()
+# models for Likelihood Ratio Test, Control vs. MAT WT
+df = metainfo[(metainfo['sex'] == 'f')
+              & ((metainfo['functional_ko'] == 'Control') | (metainfo['functional_ko'] == 'MAT_WT'))]
+df['functional_ko'] = df['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['Control', 'MAT_WT'], ordered=True))
 
-gwat_model_f = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=metainfo_f).fit()
-gwat_model_m = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=metainfo_m).fit()
-sqwat_model_f = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=metainfo_f).fit()
-sqwat_model_m = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=metainfo_m).fit()
+gwat_model_f_control_matwt_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
+sqwat_model_f_control_matwt_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
+gwat_model_f_control_matwt = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
+sqwat_model_f_control_matwt = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
 
-# Likelihood ratio tests of the FKO variable
-print('Likelihood Ratio Tests: FKO')
+df = metainfo[(metainfo['sex'] == 'm')
+              & ((metainfo['functional_ko'] == 'Control') | (metainfo['functional_ko'] == 'MAT_WT'))]
+df['functional_ko'] = df['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['Control', 'MAT_WT'], ordered=True))
+
+gwat_model_m_control_matwt_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
+sqwat_model_m_control_matwt_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
+gwat_model_m_control_matwt = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
+sqwat_model_m_control_matwt = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
+
+# models for Likelihood Ratio Test, MAT WT vs. MAT Het
+df = metainfo[(metainfo['sex'] == 'f')
+              & ((metainfo['functional_ko'] == 'MAT_WT') | (metainfo['functional_ko'] == 'FKO'))]
+df['functional_ko'] = df['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['MAT_WT', 'FKO'], ordered=True))
+
+gwat_model_f_matwt_mathet_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
+sqwat_model_f_matwt_mathet_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
+gwat_model_f_matwt_mathet = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
+sqwat_model_f_matwt_mathet = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
+
+df = metainfo[(metainfo['sex'] == 'm')
+              & ((metainfo['functional_ko'] == 'MAT_WT') | (metainfo['functional_ko'] == 'FKO'))]
+df['functional_ko'] = df['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['MAT_WT', 'FKO'], ordered=True))
+
+gwat_model_m_matwt_mathet_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
+sqwat_model_m_matwt_mathet_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
+gwat_model_m_matwt_mathet = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
+sqwat_model_m_matwt_mathet = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
+
+# Likelihood ratio tests: Control vs. MAT WT
+print('Likelihood Ratio Tests: Control vs. MAT WT')
 
 print('Female')
-lr, pval = cytometer.stats.lrtest(gwat_null_model_f.llf, gwat_model_f.llf)
+lr, pval = cytometer.stats.lrtest(gwat_model_f_control_matwt_null.llf, gwat_model_f_control_matwt.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Gonadal: ' + pval_text)
-print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_f.aic))
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_model_f_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_f_control_matwt.aic))
 
-lr, pval = cytometer.stats.lrtest(sqwat_null_model_f.llf, sqwat_model_f.llf)
+lr, pval = cytometer.stats.lrtest(sqwat_model_f_control_matwt_null.llf, sqwat_model_f_control_matwt.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Subcutaneous: ' + pval_text)
-print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_f.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_f.aic))
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_model_f_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_f_control_matwt.aic))
 
 print('Male')
-lr, pval = cytometer.stats.lrtest(gwat_null_model_m.llf, gwat_model_m.llf)
+lr, pval = cytometer.stats.lrtest(gwat_model_m_control_matwt_null.llf, gwat_model_m_control_matwt.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Gonadal: ' + pval_text)
-print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_m.aic))
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_model_m_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_m_control_matwt.aic))
 
-lr, pval = cytometer.stats.lrtest(sqwat_null_model_m.llf, sqwat_model_m.llf)
+lr, pval = cytometer.stats.lrtest(sqwat_model_m_control_matwt_null.llf, sqwat_model_m_control_matwt.llf)
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
 print('Subcutaneous: ' + pval_text)
-print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_null_model_m.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m.aic))
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_model_m_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m_control_matwt.aic))
+
+# Likelihood ratio tests: MAT WT vs. MAT Het
+print('')
+print('Likelihood Ratio Tests: MAT WT vs. MAT Het')
+
+print('Female')
+lr, pval = cytometer.stats.lrtest(gwat_model_f_matwt_mathet_null.llf, gwat_model_f_matwt_mathet.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_model_f_matwt_mathet_null.aic)
+      + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_f_matwt_mathet.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_model_f_matwt_mathet_null.llf, sqwat_model_f_matwt_mathet.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_model_f_matwt_mathet_null.aic)
+      + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_f_matwt_mathet.aic))
+
+print('Male')
+lr, pval = cytometer.stats.lrtest(gwat_model_m_matwt_mathet_null.llf, gwat_model_m_matwt_mathet.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Gonadal: ' + pval_text)
+print('Gonadal: AIC_null=' + '{0:.2f}'.format(gwat_model_m_matwt_mathet_null.aic)
+      + ', AIC_alt=' + '{0:.2f}'.format(gwat_model_m_matwt_mathet.aic))
+
+lr, pval = cytometer.stats.lrtest(sqwat_model_m_matwt_mathet_null.llf, sqwat_model_m_matwt_mathet.llf)
+pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+print('Subcutaneous: ' + pval_text)
+print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(sqwat_model_m_matwt_mathet_null.aic)
+      + ', AIC_alt=' + '{0:.2f}'.format(sqwat_model_m_matwt_mathet.aic))
 
 ## fit linear models DW ~ BW__, stratified by FKO
 # female Control vs. FKO
