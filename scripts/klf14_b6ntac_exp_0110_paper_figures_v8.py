@@ -734,6 +734,9 @@ metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 
+# segmentation parameter
+min_class_prop = 0.5
+
 DEBUG = False
 
 method = 'corrected'
@@ -3905,22 +3908,26 @@ for i_file, json_file in enumerate(json_annotation_files):
 
     # print cropped histology
     plt.clf()
-    plt.gcf().set_size_inches([12.8, 9.6])
+    plt.gcf().set_size_inches([6.4, 4.8])
     plt.imshow(cropped_im_large, interpolation='none')
     plt.axis('off')
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_histo_large_cropped.png'),
                 bbox_inches='tight')
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_histo_large_cropped.jpg'),
+                bbox_inches='tight')
 
     # print cropped heatmap
     plt.clf()
-    plt.gcf().set_size_inches([12.8, 9.6])
+    plt.gcf().set_size_inches([6.4, 4.8])
     plt.imshow(cropped_heatmap_large, interpolation='none')
     plt.axis('off')
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large_cropped.png'),
+                bbox_inches='tight')
+    plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large_cropped.jpg'),
                 bbox_inches='tight')
 
 ## plot colourmaps and cell area density functions
