@@ -752,75 +752,64 @@ if SAVE_FIGS:
 BW_mean = metainfo['BW'].mean()
 metainfo['BW__'] = metainfo['BW'] / BW_mean
 
+# auxiliary variables to create the null models for the (Control vs. MAT WT) and (MAT WT vs. FKO) comparisons
+metainfo['functional_ko_a'] = metainfo['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['Control_MAT_WT', 'FKO'], ordered=True))
+metainfo.loc[metainfo['functional_ko'] != 'FKO', 'functional_ko_a'] = 'Control_MAT_WT'
+
+metainfo['functional_ko_b'] = metainfo['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['Control', 'MAT_WT_FKO'], ordered=True))
+metainfo.loc[metainfo['functional_ko'] != 'Control', 'functional_ko_b'] = 'MAT_WT_FKO'
+
 # for convenience create two dataframes (female and male) with the data for the current depot
 metainfo_f = metainfo[metainfo['sex'] == 'f']
 metainfo_m = metainfo[metainfo['sex'] == 'm']
 
 ## depot ~ BW * kfo models
 
-# models for Likelihood Ratio Test, Control vs. MAT WT
-df = metainfo[(metainfo['sex'] == 'f')
-              & ((metainfo['functional_ko'] == 'Control') | (metainfo['functional_ko'] == 'MAT_WT'))].copy()
-df['functional_ko'] = df['functional_ko'].astype(
-    pd.api.types.CategoricalDtype(categories=['Control', 'MAT_WT'], ordered=True))
+# global models fitted to 3 strata (Control, MAT WT and FKO):
+# These are the models that we are going to use to test for correlation, apart from the LRTs
+model_gwat_f_global = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=metainfo_f).fit()
+model_sqwat_f_global = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=metainfo_f).fit()
 
-model_gwat_f_control_matwt_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
-model_sqwat_f_control_matwt_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
-model_gwat_f_control_matwt = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
-model_sqwat_f_control_matwt = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
+model_gwat_m_global = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=metainfo_m).fit()
+model_sqwat_m_global = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=metainfo_m).fit()
 
-df = metainfo[(metainfo['sex'] == 'm')
-              & ((metainfo['functional_ko'] == 'Control') | (metainfo['functional_ko'] == 'MAT_WT'))].copy()
-df['functional_ko'] = df['functional_ko'].astype(
-    pd.api.types.CategoricalDtype(categories=['Control', 'MAT_WT'], ordered=True))
+# models fitted to 2 strata (combining Control and MAT WT) to be used as null models
+model_gwat_f_control_matwt = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko_a)', data=metainfo_f).fit()
+model_sqwat_f_control_matwt = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko_a)', data=metainfo_f).fit()
 
-model_gwat_m_control_matwt_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
-model_sqwat_m_control_matwt_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
-model_gwat_m_control_matwt = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
-model_sqwat_m_control_matwt = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
+model_gwat_m_control_matwt = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko_a)', data=metainfo_m).fit()
+model_sqwat_m_control_matwt = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko_a)', data=metainfo_m).fit()
 
-# models for Likelihood Ratio Test, MAT WT vs. MAT Het
-df = metainfo[(metainfo['sex'] == 'f')
-              & ((metainfo['functional_ko'] == 'MAT_WT') | (metainfo['functional_ko'] == 'FKO'))].copy()
-df['functional_ko'] = df['functional_ko'].astype(
-    pd.api.types.CategoricalDtype(categories=['MAT_WT', 'FKO'], ordered=True))
+# models fitted to 2 strata (combining MAT WT and FKO) to be used as null models
+model_gwat_f_matwt_fko = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko_b)', data=metainfo_f).fit()
+model_sqwat_f_matwt_fko = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko_b)', data=metainfo_f).fit()
 
-model_gwat_f_matwt_fko_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
-model_sqwat_f_matwt_fko_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
-model_gwat_f_matwt_fko = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
-model_sqwat_f_matwt_fko = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
-
-df = metainfo[(metainfo['sex'] == 'm')
-              & ((metainfo['functional_ko'] == 'MAT_WT') | (metainfo['functional_ko'] == 'FKO'))].copy()
-df['functional_ko'] = df['functional_ko'].astype(
-    pd.api.types.CategoricalDtype(categories=['MAT_WT', 'FKO'], ordered=True))
-
-model_gwat_m_matwt_fko_null = sm.OLS.from_formula('gWAT ~ BW__', data=df).fit()
-model_sqwat_m_matwt_fko_null = sm.OLS.from_formula('SC ~ BW__', data=df).fit()
-model_gwat_m_matwt_fko = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko)', data=df).fit()
-model_sqwat_m_matwt_fko = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko)', data=df).fit()
+model_gwat_m_matwt_fko = sm.OLS.from_formula('gWAT ~ BW__ * C(functional_ko_b)', data=metainfo_m).fit()
+model_sqwat_m_matwt_fko = sm.OLS.from_formula('SC ~ BW__ * C(functional_ko_b)', data=metainfo_m).fit()
 
 # compute LRTs and extract p-values and LRs
 lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
 
-# Control vs. MAT WT
-lr, pval = cytometer.stats.lrtest(model_gwat_f_control_matwt_null.llf, model_gwat_f_control_matwt.llf)
+lr, pval = cytometer.stats.lrtest(model_gwat_f_control_matwt.llf, model_gwat_f_global.llf)
 lrt.loc['model_gwat_f_control_matwt', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
-lr, pval = cytometer.stats.lrtest(model_sqwat_f_control_matwt_null.llf, model_sqwat_f_control_matwt.llf)
+lr, pval = cytometer.stats.lrtest(model_sqwat_f_control_matwt.llf, model_sqwat_f_global.llf)
 lrt.loc['model_sqwat_f_control_matwt', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
-lr, pval = cytometer.stats.lrtest(model_gwat_m_control_matwt_null.llf, model_gwat_m_control_matwt.llf)
+
+lr, pval = cytometer.stats.lrtest(model_gwat_m_control_matwt.llf, model_gwat_m_global.llf)
 lrt.loc['model_gwat_m_control_matwt', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
-lr, pval = cytometer.stats.lrtest(model_sqwat_m_control_matwt_null.llf, model_sqwat_m_control_matwt.llf)
+lr, pval = cytometer.stats.lrtest(model_sqwat_m_control_matwt.llf, model_sqwat_m_global.llf)
 lrt.loc['model_sqwat_m_control_matwt', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
-# MAT WT vs. FKO (MAT Het)
-lr, pval = cytometer.stats.lrtest(model_gwat_f_matwt_fko_null.llf, model_gwat_f_matwt_fko.llf)
+lr, pval = cytometer.stats.lrtest(model_gwat_f_matwt_fko.llf, model_gwat_f_global.llf)
 lrt.loc['model_gwat_f_matwt_fko', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
-lr, pval = cytometer.stats.lrtest(model_sqwat_f_matwt_fko_null.llf, model_sqwat_f_matwt_fko.llf)
+lr, pval = cytometer.stats.lrtest(model_sqwat_f_matwt_fko.llf, model_sqwat_f_global.llf)
 lrt.loc['model_sqwat_f_matwt_fko', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
-lr, pval = cytometer.stats.lrtest(model_gwat_m_matwt_fko_null.llf, model_gwat_m_matwt_fko.llf)
+
+lr, pval = cytometer.stats.lrtest(model_gwat_m_matwt_fko.llf, model_gwat_m_global.llf)
 lrt.loc['model_gwat_m_matwt_fko', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
-lr, pval = cytometer.stats.lrtest(model_sqwat_m_matwt_fko_null.llf, model_sqwat_m_matwt_fko.llf)
+lr, pval = cytometer.stats.lrtest(model_sqwat_m_matwt_fko.llf, model_sqwat_m_global.llf)
 lrt.loc['model_sqwat_m_matwt_fko', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
 # multitest correction using Benjamini-Krieger-Yekutieli
@@ -890,34 +879,11 @@ print('Subcutaneous: ' + pval_text)
 # print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(model_sqwat_m_matwt_fko_null.aic)
 #       + ', AIC_alt=' + '{0:.2f}'.format(model_sqwat_m_matwt_fko.aic))
 
-## fit linear models DW ~ BW__, stratified by FKO (Control, MAT WT and FKO)
-# female
-model_gwat_f_control = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['functional_ko'] == 'Control').fit()
-model_gwat_f_matwt = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['functional_ko'] == 'MAT_WT').fit()
-model_gwat_f_fko = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_f, subset=metainfo_f['functional_ko'] == 'FKO').fit()
-model_sqwat_f_control = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['functional_ko'] == 'Control').fit()
-model_sqwat_f_matwt = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['functional_ko'] == 'MAT_WT').fit()
-model_sqwat_f_fko = sm.OLS.from_formula('SC ~ BW__', data=metainfo_f, subset=metainfo_f['functional_ko'] == 'FKO').fit()
-
-# male
-model_gwat_m_control = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['functional_ko'] == 'Control').fit()
-model_gwat_m_matwt = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['functional_ko'] == 'MAT_WT').fit()
-model_gwat_m_fko = sm.OLS.from_formula('gWAT ~ BW__', data=metainfo_m, subset=metainfo_m['functional_ko'] == 'FKO').fit()
-model_sqwat_m_control = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['functional_ko'] == 'Control').fit()
-model_sqwat_m_matwt = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['functional_ko'] == 'MAT_WT').fit()
-model_sqwat_m_fko = sm.OLS.from_formula('SC ~ BW__', data=metainfo_m, subset=metainfo_m['functional_ko'] == 'FKO').fit()
-
 # extract coefficients, errors and p-values from models
-model_names = ['model_gwat_f_control', 'model_gwat_f_matwt', 'model_gwat_f_fko',
-         'model_sqwat_f_control', 'model_sqwat_f_matwt', 'model_sqwat_f_fko',
-         'model_gwat_m_control', 'model_gwat_m_matwt', 'model_gwat_m_fko',
-         'model_sqwat_m_control', 'model_sqwat_m_matwt', 'model_sqwat_m_fko']
+model_names = ['model_gwat_f_global', 'model_sqwat_f_global', 'model_gwat_m_global', 'model_sqwat_m_global']
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        [model_gwat_f_control, model_gwat_f_matwt, model_gwat_f_fko,
-         model_sqwat_f_control, model_sqwat_f_matwt, model_sqwat_f_fko,
-         model_gwat_m_control, model_gwat_m_matwt, model_gwat_m_fko,
-         model_sqwat_m_control, model_sqwat_m_matwt, model_sqwat_m_fko],
+        [model_gwat_f_global, model_sqwat_f_global, model_gwat_m_global, model_sqwat_m_global],
     model_names=model_names)
 
 # multitest correction using Benjamini-Krieger-Yekutieli
@@ -933,8 +899,7 @@ df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_correct
                                      columns=df_coeff.columns, index=model_names)
 
 if SAVE_FIGS:
-    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
-                          axis=1)
+    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk], axis=1)
     idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
     df_concat = df_concat.iloc[:, idx]
     df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_depot_weight_models_coeffs_pvals_fko.csv'))
@@ -943,15 +908,15 @@ if SAVE_FIGS:
     plt.clf()
     plt.subplot(221)
     sex = 'f'
-    cytometer.stats.plot_linear_regression(model_gwat_f_control, metainfo_f, 'BW__',
+    cytometer.stats.plot_linear_regression(model_gwat_f_global, metainfo_f, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'Control'},
                                            dep_var='gWAT', sx=BW_mean, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(model_gwat_f_matwt, metainfo_f, 'BW__',
+    cytometer.stats.plot_linear_regression(model_gwat_f_global, metainfo_f, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'MAT_WT'},
                                            dep_var='gWAT', sx=BW_mean, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(model_gwat_f_fko, metainfo_f, 'BW__',
+    cytometer.stats.plot_linear_regression(model_gwat_f_global, metainfo_f, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'FKO'},
                                            dep_var='gWAT', sx=BW_mean, c='C4', marker='o',
                                            line_label='FKO')
@@ -963,15 +928,15 @@ if SAVE_FIGS:
 
     plt.subplot(222)
     sex = 'm'
-    cytometer.stats.plot_linear_regression(model_gwat_m_control, metainfo_m, 'BW__',
+    cytometer.stats.plot_linear_regression(model_gwat_m_global, metainfo_m, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'Control'},
                                            dep_var='gWAT', sx=BW_mean, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(model_gwat_m_matwt, metainfo_m, 'BW__',
+    cytometer.stats.plot_linear_regression(model_gwat_m_global, metainfo_m, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'MAT_WT'},
                                            dep_var='gWAT', sx=BW_mean, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(model_gwat_m_fko, metainfo_m, 'BW__',
+    cytometer.stats.plot_linear_regression(model_gwat_m_global, metainfo_m, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'FKO'},
                                            dep_var='gWAT', sx=BW_mean, c='C4', marker='o',
                                            line_label='FKO')
@@ -982,15 +947,15 @@ if SAVE_FIGS:
 
     plt.subplot(223)
     sex = 'f'
-    cytometer.stats.plot_linear_regression(model_sqwat_f_control, metainfo_f, 'BW__',
+    cytometer.stats.plot_linear_regression(model_sqwat_f_global, metainfo_f, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'Control'},
                                            dep_var='SC', sx=BW_mean, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(model_sqwat_f_matwt, metainfo_f, 'BW__',
+    cytometer.stats.plot_linear_regression(model_sqwat_f_global, metainfo_f, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'MAT_WT'},
                                            dep_var='SC', sx=BW_mean, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(model_sqwat_f_fko, metainfo_f, 'BW__',
+    cytometer.stats.plot_linear_regression(model_sqwat_f_global, metainfo_f, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'FKO'},
                                            dep_var='SC', sx=BW_mean, c='C4', marker='o',
                                            line_label='FKO')
@@ -1003,15 +968,15 @@ if SAVE_FIGS:
 
     plt.subplot(224)
     sex = 'm'
-    cytometer.stats.plot_linear_regression(model_sqwat_m_control, metainfo_m, 'BW__',
+    cytometer.stats.plot_linear_regression(model_sqwat_m_global, metainfo_m, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'Control'},
                                            dep_var='SC', sx=BW_mean, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(model_sqwat_m_matwt, metainfo_m, 'BW__',
+    cytometer.stats.plot_linear_regression(model_sqwat_m_global, metainfo_m, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'MAT_WT'},
                                            dep_var='SC', sx=BW_mean, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(model_sqwat_m_fko, metainfo_m, 'BW__',
+    cytometer.stats.plot_linear_regression(model_sqwat_m_global, metainfo_m, 'BW__',
                                            other_vars={'sex':sex, 'functional_ko':'FKO'},
                                            dep_var='SC', sx=BW_mean, c='C4', marker='o',
                                            line_label='KFO')
@@ -1023,6 +988,7 @@ if SAVE_FIGS:
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_depot_linear_model_fko.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_depot_linear_model_fko.jpg'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_depot_linear_model_fko.svg'))
 
 
@@ -1050,17 +1016,24 @@ df_all_m = df_all[df_all['sex'] == 'm']
 depot = 'gwat'
 # depot = 'sqwat'
 
+# compute LRTs and extract p-values and LRs
+lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
+
+# Control vs. MAT WT
+lr, pval = cytometer.stats.lrtest(model_gwat_f_control_matwt_null.llf, model_gwat_f_control_matwt.llf)
+lrt.loc['model_gwat_f_control_matwt', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
 # fit linear models to area quantiles
-q_models_f_control = []
-q_models_f_matwt = []
-q_models_f_fko = []
-q_models_m_control = []
-q_models_m_matwt = []
-q_models_m_fko = []
-q_models_f_null = []
-q_models_m_null = []
-q_models_f = []
-q_models_m = []
+models_qarea_f_control = []
+models_qarea_f_matwt = []
+models_qarea_f_fko = []
+models_qarea_m_control = []
+models_qarea_m_matwt = []
+models_qarea_m_fko = []
+models_qarea_f_null = []
+models_qarea_m_null = []
+models_qarea_f = []
+models_qarea_m = []
 for i_q in i_quantiles:
 
     # choose one area_at_quantile value as the output of the linear model
@@ -1068,52 +1041,52 @@ for i_q in i_quantiles:
 
     # fit FKO linear models
     idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'Control')
-    q_model_f_control = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_f_control = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
     idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'MAT_WT')
-    q_model_f_matwt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_f_matwt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
     idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'FKO')
-    q_model_f_fko = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_f_fko = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
     idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'Control')
-    q_model_m_control = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_m_control = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
     idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'MAT_WT')
-    q_model_m_matwt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_m_matwt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
     idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'FKO')
-    q_model_m_fko = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_m_fko = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
 
     # fit null models
     idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
-    q_model_f_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_f_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
     idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
-    q_model_m_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    model_qarea_m_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
 
     # fit models with effect variable
     idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
-    q_model_f = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_all, subset=idx).fit()
+    model_qarea_f = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_all, subset=idx).fit()
     idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
-    q_model_m = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_all, subset=idx).fit()
+    model_qarea_m = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_all, subset=idx).fit()
 
-    q_models_f_control.append(q_model_f_control)
-    q_models_f_matwt.append(q_model_f_matwt)
-    q_models_f_fko.append(q_model_f_fko)
-    q_models_m_control.append(q_model_m_control)
-    q_models_m_matwt.append(q_model_m_matwt)
-    q_models_m_fko.append(q_model_m_fko)
-    q_models_f_null.append(q_model_f_null)
-    q_models_m_null.append(q_model_m_null)
-    q_models_f.append(q_model_f)
-    q_models_m.append(q_model_m)
+    models_qarea_f_control.append(model_qarea_f_control)
+    models_qarea_f_matwt.append(model_qarea_f_matwt)
+    models_qarea_f_fko.append(model_qarea_f_fko)
+    models_qarea_m_control.append(model_qarea_m_control)
+    models_qarea_m_matwt.append(model_qarea_m_matwt)
+    models_qarea_m_fko.append(model_qarea_m_fko)
+    models_qarea_f_null.append(model_qarea_f_null)
+    models_qarea_m_null.append(model_qarea_m_null)
+    models_qarea_f.append(model_qarea_f)
+    models_qarea_m.append(model_qarea_m)
 
     if DEBUG:
-        print(q_model_f_control.summary())
-        print(q_model_f_matwt.summary())
-        print(q_model_f_fko.summary())
-        print(q_model_m_control.summary())
-        print(q_model_m_matwt.summary())
-        print(q_model_m_fko.summary())
-        print(q_model_f_null.summary())
-        print(q_model_m_null.summary())
-        print(q_model_f.summary())
-        print(q_model_m.summary())
+        print(model_qarea_f_control.summary())
+        print(model_qarea_f_matwt.summary())
+        print(model_qarea_f_fko.summary())
+        print(model_qarea_m_control.summary())
+        print(model_qarea_m_matwt.summary())
+        print(model_qarea_m_fko.summary())
+        print(model_qarea_f_null.summary())
+        print(model_qarea_m_null.summary())
+        print(model_qarea_f.summary())
+        print(model_qarea_m.summary())
 
 # extract coefficients, errors and p-values from PAT and MAT models
 model_names = []
@@ -1122,7 +1095,7 @@ for model_name in ['model_f_control', 'model_f_matwt', 'model_f_fko', 'model_m_c
         model_names.append('q_' + '{0:.0f}'.format(quantiles[i_q] * 100) + '_' + model_name)
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        q_models_f_control + q_models_f_matwt + q_models_f_fko + q_models_m_control + q_models_m_matwt + q_models_m_fko,
+        models_qarea_f_control + models_qarea_f_matwt + models_qarea_f_fko + models_qarea_m_control + models_qarea_m_matwt + models_qarea_m_fko,
     model_names=model_names)
 
 # convert p-values to asterisks
@@ -1149,15 +1122,15 @@ if SAVE_FIGS:
     sex = 'f'
     df = df_all_f[df_all_f['depot'] == depot].copy()
     df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_f_control[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_control[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'Control'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(q_models_f_matwt[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_matwt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'MAT_WT'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(q_models_f_fko[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_fko[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'FKO'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C4', marker='o',
                                            line_label='FKO')
@@ -1178,15 +1151,15 @@ if SAVE_FIGS:
     sex = 'm'
     df = df_all_m[df_all_m['depot'] == depot].copy()
     df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_m_control[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_control[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'Control'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(q_models_m_matwt[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_matwt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'MAT_WT'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(q_models_m_fko[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_fko[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'FKO'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C4', marker='o',
                                            line_label='FKO')
@@ -1204,15 +1177,15 @@ if SAVE_FIGS:
     sex = 'f'
     df = df_all_f[df_all_f['depot'] == depot].copy()
     df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_f_control[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_control[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'Control'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(q_models_f_matwt[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_matwt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'MAT_WT'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(q_models_f_fko[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_fko[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'FKO'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C4', marker='o',
                                            line_label='FKO')
@@ -1230,15 +1203,15 @@ if SAVE_FIGS:
     sex = 'm'
     df = df_all_m[df_all_m['depot'] == depot].copy()
     df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_m_control[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_control[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'Control'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(q_models_m_matwt[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_matwt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'MAT_WT'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(q_models_m_fko[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_fko[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'FKO'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C4', marker='o',
                                            line_label='FKO')
@@ -1255,15 +1228,15 @@ if SAVE_FIGS:
     sex = 'f'
     df = df_all_f[df_all_f['depot'] == depot].copy()
     df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_f_control[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_control[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'Control'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(q_models_f_matwt[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_matwt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'MAT_WT'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(q_models_f_fko[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_f_fko[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'FKO'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C4', marker='o',
                                            line_label='FKO')
@@ -1283,15 +1256,15 @@ if SAVE_FIGS:
     sex = 'm'
     df = df_all_m[df_all_m['depot'] == depot].copy()
     df['area_at_quantile'] = np.array(df['area_at_quantiles'].to_list())[:, i_q]  # vector of areas at current quantile
-    cytometer.stats.plot_linear_regression(q_models_m_control[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_control[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'Control'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C2', marker='x',
                                            line_label='Control')
-    cytometer.stats.plot_linear_regression(q_models_m_matwt[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_matwt[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'MAT_WT'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C3', marker='+',
                                            line_label='MAT WT')
-    cytometer.stats.plot_linear_regression(q_models_m_fko[i], df, 'DW',
+    cytometer.stats.plot_linear_regression(models_qarea_m_fko[i], df, 'DW',
                                            other_vars={'depot': depot, 'sex': sex, 'functional_ko': 'FKO'},
                                            dep_var='area_at_quantile', sy=1e-3, c='C4', marker='o',
                                            line_label='FKO')
