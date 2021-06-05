@@ -881,16 +881,23 @@ print('Subcutaneous: ' + pval_text)
 
 # extract coefficients, errors and p-values from models
 model_names = ['model_gwat_f_global', 'model_sqwat_f_global', 'model_gwat_m_global', 'model_sqwat_m_global']
+extra_hypotheses='Intercept+C(functional_ko)[T.MAT_WT]=0'
+extra_hypotheses='Intercept+C(functional_ko)[T.MAT_WT],Intercept+C(functional_ko)[T.FKO]'\
+                 + ',BW__+BW__:C(functional_ko)[T.MAT_WT],BW__+BW__:C(functional_ko)[T.FKO]'
+
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
         [model_gwat_f_global, model_sqwat_f_global, model_gwat_m_global, model_sqwat_m_global],
-    model_names=model_names)
+        extra_hypotheses=extra_hypotheses,
+        model_names=model_names)
 
 # multitest correction using Benjamini-Krieger-Yekutieli
-col = df_pval.columns[1]
+# we only need to correct the slopes' p-values, because we are not testing the values of the intercepts
+col = ['BW__', 'BW__+BW__:C(functional_ko)[T.MAT_WT]', 'BW__+BW__:C(functional_ko)[T.FKO]']
 df_corrected_pval = df_pval.copy()
-_, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
-df_corrected_pval['Intercept'] = -1.0
+_, aux, _, _ = multipletests(np.array(df_pval[col]).flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval[:] = np.nan
+df_corrected_pval[col] = aux.reshape(df_corrected_pval[col].shape)
 
 # convert p-values to asterisks
 df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
@@ -899,10 +906,10 @@ df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_correct
                                      columns=df_coeff.columns, index=model_names)
 
 if SAVE_FIGS:
-    df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk], axis=1)
-    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
+    df_concat = pd.concat([df_coeff, df_ci_lo, df_ci_hi, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk], axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 7)))
     df_concat = df_concat.iloc[:, idx]
-    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_depot_weight_models_coeffs_pvals_fko.csv'))
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_depot_weight_models_coeffs_pvals_fko.csv'), na_rep='nan')
 
 if SAVE_FIGS:
     plt.clf()
