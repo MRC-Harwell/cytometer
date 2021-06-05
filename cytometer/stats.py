@@ -124,7 +124,7 @@ def models_coeff_ci_pval(models, extra_hypotheses=None, model_names=None):
 
     * Example of extra hypotheses:
 
-    'Intercept + C(ko_parent)[T.MAT]'
+    'Intercept + C(ko_parent)[T.MAT], C(ko_parent)[T.MAT]=C(ko_parent)[T.FKO]'
 
     :param models: List of statsmodels models (see example above).
     :param extra_hypotheses: (def None) String with new hypotheses to t-test in the model (see example above).
