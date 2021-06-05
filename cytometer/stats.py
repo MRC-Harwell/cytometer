@@ -142,8 +142,8 @@ def models_coeff_ci_pval(models, extra_hypotheses=None, model_names=None):
         # values of coefficients
         df_coeff = pd.DataFrame(data=model.params).transpose()
         # values of coefficient's confidence interval
-        df_ci_lo = pd.DataFrame(data=model.conf_int()[0]).transpose()
-        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose()
+        df_ci_lo = pd.DataFrame(data=model.conf_int()[0]).transpose().reset_index()
+        df_ci_hi = pd.DataFrame(data=model.conf_int()[1]).transpose().reset_index()
         # p-values
         df_pval = pd.DataFrame(data=model.pvalues).transpose()
         # extra p-values
@@ -172,9 +172,10 @@ def models_coeff_ci_pval(models, extra_hypotheses=None, model_names=None):
     df_ci_hi_tot = df_ci_hi_tot.reset_index()
     df_pval_tot = df_pval_tot.reset_index()
     df_coeff_tot.drop(labels='index', axis='columns', inplace=True)
-    df_ci_lo_tot.drop(labels='index', axis='columns', inplace=True)
-    df_ci_hi_tot.drop(labels='index', axis='columns', inplace=True)
-    df_pval_tot.drop(labels='index', axis='columns', inplace=True)
+    df_ci_lo_tot = df_ci_lo_tot[df_coeff_tot.columns].copy()
+    df_ci_hi_tot = df_ci_hi_tot[df_coeff_tot.columns].copy()
+    df_pval_tot = df_pval_tot[df_coeff_tot.columns].copy()
+
     if model_names is not None:
         df_coeff_tot['model'] = model_names
         df_ci_lo_tot['model'] = model_names
