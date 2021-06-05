@@ -29,7 +29,7 @@ def pval_to_asterisk(pval, brackets=True):
         else:
             lb = ''
             rb = ''
-        if pval < 0.0:
+        if (pval < 0.0) | np.isnan(pval):
             return 'nan'
         elif pval > 0.05:
             return lb + 'ns' + rb
