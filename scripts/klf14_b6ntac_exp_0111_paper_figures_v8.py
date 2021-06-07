@@ -824,26 +824,22 @@ lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_gwat_f_control_matwt
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Gonadal: ' + pval_text)
-# print('Gonadal: AIC_null=' + '{0:.2f}'.format(model_gwat_f_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(model_gwat_f_control_matwt.aic))
 
 lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_sqwat_f_control_matwt', :]
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Subcutaneous: ' + pval_text)
-# print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(model_sqwat_f_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(model_sqwat_f_control_matwt.aic))
 
 print('Male')
 lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_gwat_m_control_matwt', :]
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Gonadal: ' + pval_text)
-# print('Gonadal: AIC_null=' + '{0:.2f}'.format(model_gwat_m_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(model_gwat_m_control_matwt.aic))
 
 lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_sqwat_m_control_matwt', :]
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Subcutaneous: ' + pval_text)
-# print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(model_sqwat_m_control_matwt_null.aic) + ', AIC_alt=' + '{0:.2f}'.format(model_sqwat_m_control_matwt.aic))
 
 # Likelihood ratio tests: MAT WT vs. FKO (MAT Het)
 print('')
@@ -854,34 +850,25 @@ lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_gwat_f_matwt_fko', :
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Gonadal: ' + pval_text)
-# print('Gonadal: AIC_null=' + '{0:.2f}'.format(model_gwat_f_matwt_fko_null.aic)
-#       + ', AIC_alt=' + '{0:.2f}'.format(model_gwat_f_matwt_fko.aic))
 
 lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_sqwat_f_matwt_fko', :]
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Subcutaneous: ' + pval_text)
-# print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(model_sqwat_f_matwt_fko_null.aic)
-#       + ', AIC_alt=' + '{0:.2f}'.format(model_sqwat_f_matwt_fko.aic))
 
 print('Male')
 lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_gwat_m_matwt_fko', :]
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Gonadal: ' + pval_text)
-# print('Gonadal: AIC_null=' + '{0:.2f}'.format(model_gwat_m_matwt_fko_null.aic)
-#       + ', AIC_alt=' + '{0:.2f}'.format(model_gwat_m_matwt_fko.aic))
 
 lr, pval, pval_ast, pval_adj, pval_adj_ast = lrt.loc['model_sqwat_m_matwt_fko', :]
 pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + pval_ast \
             + ', p-adj=' + '{0:.2g}'.format(pval_adj) + ' ' + pval_adj_ast
 print('Subcutaneous: ' + pval_text)
-# print('Subcutaneous: AIC_null=' + '{0:.2f}'.format(model_sqwat_m_matwt_fko_null.aic)
-#       + ', AIC_alt=' + '{0:.2f}'.format(model_sqwat_m_matwt_fko.aic))
 
 # extract coefficients, errors and p-values from models
 model_names = ['model_gwat_f_global', 'model_sqwat_f_global', 'model_gwat_m_global', 'model_sqwat_m_global']
-extra_hypotheses='Intercept+C(functional_ko)[T.MAT_WT]=0'
 extra_hypotheses='Intercept+C(functional_ko)[T.MAT_WT],Intercept+C(functional_ko)[T.FKO]'\
                  + ',BW__+BW__:C(functional_ko)[T.MAT_WT],BW__+BW__:C(functional_ko)[T.FKO]'
 
@@ -900,13 +887,13 @@ df_corrected_pval[:] = np.nan
 df_corrected_pval[col] = aux.reshape(df_corrected_pval[col].shape)
 
 # convert p-values to asterisks
-df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+df_pval_ast = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
                            index=model_names)
-df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+df_corrected_pval_ast = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
                                      columns=df_coeff.columns, index=model_names)
 
 if SAVE_FIGS:
-    df_concat = pd.concat([df_coeff, df_ci_lo, df_ci_hi, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk], axis=1)
+    df_concat = pd.concat([df_coeff, df_ci_lo, df_ci_hi, df_pval, df_pval_ast, df_corrected_pval, df_corrected_pval_ast], axis=1)
     idx = list(interleave(np.array_split(range(df_concat.shape[1]), 7)))
     df_concat = df_concat.iloc[:, idx]
     df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_depot_weight_models_coeffs_pvals_fko.csv'), na_rep='nan')
@@ -1016,105 +1003,127 @@ quantiles = np.linspace(0, 1, 21)  #
 # indices of the quantiles we are going to model
 i_quantiles = [5, 10, 15]  # Q1, Q2, Q3
 
-# for convenience
-df_all_f = df_all[df_all['sex'] == 'f']
-df_all_m = df_all[df_all['sex'] == 'm']
+# auxiliary variables for LRT null-models
+df_all['functional_ko_a'] = df_all['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['Control_MAT_WT', 'FKO'], ordered=True))
+df_all.loc[df_all['functional_ko'] != 'FKO', 'functional_ko_a'] = 'Control_MAT_WT'
 
-depot = 'gwat'
-# depot = 'sqwat'
+df_all['functional_ko_b'] = df_all['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['Control', 'MAT_WT_FKO'], ordered=True))
+df_all.loc[df_all['functional_ko'] != 'Control', 'functional_ko_b'] = 'MAT_WT_FKO'
 
 # compute LRTs and extract p-values and LRs
 lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
 
-# Control vs. MAT WT
-lr, pval = cytometer.stats.lrtest(model_gwat_f_control_matwt_null.llf, model_gwat_f_control_matwt.llf)
-lrt.loc['model_gwat_f_control_matwt', :] =  (lr, pval, cytometer.stats.pval_to_asterisk(pval))
-
 # fit linear models to area quantiles
-models_qarea_f_control = []
-models_qarea_f_matwt = []
-models_qarea_f_fko = []
-models_qarea_m_control = []
-models_qarea_m_matwt = []
-models_qarea_m_fko = []
-models_qarea_f_null = []
-models_qarea_m_null = []
-models_qarea_f = []
-models_qarea_m = []
+models_gwat_f_global = []
+models_gwat_m_global = []
+models_sqwat_f_global = []
+models_sqwat_m_global = []
+models_gwat_f_control_matwt = []
+models_gwat_m_control_matwt = []
+models_sqwat_f_control_matwt = []
+models_sqwat_m_control_matwt = []
+models_gwat_f_matwt_fko = []
+models_gwat_m_matwt_fko = []
+models_sqwat_f_matwt_fko = []
+models_sqwat_m_matwt_fko = []
 for i_q in i_quantiles:
 
     # choose one area_at_quantile value as the output of the linear model
     df_all['area_at_quantile'] = np.array(df_all['area_at_quantiles'].to_list())[:, i_q]
 
-    # fit FKO linear models
-    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'Control')
-    model_qarea_f_control = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
-    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'MAT_WT')
-    model_qarea_f_matwt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
-    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'FKO')
-    model_qarea_f_fko = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
-    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'Control')
-    model_qarea_m_control = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
-    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'MAT_WT')
-    model_qarea_m_matwt = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
-    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot) & (df_all['functional_ko'] == 'FKO')
-    model_qarea_m_fko = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    # for convenience create two dataframes (female and male) with the data for the current depot
+    df_f_gwat = df_all[(df_all['sex'] == 'f') & (df_all['depot'] == 'gwat')]
+    df_m_gwat = df_all[(df_all['sex'] == 'm') & (df_all['depot'] == 'gwat')]
+    df_f_sqwat = df_all[(df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat')]
+    df_m_sqwat = df_all[(df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat')]
 
-    # fit null models
-    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
-    model_qarea_f_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
-    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
-    model_qarea_m_null = sm.OLS.from_formula('area_at_quantile ~ DW', data=df_all, subset=idx).fit()
+    # global models fitted to 3 strata (Control, MAT WT and FKO):
+    # These are the models that we are going to use to test for correlation, apart from the LRTs
+    model_gwat_f_global = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_f_gwat).fit()
+    model_gwat_m_global = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_m_gwat).fit()
+    model_sqwat_f_global = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_f_sqwat).fit()
+    model_sqwat_m_global = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_m_sqwat).fit()
 
-    # fit models with effect variable
-    idx = (df_all['sex'] == 'f') & (df_all['depot'] == depot)
-    model_qarea_f = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_all, subset=idx).fit()
-    idx = (df_all['sex'] == 'm') & (df_all['depot'] == depot)
-    model_qarea_m = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko)', data=df_all, subset=idx).fit()
+    # models fitted to 2 strata (combining Control and MAT WT) to be used as null models
+    model_gwat_f_control_matwt = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_a)', data=df_f_gwat).fit()
+    model_gwat_m_control_matwt = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_a)', data=df_m_gwat).fit()
+    model_sqwat_f_control_matwt = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_a)', data=df_f_sqwat).fit()
+    model_sqwat_m_control_matwt = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_a)', data=df_m_sqwat).fit()
 
-    models_qarea_f_control.append(model_qarea_f_control)
-    models_qarea_f_matwt.append(model_qarea_f_matwt)
-    models_qarea_f_fko.append(model_qarea_f_fko)
-    models_qarea_m_control.append(model_qarea_m_control)
-    models_qarea_m_matwt.append(model_qarea_m_matwt)
-    models_qarea_m_fko.append(model_qarea_m_fko)
-    models_qarea_f_null.append(model_qarea_f_null)
-    models_qarea_m_null.append(model_qarea_m_null)
-    models_qarea_f.append(model_qarea_f)
-    models_qarea_m.append(model_qarea_m)
+    # models fitted to 2 strata (combining MAT WT and FKO) to be used as null models
+    model_gwat_f_matwt_fko = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_b)', data=df_f_gwat).fit()
+    model_gwat_m_matwt_fko = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_b)', data=df_f_gwat).fit()
+    model_sqwat_f_matwt_fko = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_b)', data=df_f_sqwat).fit()
+    model_sqwat_m_matwt_fko = sm.OLS.from_formula('area_at_quantile ~ DW * C(functional_ko_b)', data=df_f_sqwat).fit()
+
+    models_gwat_f_global.append(model_gwat_f_global)
+    models_gwat_m_global.append(model_gwat_m_global)
+    models_sqwat_f_global.append(model_sqwat_f_global)
+    models_sqwat_m_global.append(model_sqwat_m_global)
+    models_gwat_f_control_matwt.append(model_gwat_f_control_matwt)
+    models_gwat_m_control_matwt.append(model_gwat_m_control_matwt)
+    models_sqwat_f_control_matwt.append(model_sqwat_f_control_matwt)
+    models_sqwat_m_control_matwt.append(model_sqwat_m_control_matwt)
+    models_gwat_f_matwt_fko.append(model_gwat_f_matwt_fko)
+    models_gwat_m_matwt_fko.append(model_gwat_m_matwt_fko)
+    models_sqwat_f_matwt_fko.append(model_sqwat_f_matwt_fko)
+    models_sqwat_m_matwt_fko.append(model_sqwat_m_matwt_fko)
 
     if DEBUG:
-        print(model_qarea_f_control.summary())
-        print(model_qarea_f_matwt.summary())
-        print(model_qarea_f_fko.summary())
-        print(model_qarea_m_control.summary())
-        print(model_qarea_m_matwt.summary())
-        print(model_qarea_m_fko.summary())
-        print(model_qarea_f_null.summary())
-        print(model_qarea_m_null.summary())
-        print(model_qarea_f.summary())
-        print(model_qarea_m.summary())
+        print(model_gwat_f_global.summary())
+        print(model_gwat_m_global.summary())
+        print(model_sqwat_f_global.summary())
+        print(model_sqwat_m_global.summary())
+        print(model_gwat_f_control_matwt.summary())
+        print(model_gwat_m_control_matwt.summary())
+        print(model_sqwat_f_control_matwt.summary())
+        print(model_sqwat_m_control_matwt.summary())
+        print(model_gwat_f_matwt_fko.summary())
+        print(model_gwat_m_matwt_fko.summary())
+        print(model_sqwat_f_matwt_fko.summary())
+        print(model_sqwat_m_matwt_fko.summary())
 
 # extract coefficients, errors and p-values from PAT and MAT models
-model_names = []
-for model_name in ['model_f_control', 'model_f_matwt', 'model_f_fko', 'model_m_control', 'model_m_matwt', 'model_m_fko']:
-    for i_q in i_quantiles:
-        model_names.append('q_' + '{0:.0f}'.format(quantiles[i_q] * 100) + '_' + model_name)
+model_names = ['model_gwat_f_global_q1', 'model_gwat_f_global_q2', 'model_gwat_f_global_q3',
+               'model_sqwat_f_global_q1', 'model_sqwat_f_global_q2', 'model_sqwat_f_global_q3',
+               'model_gwat_m_global_q1', 'model_gwat_m_global_q2', 'model_gwat_m_global_q3',
+               'model_sqwat_m_global_q1', 'model_sqwat_m_global_q2', 'model_sqwat_m_global_q3'
+               ]
+extra_hypotheses='Intercept+C(functional_ko)[T.MAT_WT],Intercept+C(functional_ko)[T.FKO]'\
+                 + ',DW+DW:C(functional_ko)[T.MAT_WT],DW+DW:C(functional_ko)[T.FKO]'
+
 df_coeff, df_ci_lo, df_ci_hi, df_pval = \
     cytometer.stats.models_coeff_ci_pval(
-        models_qarea_f_control + models_qarea_f_matwt + models_qarea_f_fko + models_qarea_m_control + models_qarea_m_matwt + models_qarea_m_fko,
+        [models_gwat_f_global[0], models_gwat_f_global[1], models_gwat_f_global[2],
+        models_sqwat_f_global[0], models_sqwat_f_global[1], models_sqwat_f_global[2],
+        models_gwat_m_global[0], models_gwat_m_global[1], models_gwat_m_global[2],
+        models_sqwat_m_global[0], models_sqwat_m_global[1], models_sqwat_m_global[2]],
+    extra_hypotheses=extra_hypotheses,
     model_names=model_names)
 
+# multitest correction using Benjamini-Krieger-Yekutieli
+# we only need to correct the slopes' p-values, because we are not testing the values of the intercepts
+col = ['DW', 'DW+DW:C(functional_ko)[T.MAT_WT]', 'DW+DW:C(functional_ko)[T.FKO]']
+df_corrected_pval = df_pval.copy()
+_, aux, _, _ = multipletests(np.array(df_pval[col]).flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_corrected_pval[:] = np.nan
+df_corrected_pval[col] = aux.reshape(df_corrected_pval[col].shape)
+
 # convert p-values to asterisks
-df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
+df_pval_ast = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
                            index=model_names)
+df_corrected_pval_ast = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
+                                     columns=df_coeff.columns, index=model_names)
 
 if SAVE_FIGS:
-    df_concat = pd.concat([df_coeff, df_pval, df_asterisk],
-                          axis=1)
-    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 3)))
+    df_concat = pd.concat(
+        [df_coeff, df_ci_lo, df_ci_hi, df_pval, df_pval_ast, df_corrected_pval, df_corrected_pval_ast], axis=1)
+    idx = list(interleave(np.array_split(range(df_concat.shape[1]), 7)))
     df_concat = df_concat.iloc[:, idx]
-    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_area_at_quartiles_fko_models_coeffs_pvals_' + depot + '.csv'))
+    df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_area_at_quartiles_fko_models_coeffs_pvals.csv'),
+                     na_rep='nan')
 
 # plot
 if SAVE_FIGS:
