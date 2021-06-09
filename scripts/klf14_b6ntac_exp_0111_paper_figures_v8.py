@@ -221,20 +221,22 @@ json_annotation_files_dict['gwat'] = [
 ## USED IN PAPER
 ########################################################################################################################
 
-import pickle
+# import pickle
 from toolz import interleave
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import scipy
+# import scipy
 import scipy.stats as stats
-import skimage
+# import skimage
+import sklearn.neighbors, sklearn.model_selection
 import statsmodels.api as sm
-import statsmodels.formula.api as smf
+# import statsmodels.formula.api as smf
 from statsmodels.stats.multitest import multipletests
 import seaborn as sns
-import openslide
-from PIL import Image, ImageDraw
+# import openslide
+import PIL
+# from PIL import Image, ImageDraw
 import cytometer.data
 import cytometer.stats
 import shapely
@@ -245,6 +247,7 @@ hand_traced_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_v2')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v8/annotations')
 histo_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 dataframe_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
+paper_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 metainfo_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
@@ -1519,12 +1522,363 @@ if SAVE_FIGS:
 ## USED IN THE PAPER
 ########################################################################################################################
 
-## only training windows used for hand tracing
+## only training windows used for hand tracing (there are only Control and MAT Het mice in the dataset)
 
-# this figure is generated in klf14_b6ntac_exp_0109_pipeline_v8_validation.py
-# the area values can be loaded from file dataframe_dir/'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_sqwat.csv'
+# a previous version of this section was in klf14_b6ntac_exp_0109_pipeline_v8_validation.py, but now we have updated it
+# so that plots are labelled with Control, MAT WT, FKO instead of PAT, MAT
 
-## only slides used for hand tracing
+# list of hand traced contours
+# The list contains 126 XCF (Gimp format) files with the contours that were used for training DeepCytometer,
+# plus 5 files (131 in total) with extra contours for 2 mice where the cell population was not well
+# represented.
+import pandas as pd
+
+hand_file_svg_list = [
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_010512_col_006912.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_012848_col_016240.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_016812_col_017484.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_019228_col_015060.svg',
+    'KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00_row_029472_col_015520.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_005348_col_019844.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_006652_col_061724.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_006900_col_071980.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_010732_col_016692.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_012828_col_018388.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_013600_col_022880.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_014768_col_022576.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_014980_col_027052.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_027388_col_018468.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_028864_col_024512.svg',
+    'KLF14-B6NTAC 36.1i PAT 104-16 C1 - 2016-02-12 12.14.38_row_041392_col_026032.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_009588_col_028676.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_011680_col_013984.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_015856_col_012416.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_018720_col_031152.svg',
+    'KLF14-B6NTAC-36.1a PAT 96-16 C1 - 2016-02-10 16.12.38_row_021796_col_055852.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_011852_col_071620.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_013300_col_055476.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_014320_col_007600.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_015200_col_021536.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_020256_col_002880.svg',
+    'KLF14-B6NTAC-36.1b PAT 97-16 C1 - 2016-02-10 17.38.06_row_021136_col_010880.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_001292_col_004348.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_005600_col_004224.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_007216_col_008896.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_007372_col_008556.svg',
+    'KLF14-B6NTAC-37.1c PAT 108-16 C1 - 2016-02-15 14.49.45_row_011904_col_005280.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_010048_col_001856.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_012172_col_049588.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_013232_col_009008.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_016068_col_007276.svg',
+    'KLF14-B6NTAC-37.1d PAT 109-16 C1 - 2016-02-15 15.19.08_row_019680_col_016480.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_004124_col_012524.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_004384_col_005456.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006040_col_005272.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_006640_col_008848.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_008532_col_009804.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_013952_col_002624.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_017044_col_031228.svg',
+    'KLF14-B6NTAC-MAT-16.2d  214-16 C1 - 2016-02-17 16.02.46_row_021804_col_035412.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_010716_col_008924.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_016832_col_016944.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_018784_col_010912.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_024528_col_014688.svg',
+    'KLF14-B6NTAC-MAT-17.1c  46-16 C1 - 2016-02-01 14.02.04_row_026108_col_068956.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_009840_col_008736.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_017792_col_017504.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_020032_col_018640.svg',
+    'KLF14-B6NTAC-MAT-17.2c  66-16 C1 - 2016-02-04 11.46.39_row_030820_col_022204.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_007500_col_050372.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_008000_col_003680.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_013348_col_019316.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_019168_col_019600.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_022960_col_007808.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_026132_col_012148.svg',
+    'KLF14-B6NTAC-MAT-17.2f  68-16 C1 - 2016-02-04 15.05.54_row_027968_col_011200.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_003584_col_017280.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_012908_col_010212.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_013984_col_012576.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_014448_col_019088.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_015200_col_015920.svg',
+    'KLF14-B6NTAC-MAT-18.1a  50-16 C1 - 2016-02-02 09.12.41_row_028156_col_018596.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_001920_col_014048.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_005344_col_019360.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_009236_col_018316.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_012680_col_023936.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_013256_col_007952.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_014800_col_020976.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_016756_col_063692.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_017360_col_024712.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_020824_col_018688.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_024128_col_010112.svg',
+    'KLF14-B6NTAC-MAT-18.1e  54-16 C1 - 2016-02-02 15.26.33_row_024836_col_055124.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_005424_col_006896.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_006268_col_013820.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_013820_col_057052.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_014272_col_008064.svg',
+    'KLF14-B6NTAC-MAT-18.2b  58-16 C1 - 2016-02-03 11.10.52_row_017808_col_012400.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_007296_col_010640.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_013856_col_014128.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_018380_col_063068.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_020448_col_013824.svg',
+    'KLF14-B6NTAC-MAT-18.2d  60-16 C1 - 2016-02-03 13.13.57_row_024076_col_020404.svg',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_row_010128_col_013536.svg',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_row_015776_col_010976.svg',
+    'KLF14-B6NTAC-MAT-18.2g  63-16 C1 - 2016-02-03 16.58.52_row_015984_col_026832.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_005428_col_058372.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_012404_col_054316.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_013604_col_024644.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_014628_col_069148.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_018384_col_014688.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_019340_col_017348.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_020128_col_010096.svg',
+    'KLF14-B6NTAC-MAT-18.3b  223-16 C2 - 2016-02-26 10.35.52_row_022000_col_015568.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_006880_col_017808.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_008212_col_015364.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_011004_col_005988.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_015004_col_010364.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_018992_col_005952.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_019556_col_057972.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_021812_col_022916.svg',
+    'KLF14-B6NTAC-MAT-18.3d  224-16 C1 - 2016-02-26 11.13.53_row_022208_col_018128.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_010084_col_058476.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_012208_col_007472.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_013680_col_019152.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_016260_col_058300.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_019220_col_061724.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_020048_col_028896.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_021012_col_057844.svg',
+    'KLF14-B6NTAC-PAT-36.3d  416-16 C1 - 2016-03-16 14.44.11_row_023236_col_011084.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_006124_col_082236.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_007436_col_019092.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_009296_col_029664.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_015872_col_019456.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_016556_col_010292.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_023100_col_009220.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_023728_col_011904.svg',
+    'KLF14-B6NTAC-PAT-37.2g  415-16 C1 - 2016-03-16 11.47.52_row_031860_col_033476.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_004256_col_017552.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_005424_col_010432.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_006412_col_012484.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_012144_col_007056.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_013012_col_019820.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_031172_col_025996.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_034628_col_040116.svg',
+    'KLF14-B6NTAC-PAT-37.4a  417-16 C1 - 2016-03-16 15.55.32_row_035948_col_041492.svg'
+]
+
+# get v2 of the hand traced contours
+hand_file_svg_list = [os.path.join(hand_traced_dir, x) for x in hand_file_svg_list]
+
+# filename of the dataframe with the hand traced cell data
+df_hand_all_filename = os.path.join(paper_dir, 'klf14_b6ntac_exp_0111_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.csv')
+
+if os.path.isfile(df_hand_all_filename):
+
+    # load dataframe with the hand traced data
+    df_hand_all = pd.read_csv(df_hand_all_filename)
+
+else:  # compute dataframe with the hand traced data
+
+    # loop hand traced files and make a dataframe with the cell sizes
+    df_hand_all = pd.DataFrame()
+    for i, file_svg in enumerate(hand_file_svg_list):
+
+        print('File ' + str(i) + '/' + str(len(hand_file_svg_list) - 1) + ': ' + os.path.basename(file_svg))
+
+        # load hand traced contours
+        cells = cytometer.data.read_paths_from_svg_file(file_svg, tag='Cell', add_offset_from_filename=False,
+                                                        minimum_npoints=3)
+
+        print('Cells: ' + str(len(cells)))
+
+        if (len(cells) == 0):
+            continue
+
+        # load training image
+        file_im = file_svg.replace('.svg', '.tif')
+        im = PIL.Image.open(file_im)
+
+        # read pixel size information
+        xres = 0.0254 / im.info['dpi'][0] * 1e6  # um
+        yres = 0.0254 / im.info['dpi'][1] * 1e6  # um
+
+        im = np.array(im)
+
+        if DEBUG:
+            plt.clf()
+            plt.imshow(im)
+            for j in range(len(cells)):
+                cell = np.array(cells[j])
+                plt.fill(cell[:, 0], cell[:, 1], edgecolor='C0', fill=False)
+                plt.text(np.mean(cell[:, 0]), np.mean(cell[:, 1]), str(j))
+
+        # compute cell areas
+        cell_areas = np.array([shapely.geometry.Polygon(x).area for x in cells]) * xres * yres
+
+        df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(file_svg),
+                                                       values=cell_areas, values_tag='area',
+                                                       tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
+
+        # figure out what depot these cells belong to
+        # NOTE: this code is here only for completion, because there are no gonadal slides in the training dataset, only
+        # subcutaneous
+        aux = os.path.basename(file_svg).replace('KLF14-B6NTAC', '')
+        if 'B' in aux and 'C' in aux:
+            raise ValueError('Slice appears to be both gonadal and subcutaneous')
+        elif 'B' in aux:
+            depot = 'gwat'
+        elif 'C' in aux:
+            depot = 'sqwat'
+        else:
+            raise ValueError('Slice is neither gonadal nor subcutaneous')
+        df['depot'] = depot
+        df_hand_all = df_hand_all.append(df, ignore_index=True)
+
+    # save dataframe for later use
+    df_hand_all.to_csv(df_hand_all_filename, index=False)
+
+
+print('Min cell size = ' + '{0:.1f}'.format(np.min(df_hand_all['area'])) + ' um^2 = '
+      + '{0:.1f}'.format(np.min(df_hand_all['area']) / xres_ref / yres_ref) + ' pixels')
+print('Max cell size = ' + '{0:.1f}'.format(np.max(df_hand_all['area'])) + ' um^2 = '
+      + '{0:.1f}'.format(np.max(df_hand_all['area']) / xres_ref / yres_ref) + ' pixels')
+
+# these are the same quantiles as the ones for automatic segmentations in exp 0110
+quantiles = np.linspace(0, 1, 21)
+area_bin_edges = np.linspace(min_area_um2, max_area_um2, 201)
+area_bin_centers = (area_bin_edges[0:-1] + area_bin_edges[1:]) / 2.0
+
+# 1-alpha is the % of confidence interval, e.g. alpha=0.05 => 95% CI
+alpha = 0.05
+k = stats.norm.ppf(1 - alpha / 2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+
+if SAVE_FIGS:
+
+    plt.clf()
+
+    plt.subplot(221)
+    idx = (df_hand_all['depot'] == 'sqwat') & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'PAT')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
+        np.array(df_hand_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples((area_bin_centers).reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot((area_bin_centers) * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Female Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    area_q = stats.mstats.hdquantiles(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
+    print('female Control')
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
+
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
+
+    plt.subplot(222)
+    idx = (df_hand_all['depot'] == 'sqwat') & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'PAT')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
+        np.array(df_hand_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot(area_bin_centers * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Male Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    area_q = stats.mstats.hdquantiles(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
+    print('male PAT')
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
+
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
+
+    plt.subplot(223)
+    idx = (df_hand_all['depot'] == 'sqwat') & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'MAT') \
+          & (df_hand_all['genotype'] == 'KLF14-KO:Het')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
+        np.array(df_hand_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot(area_bin_centers * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Female FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    area_q = stats.mstats.hdquantiles(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
+    print('female MAT WT')
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
+
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
+
+    plt.subplot(224)
+    idx = (df_hand_all['depot'] == 'sqwat') & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'MAT')
+    kde = sklearn.neighbors.KernelDensity(bandwidth=100, kernel='gaussian').fit(
+        np.array(df_hand_all[idx]['area']).reshape(-1, 1))
+    log_dens = kde.score_samples(area_bin_centers.reshape(-1, 1))
+    pdf = np.exp(log_dens)
+    plt.plot(area_bin_centers * 1e-3, pdf / pdf.max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Male FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    area_q = stats.mstats.hdquantiles(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    area_stderr = stats.mstats.hdquantiles_sd(df_hand_all[idx]['area'] * 1e-3, prob=[0.25, 0.50, 0.75], axis=0)
+    ci_lo = area_q - k * area_stderr
+    ci_hi = area_q + k * area_stderr
+
+    print('male MAT WT')
+    print('\tQ1: ' + '{0:.2f}'.format(area_q[0]) + ' (' + '{0:.2f}'.format(ci_lo[0]) + ', ' + '{0:.2f}'.format(ci_hi[0]) + ')')
+    print('\tQ2: ' + '{0:.2f}'.format(area_q[1]) + ' (' + '{0:.2f}'.format(ci_lo[1]) + ', ' + '{0:.2f}'.format(ci_hi[1]) + ')')
+    print('\tQ3: ' + '{0:.2f}'.format(area_q[2]) + ' (' + '{0:.2f}'.format(ci_lo[2]) + ', ' + '{0:.2f}'.format(ci_hi[2]) + ')')
+
+    plt.plot([area_q[0], area_q[0]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[1], area_q[1]], [0, 1], 'k', linewidth=1)
+    plt.plot([area_q[2], area_q[2]], [0, 1], 'k', linewidth=1)
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.svg'))
+
+
+## whole slides used for hand tracing (there are only Control and MAT Het mice in the dataset)
 
 # all hand traced slides are subcutaneous, so we only need to compare against subcutaneous
 depot = 'sqwat'
@@ -1698,7 +2052,7 @@ if SAVE_FIGS:
     plt.suptitle('Subcutaneous', fontsize=14)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-## numerical quartiles and CIs associated to the histograms
+# numerical quartiles and CIs associated to the histograms
 
 idx_q1 = np.where(quantiles == 0.25)[0][0]
 idx_q2 = np.where(quantiles == 0.50)[0][0]
@@ -1822,7 +2176,24 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_quartiles_' + depot + '_hand_subset.svg'))
 
 
-## all slides
+## all slides (75 subcutaneous and 72 gonadal whole slides)
+
+# reload load dataframe with cell population quantiles and histograms, because previously we removed 3 slides that we
+# didn't have the BW for. But for this section, we don't need BW, so we can use all the data
+dataframe_areas_filename = os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0110_dataframe_areas_' + method + '.pkl')
+df_all = pd.read_pickle(dataframe_areas_filename)
+df_all = df_all.reset_index()
+
+df_all['sex'] = df_all['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
+df_all['ko_parent'] = df_all['ko_parent'].astype(
+    pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
+df_all['genotype'] = df_all['genotype'].astype(
+    pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
+df_all['functional_ko'] = 'Control'
+df_all.loc[(df_all['ko_parent'] == 'MAT') & (df_all['genotype'] == 'KLF14-KO:Het'), 'functional_ko'] = 'FKO'
+df_all.loc[(df_all['ko_parent'] == 'MAT') & (df_all['genotype'] == 'KLF14-KO:WT'), 'functional_ko'] = 'MAT_WT'
+df_all['functional_ko'] = df_all['functional_ko'].astype(
+    pd.api.types.CategoricalDtype(categories=['Control', 'MAT_WT', 'FKO'], ordered=True))
 
 depot = 'gwat'
 # depot = 'sqwat'
@@ -2266,7 +2637,7 @@ idx_q3 = np.where(quantiles == 0.75)[0][0]
 depot = 'sqwat'
 
 # load hand traced areas
-df_hand_all = pd.read_csv(os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.csv'))
+df_hand_all = pd.read_csv(os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0111_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.csv'))
 
 # identify whole slides used for the hand traced dataset
 idx_used_in_hand_traced = np.full((df_all.shape[0],), False)
@@ -2277,7 +2648,7 @@ for hand_file_svg in hand_file_svg_list:
 
     idx_used_in_hand_traced[(df_all[df.columns] == df.values).all(1)] = True
 
-## whole slides used for hand tracing compared to hand tracing
+## whole slides used for hand tracing segmented by Deep Cytometer compared to the smaller hand traced dataset
 
 print('DeepCytometer whole slide quartiles compared to hand tracing, same slides both')
 
@@ -2295,16 +2666,18 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
 
 print('f PAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
-# f MAT
-df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'MAT')]
-df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+# f MAT Het
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'MAT')
+                      & (df_hand_all['genotype'] == 'KLF14-KO:Het')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
 
 areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
 areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
@@ -2316,12 +2689,12 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
 
-print('f MAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('f MAT Het')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
 # m PAT
 df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'PAT')]
@@ -2337,16 +2710,18 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
 
 print('m PAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
-# m MAT
-df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'MAT')]
-df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+# m MAT Het
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'MAT')
+                      & (df_hand_all['genotype'] == 'KLF14-KO:Het')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
 
 areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
 areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
@@ -2358,12 +2733,12 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
 
-print('m MAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('m MAT Het')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
 
 ## whole slides used for hand tracing compared to hand tracing
@@ -2387,16 +2762,18 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
 
 print('f PAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
-# f MAT
-df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
-df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+# f MAT Het
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+                 & (df_all['genotype'] == 'KLF14-KO:Het')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
 
 areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
 stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
@@ -2411,12 +2788,12 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
 
-print('f MAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('f MAT Het')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
 # m PAT
 df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
@@ -2435,16 +2812,18 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
 
 print('m PAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
-# m MAT
-df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
-df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+# m MAT Het
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+                 & (df_all['genotype'] == 'KLF14-KO:Het')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
 
 areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
 stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
@@ -2459,10 +2838,10 @@ areas_at_quantiles_hat, stderr_at_quantiles_hat = \
 areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
 areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
 
-q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+area_ratio_1, area_ratio_2, area_ratio_3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
 
-print('m MAT')
-print('\t' + '{0:.2f}'.format(q1) + ' %')
-print('\t' + '{0:.2f}'.format(q2) + ' %')
-print('\t' + '{0:.2f}'.format(q3) + ' %')
+print('m MAT Het')
+print('\t' + '{0:.2f}'.format(area_ratio_1) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_2) + ' %')
+print('\t' + '{0:.2f}'.format(area_ratio_3) + ' %')
 
