@@ -1512,864 +1512,957 @@ lrt['pval_adj_ast'] = cytometer.stats.pval_to_asterisk(lrt['pval_adj'])
 if SAVE_FIGS:
     lrt.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_area_at_quartiles_models_lrt_fko.csv'), na_rep='nan')
 
+########################################################################################################################
+## smoothed histograms
+##
+## We can use all animals for this, even the ones where BW=NaN, because we don't need BW or DW
+## USED IN THE PAPER
+########################################################################################################################
 
-# ## multitest correction of all betas from both depots
-#
-# gwat_df = pd.read_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_gwat.csv'))
-# sqwat_df = pd.read_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_sqwat.csv'))
-#
-# # add a depot tag to the model name
-# gwat_df['model'] = ['gwat_' + x for x in gwat_df['model']]
-# sqwat_df['model'] = ['sqwat_' + x for x in gwat_df['model']]
-#
-# # concatenate p-values from gwat and sqwat, so that we have: female gwat, female sqwat, male gwat, male sqwat
-# col = 'DW.1'  # column name with the uncorrected p-values for the slope coefficients
-# pval = np.concatenate((gwat_df[col], sqwat_df[col]))
-#
-# # multitest correction using Benjamini-Krieger-Yekutieli
-# _, corrected_pval, _, _ = multipletests(pval, method='fdr_tsbky', alpha=0.05, returnsorted=False)
-#
-# # convert p-values to asterisks
-# corrected_asterisk = cytometer.stats.pval_to_asterisk(corrected_pval, brackets=False)
-#
-# # add to dataframe
-# gwat_df['DW.3'] = corrected_pval[0:12]
-# gwat_df['DW.4'] = corrected_asterisk[0:12]
-# sqwat_df['DW.3'] = corrected_pval[12:]
-# sqwat_df['DW.4'] = corrected_asterisk[12:]
-#
-# if SAVE_FIGS:
-#     gwat_df.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_gwat.csv'))
-#     sqwat_df.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_area_at_quartiles_parent_models_coeffs_pvals_sqwat.csv'))
-#
-#
-# ## one data point per animal
-# ## linear regression analysis of kN ~ DW * genotype
-# ## USED IN PAPER
-# ########################################################################################################################
-#
-# # fit models kN ~ DW
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:WT')
-# model_gwat_f_control = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:Het')
-# model_gwat_f_fko = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:WT')
-# model_gwat_m_control = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['genotype'] == 'KLF14-KO:Het')
-# model_gwat_m_fko = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-#
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:WT')
-# model_sqwat_f_control = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:Het')
-# model_sqwat_f_fko = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:WT')
-# model_sqwat_m_control = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['genotype'] == 'KLF14-KO:Het')
-# model_sqwat_m_fko = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-#
-# # fit null models and models with effect variable
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat')
-# gwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# gwat_model_f = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat')
-# gwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# gwat_model_m = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
-#
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat')
-# sqwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# sqwat_model_f = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat')
-# sqwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# sqwat_model_m = sm.OLS.from_formula('kN ~ DW * C(genotype)', data=df_all, subset=idx).fit()
-#
-# # Likelihood Ratio Tests
-# print('Genotype effect')
-# print('Female')
-# lr, pval = cytometer.stats.lrtest(gwat_model_f_null.llf, gwat_model_f.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'gwat: ' + pval_text)
-# lr, pval = cytometer.stats.lrtest(sqwat_model_f_null.llf, sqwat_model_f.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'sqwat: ' + pval_text)
-#
-# print('Male')
-# lr, pval = cytometer.stats.lrtest(gwat_model_m_null.llf, gwat_model_m.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'gwat: ' + pval_text)
-# lr, pval = cytometer.stats.lrtest(sqwat_model_m_null.llf, sqwat_model_m.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'sqwat: ' + pval_text)
-#
-# # extract coefficients, errors and p-values from PAT and MAT models
-# model_names = ['model_gwat_f_control', 'model_gwat_f_fko', 'model_sqwat_f_control', 'model_sqwat_f_fko',
-#                'model_gwat_m_control', 'model_gwat_m_fko', 'model_sqwat_m_control', 'model_sqwat_m_fko']
-# df_coeff, df_ci_lo, df_ci_hi, df_pval = \
-#     cytometer.stats.models_coeff_ci_pval(
-#         [model_gwat_f_control, model_gwat_f_fko, model_sqwat_f_control, model_sqwat_f_fko,
-#          model_gwat_m_control, model_gwat_m_fko, model_sqwat_m_control, model_sqwat_m_fko],
-#         model_names=model_names)
-#
-# # multitest correction using Benjamini-Krieger-Yekutieli
-#
-# # _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-# # df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
-#
-# col = df_pval.columns[1]
-# df_corrected_pval = df_pval.copy()
-# _, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
-# df_corrected_pval['Intercept'] = -1.0
-#
-# # convert p-values to asterisks
-# df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
-#                            index=model_names)
-# df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
-#                                      columns=df_coeff.columns, index=model_names)
-#
-# if SAVE_FIGS:
-#     df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
-#                           axis=1)
-#     idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
-#     df_concat = df_concat.iloc[:, idx]
-#     df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_kN_genotype_models_coeffs_pvals.csv'))
-#
-# # plot
-# if SAVE_FIGS:
-#
-#     plt.clf()
-#
-#     plt.subplot(221)
-#     # Female
-#     depot = 'gwat'; sex = 'f'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(gwat_model_f_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(model_gwat_f_control, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-#                                            dep_var='kN', sy=1e-6, c='C2', marker='x',
-#                                            line_label='WT')
-#     cytometer.stats.plot_linear_regression(model_gwat_f_fko, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-#                                            dep_var='kN', sy=1e-6, c='C3', marker='x',
-#                                            line_label='Het')
-#     plt.tick_params(labelsize=14)
-#     plt.ylabel('Gonadal\nk N ($10^6$ cells)', fontsize=14)
-#     plt.title('Female', fontsize=14)
-#     plt.legend(loc='best', fontsize=12)
-#     plt.ylim(-1, 16)
-#
-#     plt.subplot(222)
-#     # Male
-#     depot = 'gwat'; sex = 'm'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(gwat_model_m_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(model_gwat_m_control, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-#                                            dep_var='kN', sy=1e-6, c='C2', marker='x',
-#                                            line_label='WT')
-#     cytometer.stats.plot_linear_regression(model_gwat_m_fko, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-#                                            dep_var='kN', sy=1e-6, c='C3', marker='x',
-#                                            line_label='Het')
-#     plt.tick_params(labelsize=14)
-#     plt.title('Male', fontsize=14)
-#     plt.ylim(-1, 10)
-#
-#     plt.subplot(223)
-#     depot = 'sqwat'; sex = 'f'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(sqwat_model_f_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(model_sqwat_f_control, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-#                                            dep_var='kN', sy=1e-6, c='C2', marker='x',
-#                                            line_label='WT')
-#     cytometer.stats.plot_linear_regression(model_sqwat_f_fko, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-#                                            dep_var='kN', sy=1e-6, c='C3', marker='x',
-#                                            line_label='Het')
-#     plt.tick_params(labelsize=14)
-#     plt.ylabel('Subcutaneous\nk N ($10^6$ cells)', fontsize=14)
-#     plt.xlabel('Depot weight (g)', fontsize=14)
-#     plt.ylim(-1, 16)
-#
-#     plt.subplot(224)
-#     # Male
-#     depot = 'sqwat'; sex = 'm'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(sqwat_model_m_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(model_sqwat_m_control, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:WT'},
-#                                            dep_var='kN', sy=1e-6, c='C2', marker='x',
-#                                            line_label='WT')
-#     cytometer.stats.plot_linear_regression(model_sqwat_m_fko, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'genotype': 'KLF14-KO:Het'},
-#                                            dep_var='kN', sy=1e-6, c='C3', marker='x',
-#                                            line_label='Het')
-#     plt.tick_params(labelsize=14)
-#     plt.xlabel('Depot weight (g)', fontsize=14)
-#     plt.ylim(-1, 10)
-#
-#     plt.tight_layout()
-#
-#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_genotype_model.png'))
-#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_genotype_model.svg'))
-#
-# ## one data point per animal
-# ## linear regression analysis of kN ~ DW * parent
-# ## USED IN PAPER
-# ########################################################################################################################
-#
-# # fit models kN ~ DW
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'PAT')
-# gwat_model_f_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'MAT')
-# gwat_model_f_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'PAT')
-# gwat_model_m_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat') & (df_all['ko_parent'] == 'MAT')
-# gwat_model_m_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-#
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'PAT')
-# sqwat_model_f_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'MAT')
-# sqwat_model_f_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'PAT')
-# sqwat_model_m_pat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat') & (df_all['ko_parent'] == 'MAT')
-# sqwat_model_m_mat = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-#
-# # fit null models and models with effect variable
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'gwat')
-# gwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# gwat_model_f = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'gwat')
-# gwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# gwat_model_m = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
-#
-# idx = (df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat')
-# sqwat_model_f_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# sqwat_model_f = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
-# idx = (df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat')
-# sqwat_model_m_null = sm.OLS.from_formula('kN ~ DW', data=df_all, subset=idx).fit()
-# sqwat_model_m = sm.OLS.from_formula('kN ~ DW * C(ko_parent)', data=df_all, subset=idx).fit()
-#
-# # Likelihood Ratio Tests
-# print('Parent effect')
-# print('Female')
-# lr, pval = cytometer.stats.lrtest(gwat_model_f_null.llf, gwat_model_f.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'gwat: ' + pval_text)
-# lr, pval = cytometer.stats.lrtest(sqwat_model_f_null.llf, sqwat_model_f.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'sqwat: ' + pval_text)
-#
-# print('Male')
-# lr, pval = cytometer.stats.lrtest(gwat_model_m_null.llf, gwat_model_m.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'gwat: ' + pval_text)
-# lr, pval = cytometer.stats.lrtest(sqwat_model_m_null.llf, sqwat_model_m.llf)
-# pval_text = 'LR=' + '{0:.2f}'.format(lr) + ', p=' + '{0:.2g}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(
-#     pval)
-# print('\t' + 'sqwat: ' + pval_text)
-#
-# # extract coefficients, errors and p-values from PAT and MAT models
-# model_names = ['gwat_model_f_pat', 'gwat_model_f_mat', 'sqwat_model_f_pat', 'sqwat_model_f_mat',
-#                'gwat_model_m_pat', 'gwat_model_m_mat', 'sqwat_model_m_pat', 'sqwat_model_m_mat']
-# df_coeff, df_ci_lo, df_ci_hi, df_pval = \
-#     cytometer.stats.models_coeff_ci_pval(
-#         [gwat_model_f_pat, gwat_model_f_mat, sqwat_model_f_pat, sqwat_model_f_mat,
-#          gwat_model_m_pat, gwat_model_m_mat, sqwat_model_m_pat, sqwat_model_m_mat],
-#         model_names=model_names)
-#
-# # multitest correction using Benjamini-Krieger-Yekutieli
-#
-# # _, df_corrected_pval, _, _ = multipletests(df_pval.values.flatten(), method='fdr_tsbky', alpha=0.05, returnsorted=False)
-# # df_corrected_pval = pd.DataFrame(df_corrected_pval.reshape(df_pval.shape), columns=df_pval.columns, index=model_names)
-#
-# col = df_pval.columns[1]
-# df_corrected_pval = df_pval.copy()
-# _, df_corrected_pval[col], _, _ = multipletests(df_pval[col], method='fdr_tsbky', alpha=0.05, returnsorted=False)
-# df_corrected_pval['Intercept'] = -1.0
-#
-# # convert p-values to asterisks
-# df_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_pval, brackets=False), columns=df_coeff.columns,
-#                            index=model_names)
-# df_corrected_asterisk = pd.DataFrame(cytometer.stats.pval_to_asterisk(df_corrected_pval, brackets=False),
-#                                      columns=df_coeff.columns, index=model_names)
-#
-# if SAVE_FIGS:
-#     df_concat = pd.concat([df_coeff, df_pval, df_asterisk, df_corrected_pval, df_corrected_asterisk],
-#                           axis=1)
-#     idx = list(interleave(np.array_split(range(df_concat.shape[1]), 5)))
-#     df_concat = df_concat.iloc[:, idx]
-#     df_concat.to_csv(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_kN_parent_models_coeffs_pvals.csv'))
-#
-# # plot
-# if SAVE_FIGS:
-#
-#     plt.clf()
-#
-#     plt.subplot(221)
-#     # Female
-#     depot = 'gwat'; sex = 'f'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(gwat_model_f_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(gwat_model_f_pat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
-#                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
-#                                            line_label='PAT')
-#     cytometer.stats.plot_linear_regression(gwat_model_f_mat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
-#                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
-#                                            line_label='MAT')
-#     plt.tick_params(labelsize=14)
-#     plt.ylabel('Gonadal\nk N ($10^6$ cells)', fontsize=14)
-#     plt.title('Female', fontsize=14)
-#     plt.legend(loc='best', fontsize=12)
-#     plt.ylim(-1, 16)
-#
-#     plt.subplot(222)
-#     # Male
-#     depot = 'gwat'; sex = 'm'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(gwat_model_m_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(gwat_model_m_pat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
-#                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
-#                                            line_label='PAT')
-#     cytometer.stats.plot_linear_regression(gwat_model_m_mat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
-#                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
-#                                            line_label='MAT')
-#     plt.tick_params(labelsize=14)
-#     plt.title('Male', fontsize=14)
-#     plt.ylim(-1, 10)
-#
-#     plt.subplot(223)
-#     depot = 'sqwat'; sex = 'f'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(sqwat_model_f_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(sqwat_model_f_pat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
-#                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
-#                                            line_label='PAT')
-#     cytometer.stats.plot_linear_regression(sqwat_model_f_mat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
-#                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
-#                                            line_label='MAT')
-#     plt.tick_params(labelsize=14)
-#     plt.ylabel('Subcutaneous\nk N ($10^6$ cells)', fontsize=14)
-#     plt.xlabel('Depot weight (g)', fontsize=14)
-#     plt.ylim(-1, 16)
-#
-#     plt.subplot(224)
-#     # Male
-#     depot = 'sqwat'; sex = 'm'
-#     idx = (df_all['depot'] == depot) & (df_all['sex'] == sex)
-#     df = df_all[idx]
-#     cytometer.stats.plot_linear_regression(sqwat_model_m_null, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex}, sy=1e-6, c='k',
-#                                            line_label='Null')
-#     cytometer.stats.plot_linear_regression(sqwat_model_m_pat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'PAT'},
-#                                            dep_var='kN', sy=1e-6, c='C0', marker='x',
-#                                            line_label='PAT')
-#     cytometer.stats.plot_linear_regression(sqwat_model_m_mat, df, 'DW',
-#                                            other_vars={'depot': depot, 'sex': sex, 'ko_parent': 'MAT'},
-#                                            dep_var='kN', sy=1e-6, c='C1', marker='x',
-#                                            line_label='MAT')
-#     plt.tick_params(labelsize=14)
-#     plt.xlabel('Depot weight (g)', fontsize=14)
-#     plt.ylim(-1, 10)
-#
-#     plt.tight_layout()
-#
-#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_parent_model.png'))
-#     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_kN_linear_parent_model.svg'))
-#
-# ########################################################################################################################
-# ## Heatmaps of whole slides
-# ########################################################################################################################
-#
-# # parameters to constrain cell areas
-# min_cell_area = 0  # pixel; we want all small objects
-# max_cell_area = 200e3  # pixel
-# xres_ref = 0.4538234626730202
-# yres_ref = 0.4537822752643282
-# min_cell_area_um2 = min_cell_area * xres_ref * yres_ref
-# max_cell_area_um2 = max_cell_area * xres_ref * yres_ref
-#
-# # CSV file with metainformation of all mice
-# metainfo_csv_file = os.path.join(metainfo_dir, 'klf14_b6ntac_meta_info.csv')
-# metainfo = pd.read_csv(metainfo_csv_file)
-#
-# # make sure that in the boxplots PAT comes before MAT
-# metainfo['sex'] = metainfo['sex'].astype(pd.api.types.CategoricalDtype(categories=['f', 'm'], ordered=True))
-# metainfo['ko_parent'] = metainfo['ko_parent'].astype(
-#     pd.api.types.CategoricalDtype(categories=['PAT', 'MAT'], ordered=True))
-# metainfo['genotype'] = metainfo['genotype'].astype(
-#     pd.api.types.CategoricalDtype(categories=['KLF14-KO:WT', 'KLF14-KO:Het'], ordered=True))
-#
-# # load area to quantile maps computed in exp_0106
-# filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
-# with np.load(filename_area2quantile, allow_pickle=True) as aux:
-#     f_area2quantile_f = aux['f_area2quantile_f'].item()
-#     f_area2quantile_m = aux['f_area2quantile_m'].item()
-#
-# # load AIDA's colourmap
-# cm = cytometer.data.aida_colourmap()
-#
-# # downsample factor that we used in klf14_b6ntac_exp_0106_full_slide_pipeline_v8
-# downsample_factor = 16
-#
-# # auxiliary function to keep a list of cropping coordinates for each image
-# # this coordinates correspond to the reduced size when saving figures to kernel_file + '_exp_0110_cell_size_heatmap.png'
-# def get_crop_box(i_file):
-#     # [x0, xend, y0, yend]
-#     crop_box = {
-#         0: [22, 353, 99, 333],
-#         1: [30, 507, 37, 446],
-#         2: [62, 254, 13, 235],
-#         3: [92, 570, 31, 406],
-#         4: [11, 259, 30, 263],
-#         5: [19, 279, 14, 342],
-#         6: [43, 213, 8, 285],
-#         7: [39, 229, 31, 314],
-#         8: [53, 539, 34, 450],
-#         9: [24, 167, 38, 210],
-#         10: [361, 574, 21, 146],
-#         11: [447, 609, 24, 253],
-#         12: [45, 278, 32, 307],
-#         13: [33, 207, 26, 216],
-#         14: [80, 567, 52, 439],
-#         15: [349, 594, 9, 292],
-#         16: [22, 237, 22, 233],
-#         17: [353, 599, 92, 308],
-#         18: [33, 219, 37, 252],
-#         19: [8, 270, 24, 311],
-#         20: [27, 234, 39, 268],
-#         21: [19, 232, 38, 219],
-#         22: [80, 187, 47, 240],
-#         23: [51, 517, 47, 379],
-#         24: [30, 289, 18, 316],
-#         25: [31, 226, 54, 272],
-#         26: [47, 498, 27, 394],
-#         27: [335, 621, 61, 340],
-#         28: [395, 617, 39, 268],
-#         29: [30, 176, 47, 188],
-#         30: [30, 273, 13, 306],
-#         31: [60, 240, 63, 236],
-#         32: [8, 223, 30, 365],
-#         33: [41, 215, 28, 224],
-#         34: [424, 623, 31, 306],
-#         35: [27, 223, 21, 203],
-#         36: [58, 218, 13, 260],
-#         37: [29, 186, 24, 181],
-#         38: [55, 204, 88, 233],
-#         39: [67, 241, 40, 261],
-#         40: [36, 212, 55, 312],
-#         41: [449, 567, 89, 279],
-#         42: [39, 229, 42, 323],
-#         43: [95, 262, 28, 204],
-#         44: [400, 584, 21, 276],
-#         45: [34, 218, 33, 223],
-#         46: [359, 612, 27, 292],
-#         47: [444, 603, 22, 216],
-#         48: [38, 217, 12, 306],
-#         49: [393, 596, 40, 228],
-#         50: [73, 268, 42, 276],
-#         51: [442, 585, 41, 211],
-#         52: [43, 285, 38, 270],
-#         53: [133, 255, 24, 193],
-#         54: [421, 621, 11, 246],
-#         55: [31, 227, 18, 332],
-#         56: [24, 165, 21, 247],
-#         57: [71, 246, 83, 249],
-#         58: [295, 511, 27, 286],
-#         59: [39, 246, 20, 234],
-#         60: [24, 201, 50, 224],
-#         61: [421, 614, 27, 266],
-#         62: [383, 622, 27, 273],
-#         63: [62, 579, 116, 429],
-#         64: [389, 618, 66, 301],
-#         65: [55, 292, 11, 258],
-#         66: [426, 622, 67, 299],
-#         67: [66, 214, 23, 263],
-#         68: [86, 270, 30, 345],
-#         69: [62, 234, 186, 318],
-#         70: [57, 250, 58, 283],
-#         71: [45, 240, 31, 212],
-#         72: [350, 555, 8, 182],
-#         73: [8, 196, 47, 207],
-#         74: [12, 193, 22, 175],
-#         75: [105, 345, 28, 275],
-#         76: [387, 558, 27, 332],
-#         77: [62, 288, 29, 341],
-#         78: [54, 406, 28, 310],
-#         79: [58, 328, 25, 347],
-#         80: [8, 275, 26, 339],
-#         81: [11, 260, 7, 329],
-#         82: [348, 610, 17, 336],
-#         83: [7, 327, 22, 358],
-#         84: [8, 170, 57, 208],
-#         85: [19, 241, 40, 257],
-#         86: [382, 600, 50, 246],
-#         87: [436, 605, 33, 253],
-#         88: [389, 563, 20, 227],
-#         89: [31, 289, 32, 276],
-#         90: [308, 602, 7, 343],
-#         91: [6, 276, 25, 303],
-#         92: [15, 268, 6, 305],
-#         93: [82, 520, 47, 314],
-#         94: [46, 520, 27, 431],
-#         95: [15, 519, 11, 396],
-#         96: [30, 594, 4, 406],
-#         97: [27, 612, 18, 404],
-#         98: [22, 246, 17, 293],
-#         99: [102, 550, 36, 462],
-#         100: [43, 221, 30, 237],
-#         101: [52, 504, 85, 361],
-#         102: [29, 440, 24, 435],
-#         103: [283, 598, 151, 392],
-#         104: [46, 232, 26, 274],
-#         105: [45, 243, 31, 264],
-#         106: [48, 556, 42, 305],
-#         107: [52, 572, 3, 347],
-#         108: [98, 547, 25, 425],
-#         109: [19, 570, 13, 350],
-#         110: [395, 618, 8, 304],
-#         111: [51, 508, 46, 426],
-#         112: [52, 608, 9, 330],
-#         113: [34, 538, 55, 427],
-#         114: [127, 530, 31, 405],
-#         115: [406, 605, 35, 264],
-#         116: [42, 577, 38, 440],
-#         117: [50, 590, 63, 413],
-#         118: [33, 259, 37, 216],
-#         119: [12, 486, 32, 346],
-#         120: [56, 612, 37, 421],
-#         121: [429, 599, 66, 243],
-#         122: [78, 458, 24, 349],
-#         123: [25, 278, 24, 278],
-#         124: [8, 585, 60, 450],
-#         125: [372, 591, 41, 224],
-#         126: [6, 242, 11, 269],
-#         127: [41, 543, 18, 301],
-#         128: [52, 415, 25, 369],
-#         129: [231, 616, 34, 302],
-#         130: [17, 278, 17, 324],
-#         131: [358, 604, 67, 303],
-#         132: [17, 583, 18, 415],
-#         133: [24, 214, 23, 256],
-#         134: [71, 228, 19, 228],
-#         135: [43, 199, 28, 254],
-#         136: [26, 481, 63, 332],
-#         137: [157, 594, 9, 295],
-#         138: [140, 529, 11, 399],
-#         139: [52, 541, 9, 404],
-#         140: [44, 572, 38, 361],
-#         141: [344, 599, 11, 305],
-#         142: [7, 549, 36, 440],
-#         143: [64, 593, 32, 377],
-#         144: [20, 270, 14, 254],
-#         145: [39, 220, 32, 303],
-#         146: [9, 552, 30, 344]
-#     }
-#     return crop_box.get(i_file, 'Invalid file index')
-#
-# ## compute whole slide heatmaps
-#
-# # put all the annotation files in a single list
-# json_annotation_files = json_annotation_files_dict['sqwat'] + json_annotation_files_dict['gwat']
-#
-# # loop annotations files to compute the heatmaps
-# for i_file, json_file in enumerate(json_annotation_files):
-#
-#     print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': ' + json_file)
-#
-#     # name of corresponding .ndpi file
-#     ndpi_file = json_file.replace('.json', '.ndpi')
-#     kernel_file = os.path.splitext(ndpi_file)[0]
-#
-#     # add path to file
-#     json_file = os.path.join(annotations_dir, json_file)
-#     ndpi_file = os.path.join(histo_dir, ndpi_file)
-#
-#     # open full resolution histology slide
-#     im = openslide.OpenSlide(ndpi_file)
-#
-#     # pixel size
-#     assert (im.properties['tiff.ResolutionUnit'] == 'centimeter')
-#     xres = 1e-2 / float(im.properties['tiff.XResolution']) * 1e6  # um^2
-#     yres = 1e-2 / float(im.properties['tiff.YResolution']) * 1e6  # um^2
-#
-#     # name of file where rough mask was saved to
-#     coarse_mask_file = os.path.basename(ndpi_file)
-#     coarse_mask_file = coarse_mask_file.replace('.ndpi', '_coarse_mask.npz')
-#     coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
-#
-#     # load coarse tissue mask
-#     with np.load(coarse_mask_file) as aux:
-#         lores_istissue0 = aux['lores_istissue0']
-#         im_downsampled = aux['im_downsampled']
-#
-#     if DEBUG:
-#         plt.clf()
-#         plt.subplot(211)
-#         plt.imshow(im_downsampled)
-#         plt.subplot(212)
-#         plt.imshow(lores_istissue0)
-#
-#     # load list of contours in Corrected segmentations
-#     json_file_corrected = os.path.join(annotations_dir, json_file.replace('.json', '_exp_0106_corrected.json'))
-#
-#     # list of items (there's a contour in each item)
-#     contours_corrected = cytometer.data.aida_get_contours(json_file_corrected, layer_name='White adipocyte.*')
-#
-#     # init array for interpolated quantiles
-#     quantiles_grid = np.zeros(shape=lores_istissue0.shape, dtype=np.float32)
-#
-#     # init array for mask where there are segmentations
-#     areas_mask = Image.new("1", lores_istissue0.shape[::-1], "black")
-#     draw = ImageDraw.Draw(areas_mask)
-#
-#     # init lists for contour centroids and areas
-#     areas_all = []
-#     centroids_all = []
-#     centroids_down_all = []
-#
-#     # loop items (one contour per item)
-#     for c in contours_corrected:
-#
-#         # convert to downsampled coordinates
-#         c = np.array(c)
-#         c_down = c / downsample_factor
-#
-#         if DEBUG:
-#             plt.fill(c_down[:, 0], c_down[:, 1], fill=False, color='r')
-#
-#         # compute cell area
-#         area = shapely.geometry.Polygon(c).area * xres * yres  # (um^2)
-#         areas_all.append(area)
-#
-#         # compute centroid of contour
-#         centroid = np.mean(c, axis=0)
-#         centroids_all.append(centroid)
-#         centroids_down_all.append(centroid / downsample_factor)
-#
-#         # add object described by contour to areas_mask
-#         draw.polygon(list(c_down.flatten()), outline="white", fill="white")
-#
-#     # convert mask from RGBA to binary
-#     areas_mask = np.array(areas_mask, dtype=np.bool)
-#
-#     areas_all = np.array(areas_all)
-#
-#     # interpolate scattered area data to regular grid
-#     grid_row, grid_col = np.mgrid[0:areas_mask.shape[0], 0:areas_mask.shape[1]]
-#     quantiles_grid = scipy.interpolate.griddata(centroids_down_all, areas_all, (grid_col, grid_row), method='linear', fill_value=0)
-#     quantiles_grid[~areas_mask] = 0
-#
-#     if DEBUG:
-#         plt.clf()
-#         plt.subplot(211)
-#         plt.imshow(im_downsampled)
-#         plt.axis('off')
-#         plt.subplot(212)
-#         plt.imshow(quantiles_grid)
-#
-#     # get metainfo for this slide
-#     df_common = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(ndpi_file),
-#                                                           values=[i_file,], values_tag='i',
-#                                                           tags_to_keep=['id', 'ko_parent', 'sex'])
-#
-#     # mouse ID as a string
-#     id = df_common['id'].values[0]
-#     sex = df_common['sex'].values[0]
-#     ko = df_common['ko_parent'].values[0]
-#
-#     # convert area values to quantiles
-#     if sex == 'f':
-#         quantiles_grid = f_area2quantile_f(quantiles_grid)
-#     elif sex == 'm':
-#         quantiles_grid = f_area2quantile_m(quantiles_grid)
-#     else:
-#         raise ValueError('Wrong sex value')
-#
-#     # make background white in the plot
-#     quantiles_grid[~areas_mask] = np.nan
-#
-#     if DEBUG:
-#         plt.clf()
-#         plt.subplot(211)
-#         plt.imshow(im_downsampled)
-#         plt.axis('off')
-#         plt.subplot(212)
-#         # plt.imshow(areas_grid, vmin=0.0, vmax=1.0, cmap='gnuplot2')
-#         plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
-#         cbar = plt.colorbar(shrink=1.0)
-#         cbar.ax.tick_params(labelsize=14)
-#         cbar.ax.set_ylabel('Cell area quantile', rotation=90, fontsize=14)
-#         plt.axis('off')
-#         plt.tight_layout()
-#
-#     if DEBUG:
-#         plt.clf()
-#         plt.hist(areas_all, bins=50, density=True, histtype='step')
-#
-#     # plot cell areas for paper
-#     plt.clf()
-#     plt.imshow(quantiles_grid, vmin=0.0, vmax=1.0, cmap=cm)
-#     plt.axis('off')
-#     plt.tight_layout()
-#
-#     plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png'),
-#                 bbox_inches='tight')
-#
-#     # save heatmap at full size
-#     quantiles_grid_im = Image.fromarray((cm(quantiles_grid) * 255).astype(np.uint8))
-#     quantiles_grid_im.save(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large.png'))
-#
-#
-# ## crop heatmaps for paper
-#
-# for i_file, json_file in enumerate(json_annotation_files):
-#     # i_file += 1;  json_file = json_annotation_files[i_file]  # hack: for manual looping, one by one
-#
-#     print('File ' + str(i_file) + '/' + str(len(json_annotation_files) - 1) + ': ' + json_file)
-#
-#     # name of heatmap
-#     kernel_file = json_file.replace('.json', '')
-#     heatmap_file = os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png')
-#     heatmap_large_file = os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large.png')
-#     cropped_heatmap_file = os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap.png')
-#
-#     # load heatmaps. We have to load two of them, because first I saved them using the regular savefig(), which reduces
-#     # the image resolution and modifies the borders. I defined the crop boxes on those image, so in order to avoid having
-#     # to redo the crop boxes, now we have to figure out where those low resolution crop boxes map in the full resolution
-#     # image
-#     heatmap = Image.open(heatmap_file)
-#     heatmap_large = Image.open(heatmap_large_file)
-#
-#     # convert cropping coordinates from smaller PNG to full size PNG
-#     x0, xend, y0, yend = np.array(get_crop_box(i_file))
-#     heatmap_array = np.array(Image.open(heatmap_file))  # hack: because passing heatmap sometimes doesn't work, due to some bug
-#     cropped_heatmap = heatmap_array[y0:yend+1, x0:xend+1]
-#
-#     if DEBUG:
-#         plt.clf()
-#         plt.subplot(211)
-#         plt.imshow(heatmap)
-#         plt.plot([x0, xend, xend, x0, x0], [yend, yend, y0, y0, yend], 'r')
-#         plt.subplot(212)
-#         plt.imshow(cropped_heatmap)
-#
-#     # when saving a figure to PNG with savefig() and our options above, it adds a white border of 9 pixels on each side.
-#     # We need to remove that border before coordinate interpolation
-#     x0, xend = np.interp((x0 - 9, xend - 9), (0, heatmap.size[0] - 1 - 18), (0, heatmap_large.size[0] - 1))
-#     y0, yend = np.interp((y0 - 9, yend - 9), (0, heatmap.size[1] - 1 - 18), (0, heatmap_large.size[1] - 1))
-#     x0, xend, y0, yend = np.round([x0, xend, y0, yend]).astype(np.int)
-#
-#     cropped_heatmap_large = np.array(Image.open(heatmap_large_file))[y0:yend+1, x0:xend+1] # hack for same bug as above
-#
-#     if DEBUG:
-#         plt.clf()
-#         plt.subplot(211)
-#         plt.imshow(heatmap_large)
-#         plt.plot([x0, xend, xend, x0, x0], [yend, yend, y0, y0, yend], 'r')
-#         plt.subplot(212)
-#         plt.imshow(cropped_heatmap_large)
-#
-#     plt.clf()
-#     plt.gcf().set_size_inches([12.8, 9.6])
-#     plt.imshow(cropped_heatmap_large, interpolation='none')
-#     plt.axis('off')
-#     plt.tight_layout()
-#
-#     plt.savefig(os.path.join(figures_dir, kernel_file + '_exp_0110_cell_size_heatmap_large_cropped.png'),
-#                 bbox_inches='tight')
-#
-# ## plot colourmaps and cell area density functions
-#
-# # colourmap plot
-# a = np.array([[0,1]])
-# plt.figure(figsize=(9, 1.5))
-# img = plt.imshow(a, cmap=cm)
-# plt.gca().set_visible(False)
-# cax = plt.axes([0.1, 0.2, 0.8, 0.6])
-# cbar = plt.colorbar(orientation='horizontal', cax=cax)
-# for q in np.linspace(0, 1, 11):
-#     plt.plot([q, q], [0, 0.5], 'k', linewidth=2, zorder=1)
-# cbar.ax.tick_params(labelsize=14)
-# plt.title('Cell area colourmap with decile divisions', rotation=0, fontsize=14)
-# plt.xlabel('Quantile', fontsize=14)
-# plt.tight_layout()
-#
-# plt.savefig(os.path.join(figures_dir, 'exp_0110_aida_colourmap.png'), bbox_inches='tight')
-#
-# ## plot area distributions
-#
-# # load auxiliary file with all Corrected areas
-# filename_corrected_areas = os.path.join(figures_dir, 'klf14_b6ntac_exp_0106_corrected_areas.npz')
-# with np.load(filename_corrected_areas, allow_pickle=True) as aux:
-#     areas_corrected_f = aux['areas_corrected_f']
-#     areas_corrected_m = aux['areas_corrected_m']
-#
-# plt.close()
-# plt.clf()
-# areas = np.concatenate(areas_corrected_f)
-# areas = areas[(areas >= min_cell_area_um2) & (areas <= max_cell_area_um2)]
-# aq = stats.mstats.hdquantiles(areas, prob=np.linspace(0, 1, 11), axis=0)
-# for a in aq:
-#     plt.plot([a * 1e-3, a * 1e-3], [0, 0.335], 'k', linewidth=2, zorder=0)
-# plt.hist(areas * 1e-3, histtype='step', bins=100, density=True, linewidth=4, zorder=1, color='r')
-# plt.tick_params(labelsize=14)
-# plt.title('Cell area density with decile divisions', fontsize=14)
-# plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
-# plt.ylabel('Density', fontsize=14)
-# plt.yticks([])
-# plt.tight_layout()
-#
-# plt.savefig(os.path.join(figures_dir, 'exp_0106_dist_quantiles_corrected_f.png'), bbox_inches='tight')
-#
-# plt.clf()
-# areas = np.concatenate(areas_corrected_m)
-# areas = areas[(areas >= min_cell_area_um2) & (areas <= max_cell_area_um2)]
-# aq = stats.mstats.hdquantiles(areas, prob=np.linspace(0, 1, 11), axis=0)
-# for a in aq:
-#     plt.plot([a * 1e-3, a * 1e-3], [0, 0.242], 'k', linewidth=2, zorder=0)
-# plt.hist(areas * 1e-3, histtype='step', bins=100, density=True, linewidth=4, zorder=1, color='r')
-# plt.tick_params(labelsize=14)
-# plt.title('Cell area density with decile divisions', fontsize=14)
-# plt.xlabel('Cell area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
-# plt.ylabel('Density', fontsize=14)
-# plt.yticks([])
-# plt.tight_layout()
-#
-# plt.savefig(os.path.join(figures_dir, 'exp_0106_dist_quantiles_corrected_m.png'), bbox_inches='tight')
+## only training windows used for hand tracing
+
+# this figure is generated in klf14_b6ntac_exp_0109_pipeline_v8_validation.py
+# the area values can be loaded from file dataframe_dir/'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_sqwat.csv'
+
+## only slides used for hand tracing
+
+# all hand traced slides are subcutaneous, so we only need to compare against subcutaneous
+depot = 'sqwat'
+
+# identify whole slides used for the hand traced dataset
+idx_used_in_hand_traced = np.full((df_all.shape[0],), False)
+for hand_file_svg in hand_file_svg_list:
+    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(hand_file_svg),
+                                                   values=[depot, ], values_tag='depot',
+                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
+
+    idx_used_in_hand_traced[(df_all[df.columns] == df.values).all(1)] = True
+
+
+if SAVE_FIGS:
+    plt.clf()
+
+    # f PAT
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(221)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Female Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m PAT
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(222)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Male Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # f MAT WT
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(223)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Female FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    # m MAT
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(224)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.xticks([0, 10, 20])
+    plt.text(0.9, 0.9, 'Male FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_' + depot + '_hand_subset.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_' + depot + '_hand_subset.svg'))
+
+if SAVE_FIGS:
+    plt.clf()
+
+    # f PAT
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(221)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Female Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m PAT
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(222)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Male Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # f MAT Het
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(223)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Female FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    # m MAT Het
+    df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(224)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(0.9, 0.9, 'Male FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+## numerical quartiles and CIs associated to the histograms
+
+idx_q1 = np.where(quantiles == 0.25)[0][0]
+idx_q2 = np.where(quantiles == 0.50)[0][0]
+idx_q3 = np.where(quantiles == 0.75)[0][0]
+
+# f PAT
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('f PAT')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(221)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# m PAT
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('m PAT')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(222)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# f MAT Het
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('f MAT Het')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(223)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# m MAT Het
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('m MAT Het')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(224)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_quartiles_' + depot + '_hand_subset.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_quartiles_' + depot + '_hand_subset.svg'))
+
+
+## all slides
+
+depot = 'gwat'
+# depot = 'sqwat'
+
+if SAVE_FIGS:
+    plt.clf()
+    plt.gcf().set_size_inches([6.4 , 6.6])
+
+    # f PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(321)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Female Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(322)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Male Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # f MAT WT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:WT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(323)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Female MAT WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m MAT WT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:WT')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(324)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.xticks([0, 10, 20])
+    plt.text(0.9, 0.9, 'Male MAT WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # f MAT Het
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(325)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.text(0.9, 0.9, 'Female FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xticks([0, 10, 20])
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    # m MAT Het
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    df = df.reset_index()
+    histo = np.array(df['smoothed_histo'].tolist())
+
+    plt.subplot(326)
+    plt.plot(area_bin_centers * 1e-3, np.transpose(histo) / histo.max().max())
+    plt.tick_params(labelsize=14)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.xticks([0, 10, 20])
+    plt.text(0.9, 0.9, 'Male FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.975])
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_' + depot + '.svg'))
+
+if SAVE_FIGS:
+    plt.clf()
+    plt.gcf().set_size_inches([6.4 , 6.6])
+
+    # f PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(321)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, right=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Female Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m PAT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(322)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Male Control', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # f MAT WT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:WT')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(323)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Female MAT WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # m MAT WT
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:WT')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(324)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Male MAT WT', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    # f MAT Het
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(325)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.text(0.9, 0.9, 'Female FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+
+    # m MAT Het
+    df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+                & (df_all['genotype'] == 'KLF14-KO:Het')]
+    histo = np.array(df['smoothed_histo'].tolist())
+    histo_beg = stats.mstats.hdquantiles(histo, prob=0.025, axis=0)
+    histo_q1 = stats.mstats.hdquantiles(histo, prob=0.25, axis=0)
+    histo_q2 = stats.mstats.hdquantiles(histo, prob=0.50, axis=0)
+    histo_q3 = stats.mstats.hdquantiles(histo, prob=0.75, axis=0)
+    histo_end = stats.mstats.hdquantiles(histo, prob=0.975, axis=0)
+
+    plt.subplot(326)
+    hist_max = histo_end.max()
+    plt.fill_between(area_bin_centers * 1e-3, histo_beg[0,] / hist_max, histo_end[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.fill_between(area_bin_centers * 1e-3, histo_q1[0,] / hist_max, histo_q3[0,] / hist_max,
+                     alpha=0.5, color='C0')
+    plt.plot(area_bin_centers * 1e-3, histo_q2[0,] / hist_max, 'C0', linewidth=2)
+    plt.tick_params(axis='y', left=False, labelleft=False, reset=True)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Area ($\cdot 10^3\ \mu m^2$)', fontsize=14)
+    plt.text(0.9, 0.9, 'Male FKO\n(MAT Het)', fontsize=14, transform=plt.gca().transAxes, va='top', ha='right')
+    plt.xlim(-1.2, max_area_um2 * 1e-3)
+
+    if depot == 'gwat':
+        plt.suptitle('Gonadal', fontsize=14)
+    elif depot == 'sqwat':
+        plt.suptitle('Subcutaneous', fontsize=14)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+## numerical quartiles and CIs associated to the histograms
+
+idx_q1 = np.where(quantiles == 0.25)[0][0]
+idx_q2 = np.where(quantiles == 0.50)[0][0]
+idx_q3 = np.where(quantiles == 0.75)[0][0]
+
+# f PAT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('f PAT')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(321)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# m PAT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('m PAT')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(322)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# f MAT WT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:WT')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('f MAT WT')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(323)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# m MAT WT
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:WT')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha/2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('m MAT WT')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(324)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# f MAT Het
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha / 2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[
+    [idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[
+    [idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('f MAT Het')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(325)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+# m MAT Het
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')
+            & (df_all['genotype'] == 'KLF14-KO:Het')]
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+stderr_at_quantiles[:, [0, -1]] = np.nan  ## first and last values are artifacts of saving to the CSV file
+
+# inverse-variance method to combine quantiles and sdterr values from multiple mice
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+# compute combined value and CIs in 10^3 um^2 units
+alpha = 0.05
+q1_hat, q2_hat, q3_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]] * 1e-3
+k = stats.norm.ppf(1 - alpha / 2, loc=0, scale=1)  # multiplier for CI length (~1.96 for 95% CI)
+q1_ci_lo, q2_ci_lo, q3_ci_lo = [q1_hat, q2_hat, q3_hat] - k * stderr_at_quantiles_hat[
+    [idx_q1, idx_q2, idx_q3]] * 1e-3
+q1_ci_hi, q2_ci_hi, q3_ci_hi = [q1_hat, q2_hat, q3_hat] + k * stderr_at_quantiles_hat[
+    [idx_q1, idx_q2, idx_q3]] * 1e-3
+
+print('m MAT Het')
+print('\t' + '{0:.2f}'.format(q1_hat) + ' (' + '{0:.2f}'.format(q1_ci_lo) + ', ' + '{0:.2f}'.format(q1_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q2_hat) + ' (' + '{0:.2f}'.format(q2_ci_lo) + ', ' + '{0:.2f}'.format(q2_ci_hi) + ')')
+print('\t' + '{0:.2f}'.format(q3_hat) + ' (' + '{0:.2f}'.format(q3_ci_lo) + ', ' + '{0:.2f}'.format(q3_ci_hi) + ')')
+
+if SAVE_FIGS:
+    plt.subplot(326)
+    plt.plot([q1_hat, q1_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q2_hat, q2_hat], [0, 1], 'k', linewidth=1)
+    plt.plot([q3_hat, q3_hat], [0, 1], 'k', linewidth=1)
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_quartiles_' + depot + '.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_smoothed_histo_quartiles_' + depot + '.svg'))
+
+########################################################################################################################
+## comparison of populations quartiles from smoothed histograms of DeepCytometer whole slides and hand tracing
+##
+## We can use all animals for this, even the ones where BW=NaN, because we don't need BW or DW
+## USED IN THE PAPER
+########################################################################################################################
+
+# indices for the quartiles
+idx_q1 = np.where(quantiles == 0.25)[0][0]
+idx_q2 = np.where(quantiles == 0.50)[0][0]
+idx_q3 = np.where(quantiles == 0.75)[0][0]
+
+depot = 'sqwat'
+
+# load hand traced areas
+df_hand_all = pd.read_csv(os.path.join(dataframe_dir, 'klf14_b6ntac_exp_0109_pipeline_v8_validation_smoothed_histo_hand_' + depot + '.csv'))
+
+# identify whole slides used for the hand traced dataset
+idx_used_in_hand_traced = np.full((df_all.shape[0],), False)
+for hand_file_svg in hand_file_svg_list:
+    df = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=os.path.basename(hand_file_svg),
+                                                   values=[depot, ], values_tag='depot',
+                                                   tags_to_keep=['id', 'ko_parent', 'sex', 'genotype'])
+
+    idx_used_in_hand_traced[(df_all[df.columns] == df.values).all(1)] = True
+
+## whole slides used for hand tracing compared to hand tracing
+
+print('DeepCytometer whole slide quartiles compared to hand tracing, same slides both')
+
+# f PAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'PAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('f PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# f MAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'f') & (df_hand_all['ko_parent'] == 'MAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('f MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m PAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'PAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('m PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m MAT
+df_hand = df_hand_all[(df_hand_all['depot'] == depot) & (df_hand_all['sex'] == 'm') & (df_hand_all['ko_parent'] == 'MAT')]
+df = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = stats.mstats.hdquantiles(df_hand['area'], prob=quantiles, axis=0)
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand = areas_at_quantiles_hand[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand - 1) * 100
+
+print('m MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+
+## whole slides used for hand tracing compared to hand tracing
+
+print('DeepCytometer whole slide quartiles compared to DeepCytometer segmentations from hand traced whole slides')
+
+# f PAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'PAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('f PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# f MAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'f') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('f MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m PAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'PAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('m PAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
+# m MAT
+df_hand = df_all[idx_used_in_hand_traced & (df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+df = df_all[(df_all['depot'] == depot) & (df_all['sex'] == 'm') & (df_all['ko_parent'] == 'MAT')]
+
+areas_at_quantiles_hand = np.array(df_hand['area_at_quantiles'].to_list())
+stderr_at_quantiles_hand = np.array(df_hand['stderr_at_quantiles'].to_list())
+areas_at_quantiles = np.array(df['area_at_quantiles'].to_list())
+stderr_at_quantiles = np.array(df['stderr_at_quantiles'].to_list())
+
+areas_at_quantiles_hand_hat, stderr_at_quantiles_hand_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles_hand, stderr_at_quantiles_hand)
+areas_at_quantiles_hat, stderr_at_quantiles_hat = \
+    cytometer.stats.inverse_variance_method(areas_at_quantiles, stderr_at_quantiles)
+
+areas_at_quantiles_hand_hat = areas_at_quantiles_hand_hat[[idx_q1, idx_q2, idx_q3]]
+areas_at_quantiles_hat = areas_at_quantiles_hat[[idx_q1, idx_q2, idx_q3]]
+
+q1, q2, q3 = (areas_at_quantiles_hat / areas_at_quantiles_hand_hat - 1) * 100
+
+print('m MAT')
+print('\t' + '{0:.2f}'.format(q1) + ' %')
+print('\t' + '{0:.2f}'.format(q2) + ' %')
+print('\t' + '{0:.2f}'.format(q3) + ' %')
+
