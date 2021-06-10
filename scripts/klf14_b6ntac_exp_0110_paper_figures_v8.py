@@ -1051,7 +1051,7 @@ print('Total number of windows with cells = ' + str(np.sum(table['Windows with c
 print('Total number of Other areas = ' + str(np.sum(table['Other'])))
 print('Total number of Background areas = ' + str(np.sum(table['Background'])))
 
-# aggregate by sex and genotype
+# stratify by sex and genotype
 idx_f = table['Sex'] == 'f'
 idx_m = table['Sex'] == 'm'
 idx_pat = table['Genotype'] == 'PAT'
