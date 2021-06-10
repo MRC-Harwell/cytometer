@@ -668,7 +668,7 @@ print('Males are ' + str(bw_model.params['C(sex)[T.m]'] / bw_model.params['Inter
 #     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.png'))
 #     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0110_paper_figures_bw_vs_cull_age.svg'))
 
-## effect of FKO on body weight
+## BW ~ functional_ko
 ########################################################################################################################
 
 # BW ~ functional_ko for female/male
@@ -748,7 +748,164 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_bw_fko.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_bw_fko.svg'))
 
-## effect of FKO and body weight on depot weight
+## DW ~ functional_ko
+########################################################################################################################
+
+# DW ~ functional_ko for female/male
+gwat_model_f = sm.OLS.from_formula('gWAT ~ C(functional_ko)', data=metainfo_f).fit()
+gwat_model_m = sm.OLS.from_formula('gWAT ~ C(functional_ko)', data=metainfo_m).fit()
+sqwat_model_f = sm.OLS.from_formula('SC ~ C(functional_ko)', data=metainfo_f).fit()
+sqwat_model_m = sm.OLS.from_formula('SC ~ C(functional_ko)', data=metainfo_m).fit()
+
+print(gwat_model_f.summary())
+print(gwat_model_m.summary())
+print(sqwat_model_f.summary())
+print(sqwat_model_m.summary())
+
+gwat_extra_tests = gwat_model_f.t_test('C(functional_ko)[T.MAT_WT] = C(functional_ko)[T.FKO]')
+gwat_extra_tests = gwat_model_f.t_test('C(functional_ko)[T.MAT_WT] = 0')
+sqwat_extra_tests = sqwat_model_f.t_test('C(functional_ko)[T.MAT_WT] = C(functional_ko)[T.FKO]')
+sqwat_extra_tests = sqwat_model_f.t_test('C(functional_ko)[T.MAT_WT] = 0')
+
+# Tukey HSD for gWAT ~ functional_ko
+multicomp_f = sm.stats.multicomp.MultiComparison(metainfo_f['gWAT'], metainfo_f['functional_ko'])
+tukeyhsd_f = multicomp_f.tukeyhsd()
+tukeyhsd_f = pd.DataFrame(data=tukeyhsd_f._results_table.data[1:], columns=tukeyhsd_f._results_table.data[0])
+print(tukeyhsd_f)
+
+multicomp_m = sm.stats.multicomp.MultiComparison(metainfo_m['gWAT'], metainfo_m['functional_ko'])
+tukeyhsd_m = multicomp_m.tukeyhsd()
+tukeyhsd_m = pd.DataFrame(data=tukeyhsd_m._results_table.data[1:], columns=tukeyhsd_m._results_table.data[0])
+print(tukeyhsd_m)
+
+if SAVE_FIGS:
+    plt.clf()
+    plt.gcf().set_size_inches([5.48, 4.8 ])
+
+    ax = sns.swarmplot(x='sex', y='gWAT', hue='functional_ko', data=metainfo, dodge=True, palette=['C2', 'C3', 'C4'])
+    plt.xlabel('')
+    plt.ylabel('Gonadal depot weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xticks([0, 1], labels=['Female', 'Male'])
+    ax.get_legend().set_title('')
+    ax.legend([])
+    # ax.legend(['Control (PAT)', 'MAT WT', 'FKO (MAT Het)'], loc='lower right', fontsize=12)
+
+    # female
+    plt.plot([-0.3, -0.3, 0.0, 0.0], [1.45, 1.55, 1.55, 1.45], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_f.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(-0.15, 1.56, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([0.0, 0.0, 0.3, 0.3], [1.75, 1.85, 1.85, 1.75], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'FKO') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_f.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(0.15, 1.86, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([-0.3, -0.3, 0.3, 0.3], [2.05, 2.15, 2.15, 2.05], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'FKO')
+    pval = list(tukeyhsd_f.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(0.0, 2.16, pval_text, ha='center', va='bottom', fontsize=14)
+
+    # male
+    plt.plot([1.0, 1.0, 1.3, 1.3], [1.75, 1.85, 1.85, 1.75], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'FKO') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_m.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(1.15, 1.86, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([0.7, 0.7, 1.0, 1.0], [2.05, 2.15, 2.15, 2.05], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_m.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(0.85, 2.16, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([0.7, 0.7, 1.3, 1.3], [2.35, 2.45, 2.45, 2.35], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'FKO')
+    pval = list(tukeyhsd_m.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(1.00, 2.46, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.ylim(0, 2.7)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_gwat_fko.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_gwat_fko.svg'))
+
+# Tukey HSD for SC ~ functional_ko
+multicomp_f = sm.stats.multicomp.MultiComparison(metainfo_f['SC'], metainfo_f['functional_ko'])
+tukeyhsd_f = multicomp_f.tukeyhsd()
+tukeyhsd_f = pd.DataFrame(data=tukeyhsd_f._results_table.data[1:], columns=tukeyhsd_f._results_table.data[0])
+print(tukeyhsd_f)
+
+multicomp_m = sm.stats.multicomp.MultiComparison(metainfo_m['SC'], metainfo_m['functional_ko'])
+tukeyhsd_m = multicomp_m.tukeyhsd()
+tukeyhsd_m = pd.DataFrame(data=tukeyhsd_m._results_table.data[1:], columns=tukeyhsd_m._results_table.data[0])
+print(tukeyhsd_m)
+
+if SAVE_FIGS:
+    plt.clf()
+    plt.gcf().set_size_inches([5.48, 4.8 ])
+
+    ax = sns.swarmplot(x='sex', y='SC', hue='functional_ko', data=metainfo, dodge=True, palette=['C2', 'C3', 'C4'])
+    plt.xlabel('')
+    plt.ylabel('Subcutaneous depot weight (g)', fontsize=14)
+    plt.tick_params(labelsize=14)
+    plt.xticks([0, 1], labels=['Female', 'Male'])
+    ax.get_legend().set_title('')
+    ax.legend([])
+    # ax.legend(['Control (PAT)', 'MAT WT', 'FKO (MAT Het)'], loc='lower right', fontsize=12)
+
+    # female
+    plt.plot([0.0, 0.0, 0.3, 0.3], [1.05, 1.15, 1.15, 1.05], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'FKO') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_f.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(0.15, 1.16, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([-0.3, -0.3, 0.0, 0.0], [1.65, 1.75, 1.75, 1.65], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_f.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(-0.15, 1.76, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([-0.3, -0.3, 0.3, 0.3], [1.95, 2.05, 2.05, 1.95], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'FKO')
+    pval = list(tukeyhsd_f.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(0.0, 2.06, pval_text, ha='center', va='bottom', fontsize=14)
+
+    # male
+    plt.plot([1.0, 1.0, 1.3, 1.3], [1.3, 1.4, 1.4, 1.3], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'FKO') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_m.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(1.15, 1.41, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([0.7, 0.7, 1.0, 1.0], [1.6, 1.7, 1.7, 1.6], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'MAT_WT')
+    pval = list(tukeyhsd_m.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(0.85, 1.71, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.plot([0.7, 0.7, 1.3, 1.3], [1.9, 2.0, 2.0, 1.9], 'k', lw=1.5)
+    idx = (tukeyhsd_f['group1'] == 'Control') & (tukeyhsd_f['group2'] == 'FKO')
+    pval = list(tukeyhsd_m.loc[idx, 'p-adj'])[0]
+    pval_text = '{0:.2f}'.format(pval) + ' ' + cytometer.stats.pval_to_asterisk(pval)
+    plt.text(1.00, 2.01, pval_text, ha='center', va='bottom', fontsize=14)
+
+    plt.ylim(0, 2.3)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_sqwat_fko.png'))
+    plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_sqwat_fko.svg'))
+
+## DW ~ BW * functional_ko
 ########################################################################################################################
 
 # scale BW to avoid large condition numbers
