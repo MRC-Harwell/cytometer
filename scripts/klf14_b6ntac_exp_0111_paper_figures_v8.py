@@ -671,15 +671,15 @@ print('Males are ' + str(bw_model.params['C(sex)[T.m]'] / bw_model.params['Inter
 ## BW ~ functional_ko
 ########################################################################################################################
 
-# # BW ~ functional_ko for female/male
-# bw_model_f = sm.OLS.from_formula('BW ~ C(functional_ko)', data=metainfo_f).fit()
-# bw_model_m = sm.OLS.from_formula('BW ~ C(functional_ko)', data=metainfo_m).fit()
-#
-# print(bw_model_f.summary())
-# print(bw_model_m.summary())
-#
-# extra_tests = bw_model_f.t_test('C(functional_ko)[T.MAT_WT] = C(functional_ko)[T.FKO]')
-# extra_tests = bw_model_f.t_test('C(functional_ko)[T.MAT_WT] = 0')
+# BW ~ functional_ko for female/male
+bw_model_f = sm.OLS.from_formula('BW ~ C(functional_ko)', data=metainfo_f).fit()
+bw_model_m = sm.OLS.from_formula('BW ~ C(functional_ko)', data=metainfo_m).fit()
+
+print(bw_model_f.summary())
+print(bw_model_m.summary())
+
+extra_tests_f = bw_model_f.t_test('Intercept + C(functional_ko)[T.MAT_WT], Intercept + C(functional_ko)[T.FKO]')
+extra_tests_m = bw_model_m.t_test('Intercept + C(functional_ko)[T.MAT_WT], Intercept + C(functional_ko)[T.FKO]')
 
 # Tukey HSD
 multicomp_f = sm.stats.multicomp.MultiComparison(metainfo_f['BW'], metainfo_f['functional_ko'])
