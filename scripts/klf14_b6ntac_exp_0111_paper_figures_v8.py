@@ -571,6 +571,15 @@ print(bw_model_m.summary())
 extra_tests_f = bw_model_f.t_test('Intercept + C(functional_ko)[T.MAT_WT], Intercept + C(functional_ko)[T.FKO]')
 extra_tests_m = bw_model_m.t_test('Intercept + C(functional_ko)[T.MAT_WT], Intercept + C(functional_ko)[T.FKO]')
 
+# mean BW
+bwmean_control_f = np.mean(metainfo_f[metainfo_f['ko_parent'] == 'PAT']['BW'])
+bwmean_matwt_f = np.mean(metainfo_f[(metainfo_f['ko_parent'] == 'MAT') & (metainfo_f['genotype'] == 'KLF14-KO:WT')]['BW'])
+bwmean_fko_f = np.mean(metainfo_f[(metainfo_f['ko_parent'] == 'MAT') & (metainfo_f['genotype'] == 'KLF14-KO:Het')]['BW'])
+
+bwmean_control_m = np.mean(metainfo_m[metainfo_m['ko_parent'] == 'PAT']['BW'])
+bwmean_matwt_m = np.mean(metainfo_m[(metainfo_m['ko_parent'] == 'MAT') & (metainfo_m['genotype'] == 'KLF14-KO:WT')]['BW'])
+bwmean_fko_m = np.mean(metainfo_m[(metainfo_m['ko_parent'] == 'MAT') & (metainfo_m['genotype'] == 'KLF14-KO:Het')]['BW'])
+
 # Tukey HSD
 multicomp_f = sm.stats.multicomp.MultiComparison(metainfo_f['BW'], metainfo_f['functional_ko'])
 tukeyhsd_f = multicomp_f.tukeyhsd()
@@ -593,6 +602,15 @@ if SAVE_FIGS:
     plt.xticks([0, 1], labels=['Female', 'Male'])
     ax.get_legend().set_title('')
     ax.legend(['Control (PAT)', 'MAT WT', 'FKO (MAT Het)'], loc='lower right', fontsize=12)
+
+    # mean values
+    plt.plot([-0.35, -0.15], [bwmean_control_f,]*2, 'k', linewidth=2)
+    plt.plot([-0.10,  0.10], [bwmean_matwt_f,]*2, 'k', linewidth=2)
+    plt.plot([ 0.17,  0.35], [bwmean_fko_f,]*2, 'k', linewidth=2)
+
+    plt.plot([ 0.65,  0.85], [bwmean_control_m,]*2, 'k', linewidth=2)
+    plt.plot([ 0.90,  1.10], [bwmean_matwt_m,]*2, 'k', linewidth=2)
+    plt.plot([ 1.17,  1.35], [bwmean_fko_m,]*2, 'k', linewidth=2)
 
     # female
     plt.plot([-0.3, -0.3, 0.0, 0.0], [42, 44, 44, 42], 'k', lw=1.5)
@@ -642,6 +660,15 @@ if SAVE_FIGS:
 ## DW ~ functional_ko
 ########################################################################################################################
 
+# mean DW Gonadal
+dwmean_control_f_gwat = np.mean(metainfo_f[metainfo_f['ko_parent'] == 'PAT']['gWAT'])
+dwmean_matwt_f_gwat = np.mean(metainfo_f[(metainfo_f['ko_parent'] == 'MAT') & (metainfo_f['genotype'] == 'KLF14-KO:WT')]['gWAT'])
+dwmean_fko_f_gwat = np.mean(metainfo_f[(metainfo_f['ko_parent'] == 'MAT') & (metainfo_f['genotype'] == 'KLF14-KO:Het')]['gWAT'])
+
+dwmean_control_m_gwat = np.mean(metainfo_m[metainfo_m['ko_parent'] == 'PAT']['gWAT'])
+dwmean_matwt_m_gwat = np.mean(metainfo_m[(metainfo_m['ko_parent'] == 'MAT') & (metainfo_m['genotype'] == 'KLF14-KO:WT')]['gWAT'])
+dwmean_fko_m_gwat = np.mean(metainfo_m[(metainfo_m['ko_parent'] == 'MAT') & (metainfo_m['genotype'] == 'KLF14-KO:Het')]['gWAT'])
+
 # Tukey HSD for gWAT ~ functional_ko
 multicomp_f = sm.stats.multicomp.MultiComparison(metainfo_f['gWAT'], metainfo_f['functional_ko'])
 tukeyhsd_f = multicomp_f.tukeyhsd()
@@ -665,6 +692,15 @@ if SAVE_FIGS:
     ax.get_legend().set_title('')
     ax.legend([])
     # ax.legend(['Control (PAT)', 'MAT WT', 'FKO (MAT Het)'], loc='lower right', fontsize=12)
+
+    # mean values
+    plt.plot([-0.35, -0.15], [dwmean_control_f_gwat,]*2, 'k', linewidth=2)
+    plt.plot([-0.10,  0.10], [dwmean_matwt_f_gwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.17,  0.35], [dwmean_fko_f_gwat,]*2, 'k', linewidth=2)
+
+    plt.plot([ 0.65,  0.85], [dwmean_control_m_gwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.90,  1.10], [dwmean_matwt_m_gwat,]*2, 'k', linewidth=2)
+    plt.plot([ 1.17,  1.35], [dwmean_fko_m_gwat,]*2, 'k', linewidth=2)
 
     # female
     plt.plot([-0.3, -0.3, 0.0, 0.0], [1.45, 1.55, 1.55, 1.45], 'k', lw=1.5)
@@ -711,6 +747,15 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_gwat_fko.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_gwat_fko.svg'))
 
+# mean DW Subcut.
+dwmean_control_f_sqwat = np.mean(metainfo_f[metainfo_f['ko_parent'] == 'PAT']['SC'])
+dwmean_matwt_f_sqwat = np.mean(metainfo_f[(metainfo_f['ko_parent'] == 'MAT') & (metainfo_f['genotype'] == 'KLF14-KO:WT')]['SC'])
+dwmean_fko_f_sqwat = np.mean(metainfo_f[(metainfo_f['ko_parent'] == 'MAT') & (metainfo_f['genotype'] == 'KLF14-KO:Het')]['SC'])
+
+dwmean_control_m_sqwat = np.mean(metainfo_m[metainfo_m['ko_parent'] == 'PAT']['SC'])
+dwmean_matwt_m_sqwat = np.mean(metainfo_m[(metainfo_m['ko_parent'] == 'MAT') & (metainfo_m['genotype'] == 'KLF14-KO:WT')]['SC'])
+dwmean_fko_m_sqwat = np.mean(metainfo_m[(metainfo_m['ko_parent'] == 'MAT') & (metainfo_m['genotype'] == 'KLF14-KO:Het')]['SC'])
+
 # Tukey HSD for SC ~ functional_ko
 multicomp_f = sm.stats.multicomp.MultiComparison(metainfo_f['SC'], metainfo_f['functional_ko'])
 tukeyhsd_f = multicomp_f.tukeyhsd()
@@ -734,6 +779,15 @@ if SAVE_FIGS:
     ax.get_legend().set_title('')
     ax.legend([])
     # ax.legend(['Control (PAT)', 'MAT WT', 'FKO (MAT Het)'], loc='lower right', fontsize=12)
+
+    # mean values
+    plt.plot([-0.35, -0.15], [dwmean_control_f_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([-0.10,  0.10], [dwmean_matwt_f_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.17,  0.35], [dwmean_fko_f_sqwat,]*2, 'k', linewidth=2)
+
+    plt.plot([ 0.65,  0.85], [dwmean_control_m_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.90,  1.10], [dwmean_matwt_m_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([ 1.17,  1.35], [dwmean_fko_m_sqwat,]*2, 'k', linewidth=2)
 
     # female
     plt.plot([0.0, 0.0, 0.3, 0.3], [1.05, 1.15, 1.15, 1.05], 'k', lw=1.5)
@@ -779,6 +833,23 @@ if SAVE_FIGS:
 
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_sqwat_fko.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_sqwat_fko.svg'))
+
+print('mean DW')
+print('\tfemale gonadal Control: ' + str(dwmean_control_f_gwat))
+print('\tfemale gonadal MAT WT: ' + str(dwmean_matwt_f_gwat))
+print('\tfemale gonadal FKO: ' + str(dwmean_fko_f_gwat))
+
+print('\tfemale subcut. Control: ' + str(dwmean_control_f_sqwat))
+print('\tfemale subcut. MAT WT: ' + str(dwmean_matwt_f_sqwat))
+print('\tfemale subcut. FKO: ' + str(dwmean_fko_f_sqwat))
+
+print('\tmale gonadal Control: ' + str(dwmean_control_m_gwat))
+print('\tmale gonadal MAT WT: ' + str(dwmean_matwt_m_gwat))
+print('\tmale gonadal FKO: ' + str(dwmean_fko_m_gwat))
+
+print('\tmale subcut. Control: ' + str(dwmean_control_m_sqwat))
+print('\tmale subcut. MAT WT: ' + str(dwmean_matwt_m_sqwat))
+print('\tmale subcut. FKO: ' + str(dwmean_fko_m_sqwat))
 
 ## DW ~ BW * functional_ko
 ########################################################################################################################
@@ -1008,7 +1079,24 @@ if SAVE_FIGS:
     plt.subplot(222)
     sex = 'm'
     cytometer.stats.plot_linear_regression(model_gwat_m_global, metainfo_m, 'BW__',
-                                           other_vars={'sex':sex, 'functional_ko':'Control'},
+                                           other_vars={'sex'print('mean DW')
+print('\tfemale gonadal Control: ' + str(dwmean_control_f_gwat))
+print('\tfemale gonadal MAT WT: ' + str(dwmean_matwt_f_gwat))
+print('\tfemale gonadal FKO: ' + str(dwmean_fko_f_gwat))
+
+print('\tfemale subcut. Control: ' + str(dwmean_control_f_sqwat))
+print('\tfemale subcut. MAT WT: ' + str(dwmean_matwt_f_sqwat))
+print('\tfemale subcut. FKO: ' + str(dwmean_fko_f_sqwat))
+
+print('\tmale gonadal Control: ' + str(dwmean_control_m_gwat))
+print('\tmale gonadal MAT WT: ' + str(dwmean_matwt_m_gwat))
+print('\tmale gonadal FKO: ' + str(dwmean_fko_m_gwat))
+
+print('\tmale subcut. Control: ' + str(dwmean_control_m_sqwat))
+print('\tmale subcut. MAT WT: ' + str(dwmean_matwt_m_sqwat))
+print('\tmale subcut. FKO: ' + str(dwmean_fko_m_sqwat))
+
+:sex, 'functional_ko':'Control'},
                                            dep_var='gWAT', sx=BW_mean, c='C2', marker='x',
                                            line_label='Control')
     cytometer.stats.plot_linear_regression(model_gwat_m_global, metainfo_m, 'BW__',
@@ -1100,6 +1188,24 @@ df_m_gwat = df_all[(df_all['sex'] == 'm') & (df_all['depot'] == 'gwat')]
 df_f_sqwat = df_all[(df_all['sex'] == 'f') & (df_all['depot'] == 'sqwat')]
 df_m_sqwat = df_all[(df_all['sex'] == 'm') & (df_all['depot'] == 'sqwat')]
 
+# mean areaq Gonadal
+areaqmean_control_f_gwat = np.mean(df_f_gwat[df_f_gwat['ko_parent'] == 'PAT']['area_at_quantile_10e3'])
+areaqmean_matwt_f_gwat = np.mean(df_f_gwat[(df_f_gwat['ko_parent'] == 'MAT') & (df_f_gwat['genotype'] == 'KLF14-KO:WT')]['area_at_quantile_10e3'])
+areaqmean_fko_f_gwat = np.mean(df_f_gwat[(df_f_gwat['ko_parent'] == 'MAT') & (df_f_gwat['genotype'] == 'KLF14-KO:Het')]['area_at_quantile_10e3'])
+
+areaqmean_control_m_gwat = np.mean(df_m_gwat[df_m_gwat['ko_parent'] == 'PAT']['area_at_quantile_10e3'])
+areaqmean_matwt_m_gwat = np.mean(df_m_gwat[(df_m_gwat['ko_parent'] == 'MAT') & (df_m_gwat['genotype'] == 'KLF14-KO:WT')]['area_at_quantile_10e3'])
+areaqmean_fko_m_gwat = np.mean(df_m_gwat[(df_m_gwat['ko_parent'] == 'MAT') & (df_m_gwat['genotype'] == 'KLF14-KO:Het')]['area_at_quantile_10e3'])
+
+# mean areaq Subcut.
+areaqmean_control_f_sqwat = np.mean(df_f_sqwat[df_f_sqwat['ko_parent'] == 'PAT']['area_at_quantile_10e3'])
+areaqmean_matwt_f_sqwat = np.mean(df_f_sqwat[(df_f_sqwat['ko_parent'] == 'MAT') & (df_f_sqwat['genotype'] == 'KLF14-KO:WT')]['area_at_quantile_10e3'])
+areaqmean_fko_f_sqwat = np.mean(df_f_sqwat[(df_f_sqwat['ko_parent'] == 'MAT') & (df_f_sqwat['genotype'] == 'KLF14-KO:Het')]['area_at_quantile_10e3'])
+
+areaqmean_control_m_sqwat = np.mean(df_m_sqwat[df_m_sqwat['ko_parent'] == 'PAT']['area_at_quantile_10e3'])
+areaqmean_matwt_m_sqwat = np.mean(df_m_sqwat[(df_m_sqwat['ko_parent'] == 'MAT') & (df_m_sqwat['genotype'] == 'KLF14-KO:WT')]['area_at_quantile_10e3'])
+areaqmean_fko_m_sqwat = np.mean(df_m_sqwat[(df_m_sqwat['ko_parent'] == 'MAT') & (df_m_sqwat['genotype'] == 'KLF14-KO:Het')]['area_at_quantile_10e3'])
+
 # Tukey HSD for area_at_quantile ~ functional_ko
 multicomp_gwat_f = sm.stats.multicomp.MultiComparison(df_f_gwat['area_at_quantile_10e3'], df_f_gwat['functional_ko'])
 tukeyhsd_gwat_f = multicomp_gwat_f.tukeyhsd()
@@ -1132,6 +1238,15 @@ if SAVE_FIGS:
     plt.xticks([0, 1], labels=['Female', 'Male'])
     ax.get_legend().set_title('')
     ax.legend(['Control (PAT)', 'MAT WT', 'FKO (MAT Het)'], loc='lower right', fontsize=12)
+
+    # mean values
+    plt.plot([-0.35, -0.15], [areaqmean_control_f_gwat,]*2, 'k', linewidth=2)
+    plt.plot([-0.10,  0.10], [areaqmean_matwt_f_gwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.17,  0.35], [areaqmean_fko_f_gwat,]*2, 'k', linewidth=2)
+
+    plt.plot([ 0.65,  0.85], [areaqmean_control_m_gwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.90,  1.10], [areaqmean_matwt_m_gwat,]*2, 'k', linewidth=2)
+    plt.plot([ 1.17,  1.35], [areaqmean_fko_m_gwat,]*2, 'k', linewidth=2)
 
     # female
     plt.plot([-0.3, -0.3, 0.0, 0.0], [7.350, 7.550, 7.550, 7.350], 'k', lw=1.5)
@@ -1191,6 +1306,15 @@ if SAVE_FIGS:
     ax.get_legend().set_title('')
     ax.get_legend().remove()
 
+    # mean values
+    plt.plot([-0.35, -0.15], [areaqmean_control_f_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([-0.10,  0.10], [areaqmean_matwt_f_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.17,  0.35], [areaqmean_fko_f_sqwat,]*2, 'k', linewidth=2)
+
+    plt.plot([ 0.65,  0.85], [areaqmean_control_m_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([ 0.90,  1.10], [areaqmean_matwt_m_sqwat,]*2, 'k', linewidth=2)
+    plt.plot([ 1.17,  1.35], [areaqmean_fko_m_sqwat,]*2, 'k', linewidth=2)
+
     # female
     plt.plot([-0.3, -0.3, 0.0, 0.0], [5.4, 5.6, 5.6, 5.4], 'k', lw=1.5)
     idx = (tukeyhsd_sqwat_f['group1'] == 'Control') & (tukeyhsd_sqwat_f['group2'] == 'MAT_WT')
@@ -1237,6 +1361,22 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_areaq_fko_sqwat.png'))
     plt.savefig(os.path.join(figures_dir, 'klf14_b6ntac_exp_0111_paper_figures_swarm_areaq_fko_sqwat.svg'))
 
+print('mean areaq')
+print('\tfemale gonadal Control: ' + str(areaqmean_control_f_gwat))
+print('\tfemale gonadal MAT WT: ' + str(areaqmean_matwt_f_gwat))
+print('\tfemale gonadal FKO: ' + str(areaqmean_fko_f_gwat))
+
+print('\tfemale subcut. Control: ' + str(areaqmean_control_f_sqwat))
+print('\tfemale subcut. MAT WT: ' + str(areaqmean_matwt_f_sqwat))
+print('\tfemale subcut. FKO: ' + str(areaqmean_fko_f_sqwat))
+
+print('\tmale gonadal Control: ' + str(areaqmean_control_m_gwat))
+print('\tmale gonadal MAT WT: ' + str(areaqmean_matwt_m_gwat))
+print('\tmale gonadal FKO: ' + str(areaqmean_fko_m_gwat))
+
+print('\tmale subcut. Control: ' + str(areaqmean_control_m_sqwat))
+print('\tmale subcut. MAT WT: ' + str(areaqmean_matwt_m_sqwat))
+print('\tmale subcut. FKO: ' + str(areaqmean_fko_m_sqwat))
 
 ## one data point per animal
 ## linear regression analysis of quantile_area ~ DW * functional_ko
