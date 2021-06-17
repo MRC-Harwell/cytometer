@@ -3,7 +3,7 @@
 # Script to convert ndpi images to DeepZoom Image (.dzi) format so that they can be visualised by AIDA.
 #
 # Syntax:
-#    ./apl15_del2_full_histology_ndpi_to_dzi.sh
+#    ./arl15del2_full_histology_ndpi_to_dzi.sh
 
 # This file is part of Cytometer
 # Copyright 2021 Medical Research Council
@@ -11,7 +11,7 @@
 # Author: Ramon Casero <rcasero@gmail.com>
 
 ndpi_dir=$HOME/scan_srv2_cox/'Ying Bai'/'For Ramon'
-dzi_dir=$HOME/Data/cytometer_data/aida_data_Apl15_del2/images
+dzi_dir=$HOME/Data/cytometer_data/aida_data_Arl15_del2/images
 
 ndpi_list=(
 'APL15-DEL2-EM1-B6N 31.1a 696-19 Gwat 1 - 2019-08-19 12.44.49.ndpi'

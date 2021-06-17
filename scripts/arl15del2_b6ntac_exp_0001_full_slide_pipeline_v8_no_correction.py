@@ -35,12 +35,12 @@ Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.p
 
  4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
-    ~/Software/cytometer/tools/apl15_del2_full_histology_ndpi_to_dzi.sh
+    ~/Software/cytometer/tools/arl15del2_full_histology_ndpi_to_dzi.sh
 
     and run
 
     cd ~/Software/cytometer/tools
-    ./apl15_del2_full_histology_ndpi_to_dzi.sh
+    ./arl15del2_full_histology_ndpi_to_dzi.sh
 
  5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data in
     ~/Data/cytometer_data/klf14/saved_models.
@@ -124,7 +124,7 @@ pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN 
 histology_dir = os.path.join(home, 'scan_srv2_cox/Ying Bai/For Ramon')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Apl15_del2/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Arl15_del2/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0106_filename_area2quantile_v8.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
