@@ -70,7 +70,7 @@ Author: Ramon Casero <rcasero@gmail.com>
 """
 
 # script name to identify this experiment
-experiment_id = 'rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8.py'
+experiment_id = 'rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8'
 
 # cross-platform home directory
 from pathlib import Path
