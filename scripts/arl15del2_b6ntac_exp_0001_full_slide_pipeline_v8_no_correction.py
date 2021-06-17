@@ -163,7 +163,7 @@ min_cell_area = 200  # pixel
 max_cell_area = 200e3  # pixel
 min_mask_overlap = 0.8
 phagocytosis = True
-min_class_prop = 0.5
+min_class_prop = 0.0  # we accept all segmented objects here, as that gives as a chance to filter with different thresholds later
 correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
@@ -485,7 +485,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                                      mask=istissue_tile,
                                                      min_mask_overlap=min_mask_overlap,
                                                      phagocytosis=phagocytosis,
-                                                     min_class_prop=0.0,
+                                                     min_class_prop=min_class_prop,
                                                      correction_window_len=correction_window_len,
                                                      correction_smoothing=correction_smoothing,
                                                      return_bbox=True, return_bbox_coordinates='xy',
