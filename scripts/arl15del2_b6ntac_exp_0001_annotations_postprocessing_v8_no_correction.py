@@ -1,6 +1,6 @@
 """
-This script aggregates all the cells in each '*_exp_0004_auto.json' file, thresholds them according to the field
-cell_prob, saves the valid ones to a '*_exp_0004_auto_aggregate.json', and then creates a soft links to it that will be
+This script aggregates all the cells in each '*_exp_0001_auto.json' file, thresholds them according to the field
+cell_prob, saves the valid ones to a '*_exp_0001_auto_aggregate.json', and then creates a soft links to it that will be
 read by AIDA.
 """
 
@@ -26,12 +26,12 @@ import numpy as np
 import shapely
 import cytometer.utils
 
-histology_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace/RREB1 Feb19')
+histology_dir = os.path.join(home, 'scan_srv2_cox/Ying Bai/For Ramon')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Arl15_del2/annotations')
 
-# file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
-filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
+# file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0106_filename_area2quantile_v8.py
+filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
 
 # suffixes of annotation filenames
 auto_filename_suffix = '_exp_0004_auto.json'
@@ -56,7 +56,7 @@ if os.path.isfile(filename_area2quantile):
         f_area2quantile_m = aux['f_area2quantile_m'].item()
 else:
     raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
-                            ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
+                            ' slides in klf14_b6ntac_exp_0106_full_slide_size_analysis_v8.py')
 
 # load AIDA's colourmap
 cm = cytometer.data.aida_colourmap()
