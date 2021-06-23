@@ -2,6 +2,8 @@
 cytometer/data.py
 
 Functions to load, save and pre-process data related to the cytometer project.
+
+Environments: cytometer_tensorflow, cytometer_tensorflow_v2.
 """
 
 """
@@ -12,6 +14,7 @@ Author: Ramon Casero <rcasero@gmail.com>
 """
 
 import os
+import shutil
 import glob
 import warnings
 import pickle
@@ -22,6 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
 import numpy as np
+import scipy
 from scipy import ndimage
 import scipy.stats
 import pandas as pd
@@ -33,8 +37,10 @@ import six
 from svgpathtools import svg2paths
 import random
 import colorsys
-import scipy
 from shapely.geometry import Polygon
+import pyvips
+import aicsimageio
+from aicsimageio.readers.czi_reader import CziReader
 
 DEBUG = False
 
@@ -1512,5 +1518,66 @@ def append_paths_to_aida_json_file(file, xs, hue=170, pretty_print=False):
     fp.write(tail)
 
     fp.close()
+
+    return
+
+
+def zeiss_to_deepzoom(histo_list, dzi_dir=None, overwrite=False):
+    """
+    Convert microscopy files from Zeiss .czi format to DeepZoom .dzi format.
+
+    .dzi is a format that can be used by AIDA to display and navigate large microscopy images.
+
+    :param histo_list: path and filename, or list of paths and filenames of Zeiss .czi files.
+    :param dzi_dir: (def None) Destination path of the DeepZoom files. If dzi_dir=None, the DeepZoom files are created
+    in the same path as the input Zeiss image.
+    :return: None.
+    """
+
+    if type(histo_list) is not list:
+        histo_list = [histo_list,]
+
+    for histo_file in histo_list:
+
+        # if no output directory provided, save to same directory as input file
+        if dzi_dir is None:
+            dzi_dir_aux = os.path.dirname(histo_file)
+        else:
+            dzi_dir_aux = dzi_dir
+
+        # filename for DeepZoom file
+        # Note: '.dzi' will be added by pyvips to the filename we provide, so we should provide a filename without
+        # that extension
+        dzi_file = os.path.basename(histo_file)
+        dzi_file = os.path.splitext(dzi_file)[0]
+        dzi_file = os.path.join(dzi_dir_aux, dzi_file)
+
+        # open the CZI file without loading it into memory
+        im = aicsimageio.AICSImage(histo_file, reader=CziReader)
+
+        if DEBUG:
+            # write metadata to debug file
+            import xml.etree.ElementTree as ET
+            tree = ET.ElementTree(im.metadata)
+            tree.write('/tmp/foo.xml', encoding='utf-8')
+
+        # hack to obtain the image dimensions (number of pixels) without having to load it into memory with im.dims
+        width = int(im.metadata.findall('./Metadata/Information/Image/SizeX')[0].text)
+        height = int(im.metadata.findall('./Metadata/Information/Image/SizeY')[0].text)
+
+        # save to DeepZoom
+        if os.path.isfile(dzi_file + '.dzi') and not overwrite:
+            print('File already exists and not overwrite selected... skipping: ' + dzi_file + '.czi')
+        else:
+            if os.path.isfile(dzi_file + '.dzi'):
+                print('File already exists and overwrite selected: ' + dzi_file + '.dzi')
+                os.remove(dzi_file + '.dzi')
+                shutil.rmtree(dzi_file + '_files', ignore_errors=True)
+            else:
+                print('Creating file: ' + dzi_file + '.dzi')
+
+            im_vips = pyvips.Image.new_from_memory(im.get_image_data("TCZYXS"),
+                                                   width=width, height=height, bands=3, format='uchar')
+            im_vips.dzsave(dzi_file)
 
     return
