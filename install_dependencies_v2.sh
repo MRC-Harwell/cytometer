@@ -38,7 +38,7 @@ fi
 
 conda activate ${CONDA_LOCAL_ENV}
 
-pip install matplotlib==3.4.2 scipy==1.7.0
+pip install matplotlib==3.4.2 scipy==1.7.0 scikit-learn==0.24.2 statsmodels==0.12.2 seaborn==0.11.1
 pip install ujson==4.0.2 mahotas==1.4.11 pysto==1.4.1 svgpathtools==1.4.1
 conda install -y shapely==1.7.1
 conda install -y --channel conda-forge pyvips==2.1.8

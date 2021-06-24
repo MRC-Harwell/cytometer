@@ -1,6 +1,8 @@
 """
 Generate figures for the DeepCytometer paper for v8 of the pipeline.
 
+Environment: cytometer_tensorflow_v2.
+
 We repeat the phenotyping from klf14_b6ntac_exp_0110_paper_figures_v8.py, but change the stratification of the data so
 that we have Control (PATs + WT MATs) vs. Het MATs.
 
