@@ -169,7 +169,7 @@ correction_smoothing = 11
 batch_size = 16
 
 # list of NDPI files to process
-ndpi_files_list = [
+histo_files_list = [
 'APL15-DEL2-EM1-B6N 31.1a 696-19 Gwat 1 - 2019-08-19 12.44.49.ndpi',
 'APL15-DEL2-EM1-B6N 31.1a 696-19 Gwat 3 - 2019-08-19 12.57.53.ndpi',
 'APL15-DEL2-EM1-B6N 31.1a 696-19 Gwat 6 - 2019-08-19 13.16.35.ndpi',
@@ -281,15 +281,15 @@ cm = cytometer.data.aida_colourmap()
 ## Segmentation loop
 ########################################################################################################################
 
-for i_file, ndpi_file in enumerate(ndpi_files_list):
+for i_file, histo_file in enumerate(histo_files_list):
 
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': ' + ndpi_file)
+    print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': ' + histo_file)
 
     # make full path to ndpi file
-    ndpi_file = os.path.join(histology_dir, ndpi_file)
+    histo_file = os.path.join(histology_dir, histo_file)
 
     # check whether there's a lock on this file
-    lock_file = os.path.basename(ndpi_file).replace('.ndpi', '.lock')
+    lock_file = os.path.basename(histo_file).replace('.ndpi', '.lock')
     lock_file = os.path.join(annotations_dir, lock_file)
     if os.path.isfile(lock_file):
         print('Lock on file, skipping')
@@ -308,17 +308,17 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                          classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # name of file to save annotations to
-    annotations_file = os.path.basename(ndpi_file)
+    annotations_file = os.path.basename(histo_file)
     annotations_file = os.path.splitext(annotations_file)[0]
     annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0004_auto.json')
 
     # name of file to save rough mask, current mask, and time steps
-    rough_mask_file = os.path.basename(ndpi_file)
+    rough_mask_file = os.path.basename(histo_file)
     rough_mask_file = rough_mask_file.replace('.ndpi', '_rough_mask.npz')
     rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
 
     # open full resolution histology slide
-    im = openslide.OpenSlide(ndpi_file)
+    im = openslide.OpenSlide(histo_file)
 
     # pixel size
     assert(im.properties['tiff.ResolutionUnit'] == 'centimeter')
@@ -348,7 +348,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         time_prev = time.time()
 
         # compute the rough foreground mask of tissue vs. background
-        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+        lores_istissue0, im_downsampled = rough_foreground_mask(histo_file, downsample_factor=downsample_factor,
                                                                 dilation_size=dilation_size,
                                                                 component_size_threshold=component_size_threshold,
                                                                 hole_size_treshold=hole_size_treshold, std_k=std_k,
@@ -389,7 +389,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # checkpoint: here the rough tissue mask has either been loaded or computed
     time_step = time_step_all[-1]
     time_total = np.sum(time_step_all)
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': step ' +
+    print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': step ' +
           str(step) + ': ' +
           str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
           "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
@@ -623,7 +623,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         time_step_all.append(time_step)
         time_total = np.sum(time_step_all)
 
-        print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': step ' +
+        print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': step ' +
               str(step) + ': ' +
               str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
               "{0:.1f}".format(perc_completed) +
