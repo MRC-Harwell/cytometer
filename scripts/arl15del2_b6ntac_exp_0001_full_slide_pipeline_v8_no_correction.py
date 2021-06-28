@@ -13,7 +13,7 @@ Processing full slides of Ying Bai's  with pipeline v8, without segmentation cor
  * validation (*0096*)
 
 Difference with pipeline v7:
-  * Contrast enhancement to compute rough tissue mask
+  * Contrast enhancement to compute coarse tissue mask
   * Colour correction to match the median colour of the training data for segmentation
   * All segmented objects are saved, together with the white adipocyte probability score. That way, we can decide later
     which ones we want to keep, and which ones we want to reject.
@@ -312,10 +312,10 @@ for i_file, histo_file in enumerate(histo_files_list):
     annotations_file = os.path.splitext(annotations_file)[0]
     annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0004_auto.json')
 
-    # name of file to save rough mask, current mask, and time steps
-    rough_mask_file = os.path.basename(histo_file)
-    rough_mask_file = rough_mask_file.replace('.ndpi', '_rough_mask.npz')
-    rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
+    # name of file to save coarse mask, current mask, and time steps
+    coarse_mask_file = os.path.basename(histo_file)
+    coarse_mask_file = coarse_mask_file.replace('.ndpi', '_coarse_mask.npz')
+    coarse_mask_file = os.path.join(annotations_dir, coarse_mask_file)
 
     # open full resolution histology slide
     im = openslide.OpenSlide(histo_file)
@@ -326,12 +326,12 @@ for i_file, histo_file in enumerate(histo_files_list):
     yres = 1e-2 / float(im.properties['tiff.YResolution'])
 
     # check whether we continue previous execution, or we start a new one
-    continue_previous = os.path.isfile(rough_mask_file)
+    continue_previous = os.path.isfile(coarse_mask_file)
 
-    # if the rough mask has been pre-computed, just load it
+    # if the coarse mask has been pre-computed, just load it
     if continue_previous:
 
-        with np.load(rough_mask_file) as aux:
+        with np.load(coarse_mask_file) as aux:
             lores_istissue = aux['lores_istissue']
             lores_istissue0 = aux['lores_istissue0']
             im_downsampled = aux['im_downsampled']
@@ -347,7 +347,7 @@ for i_file, histo_file in enumerate(histo_files_list):
 
         time_prev = time.time()
 
-        # compute the rough foreground mask of tissue vs. background
+        # compute the coarse foreground mask of tissue vs. background
         lores_istissue0, im_downsampled = rough_foreground_mask(histo_file, downsample_factor=downsample_factor,
                                                                 dilation_size=dilation_size,
                                                                 component_size_threshold=component_size_threshold,
@@ -377,16 +377,16 @@ for i_file, histo_file in enumerate(histo_files_list):
         time_step_all = [time_step,]
         (prev_first_row, prev_last_row, prev_first_col, prev_last_col) = (0, 0, 0, 0)
 
-        # save to the rough mask file
-        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
+        # save to the coarse mask file
+        np.savez_compressed(coarse_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
                             prev_first_row=prev_first_row, prev_last_row=prev_last_row,
                             prev_first_col=prev_first_col, prev_last_col=prev_last_col,
                             time_step_all=time_step_all)
 
-        # end "computing the rough foreground mask"
+        # end "computing the coarse foreground mask"
 
-    # checkpoint: here the rough tissue mask has either been loaded or computed
+    # checkpoint: here the coarse tissue mask has either been loaded or computed
     time_step = time_step_all[-1]
     time_total = np.sum(time_step_all)
     print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': step ' +
@@ -417,7 +417,7 @@ for i_file, histo_file in enumerate(histo_files_list):
 
         time_prev = time.time()
 
-        # next step (it starts from 1 here, because step 0 is the rough mask computation)
+        # next step (it starts from 1 here, because step 0 is the coarse mask computation)
         step += 1
 
         # get indices for the next histology window to process
@@ -528,7 +528,7 @@ for i_file, histo_file in enumerate(histo_files_list):
                 plt.axis('off')
                 plt.tight_layout()
 
-            # downsample "to do" mask so that the rough tissue segmentation can be updated
+            # downsample "to do" mask so that the coarse tissue segmentation can be updated
             lores_todo_edge = PIL.Image.fromarray(todo_edge.astype(np.uint8))
             lores_todo_edge = lores_todo_edge.resize((lores_last_col - lores_first_col,
                                                       lores_last_row - lores_first_row),
@@ -631,8 +631,8 @@ for i_file, histo_file in enumerate(histo_files_list):
               'time step ' + "{0:.2f}".format(time_step) + ' s' +
               ', total time ' + "{0:.2f}".format(time_total) + ' s')
 
-        # save to the rough mask file
-        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
+        # save to the coarse mask file
+        np.savez_compressed(coarse_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
                             im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
                             time_step_all=time_step_all,
                             prev_first_row=prev_first_row, prev_last_row=prev_last_row,
