@@ -4,7 +4,7 @@
 # can be visualised by AIDA.
 #
 # Syntax:
-#    ./rebb1_full_histology_ndpi_to_dzi.sh
+#    ./rebb1_pilot_full_histology_ndpi_to_dzi.sh
 
 # This file is part of Cytometer
 # Copyright 2021 Medical Research Council
