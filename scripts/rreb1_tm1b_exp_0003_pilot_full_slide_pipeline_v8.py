@@ -32,12 +32,12 @@ Difference with rreb1_tm1b_exp_0001_pilot_full_slide_pipeline_v7.py:
 
  4) Convert the .ndpi files to AIDA .dzi files, so that we can see the results of the segmentation.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
-    ~/Software/cytometer/tools/rebb1_full_histology_ndpi_to_dzi.sh
+    ~/Software/cytometer/tools/rebb1_pilot_full_histology_ndpi_to_dzi.sh
 
     and run
 
     cd ~/Software/cytometer/tools
-    ./rebb1_full_histology_ndpi_to_dzi.sh
+    ./rebb1_pilot_full_histology_ndpi_to_dzi.sh
 
  5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data in
     ~/Data/cytometer_data/klf14/saved_models.
