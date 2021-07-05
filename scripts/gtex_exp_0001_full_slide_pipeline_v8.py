@@ -34,7 +34,7 @@ You can run this script limiting it to one GPU with:
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
 
- 2) Run ./install_dependencies.sh in cytometer.
+ 2) Run ./install_dependencies_machine.sh in cytometer.
 
  3) Mount the network share//jesse.mrch.har.mrc.ac.uk/mousedata on ~/jesse_mousedata with CIFS so that we have access to
     GTEx .svs (TIFF) files. You can do it by creating an empty directory

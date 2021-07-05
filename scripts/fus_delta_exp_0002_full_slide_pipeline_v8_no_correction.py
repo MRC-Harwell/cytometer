@@ -29,7 +29,7 @@ Difference with fus_delta_exp_0001_full_slide_pipeline_v8.py:
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
 
- 2) Run ./install_dependencies.sh in cytometer.
+ 2) Run ./install_dependencies_machine.sh in cytometer.
 
  3) Mount the network share //walter/AAcevedo_images on ~/AAcevedo_images with CIFS so that we have access to Silvia's
     .ndpi files. You can do it by creating an empty directory

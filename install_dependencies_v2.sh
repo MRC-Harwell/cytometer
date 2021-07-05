@@ -4,7 +4,7 @@
 #    Script to install the dependencies for more up-to-date packages of cytometer, without some of the constraints given
 #    by the old version of Keras needed for training the pipeline.
 #
-#    This script assumes that install_dependencies.sh has been run already.
+#    This script assumes that install_dependencies_machine.sh has been run already.
 
 # This file is part of Cytometer
 # Copyright 2021 Medical Research Council

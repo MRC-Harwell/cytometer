@@ -1,5 +1,5 @@
 #!/bin/bash
-# install_dependencies.sh
+# install_dependencies_machine.sh
 #
 #    Script to install the dependencies to run the DeepCytometer pipeline and experiments.
 #
