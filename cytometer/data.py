@@ -1561,7 +1561,8 @@ def zeiss_to_deepzoom(histo_list, dzi_dir=None, overwrite=False):
             tree = ET.ElementTree(im.metadata)
             tree.write('/tmp/foo.xml', encoding='utf-8')
 
-        # hack to obtain the image dimensions (number of pixels) without having to load it into memory with im.dims
+        # hack to obtain the image dimensions (number of pixels) quickily, due to this problem with im.dims
+        # https://github.com/AllenCellModeling/aicsimageio/issues/274
         width = int(im.metadata.findall('./Metadata/Information/Image/SizeX')[0].text)
         height = int(im.metadata.findall('./Metadata/Information/Image/SizeY')[0].text)
 
