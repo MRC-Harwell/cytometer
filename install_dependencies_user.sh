@@ -137,6 +137,15 @@ pip install pydot==1.4.2            # used by visualization utilities to plot mo
 # We can fix the problem by creating symlinks with the expected library names to the lightly newer versions of the
 # libraries
 
+# find out which Ubuntu version this machine is using
+UBUNTU_VERSION=`lsb_release -r | tr -d [:blank:] | sed -e "s/^Release://"`
+if [[ -z "$UBUNTU_VERSION" ]]; then
+    echo "Ubuntu version could not be found"
+    exit 1
+else
+    echo UBUNTU_VERSION=${UBUNTU_VERSION}
+fi
+
 case ${UBUNTU_VERSION}
 in
     20.04)
