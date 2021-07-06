@@ -28,7 +28,7 @@ Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.p
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
 
- 2) Run ./install_dependencies.sh in cytometer.
+ 2) Run ./install_dependencies_machine.sh in cytometer.
 
  3) Mount the network share that contains the histology to ~/coxgroup_zeiss_test.
 

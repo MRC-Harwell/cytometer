@@ -1,10 +1,10 @@
 #!/bin/bash
-# install_dependencies_v2.sh
+# install_dependencies_user_v2.sh
 #
 #    Script to install the dependencies for more up-to-date packages of cytometer, without some of the constraints given
-#    by the old version of Keras needed for training the pipeline.
+#    by the old version of Keras needed for the pipeline. (This environment cannot run the pipeline, though).
 #
-#    This script assumes that install_dependencies.sh has been run already.
+#    This script assumes that install_dependencies_machine.sh has been run already.
 
 # This file is part of Cytometer
 # Copyright 2021 Medical Research Council
@@ -21,6 +21,32 @@ PYTHON_VERSION=3.8
 CONDA_LOCAL_ENV=cytometer_tensorflow_v2
 
 ########################################################################
+## install Miniconda locally so that we can use the conda local environment tools,
+## and install python packages with pip and conda
+
+# install Miniconda
+mkdir -p ~/Downloads
+
+if [[ -d "${HOME}/Software/miniconda${MINICONDA_VERSION}" ]]; then
+    /usr/bin/tput setaf 1; echo "** Conda ${MINICONDA_VERSION} package manager already installed"; /usr/bin/tput sgr0
+else
+    /usr/bin/tput setaf 1; echo "** Installing conda ${MINICONDA_VERSION} package manager"; /usr/bin/tput sgr0
+    mkdir -p ~/Dowloads
+    pushd ~/Downloads
+    # download installer
+    if [[ ! -e "Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh" ]];
+    then
+	wget https://repo.continuum.io/miniconda/Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh
+    fi
+    # install conda
+    chmod u+x Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh
+    ./Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh -b -p "$HOME"/Software/miniconda${MINICONDA_VERSION}
+    "$HOME"/Software/miniconda${MINICONDA_VERSION}/bin/conda init
+    source ~/.bashrc
+    popd
+fi
+
+########################################################################
 ## create python local environment if it doesn't exist already
 
 # check whether the environment already exists
@@ -34,14 +60,12 @@ fi
 ########################################################################
 ## install dependencies
 
-#sudo apt install -y default-jdk
-
-conda activate ${CONDA_LOCAL_ENV}
+source activate ${CONDA_LOCAL_ENV}
 
 pip install matplotlib==3.4.2 scipy==1.7.0 scikit-learn==0.24.2 scikit-image==0.18.1 statsmodels==0.12.2 seaborn==0.11.1
 pip install ujson==4.0.2 mahotas==1.4.11 pysto==1.4.1 svgpathtools==1.4.1
-conda install -y shapely==1.7.1
-conda install -y --channel conda-forge pyvips==2.1.8
+pip install shapely==1.7.1
+pip install pyvips==2.1.15
 pip install "aicsimageio[czi] @ git+https://github.com/AllenCellModeling/aicsimageio.git"
 #pip install slideio
 #pip install python-bioformats

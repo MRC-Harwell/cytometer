@@ -25,7 +25,7 @@ Difference with rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8.py:
 
  1) Upload the cytometer project directory to ~/Software in the server where you are going to process the data.
 
- 2) Run ./install_dependencies.sh in cytometer.
+ 2) Run ./install_dependencies_machine.sh in cytometer.
 
  3) Mount the network share with the histology slides onto ~/scan_srv2_cox.
 

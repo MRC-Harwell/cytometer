@@ -1,11 +1,10 @@
 #!/bin/bash
-# install_dependencies.sh
+# install_dependencies_machine.sh
 #
-#    Script to install the dependencies to run the DeepCytometer pipeline and experiments.
+#    Script to install a new local environment (cytometer_tensorflow) and software to run DeepCytometer pipeline and
+#    experiments. This needs to be run for each user.
 #
-#    This script installs several Ubuntu packages, and creates two local conda environments:
-#      * cytometer: With the latest versions of Keras/Theano/Tensorflow to run cytometer scripts.
-#      * DeepCell: Based on Keras 1.1.1 and Theano 0.9.0 to run DeepCell legacy code.
+#    This script assumes that the machine has been previously set up with install_dependencies_machine.sh.
 
 # This file is part of Cytometer
 # Copyright 2021 Medical Research Council
@@ -18,29 +17,11 @@ set -e
 ########################################################################
 # configuration constants
 
-MINICONDA_VERSION=3
-PYTHON_VERSION=3.6
+PYTHON_VERSION=3.7
 CONDA_LOCAL_ENV=cytometer_tensorflow
-BACKEND=tensorflow
 
 ########################################################################
-## Ubuntu packages and other binaries that the python local environment is going to need
-
-# install OpenSlide library
-sudo apt install -y openslide-tools
-
-# install LaTeX dependencies for matplotlib
-sudo apt install -y texlive-latex-base texlive-latex-extra
-sudo apt install -y dvipng
-
-# install GNU R with lme4 module (generilised linear mixed models)
-sudo apt install -y r-base r-cran-lme4
-
-# this is so that pyvips can build a libvips binary extension for python (https://github.com/libvips/pyvips)
-sudo apt install -y libvips-dev
-
-########################################################################
-## install Miniconda so that we can use the conda local environment tools,
+## install Miniconda locally so that we can use the conda local environment tools,
 ## and install python packages with pip and conda
 
 # install Miniconda
@@ -60,80 +41,13 @@ else
     # install conda
     chmod u+x Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh
     ./Miniconda${MINICONDA_VERSION}-latest-Linux-x86_64.sh -b -p "$HOME"/Software/miniconda${MINICONDA_VERSION}
-    set +e
-    isInBashrc=`grep  -c "export PATH=${HOME}/Software/miniconda${MINICONDA_VERSION}/bin" ~/.bashrc`
-    set -e
-    if [[ "$isInBashrc" -eq 0 ]];
-    then
-	echo "Adding ${HOME}/Software/miniconda${MINICONDA_VERSION}/bin to PATH in ~/.bashrc"
-	echo "
-# added by pysto/tools/install_miniconda.sh
-export PATH=${HOME}/Software/miniconda${MINICONDA_VERSION}/bin:\"\$PATH\"" >> ~/.bashrc
-	source ~/.bashrc
-    else
-	echo "${HOME}/Software/miniconda${VERSION}/bin already in PATH in ~/.bashrc"
-    fi
+    "$HOME"/Software/miniconda${MINICONDA_VERSION}/bin/conda init
+    source ~/.bashrc
     popd
 fi
 
-export PATH=${HOME}/Software/miniconda${MINICONDA_VERSION}/bin:${PATH}
-
 ########################################################################
-## nVidia drivers and CUDA
-
-tput setaf 1; echo "** Install CUDA"; tput sgr0
-
-# find out which Ubuntu version this machine is using
-UBUNTU_VERSION=`lsb_release -r | tr -d [:blank:] | sed -e "s/^Release://"`
-if [[ -z "$UBUNTU_VERSION" ]]; then
-    echo "Ubuntu version could not be found"
-    exit 1
-else
-    echo UBUNTU_VERSION=${UBUNTU_VERSION}
-fi
-
-# CUDA Toolkit 10.2
-case ${UBUNTU_VERSION}
-in
-    20.04)
-        # Set up nVidia repositories
-        # https://www.tensorflow.org/install/gpu#install_cuda_with_apt
-        tput setaf 1; echo "  ** Warning! CUDA packages are not available for Ubuntu 20.04, so we are going to use the Ubuntu 18.04 ones"; tput sgr0
-        pushd ~/Downloads
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-repo-ubuntu1804_10.2.89-1_amd64.deb
-        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
-        sudo dpkg -i cuda-repo-ubuntu1804_10.2.89-1_amd64.deb
-        sudo apt update
-        wget http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
-        sudo apt install ./nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
-        sudo apt update
-        # Install NVIDIA driver (not needed, cuda-10-2 installs it as a dependency)
-        # sudo apt-get install --no-install-recommends nvidia-driver-455
-        # Install development and runtime libraries (~4GB)
-        sudo apt-get install --no-install-recommends \
-            cuda-10-2 \
-            libcudnn7=7.6.5.32-1+cuda10.2  \
-            libcudnn7-dev=7.6.5.32-1+cuda10.2
-        # Install TensorRT. Requires that libcudnn7 is installed above.
-        sudo apt-get install -y --no-install-recommends libnvinfer6=6.0.1-1+cuda10.2 \
-            libnvinfer-dev=6.0.1-1+cuda10.2 \
-            libnvinfer-plugin6=6.0.1-1+cuda10.2
-        # prevent these last packages from being upgraded, as cuda 11 is available but we don't want it because it's
-        # not compatible with our chosen version of tensorflow
-        sudo apt-mark hold libnvinfer-dev libnvinfer-plugin7 libnvinfer7
-        popd
-        ;;
-    *)
-        echo "Error: Ubuntu version not recognised: $UBUNTU_VERSION"
-        exit 1
-        ;;
-esac
-
-########################################################################
-## create python local environment for cytometer
-
-# if the environment doesn't exist, we create a new one. If it does,
-# we add the python packages to it
+ ## create python local environment if it doesn't exist already
 
 # check whether the environment already exists
 if [[ -z "$(conda info --envs | sed '/^#/ d' | cut -f1 -d ' ' | grep -x ${CONDA_LOCAL_ENV})" ]]; then
@@ -146,10 +60,10 @@ fi
 ########################################################################
 ## install keras python packages in the local environment
 
-tput setaf 1; echo "** Install keras python packages in the local conda environment"; tput sgr0
-
 # switch to the local environment
 source activate ${CONDA_LOCAL_ENV}
+
+tput setaf 1; echo "** Install keras python packages in the local conda environment"; tput sgr0
 
 # check that the variable with the path to the local environment is
 # set. Note that different versions of conda use different variable
@@ -193,10 +107,10 @@ in
 esac
 
 # install dependencies for Keras
-conda install -y h5py==3.1.0       # to save Keras models to disk
-conda install -y graphviz==2.40.1   # used by visualization utilities to plot model graphs
-pip install cython==0.29.21         # dependency of mkl-random/mkl-fft via pydot
-pip install pydot==1.4.1            # used by visualization utilities to plot model graphs
+pip install h5py==3.3.0             # to save Keras models to disk
+pip install graphviz==0.16          # used by visualization utilities to plot model graphs
+pip install cython==0.29.23         # dependency of mkl-random/mkl-fft via pydot
+pip install pydot==1.4.2            # used by visualization utilities to plot model graphs
 
 ########################################################################
 ## fix bug: missing dynamic libraries link
@@ -254,17 +168,17 @@ esac
 tput setaf 1; echo "** Install cytometer python dependencies in the local conda environment"; tput sgr0
 
 # install other python packages
+pip install numpy==1.21.0
 pip install git+https://www.github.com/keras-team/keras-contrib.git
-conda install -y matplotlib==3.3.4 pillow==7.2.0
-conda install -y scikit-image==0.15.0 scikit-learn==0.23.1
-conda install -y nose==1.3.7 pytest==5.4.3
-pip install setuptools==45
-pip install opencv-python==4.1.0.25 pysto==1.4.1 openslide-python==1.1.1 seaborn==0.10.0 statannot==0.2.3
-pip install tifffile==2019.5.30 mahotas==1.4.5 networkx==2.4 svgpathtools==1.3.3 receptivefield==0.4.0 rpy2==3.0.5
-pip install mlxtend==0.17.0 ujson==1.35 rasterio==1.1.8
-conda install -y pandas==1.0.5 shapely==1.7.0 six==1.12.0 statsmodels==0.11.1
-conda install -y --channel conda-forge pyvips==2.1.8
-pip install aicsimageio[czi]
+pip install matplotlib==3.3.4
+pip install scikit-image==0.18.2 scikit-learn==0.24.2
+pip install nose==1.3.7 pytest==6.2.4
+pip install opencv-python==4.5.2.54 pysto==1.4.1 openslide-python==1.1.2 seaborn==0.11.1 statannot==0.2.3
+pip install mahotas==1.4.11 svgpathtools==1.4.1 receptivefield==0.5.0 rpy2==3.4.5
+pip install mlxtend==0.18.0 ujson==4.0.2 rasterio==1.2.6
+pip install shapely==1.7.1 six==1.16.0 statsmodels==0.12.2
+pip install pyvips==2.1.15
+pip install "aicsimageio[czi] @ git+https://github.com/AllenCellModeling/aicsimageio.git"
 
 ########################################################################
 ## Install AIDA
@@ -277,24 +191,21 @@ if [[ -d "${HOME}/Software/AIDA" ]]; then
 else
     echo "** Cloning AIDA from github"
     git clone https://${USER}@github.com/alanaberdeen/AIDA.git
+
+    # fix bug
+    cd ${HOME}/Software/AIDA
+    sed -i 's/cp aidaLocal/cp -r aidaLocal/g' package.json
+
+    # AIDA build
+    cd ${HOME}/Software/AIDA
+    npm install
+    cd ${HOME}/Software/AIDA/aidaLocal
+    npm install
+    cd ${HOME}/Software/AIDA
+    npm run-script build
+
+    # create data
+    mkdir -p ${HOME}/Data/cytometer_data/aida_data
+    cd ${HOME}/Software/AIDA/dist
+    ln -s ${HOME}/Data/cytometer_data/aida_data data
 fi
-
-# fix bug
-cd ${HOME}/Software/AIDA
-sed -i 's/cp aidaLocal/cp -r aidaLocal/g' package.json
-
-# AIDA dependencies and build
-sudo snap install node --classic --channel=12
-sudo apt install libvips-tools
-
-cd ${HOME}/Software/AIDA
-npm install
-cd ${HOME}/Software/AIDA/aidaLocal
-npm install
-cd ${HOME}/Software/AIDA
-npm run-script build
-
-# create data
-mkdir -p ${HOME}/Data/cytometer_data/aida_data
-cd ${HOME}/Software/AIDA/dist
-ln -s ${HOME}/Data/cytometer_data/aida_data data
