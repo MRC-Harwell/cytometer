@@ -1574,7 +1574,7 @@ def zeiss_to_deepzoom(histo_list, dzi_dir=None, overwrite=False, extra_tif=False
                 # write metadata to debug file
                 import xml.etree.ElementTree as ET
                 tree = ET.ElementTree(im.metadata)
-                tree.write('/tmp/foo.xml', encoding='utf-8')
+                tree.write(os.path.join('/tmp/', os.path.basename(dzi_filename_noext) + '.xml'), encoding='utf-8')
 
             if DEBUG:
                 time0 = time.time()
@@ -1600,26 +1600,26 @@ def zeiss_to_deepzoom(histo_list, dzi_dir=None, overwrite=False, extra_tif=False
         # save to DeepZoom
         if os.path.isfile(dzi_filename) and not overwrite:
             print('DeepZoom files already exists and not overwrite selected... skipping: ' + dzi_filename)
+        elif os.path.isfile(dzi_filename) and overwrite:
+            print('File already exists and overwrite selected: ' + dzi_filename)
+            os.remove(dzi_filename)
+            shutil.rmtree(filename_noext + '_files', ignore_errors=True)
+            im_vips.dzsave(dzi_filename_noext)  # note: extension will be automatically added
         else:
-            if os.path.isfile(dzi_filename):
-                print('File already exists and overwrite selected: ' + dzi_filename)
-                os.remove(dzi_filename)
-                shutil.rmtree(filename_noext + '_files', ignore_errors=True)
-            else:
-                print('Creating file: ' + dzi_filename)
-
+            print('Creating file: ' + dzi_filename)
             im_vips.dzsave(dzi_filename_noext)  # note: extension will be automatically added
 
+        # save to TIFF
         if extra_tif and os.path.isfile(tif_filename) and not overwrite:
             print('TIFF files already exists and not overwrite selected... skipping: ' + tif_filename)
-        elif extra_tif:
-            if os.path.isfile(tif_filename):
-                print('File already exists but overwrite selected: ' + tif_filename)
-                os.remove(tif_filename)
-            else:
-                print('Creating file: ' + tif_filename)
-
+        elif extra_tif and os.path.isfile(tif_filename) and overwrite:
+            print('File already exists but overwrite selected: ' + tif_filename)
+            os.remove(tif_filename)
             im_vips.tiffsave(tif_filename, tile=True, pyramid=True, resunit='cm',
-                             xres=float(1e-2/xres), yres=float(1e-2/xres), bigtiff=True)
+                             xres=float(1e-3/xres), yres=float(1e-3/yres), bigtiff=True)
+        else:
+            print('Creating file: ' + tif_filename)
+            im_vips.tiffsave(tif_filename, tile=True, pyramid=True, resunit='cm',
+                             xres=float(1e-3/xres), yres=float(1e-3/yres), bigtiff=True)
 
     return
