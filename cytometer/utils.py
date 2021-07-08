@@ -187,11 +187,13 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
         im = openslide.OpenSlide(filename)
 
         # level that corresponds to the downsample factor
-        downsample_level = im.get_best_level_for_downsample(downsample_factor)
-
+        downsample_level = np.argmin(np.abs(np.array(im.level_downsamples) - downsample_factor))
         if im.level_downsamples[downsample_level] != downsample_factor:
             warnings.warn('File does not contain level with downsample factor ' + str(downsample_factor)
                           + '.\nAvailable levels: ' + str(im.level_downsamples))
+
+        # actual downsample factor available in the image
+        downsample_factor = im.level_downsamples[downsample_level]
 
         # get downsampled image
         im_downsampled = im.read_region(location=(0, 0), level=downsample_level, size=im.level_dimensions[downsample_level])
