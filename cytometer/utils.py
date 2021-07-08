@@ -142,7 +142,7 @@ def paint_labels(labels, paint_labs, paint_values):
 
 def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
                           component_size_threshold=1e6, hole_size_treshold=8000, std_k=1.0,
-                          return_im=False, enhance_contrast=None, ignore_white_threshold=None):
+                          return_im=False, enhance_contrast=None, ignore_white_threshold=None, ignore_black_threshold=None):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
     by OpenSlice. The objects are darker than the background.
@@ -175,6 +175,9 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     (ignore_white_threshold, ignore_white_threshold, ignore_white_threshold) or whiter will be ignored in terms of
     computing the background mode. For example, ignore_white_threshold=253 will ignore colours (253, 253, 253),
     (253, 253, 254), (253, 254, 254), etc, (255, 255, 255).
+    :param ignore_black_threshold: (def None) Scalar. If not None, pixels with colour
+    (ignore_black_threshold, ignore_black_threshold, ignore_black_threshold) or blacker will be ignored in terms of
+    computing the background mode. For example, ignore_black_threshold=3 will ignore colours (3, 3, 3) and blacker.
     :return:
     seg: downsampled segmentation mask.
     [im_downsampled]: if return_im=True, this is the downsampled image in filename. This is the image without contrast
@@ -242,6 +245,16 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
 
         # remove pixels in the white mask
         im_downsampled_mat = im_downsampled_mat[non_white_mask, :]
+
+    if ignore_black_threshold is not None:
+        # mask where there are no black pixels
+        non_black_mask = np.prod(im_downsampled_bak <= ignore_black_threshold, axis=2) == 0
+
+        # reshape mask to matrix with one column per colour channel
+        non_black_mask = non_black_mask.reshape((non_black_mask.shape[0] * non_black_mask.shape[1],))
+
+        # remove pixels in the white mask
+        im_downsampled_mat = im_downsampled_mat[non_black_mask, :]
 
     # background colour mode and typical variability
     background_colour = []
