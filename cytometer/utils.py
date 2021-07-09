@@ -12,7 +12,7 @@ import numpy as np
 import six
 import matplotlib.pyplot as plt
 from PIL import Image, ImageEnhance, TiffImagePlugin
-from statistics import mode
+from scipy.stats import mode
 from scipy.interpolate import RectBivariateSpline, splev
 from scipy.ndimage import median_filter
 from scipy.ndimage.filters import gaussian_filter
@@ -142,7 +142,8 @@ def paint_labels(labels, paint_labs, paint_values):
 
 def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
                           component_size_threshold=1e6, hole_size_treshold=8000, std_k=1.0,
-                          return_im=False, enhance_contrast=None, ignore_white_threshold=None, ignore_black_threshold=None):
+                          return_im=False, enhance_contrast=None,
+                          ignore_white_threshold=None, ignore_black_threshold=None, ignore_violet_border=None):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
     by OpenSlice. The objects are darker than the background.
@@ -178,10 +179,14 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     :param ignore_black_threshold: (def None) Scalar. If not None, pixels with colour
     (ignore_black_threshold, ignore_black_threshold, ignore_black_threshold) or blacker will be ignored in terms of
     computing the background mode. For example, ignore_black_threshold=3 will ignore colours (3, 3, 3) and blacker.
+    :param ignore_violet_border: (def False) In some slides, there's a violet border around the pinkish background that
+    will be included in the coarse mask. If ignore_violet_border=x, pixels with R channel < ignore_violet_border will be
+    ignored for the segmentation. E.g. ignore_white_threshold=0 will ignore pixels with colour (0, ..., ...) after
+    contrast enhancement.
     :return:
     seg: downsampled segmentation mask.
     [im_downsampled]: if return_im=True, this is the downsampled image in filename. This is the image without contrast
-    enhancement applied to it.
+    enhancement or masking applied to it.
     """
 
     if isinstance(filename, six.string_types):  # filename provided
@@ -220,52 +225,62 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
 
         raise ValueError('Input histology has an unknown format')
 
+    # copy of the downsampled data for the output
+    im_downsampled_bak = im_downsampled.copy()
+
     if DEBUG:
         plt.clf()
         plt.subplot(211)
         plt.imshow(im_downsampled)
 
+    # hack to create a mask to ignore black and white pixels when doing contrast enhancement. Otherwise, e.g. if the
+    # image has black pixels, contrast enhancement will bleach the image
+    enhancer_mask = np.ones(shape=im_downsampled.shape[0:2], dtype=bool)
+    if ignore_white_threshold is not None:
+        # mask where there are no white pixels
+        non_white_mask = np.prod(im_downsampled >= ignore_white_threshold, axis=2) == 0
+        enhancer_mask *= non_white_mask
+    if ignore_black_threshold is not None:
+        # mask where there are no black pixels
+        non_black_mask = np.prod(im_downsampled <= ignore_black_threshold, axis=2) == 0
+        enhancer_mask *= non_black_mask
+
     # contrast enhancement
-    im_downsampled_bak = im_downsampled.copy()
+    nchan = im_downsampled.shape[2]
     if (enhance_contrast is not None) and (enhance_contrast != 1.0):
+        colour_mode = np.zeros((nchan,), dtype=im_downsampled.dtype)
+        # replace black/white pixels with median-colour pixels
+        for c in range(nchan):
+            channel = im_downsampled[:, :, c]
+            colour_mode[c] = mode(channel[enhancer_mask]).mode
+            channel[~enhancer_mask] = colour_mode[c]
+        # enhance contrast
         enhancer = ImageEnhance.Contrast(Image.fromarray(im_downsampled))
         im_downsampled = np.array(enhancer.enhance(enhance_contrast))
 
-    # reshape image to matrix with one column per colour channel
-    im_downsampled_mat = im_downsampled.copy()
-    im_downsampled_mat = im_downsampled_mat.reshape((im_downsampled_mat.shape[0] * im_downsampled_mat.shape[1],
-                                                     im_downsampled_mat.shape[2]))
+    # reshape image to matrix with one column per colour channel, only pixels within the enhancer_mask
+    im_downsampled_mat = []
+    for c in range(nchan):
+        channel = im_downsampled_bak[:, :, c]
+        im_downsampled_mat.append(channel[enhancer_mask])
+    im_downsampled_mat = np.vstack(im_downsampled_mat).T
 
-    if ignore_white_threshold is not None:
-        # mask where there are no white pixels
-        non_white_mask = np.prod(im_downsampled_bak >= ignore_white_threshold, axis=2) == 0
-
-        # reshape mask to matrix with one column per colour channel
-        non_white_mask = non_white_mask.reshape((non_white_mask.shape[0] * non_white_mask.shape[1],))
-
-        # remove pixels in the white mask
-        im_downsampled_mat = im_downsampled_mat[non_white_mask, :]
-
-    if ignore_black_threshold is not None:
-        # mask where there are no black pixels
-        non_black_mask = np.prod(im_downsampled_bak <= ignore_black_threshold, axis=2) == 0
-
-        # reshape mask to matrix with one column per colour channel
-        non_black_mask = non_black_mask.reshape((non_black_mask.shape[0] * non_black_mask.shape[1],))
-
-        # remove pixels in the white mask
-        im_downsampled_mat = im_downsampled_mat[non_black_mask, :]
-
-    # background colour mode and typical variability
-    background_colour = []
-    for i in range(3):
-        background_colour += [mode(im_downsampled_mat[:, i]), ]
+    # background colour mode and typical variability after contrast correction
+    background_colour = mode(im_downsampled_mat, axis=0).mode[0]
     background_colour_std = np.std(im_downsampled_mat, axis=0)
+
+    # mask out violet border
+    if ignore_violet_border is not None:
+        # filter using the red channel
+        violet_mask = im_downsampled[:, :, 0] <= ignore_violet_border
+        for c in range(nchan):
+            channel = im_downsampled[:, :, c]
+            channel[violet_mask] = background_colour[c]
 
     # threshold segmentation
     seg = np.ones(im_downsampled.shape[0:2], dtype=bool)
-    for i in range(3):
-        seg = np.logical_and(seg, im_downsampled[:, :, i] < background_colour[i] - std_k * background_colour_std[i])
+    for c in range(nchan):
+        seg = np.logical_and(seg, im_downsampled[:, :, c] < background_colour[c] - std_k * background_colour_std[c])
     seg = seg.astype(dtype=np.uint8)
     seg[seg == 1] = 255
 
