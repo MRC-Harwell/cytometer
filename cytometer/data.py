@@ -715,7 +715,7 @@ def aida_contour_items(contours, f_area2quantile, cm='quantiles_aida', xres=1.0,
                     'alpha': 1.0
                 }
             },
-            'segments': contour,
+            'segments': [list(x) for x in contour],
             'closed': True
         }
 
@@ -908,7 +908,7 @@ def aida_write_new_items(filename, items, mode='append_to_last_layer', indent=0,
         try:
             # write annotations to file
             with open(filename, 'w') as fp:
-                ujson.dump(annotations, fp, indent=indent, ensure_ascii=ensure_ascii, double_precision=double_precision)
+                ujson.dump(annotations, fp, indent=indent, ensure_ascii=ensure_ascii)
             break
         except ConnectionResetError:
             print('# ======> ConnectionResetError. Attempt ' + str(attempt) + '/' + str(number_of_attempts) + ' ...')
