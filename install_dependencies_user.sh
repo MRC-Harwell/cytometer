@@ -107,7 +107,7 @@ in
 esac
 
 # install dependencies for Keras
-pip install h5py==3.3.0             # to save Keras models to disk
+pip install h5py==2.10.0            # to load/save Keras models. NOTE: h5py>=3.x doesn't work with Keras 2.4.x
 pip install graphviz==0.16          # used by visualization utilities to plot model graphs
 pip install cython==0.29.23         # dependency of mkl-random/mkl-fft via pydot
 pip install pydot==1.4.2            # used by visualization utilities to plot model graphs
@@ -136,6 +136,15 @@ pip install pydot==1.4.2            # used by visualization utilities to plot mo
 #
 # We can fix the problem by creating symlinks with the expected library names to the lightly newer versions of the
 # libraries
+
+# find out which Ubuntu version this machine is using
+UBUNTU_VERSION=`lsb_release -r | tr -d [:blank:] | sed -e "s/^Release://"`
+if [[ -z "$UBUNTU_VERSION" ]]; then
+    echo "Ubuntu version could not be found"
+    exit 1
+else
+    echo UBUNTU_VERSION=${UBUNTU_VERSION}
+fi
 
 case ${UBUNTU_VERSION}
 in

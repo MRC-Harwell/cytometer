@@ -22,7 +22,7 @@ Difference with rreb1_tm1b_exp_0003_pilot_full_slide_pipeline_v8.py:
   * No segmentation correction.
 
 Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.py:
-  * Applied to Zeiss .czi files instead of Hamamatsu .ndpi files.
+  * Applied to .tif files converted from Zeiss .czi files instead of Hamamatsu .ndpi files.
 
  Requirements for this script to work:
 
@@ -32,14 +32,15 @@ Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.p
 
  3) Mount the network share that contains the histology to ~/coxgroup_zeiss_test.
 
- 4) Convert the .czi files to AIDA .dzi files, so that we can see the results of the segmentation.
+ 4) Convert the .czi files to .dzi and .tif files, so that we can see the results of the segmentation and open the
+    images with openslide, respectively.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
-    ~/Software/cytometer/tools/rebb1_pilot_full_histology_ndpi_to_dzi.sh
+    ~/Software/cytometer/tools/rreb1_tm1b_exp_0006_convert_zeiss_histology_to_deepzoom.sh
 
     and run
 
     cd ~/Software/cytometer/tools
-    ./rebb1_pilot_full_histology_ndpi_to_dzi.sh
+    ./rreb1_tm1b_exp_0006_convert_zeiss_histology_to_deepzoom.sh
 
  5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data in
     ~/Data/cytometer_data/klf14/saved_models.
@@ -59,7 +60,7 @@ Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.p
 
     http://titanrtx:3000/dashboard
 
-    You can use the interface to open a .dzi file that corresponds to an .ndpi file being segmented, and see the
+    You can use the interface to open a .dzi file that corresponds to a histology file being segmented, and see the
     annotations (segmentation) being created for it.
 
 """
@@ -78,6 +79,7 @@ experiment_id = 'rreb1_tm1b_exp_0007_zeiss_full_slide_pipeline_v8_no_correction'
 from pathlib import Path
 home = str(Path.home())
 
+import warnings
 import os
 from pathlib import Path
 import sys
@@ -103,6 +105,8 @@ import PIL
 from keras import backend as K
 import scipy.stats
 from shapely.geometry import Polygon
+import aicsimageio
+from aicsimageio.readers.czi_reader import CziReader
 
 import tensorflow as tf
 if tf.test.is_gpu_available():
@@ -119,14 +123,13 @@ else:
 DEBUG = False
 SAVE_FIGS = False
 
-pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN models
-histology_dir = os.path.join(home, 'scan_srv2_cox/Liz Bentley/Grace/RREB1 Feb19')
+histology_dir = os.path.join(home, 'scan_srv2_cox/Louisa Zolkiewski/tif')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
-saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
-annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b/annotations')
+saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
+annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b_zeiss/annotations')
 
-# file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py
-filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0098_filename_area2quantile.npz')
+# file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0106_filename_area2quantile_v8.py
+filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
 
 # file with RGB modes from all training data
 klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
@@ -141,7 +144,7 @@ fullres_box_size = np.array([2751, 2751])
 receptive_field = np.array([131, 131])
 
 # rough_foreground_mask() parameters
-downsample_factor = 8.0
+downsample_factor = 16.0
 dilation_size = 25
 component_size_threshold = 50e3
 hole_size_treshold = 8000
@@ -154,7 +157,7 @@ bspline_k = 1
 
 # block_split() parameters in downsampled image
 block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
-block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
+block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int64)
 window_overlap_fraction_max = 0.9
 
 # segmentation parameters
@@ -162,77 +165,14 @@ min_cell_area = 200  # pixel
 max_cell_area = 200e3  # pixel
 min_mask_overlap = 0.8
 phagocytosis = True
-min_class_prop = 0.5
+min_class_prop = 0.0  # we accept all segmented objects here, as that gives as a chance to filter with different thresholds later
 correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
 
-# list of NDPI files to process
-ndpi_files_list = [
-'RREB1-TM1B-B6N-IC-1.1a 1132-18 G1 - 2019-02-20 09.56.50.ndpi',
-'RREB1-TM1B-B6N-IC-1.1a 1132-18 M1 - 2019-02-20 09.48.06.ndpi',
-'RREB1-TM1B-B6N-IC-1.1a  1132-18 P1 - 2019-02-20 09.29.29.ndpi',
-'RREB1-TM1B-B6N-IC-1.1a  1132-18 S1 - 2019-02-20 09.21.24.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 G1 - 2019-02-20 12.31.18.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 M1 - 2019-02-20 12.15.25.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 P3 - 2019-02-20 11.51.52.ndpi',
-'RREB1-TM1B-B6N-IC-1.1b 1133-18 S1 - 2019-02-20 11.31.44.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 G1 - 2019-02-19 14.10.46.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 M2 - 2019-02-19 13.58.32.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 P1 - 2019-02-19 12.41.11.ndpi',
-'RREB1-TM1B-B6N-IC-1.1c  1129-18 S1 - 2019-02-19 12.28.03.ndpi',
-'RREB1-TM1B-B6N-IC-1.1e 1134-18 G2 - 2019-02-20 14.43.06.ndpi',
-'RREB1-TM1B-B6N-IC-1.1e 1134-18 P1 - 2019-02-20 13.59.56.ndpi',
-'RREB1-TM1B-B6N-IC-1.1f  1130-18 G1 - 2019-02-19 15.51.35.ndpi',
-'RREB1-TM1B-B6N-IC-1.1f  1130-18 M2 - 2019-02-19 15.38.01.ndpi',
-'RREB1-TM1B-B6N-IC-1.1f  1130-18 S1 - 2019-02-19 14.39.24.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 G1 - 2019-02-19 17.10.06.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 M1 - 2019-02-19 16.53.58.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 P1 - 2019-02-19 16.37.30.ndpi',
-'RREB1-TM1B-B6N-IC-1.1g  1131-18 S1 - 2019-02-19 16.21.16.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 G3 - 2019-02-20 15.46.52.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 M1 - 2019-02-20 15.30.26.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 P1 - 2019-02-20 15.06.59.ndpi',
-'RREB1-TM1B-B6N-IC-1.1h 1135-18 S1 - 2019-02-20 14.56.47.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 G1 - 2019-02-19 12.04.29.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 M2 - 2019-02-19 11.26.46.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 P1 - 2019-02-19 11.01.39.ndpi',
-'RREB1-TM1B-B6N-IC-2.1a  1128-18 S1 - 2019-02-19 11.59.16.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 G1 - 2019-02-18 10.15.04.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 M3 - 2019-02-18 10.12.54.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 P2 - 2019-02-18 09.39.46.ndpi',
-'RREB1-TM1B-B6N-IC-2.2a 1124-18 S1 - 2019-02-18 09.09.58.ndpi',
-'RREB1-TM1B-B6N-IC-2.2b 1125-18 G1 - 2019-02-18 12.35.37.ndpi',
-'RREB1-TM1B-B6N-IC-2.2b 1125-18 P1 - 2019-02-18 11.16.21.ndpi',
-'RREB1-TM1B-B6N-IC-2.2b 1125-18 S1 - 2019-02-18 11.06.53.ndpi',
-'RREB1-TM1B-B6N-IC-2.2d 1137-18 S1 - 2019-02-21 10.59.23.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 G1 - 2019-02-18 14.58.55.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 M1- 2019-02-18 14.50.13.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 P1 - 2019-02-18 14.13.24.ndpi',
-'RREB1-TM1B-B6N-IC-2.2e 1126-18 S1 - 2019-02-18 14.05.58.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 G1 - 2019-02-21 15.26.24.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 M1 - 2019-02-21 15.04.14.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 P1 - 2019-02-21 14.39.43.ndpi',
-'RREB1-TM1B-B6N-IC-5.1a 0066-19 S1 - 2019-02-21 14.04.12.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 0067-19 P1 - 2019-02-21 16.32.24.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 0067-19 S1 - 2019-02-21 16.00.37.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 67-19 G1 - 2019-02-21 17.29.31.ndpi',
-'RREB1-TM1B-B6N-IC-5.1b 67-19 M1 - 2019-02-21 17.04.37.ndpi',
-'RREB1-TM1B-B6N-IC-5.1c  68-19 G2 - 2019-02-22 09.43.59.ndpi',
-'RREB1-TM1B-B6N-IC- 5.1c 68 -19 M2 - 2019-02-22 09.27.30.ndpi',
-'RREB1-TM1B-B6N-IC -5.1c 68 -19 peri3 - 2019-02-22 09.08.26.ndpi',
-'RREB1-TM1B-B6N-IC- 5.1c 68 -19 sub2 - 2019-02-22 08.39.12.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 G2 - 2019-02-22 15.13.08.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 M1 - 2019-02-22 14.39.12.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 Peri1 - 2019-02-22 12.00.19.ndpi',
-'RREB1-TM1B-B6N-IC-5.1d  69-19 sub1 - 2019-02-22 11.44.13.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 G3 - 2019-02-25 10.34.30.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 M1 - 2019-02-25 09.53.00.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 P2 - 2019-02-25 09.27.06.ndpi',
-'RREB1-TM1B-B6N-IC-5.1e  70-19 S1 - 2019-02-25 08.51.26.ndpi',
-'RREB1-TM1B-B6N-IC-7.1a  71-19 G1 - 2019-02-25 12.27.06.ndpi',
-'RREB1-TM1B-B6N-IC-7.1a  71-19 P1 - 2019-02-25 11.31.30.ndpi',
-'RREB1-TM1B-B6N-IC-7.1a  71-19 S1 - 2019-02-25 11.03.59.ndpi'
+# list of histology files to process
+histo_files_list = [
+    '___00000009___00001960_6282021-Rreb1-test-0022.tif',
 ]
 
 # load colour modes of the KLF14 training dataset
@@ -251,7 +191,7 @@ if os.path.isfile(filename_area2quantile):
         f_area2quantile_m = aux['f_area2quantile_m']
 else:
     raise FileNotFoundError('Cannot find file with area->quantile map precomputed from all automatically segmented' +
-                            ' slides in klf14_b6ntac_exp_0098_full_slide_size_analysis_v7.py')
+                            ' slides in klf14_b6ntac_exp_0106_filename_area2quantile_v8.py')
 
 # load AIDA's colourmap
 cm = cytometer.data.aida_colourmap()
@@ -260,21 +200,21 @@ cm = cytometer.data.aida_colourmap()
 ## Segmentation loop
 ########################################################################################################################
 
-for i_file, ndpi_file in enumerate(ndpi_files_list):
+for i_file, histo_file in enumerate(histo_files_list):
 
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': ' + ndpi_file)
+    print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': ' + histo_file)
 
-    # make full path to ndpi file
-    ndpi_file = os.path.join(histology_dir, ndpi_file)
+    # make full path to histology file
+    histo_file = os.path.join(histology_dir, histo_file)
 
     # check whether there's a lock on this file
-    lock_file = os.path.basename(ndpi_file).replace('.ndpi', '.lock')
+    lock_file = os.path.basename(histo_file).replace('.tif', '.lock')
     lock_file = os.path.join(annotations_dir, lock_file)
     if os.path.isfile(lock_file):
         print('Lock on file, skipping')
         continue
     else:
-        # create an empty lock file to prevent other other instances of the script to process the same .ndpi file
+        # create an empty lock file to prevent other other instances of the script to process the same histology file
         Path(lock_file).touch()
 
     # choose a random fold for this image
@@ -287,22 +227,26 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                          classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # name of file to save annotations to
-    annotations_file = os.path.basename(ndpi_file)
+    annotations_file = os.path.basename(histo_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0004_auto.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0007_auto.json')
 
     # name of file to save rough mask, current mask, and time steps
-    rough_mask_file = os.path.basename(ndpi_file)
-    rough_mask_file = rough_mask_file.replace('.ndpi', '_rough_mask.npz')
+    rough_mask_file = os.path.basename(histo_file)
+    rough_mask_file = rough_mask_file.replace('.tif', '_rough_mask.npz')
     rough_mask_file = os.path.join(annotations_dir, rough_mask_file)
 
     # open full resolution histology slide
-    im = openslide.OpenSlide(ndpi_file)
+    im = openslide.OpenSlide(histo_file)
 
     # pixel size
     assert(im.properties['tiff.ResolutionUnit'] == 'centimeter')
-    xres = 1e-2 / float(im.properties['tiff.XResolution'])
-    yres = 1e-2 / float(im.properties['tiff.YResolution'])
+    xres = 1e-2 / float(im.properties['tiff.XResolution'])  # m, e.g. 4.4e-07
+    yres = 1e-2 / float(im.properties['tiff.YResolution'])  # m, e.g. 4.4e-07
+    if (xres < 0.4e-6) or (xres > 0.5e-6):
+        warnings.warn('xres is not in [0.4, 0.5] um')
+    if (yres < 0.4e-6) or (yres > 0.5e-6):
+        warnings.warn('yres is not in [0.4, 0.5] um')
 
     # check whether we continue previous execution, or we start a new one
     continue_previous = os.path.isfile(rough_mask_file)
@@ -327,22 +271,23 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         time_prev = time.time()
 
         # compute the rough foreground mask of tissue vs. background
-        lores_istissue0, im_downsampled = rough_foreground_mask(ndpi_file, downsample_factor=downsample_factor,
+        lores_istissue0, im_downsampled = rough_foreground_mask(histo_file, downsample_factor=downsample_factor,
                                                                 dilation_size=dilation_size,
                                                                 component_size_threshold=component_size_threshold,
                                                                 hole_size_treshold=hole_size_treshold, std_k=std_k,
                                                                 return_im=True, enhance_contrast=enhance_contrast,
-                                                                ignore_white_threshold=253)
+                                                                ignore_white_threshold=253, ignore_black_threshold=0,
+                                                                ignore_violet_border=0)
 
         if DEBUG:
-            enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(im_downsampled))
-            im_downsampled_enhanced = np.array(enhancer.enhance(enhance_contrast))
+            # enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(im_downsampled))
+            # im_downsampled_enhanced = np.array(enhancer.enhance(enhance_contrast))
             plt.clf()
             plt.subplot(211)
-            plt.imshow(im_downsampled_enhanced)
+            plt.imshow(im_downsampled)
             plt.axis('off')
             plt.subplot(212)
-            plt.imshow(im_downsampled_enhanced)
+            plt.imshow(im_downsampled)
             plt.contour(lores_istissue0)
             plt.axis('off')
 
@@ -368,7 +313,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
     # checkpoint: here the rough tissue mask has either been loaded or computed
     time_step = time_step_all[-1]
     time_total = np.sum(time_step_all)
-    print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': step ' +
+    print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': step ' +
           str(step) + ': ' +
           str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
           "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
@@ -384,12 +329,15 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
             plt.subplot(212)
             plt.imshow(lores_istissue0)
 
-    # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the KLF14
+    # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the Klf14
     # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
     # overcorrected
-    mode_r_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 0], axis=None).mode[0]
-    mode_g_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 1], axis=None).mode[0]
-    mode_b_rrbe1 = scipy.stats.mode(im_downsampled[:, :, 2], axis=None).mode[0]
+    #
+    # Note: we ignore black pixels that correspond to where the scanner didn't scan
+    non_black_mask = np.prod(im_downsampled <= 0, axis=2) == 0
+    mode_r_slide = scipy.stats.mode(im_downsampled[:, :, 0][non_black_mask]).mode[0]
+    mode_g_slide = scipy.stats.mode(im_downsampled[:, :, 1][non_black_mask]).mode[0]
+    mode_b_slide = scipy.stats.mode(im_downsampled[:, :, 2][non_black_mask]).mode[0]
 
     # keep extracting histology windows until we have finished
     while np.count_nonzero(lores_istissue) > 0:
@@ -434,9 +382,9 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         tile = tile[:, :, 0:3]
 
         # correct tint of the tile to match KLF14 training data
-        tile[:, :, 0] = tile[:, :, 0] + (mode_r_klf14 - mode_r_rrbe1)
-        tile[:, :, 1] = tile[:, :, 1] + (mode_g_klf14 - mode_g_rrbe1)
-        tile[:, :, 2] = tile[:, :, 2] + (mode_b_klf14 - mode_b_rrbe1)
+        tile[:, :, 0] = tile[:, :, 0] + (mode_r_klf14 - mode_r_slide)
+        tile[:, :, 1] = tile[:, :, 1] + (mode_g_klf14 - mode_g_slide)
+        tile[:, :, 2] = tile[:, :, 2] + (mode_b_klf14 - mode_b_slide)
 
         # interpolate coarse tissue segmentation to full resolution
         istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
@@ -467,9 +415,9 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
                                                      min_class_prop=0.0,
                                                      correction_window_len=correction_window_len,
                                                      correction_smoothing=correction_smoothing,
+                                                     remove_edge_labels=True,
                                                      return_bbox=True, return_bbox_coordinates='xy',
                                                      batch_size=batch_size)
-
 
         # compute the "white adipocyte" probability for each object
         if len(window_labels) > 0:
@@ -602,7 +550,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         time_step_all.append(time_step)
         time_total = np.sum(time_step_all)
 
-        print('File ' + str(i_file) + '/' + str(len(ndpi_files_list) - 1) + ': step ' +
+        print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': step ' +
               str(step) + ': ' +
               str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
               "{0:.1f}".format(perc_completed) +

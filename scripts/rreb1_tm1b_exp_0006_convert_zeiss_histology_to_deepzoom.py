@@ -28,6 +28,7 @@ DEBUG = False
 
 # data directories
 histo_dir = os.path.join(home, 'scan_srv2_cox/Louisa Zolkiewski')
+tif_dir = os.path.join(home, 'scan_srv2_cox/Louisa Zolkiewski/tif')
 dzi_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Rreb1_tm1b_zeiss/images')
 
 # list of files to convert
@@ -39,4 +40,4 @@ histo_list = [
 histo_list = [os.path.join(histo_dir, x) for x in histo_list]
 
 # convert histology files to DeepZoom
-cytometer.data.zeiss_to_deepzoom(histo_list, dzi_dir=dzi_dir, overwrite=True)
+cytometer.data.zeiss_to_deepzoom(histo_list, dzi_dir=dzi_dir, overwrite=True, extra_tif=True, tif_dir=tif_dir)

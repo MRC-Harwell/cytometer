@@ -1522,14 +1522,19 @@ def append_paths_to_aida_json_file(file, xs, hue=170, pretty_print=False):
     return
 
 
-def zeiss_to_deepzoom(histo_list, dzi_dir=None, overwrite=False):
+def zeiss_to_deepzoom(histo_list, dzi_dir=None, overwrite=False, extra_tif=False, tif_dir=None):
     """
-    Convert microscopy files from Zeiss .czi format to DeepZoom .dzi format.
+    Convert microscopy files from Zeiss .czi format to DeepZoom .dzi format. It can also create a TIFF version of the
+    file that can be read by OpenSlide and probably most libraries.
 
     .dzi is a format that can be used by AIDA to display and navigate large microscopy images.
 
     :param histo_list: path and filename, or list of paths and filenames of Zeiss .czi files.
-    :param dzi_dir: (def None) Destination path of the DeepZoom files. If dzi_dir=None, the DeepZoom files are created
+    :param dzi_dir: (def None) Destination path of the DeepZoom output files. If dzi_dir=None, the DeepZoom files are
+    created in the same path as the input Zeiss image.
+    :param overwrite: (def False) Overwrite the destination files if they already exist.
+    :param extra_tif: (def False) Create an extra TIFF version of the file. This format can be opened by openslide.
+    :param tif_dir: (def None) Destination path of the TIFF output files. If tif_dir=None, the TIFF files are created
     in the same path as the input Zeiss image.
     :return: None.
     """
@@ -1539,45 +1544,82 @@ def zeiss_to_deepzoom(histo_list, dzi_dir=None, overwrite=False):
 
     for histo_file in histo_list:
 
-        # if no output directory provided, save to same directory as input file
+        # basename for DeepZoom file
+        # Note: '.dzi' will be added by pyvips to the basename we provide, and that's why the basename has no extension
+        filename_noext = os.path.basename(histo_file)
+        filename_noext = os.path.splitext(filename_noext)[0]
         if dzi_dir is None:
-            dzi_dir_aux = os.path.dirname(histo_file)
+            dzi_filename_noext = os.path.join(os.path.dirname(histo_file), filename_noext)
         else:
-            dzi_dir_aux = dzi_dir
+            dzi_filename_noext = os.path.join(dzi_dir, filename_noext)
+        if tif_dir is None:
+            tif_filename_noext = os.path.join(os.path.dirname(histo_file), filename_noext)
+        else:
+            tif_filename_noext = os.path.join(tif_dir, filename_noext)
 
-        # filename for DeepZoom file
-        # Note: '.dzi' will be added by pyvips to the filename we provide, so we should provide a filename without
-        # that extension
-        dzi_file = os.path.basename(histo_file)
-        dzi_file = os.path.splitext(dzi_file)[0]
-        dzi_file = os.path.join(dzi_dir_aux, dzi_file)
+        dzi_filename = dzi_filename_noext + '.dzi'
+        tif_filename = tif_filename_noext + '.tif'
 
-        # open the CZI file without loading it into memory
-        im = aicsimageio.AICSImage(histo_file, reader=CziReader)
+        # files will be written if they don't exist, or if they exist but overwrite=True
+        save_dzi = not(os.path.isfile(dzi_filename) and not overwrite)
+        save_tif = not(os.path.isfile(tif_filename) and not overwrite)
 
-        if DEBUG:
-            # write metadata to debug file
-            import xml.etree.ElementTree as ET
-            tree = ET.ElementTree(im.metadata)
-            tree.write('/tmp/foo.xml', encoding='utf-8')
+        # if we are going to create either the DeepZoom or TIFF file, we need to read the Zeiss file first
+        if save_dzi or save_tif:
 
-        # hack to obtain the image dimensions (number of pixels) without having to load it into memory with im.dims
-        width = int(im.metadata.findall('./Metadata/Information/Image/SizeX')[0].text)
-        height = int(im.metadata.findall('./Metadata/Information/Image/SizeY')[0].text)
+            # open the CZI file without loading it into memory
+            im = aicsimageio.AICSImage(histo_file, reader=CziReader)
+
+            if DEBUG:
+                # write metadata to debug file
+                import xml.etree.ElementTree as ET
+                tree = ET.ElementTree(im.metadata)
+                tree.write(os.path.join('/tmp/', os.path.basename(dzi_filename_noext) + '.xml'), encoding='utf-8')
+
+            if DEBUG:
+                time0 = time.time()
+            im_array = im.get_image_data("TCZYXS")
+            if DEBUG:
+                print('Time = ' + str(time.time() - time0) + ' s')
+
+            # # hack to obtain the image dimensions (number of pixels) quickily, due to this problem with im.dims
+            # # https://github.com/AllenCellModeling/aicsimageio/issues/274
+            # width = int(im.metadata.findall('./Metadata/Information/Image/SizeX')[0].text)
+            # height = int(im.metadata.findall('./Metadata/Information/Image/SizeY')[0].text)
+
+            width = im_array.shape[4]
+            height = im_array.shape[3]
+            im_vips = pyvips.Image.new_from_memory(im_array, width=width, height=height, bands=3, format='uchar')
+
+            # despite the units being 'µm', the values seems to be in 'm'
+            assert(im.metadata.findall('./Metadata/Scaling/Items/Distance[@Id="X"]/DefaultUnitFormat')[0].text == 'µm')
+            xres = float(im.metadata.findall('./Metadata/Scaling/Items/Distance[@Id="X"]/Value')[0].text) * 1  # m, e.g. 4.4e-07
+            assert(im.metadata.findall('./Metadata/Scaling/Items/Distance[@Id="Y"]/DefaultUnitFormat')[0].text == 'µm')
+            yres = float(im.metadata.findall('./Metadata/Scaling/Items/Distance[@Id="Y"]/Value')[0].text) * 1  # m, e.g. 4.4e-07
 
         # save to DeepZoom
-        if os.path.isfile(dzi_file + '.dzi') and not overwrite:
-            print('File already exists and not overwrite selected... skipping: ' + dzi_file + '.czi')
+        if os.path.isfile(dzi_filename) and not overwrite:
+            print('DeepZoom files already exists and not overwrite selected... skipping: ' + dzi_filename)
+        elif os.path.isfile(dzi_filename) and overwrite:
+            print('File already exists and overwrite selected: ' + dzi_filename)
+            os.remove(dzi_filename)
+            shutil.rmtree(filename_noext + '_files', ignore_errors=True)
+            im_vips.dzsave(dzi_filename_noext)  # note: extension will be automatically added
         else:
-            if os.path.isfile(dzi_file + '.dzi'):
-                print('File already exists and overwrite selected: ' + dzi_file + '.dzi')
-                os.remove(dzi_file + '.dzi')
-                shutil.rmtree(dzi_file + '_files', ignore_errors=True)
-            else:
-                print('Creating file: ' + dzi_file + '.dzi')
+            print('Creating file: ' + dzi_filename)
+            im_vips.dzsave(dzi_filename_noext)  # note: extension will be automatically added
 
-            im_vips = pyvips.Image.new_from_memory(im.get_image_data("TCZYXS"),
-                                                   width=width, height=height, bands=3, format='uchar')
-            im_vips.dzsave(dzi_file)
+        # save to TIFF
+        if extra_tif and os.path.isfile(tif_filename) and not overwrite:
+            print('TIFF files already exists and not overwrite selected... skipping: ' + tif_filename)
+        elif extra_tif and os.path.isfile(tif_filename) and overwrite:
+            print('File already exists but overwrite selected: ' + tif_filename)
+            os.remove(tif_filename)
+            im_vips.tiffsave(tif_filename, tile=True, pyramid=True, resunit='cm',
+                             xres=float(1e-3/xres), yres=float(1e-3/yres), bigtiff=True)
+        else:
+            print('Creating file: ' + tif_filename)
+            im_vips.tiffsave(tif_filename, tile=True, pyramid=True, resunit='cm',
+                             xres=float(1e-3/xres), yres=float(1e-3/yres), bigtiff=True)
 
     return
