@@ -61,28 +61,21 @@ def resize(x, size, resample=Image.NEAREST):
     if x.ndim < 2 or x.ndim > 3:
         raise ValueError('x.ndims must be 2 or 3')
 
-    if x.dtype == np.float32:
-        if x.ndim == 2:
-            # convert to PIL image
-            x = Image.fromarray(x)
-
-            # resize image
-            x = x.resize(size=size, resample=resample)
-        else:
-            y = np.zeros(shape=size + (x.shape[2],), dtype=x.dtype)
-            for chan in range(x.shape[2]):
-                # convert to PIL image
-                aux = Image.fromarray(x[:, :, chan])
-
-                # resize image
-                y[:, :, chan] = aux.resize(size=size, resample=resample)
-            x = y
-    else:
+    if x.ndim == 2:
         # convert to PIL image
         x = Image.fromarray(x)
 
         # resize image
-        x = x.resize(size=size, resample=resample)
+        x = np.array(x.resize(size, resample=resample))
+    else:
+        y = np.zeros(shape=size + (x.shape[2],), dtype=x.dtype)
+        for chan in range(x.shape[2]):
+            # convert to PIL image
+            aux = Image.fromarray(x[:, :, chan])
+
+            # resize image
+            y[:, :, chan] = np.array(aux.resize(size, resample=resample))
+        x = y
 
     # convert back to numpy array
     return np.array(x)
