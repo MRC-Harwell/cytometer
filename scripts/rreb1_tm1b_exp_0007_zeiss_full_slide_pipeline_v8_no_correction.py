@@ -105,8 +105,6 @@ import PIL
 from keras import backend as K
 import scipy.stats
 from shapely.geometry import Polygon
-import aicsimageio
-from aicsimageio.readers.czi_reader import CziReader
 
 import tensorflow as tf
 if tf.test.is_gpu_available():
