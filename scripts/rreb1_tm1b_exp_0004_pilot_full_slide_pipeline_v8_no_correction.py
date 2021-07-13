@@ -401,7 +401,7 @@ for i_file, ndpi_file in enumerate(ndpi_files_list):
         (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
             cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
                                                     max_window_size=fullres_box_size,
-                                                    border=np.round((receptive_field-1)/2))
+                                                    border=np.round((receptive_field-1)/2), version='old')
 
         # overlap between current and previous window, as a fraction of current window area
         current_window = Polygon([(first_col, first_row), (last_col, first_row),

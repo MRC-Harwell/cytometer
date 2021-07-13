@@ -222,7 +222,7 @@ for i_file, file in enumerate(files_list):
         (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
             cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
                                                     max_window_size=fullres_box_size,
-                                                    border=np.round((receptive_field-1)/2))
+                                                    border=np.round((receptive_field-1)/2), version='old')
 
         # load window from full resolution slide
         tile = im.read_region(location=(first_col, first_row), level=0,

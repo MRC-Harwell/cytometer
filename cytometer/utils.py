@@ -311,8 +311,14 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
         return seg
 
 
-def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1001], border=[65, 65]):
+def get_next_roi_to_process_old(seg, downsample_factor=1.0, max_window_size=[1001, 1001], border=[65, 65]):
     """
+    Note: This function is deprecated by get_next_roi_to_process(), but we keep its functionality here because it was
+    used in the Klf14 experiments. This function is selected with get_next_roi_to_process_old(..., version='old'). The
+    problem with this deprecated version is that as the max_window_size, border to the full size image, but had to be
+    converted and rounded to seg size and back to full size, in the end producing windows that are a bit smaller than
+    max_window_size.
+
     Find a rectangular region of interest (ROI) within an irregularly-shaped mask to pass to a neural
     network or some other processing algorithm. This function can be called repeatedly to process a whole image.
 
@@ -342,10 +348,10 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
 
     :param seg: np.ndarray with downsampled segmentation mask.
     :param downsample_factor: (def 1.0) Scalar factor. seg is assumed to have been downsampled by this factor.
-    :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of output window. This is
+    :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of high resolution output window. This is
     a maximum size. If the window were to overflow the image, it gets cropped to the image size.
-    :param border: (def (65, 65)) Vector with how many (rows, columns) of the output window are a border around
-    the region of interest.
+    :param border: (def (65, 65)) Vector with how many (rows, columns) of the high resolution output window are a border
+    around the region of interest.
     :return:
     * (first_row, last_row, first_col, last_col). If the histology image is im, the ROI found is
     im[first_row:last_row, first_col:last_col].
@@ -438,6 +444,141 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
 
     return (first_row, last_row, first_col, last_col), \
            (lores_first_row, lores_last_row, lores_first_col, lores_last_col)
+
+
+def get_next_roi_to_process(seg, upsampled_size=None, max_window_size=[1001, 1001], border=[65, 65], version=None, downsample_factor=1.0):
+    """
+    Find a rectangular region of interest (ROI) within an irregularly-shaped mask to pass to a neural
+    network or some other processing algorithm. This function can be called repeatedly to process a whole image.
+
+    The choice of the ROI follows several rules:
+
+      * It cannot be larger than a certain size provided by the user.
+      * It will be located on the border of the mask (the ROI tends to go from lower rows to higher rows in the mask).
+      * It will contain as many mask pixels as possible.
+      * A border can be added, to account for the effective receptive field of the neural network, or the tails of a
+        filter.
+
+    The ROI for the mask is given as a tuple of coordinates for the top-left and bottom-right corners
+
+        (first_row, last_row, first_col, last_col)
+
+    Note that last_row and last_col are 1 pixel larger for easy Python indexing. For example,
+    (first_row=0, last_row=4, first_col=0, last_col=4) means a square with indices 0, 1, 2, 3 in each direction, and
+    thus size 4x4 when they are used for indexing mask[first_row:last_row, first_col:last_col].
+
+    The function also allows for the mask to be a downsampled version of a larger image. Coordinates for both
+    the low-resolution and high-resolution windows are then returned.
+
+    Technical note: The way this method works is that we find candidates to be the top-left corner of the ROI, by
+    convolving the mask (seg) with a horizontal-line kernel (k1) and a vertical-line kernel (k2). We then compute the
+    element-wise product y = conv2d(seg, k1) * conv2d(seg, k2). Pixels with y > 0 are hits, i.e. candidates as top-left
+    corners of the block (without the border).
+
+    :param seg: np.ndarray with downsampled segmentation mask.
+    :param upsampled_size: (def None) Size of an upsampled image. Another window will be created for this image.
+    :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of output window in the seg mask. This is
+    a maximum size including the border. If the window were to overflow the image, it gets cropped to the image size.
+    :param border: (def (65, 65)) Vector with how many (rows, columns) of the output window are a border around
+    the region of interest.
+    :param version: (def None). If version='old', the deprecated version of the function will be used. That version made
+    slightly smaller windows than required, but was used in the Klf14 experiments, so we need to keep the old version.
+    :return:
+    * (hires_first_row, hires_last_row, hires_first_col, hires_last_col). If the histology image is im, the ROI found is
+    im[hires_first_row:hires_last_row, hires_first_col:hires_last_col].
+
+    * (first_row, last_row, first_col, last_col). The ROI found is seg[first_row:last_row, first_col:last_col].
+    """
+
+    # in case the user wants to run the deprecated version that was used for the Klf14 experiments
+    if version == 'old':
+        return get_next_roi_to_process_old(seg, downsample_factor=downsample_factor, max_window_size=max_window_size, border=border)
+
+    if np.count_nonzero(seg) == 0:
+        warnings.warn('Empty segmentation')
+        return (0, 0, 0, 0), (0, 0, 0, 0)
+
+    # convert to np.array so that we can use algebraic operators
+    max_window_size = np.array(max_window_size)
+    border = np.array(border)
+
+    # compute downsample factor
+    if upsampled_size is None:
+        upsampled_size = np.array(seg.shape)
+        upsample_factor = 1.0
+    else:
+        upsampled_size = np.array(upsampled_size)
+        upsample_factor = upsampled_size / np.array(seg.shape)
+
+    # convert segmentation mask to [0, 1]
+    seg = (seg != 0).astype('int')
+
+    # kernels that flipped correspond to top line and left line. They need to be pre-flipped
+    # because the convolution operation internally flips them (two flips cancel each other)
+    kernel_top = np.zeros(shape=np.round(max_window_size - 2 * border).astype(int))
+    kernel_top[int((kernel_top.shape[0] - 1) / 2), :] = 1
+    kernel_left = np.zeros(shape=np.round(max_window_size - 2 * border).astype(int))
+    kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
+
+    seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
+    seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
+
+    # window detections
+    detection_idx = np.nonzero(seg_left * seg_top)
+
+    # set top-left corner of the box = top-left corner of first box detected
+    first_row = detection_idx[0][0]
+    first_col = detection_idx[1][0]
+
+    # first, we make a box with the maximum size minus the borders
+    last_row = detection_idx[0][0] + max_window_size[0] - 2 * border[0]
+    last_col = detection_idx[1][0] + max_window_size[1] - 2 * border[1]
+
+    # second, if the segmentation is smaller than the window, we reduce the window size
+    window = seg[first_row:int(np.round(last_row)), first_col:int(np.round(last_col))]
+
+    idx = np.any(window, axis=1)  # reduce rows size
+    last_segmented_pixel_len = np.max(np.where(idx)) + 1
+    last_row = detection_idx[0][0] + np.min((max_window_size[0] - 2 * border[0], last_segmented_pixel_len))
+
+    idx = np.any(window, axis=0)  # reduce cols size
+    last_segmented_pixel_len = np.max(np.where(idx)) + 1
+    last_col = detection_idx[1][0] + np.min((max_window_size[1] - 2 * border[1], last_segmented_pixel_len))
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(seg)
+        plt.plot([first_col, last_col-1, last_col-1, first_col, first_col],
+                 [last_row-1, last_row-1, first_row, first_row, last_row-1], 'red')
+        plt.subplot(222)
+        plt.imshow(seg_top)
+        plt.subplot(223)
+        plt.imshow(seg_left)
+        plt.subplot(224)
+        plt.imshow(seg_top * seg_left)
+        plt.plot([first_col, last_col-1, last_col-1, first_col, first_col],
+                 [last_row-1, last_row-1, first_row, first_row, last_row-1], 'red')
+
+    # add a border around the window
+    first_row = np.max([0, first_row - border[0]])
+    first_col = np.max([0, first_col - border[1]])
+
+    last_row = np.min([seg.shape[0], last_row + border[0]])
+    last_col = np.min([seg.shape[1], last_col + border[1]])
+
+    # convert low resolution indices to high resolution
+    hires_first_row = np.round(first_row * upsample_factor[0]).astype(int)
+    hires_last_row = np.round(last_row * upsample_factor[0]).astype(int)
+    hires_first_col = np.round(first_col * upsample_factor[1]).astype(int)
+    hires_last_col = np.round(last_col * upsample_factor[1]).astype(int)
+
+    # make sure we don't overflow the image
+    hires_last_row =  np.min([upsampled_size[0], hires_last_row])
+    hires_last_col =  np.min([upsampled_size[1], hires_last_col])
+
+    return (hires_first_row, hires_last_row, hires_first_col, hires_last_col), \
+           (first_row.astype(int), last_row.astype(int), first_col.astype(int), last_col.astype(int))
 
 
 def principal_curvatures_range_image(img, sigma=10):
