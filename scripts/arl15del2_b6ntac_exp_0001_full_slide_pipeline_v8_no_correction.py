@@ -154,7 +154,7 @@ bspline_k = 1
 
 # block_split() parameters in downsampled image
 block_len = np.ceil((fullres_box_size - receptive_field) / downsample_factor)
-block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np.int)
+block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(int)
 window_overlap_fraction_max = 0.9
 
 # segmentation parameters
