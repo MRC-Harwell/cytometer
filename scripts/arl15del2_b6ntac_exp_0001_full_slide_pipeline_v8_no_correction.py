@@ -120,10 +120,9 @@ else:
 DEBUG = False
 SAVE_FIGS = False
 
-pipeline_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')  # CNN models
 histology_dir = os.path.join(home, 'scan_srv2_cox/Ying Bai/For Ramon')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
-saved_models_dir = os.path.join(pipeline_root_data_dir, 'saved_models')
+saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Arl15_del2/annotations')
 
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0106_filename_area2quantile_v8.py
