@@ -135,7 +135,7 @@ def paint_labels(labels, paint_labs, paint_values):
 
 def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
                           component_size_threshold=1e6, hole_size_treshold=8000, std_k=1.0,
-                          return_im=False, enhance_contrast=None,
+                          return_im=False, enhance_contrast=None, clear_border=[0, 0, 0, 0],
                           ignore_white_threshold=None, ignore_black_threshold=None, ignore_violet_border=None):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
@@ -165,6 +165,9 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     is not enhanced.
     enhance_contrast=0.0 returns a gray image with no contrast. enhance_contrast=1.0 returns the original image.
     enhance_contrast<1.0 decreases the contrast. enhance_contrast>1.0 increases the contrast.
+    :param clear_border: (def [0, 0, 0, 0]) Wipe out a border of width clear_border=[left, right, top, bottom] pixels.
+    This can be used e.g. to workaround a bug in openslide where if any location coordinate is 0, read_region() returns
+    a black image, by using clear_border=[1, 0, 1, 0].
     :param ignore_white_threshold: (def None) Scalar. If not None, pixels with colour
     (ignore_white_threshold, ignore_white_threshold, ignore_white_threshold) or whiter will be ignored in terms of
     computing the background mode. For example, ignore_white_threshold=253 will ignore colours (253, 253, 253),
@@ -289,6 +292,17 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
 
     # remove segmentation noise
     seg = remove_small_objects(seg > 0, min_size=component_size_threshold).astype(seg.dtype)
+
+    # remove borders
+    if any(np.array(clear_border) < 0):
+        raise ValueError('clear_border has negative values')
+    [left, right, top, bottom] = clear_border
+    seg[:, 0:left] = 0
+    if right > 0:
+        seg[:, -right:] = 0
+    seg[0:top, :] = 0
+    if bottom > 0:
+        seg[-bottom:, :] = 0
 
     # # save segmentation as a tiff file (with ZLIB compression)
     # outfilename = os.path.basename(file)
