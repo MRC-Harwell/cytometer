@@ -30,6 +30,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
+import cv2
 
 # # limit number of GPUs
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
@@ -74,10 +75,16 @@ n_im = len(file_svg_list)
 xbins_edge = np.array(list(range(0, 256, 5)))
 xbins = (xbins_edge[0:-1] + xbins_edge[1:]) / 2
 
-# init list to keep histogram computations
+# init list to keep statistics computations
 hist_r_all = []
 hist_g_all = []
 hist_b_all = []
+mean_l_all = []
+mean_a_all = []
+mean_b_all = []
+std_l_all = []
+std_a_all = []
+std_b_all = []
 
 # loop files with hand traced contours
 plt.clf()
@@ -94,6 +101,18 @@ for i, file_svg in enumerate(file_svg_list):
     if DEBUG:
         plt.clf()
         plt.imshow(im)
+
+    # make a L*a*b copy of the image
+    im_lab = cv2.cvtColor(np.array(im), cv2.COLOR_BGR2LAB).astype('float32')
+    (l, a, b) = cv2.split(im_lab)
+
+    # L*a*b statistics
+    mean_l_all.append(np.mean(l))
+    mean_a_all.append(np.mean(a))
+    mean_b_all.append(np.mean(b))
+    std_l_all.append(np.std(l))
+    std_a_all.append(np.std(a))
+    std_b_all.append(np.std(b))
 
     # histograms for each channel
     plt.subplot(131)
@@ -142,7 +161,9 @@ np.savez(klf14_training_colour_histogram_file, xbins_edge=xbins_edge, xbins=xbin
          hist_r_q1=hist_r_q1, hist_r_q2=hist_r_q2, hist_r_q3=hist_r_q3,
          hist_g_q1=hist_g_q1, hist_g_q2=hist_g_q2, hist_g_q3=hist_g_q3,
          hist_b_q1=hist_b_q1, hist_b_q2=hist_b_q2, hist_b_q3=hist_b_q3,
-         mode_r=mode_r, mode_g=mode_g, mode_b=mode_b)
+         mode_r=mode_r, mode_g=mode_g, mode_b=mode_b,
+         mean_l=np.median(mean_l_all), mean_a=np.median(mean_a_all), mean_b=np.median(mean_b_all),
+         std_l=np.median(std_l_all), std_a=np.median(std_a_all), std_b=np.median(std_b_all))
 
 # plot KLF14 training colour histograms
 plt.clf()

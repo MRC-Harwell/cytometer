@@ -135,7 +135,7 @@ def paint_labels(labels, paint_labs, paint_values):
 
 def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
                           component_size_threshold=1e6, hole_size_treshold=8000, std_k=1.0,
-                          return_im=False, enhance_contrast=None,
+                          return_im=False, enhance_contrast=None, clear_border=[0, 0, 0, 0],
                           ignore_white_threshold=None, ignore_black_threshold=None, ignore_violet_border=None):
     """
     Rough segmentation of large segmentation objects in a microscope image with a format that can be read
@@ -165,6 +165,9 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     is not enhanced.
     enhance_contrast=0.0 returns a gray image with no contrast. enhance_contrast=1.0 returns the original image.
     enhance_contrast<1.0 decreases the contrast. enhance_contrast>1.0 increases the contrast.
+    :param clear_border: (def [0, 0, 0, 0]) Wipe out a border of width clear_border=[left, right, top, bottom] pixels.
+    This can be used e.g. to workaround a bug in openslide where if any location coordinate is 0, read_region() returns
+    a black image, by using clear_border=[1, 0, 1, 0].
     :param ignore_white_threshold: (def None) Scalar. If not None, pixels with colour
     (ignore_white_threshold, ignore_white_threshold, ignore_white_threshold) or whiter will be ignored in terms of
     computing the background mode. For example, ignore_white_threshold=253 will ignore colours (253, 253, 253),
@@ -290,6 +293,17 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
     # remove segmentation noise
     seg = remove_small_objects(seg > 0, min_size=component_size_threshold).astype(seg.dtype)
 
+    # remove borders
+    if any(np.array(clear_border) < 0):
+        raise ValueError('clear_border has negative values')
+    [left, right, top, bottom] = clear_border
+    seg[:, 0:left] = 0
+    if right > 0:
+        seg[:, -right:] = 0
+    seg[0:top, :] = 0
+    if bottom > 0:
+        seg[-bottom:, :] = 0
+
     # # save segmentation as a tiff file (with ZLIB compression)
     # outfilename = os.path.basename(file)
     # outfilename = os.path.splitext(outfilename)[0] + '_seg'
@@ -311,8 +325,14 @@ def rough_foreground_mask(filename, downsample_factor=8.0, dilation_size=25,
         return seg
 
 
-def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1001], border=[65, 65]):
+def get_next_roi_to_process_old(seg, downsample_factor=1.0, max_window_size=[1001, 1001], border=[65, 65]):
     """
+    Note: This function is deprecated by get_next_roi_to_process(), but we keep its functionality here because it was
+    used in the Klf14 experiments. This function is selected with get_next_roi_to_process_old(..., version='old'). The
+    problem with this deprecated version is that as the max_window_size, border to the full size image, but had to be
+    converted and rounded to seg size and back to full size, in the end producing windows that are a bit smaller than
+    max_window_size.
+
     Find a rectangular region of interest (ROI) within an irregularly-shaped mask to pass to a neural
     network or some other processing algorithm. This function can be called repeatedly to process a whole image.
 
@@ -342,10 +362,10 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
 
     :param seg: np.ndarray with downsampled segmentation mask.
     :param downsample_factor: (def 1.0) Scalar factor. seg is assumed to have been downsampled by this factor.
-    :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of output window. This is
+    :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of high resolution output window. This is
     a maximum size. If the window were to overflow the image, it gets cropped to the image size.
-    :param border: (def (65, 65)) Vector with how many (rows, columns) of the output window are a border around
-    the region of interest.
+    :param border: (def (65, 65)) Vector with how many (rows, columns) of the high resolution output window are a border
+    around the region of interest.
     :return:
     * (first_row, last_row, first_col, last_col). If the histology image is im, the ROI found is
     im[first_row:last_row, first_col:last_col].
@@ -438,6 +458,131 @@ def get_next_roi_to_process(seg, downsample_factor=1.0, max_window_size=[1001, 1
 
     return (first_row, last_row, first_col, last_col), \
            (lores_first_row, lores_last_row, lores_first_col, lores_last_col)
+
+
+def get_next_roi_to_process(seg, im, max_window_size=[1001, 1001], border=[65, 65], version=None, downsample_factor=1.0):
+    """
+    Find a rectangular region of interest (ROI) or window within an irregularly-shaped mask to pass to a neural
+    network or some other processing algorithm.
+
+    The choice of the ROI follows several rules:
+
+      * It cannot be larger than a certain size provided by the user.
+      * It will be located on the border of the mask (the ROI tends to go from lower rows to higher rows in the mask).
+      * It will contain as many mask pixels as possible.
+      * A border can be added, to account for the effective receptive field of the neural network, or the tails of a
+        filter.
+
+    The ROI for the mask is given in the openslide.read_region() format, e.g. location and size. (One per image level).
+
+        location = (x0, y0) = (first_col, first_row)
+        size = (width, height)
+
+    Technical note: The way this method works is that we find candidates to be the top-left corner of the ROI, by
+    convolving the mask (seg) with a horizontal-line kernel (k1) and a vertical-line kernel (k2). We then compute the
+    element-wise product y = conv2d(seg, k1) * conv2d(seg, k2). Pixels with y > 0 are hits, i.e. candidates as top-left
+    corners of the block (without the border).
+
+    :param seg: np.ndarray with downsampled segmentation mask.
+    :param im: openslide.OpenSlide pointer to an image that has been opened with im = openslide.OpenSlide(histo_file).
+    :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of output window in the seg mask. This is
+    a maximum size including the border. If the window were to overflow the image, it gets cropped to the image size.
+    :param border: (def (65, 65)) Vector with how many (rows, columns) of the output window are a border around
+    the region of interest.
+    :param version: (def None). If version='old', the deprecated version of the function will be used. That version made
+    slightly smaller windows than required, but was used in the Klf14 experiments, so we need to keep the old version.
+    :param downsample_factor: Deprecated. Ignored.
+    :return:
+    * location: list of locations for openslide.read_region(), one per level in histology image im.
+
+    * size: list of window sizes for openslide.read_region(), one per level in histology image im.
+    """
+
+    # in case the user wants to run the deprecated version that was used for the Klf14 experiments
+    if version == 'old':
+        return get_next_roi_to_process_old(seg, downsample_factor=downsample_factor, max_window_size=max_window_size, border=border)
+
+    if np.count_nonzero(seg) == 0:
+        warnings.warn('Empty segmentation')
+        return [[] for _ in range(im.level_count)], [[] for _ in range(im.level_count)]
+
+    # convert to np.array so that we can use algebraic operators
+    max_window_size = np.array(max_window_size)
+    border = np.array(border)
+
+    # convert segmentation mask to [0, 1]
+    seg = (seg != 0).astype(int)
+
+    # kernels that flipped correspond to top line and left line. They need to be pre-flipped
+    # because the convolution operation internally flips them (two flips cancel each other)
+    kernel_top = np.zeros(shape=np.round(max_window_size - 2 * border).astype(int))
+    kernel_top[int((kernel_top.shape[0] - 1) / 2), :] = 1
+    kernel_left = np.zeros(shape=np.round(max_window_size - 2 * border).astype(int))
+    kernel_left[:, int((kernel_top.shape[1] - 1) / 2)] = 1
+
+    seg_top = np.round(fftconvolve(seg, kernel_top, mode='same'))
+    seg_left = np.round(fftconvolve(seg, kernel_left, mode='same'))
+
+    # window detections
+    detection_idx = np.nonzero(seg_left * seg_top)
+
+    # set top-left corner of the box = top-left corner of first box detected
+    first_row = detection_idx[0][0]
+    first_col = detection_idx[1][0]
+
+    # first, we make a box with the maximum size minus the borders
+    last_row = detection_idx[0][0] + max_window_size[0] - 2 * border[0]
+    last_col = detection_idx[1][0] + max_window_size[1] - 2 * border[1]
+
+    # second, if the segmentation is smaller than the window, we reduce the window size
+    window = seg[first_row:int(np.round(last_row)), first_col:int(np.round(last_col))]
+
+    idx = np.any(window, axis=1)  # reduce rows size
+    last_segmented_pixel_len = np.max(np.where(idx)) + 1
+    last_row = detection_idx[0][0] + np.min((max_window_size[0] - 2 * border[0], last_segmented_pixel_len))
+
+    idx = np.any(window, axis=0)  # reduce cols size
+    last_segmented_pixel_len = np.max(np.where(idx)) + 1
+    last_col = detection_idx[1][0] + np.min((max_window_size[1] - 2 * border[1], last_segmented_pixel_len))
+
+    if DEBUG:
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(seg)
+        plt.plot([first_col, last_col-1, last_col-1, first_col, first_col],
+                 [last_row-1, last_row-1, first_row, first_row, last_row-1], 'red')
+        plt.subplot(222)
+        plt.imshow(seg_top)
+        plt.subplot(223)
+        plt.imshow(seg_left)
+        plt.subplot(224)
+        plt.imshow(seg_top * seg_left)
+        plt.plot([first_col, last_col-1, last_col-1, first_col, first_col],
+                 [last_row-1, last_row-1, first_row, first_row, last_row-1], 'red')
+
+    # add a border around the window
+    # Note: due to a bug in openslide, if you try to read_region() with either location coordinate = 0, in a level>0,
+    # then a black region is produced instead of the actual image. That's why we need to limit here the first_row and
+    # first_col to 1 instead of 0
+    first_row = np.max([1, first_row - border[0]])
+    first_col = np.max([1, first_col - border[1]])
+
+    last_row = np.min([seg.shape[0], last_row + border[0]])
+    last_col = np.min([seg.shape[1], last_col + border[1]])
+
+    seg_size = np.array(seg.shape[::-1])  # (x, y)
+
+    size_all = []
+    location_all = []
+    for level in range(im.level_count):
+        slide_size = np.array(im.level_dimensions[level])  # (x, y)
+        downsample_factor = slide_size / seg_size
+        location = (np.array((first_col, first_row)) * downsample_factor).astype(int)
+        window_size = np.array((last_col - first_col, last_row - first_row) * downsample_factor).astype(int)
+        size_all.append(window_size)
+        location_all.append(location)
+
+    return location_all, size_all
 
 
 def principal_curvatures_range_image(img, sigma=10):

@@ -35,15 +35,15 @@ Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.p
  4) Convert the .czi files to .dzi and .tif files, so that we can see the results of the segmentation and open the
     images with openslide, respectively.
     You need to go to the server that's going to process the slides, add a list of the files you want to process to
-    ~/Software/cytometer/tools/rreb1_tm1b_exp_0006_convert_zeiss_histology_to_deepzoom.sh
+    ~/Software/cytometer/scripts/rreb1_tm1b_exp_0006_convert_zeiss_histology_to_deepzoom.py
 
     and run
 
-    cd ~/Software/cytometer/tools
-    ./rreb1_tm1b_exp_0006_convert_zeiss_histology_to_deepzoom.sh
+    cd ~/Software/cytometer/scripts
+    python ./rreb1_tm1b_exp_0006_convert_zeiss_histology_to_deepzoom.py
 
  5) You need to have the models for the 10-folds of the pipeline that were trained on the KLF14 data in
-    ~/Data/cytometer_data/klf14/saved_models.
+    ~/Data/cytometer_data/deepcytometer_pipeline_v8.
 
  6) To monitor the segmentation as it's being processed, you need to have AIDA running
 
@@ -105,8 +105,6 @@ import PIL
 from keras import backend as K
 import scipy.stats
 from shapely.geometry import Polygon
-import aicsimageio
-from aicsimageio.readers.czi_reader import CziReader
 
 import tensorflow as tf
 if tf.test.is_gpu_available():
