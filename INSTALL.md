@@ -1,6 +1,8 @@
 Instructions to set up project `cytometer`.
 ===========================================
 
+Warning! This file is half outdated, and under active rewriting.
+
 # Table of Contents
 
    * [Instructions to set up project cytometer.](#instructions-to-set-up-project-cytometer)
@@ -48,6 +50,10 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 1. You need to create a local conda environment with `install_dependencies_user.sh` for yourself (don't run it with sudo!).
 
         ./install_dependencies_user.sh
+1. The first time you run this it'll give an error message saying that you need to close your terminal for changes to take effect. Close your terminal and open a new one (or maybe run `source ~/.bashrc`). Run again
+
+        ./install_dependencies_user.sh
+        
 ## Notes on Ubuntu dependencies
 
 The `install_dependencies_machine.sh` script:
@@ -55,19 +61,6 @@ The `install_dependencies_machine.sh` script:
   graphic card features.
 * Uses Miniconda to install conda and create local python environments.
 * Installs the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), rather than using Ubuntu packages.
-
-## Activating GPU in laptops
-
-Laptops like the Dell XPS 15 come with a dual graphics card configuration, an on-board Intel chip, and an NVIDIA GPU (e.g. GeForce GTX 1050 Mobile). 
-In order to have GPU capability with Keras/Tensorflow, you need to activate the latter.
-
-The `install_dependencies.sh` script will have installed `nvidia-prime` and `nvidia-settings` for you. This allows you to launch
-
-    sudo nvidia-settings
-
-and in the PRIME tag select the "NVIDIA (Performance Mode)" option. Otherwise, if the "Intel (Power Saving Mode)" option is selected, trying
-to run Keras/TensorFlow code will throw the error `failed call to cuInit: CUDA_ERROR_UNKNOWN`.
-
 
 # Checking that your GPU is correctly set-up
 
@@ -96,87 +89,20 @@ to run Keras/TensorFlow code will throw the error `failed call to cuInit: CUDA_E
 
 Note: In a laptop with a dual graphics chip configuration as explained above, you will get the same output whether the NVIDIA or Intel
 chips are selected. Thus, regardless of what `nvidia-smi` says, you still need to make sure you have selected the NVIDIA option in 
-`nvidia-settings` -> PRIME.
-
-# Configuring Keras to be used in a python script
-
-Keras can be configured with file [`~/.keras/keras.json`](https://keras.io/backend/#kerasjson-details), 
-but this will set the same configuration for all conda environments.
-
-Alternatively, you can configure Keras in each separate script with code similar
-to this:
-
-    import os
-    os.environ['KERAS_BACKEND'] = 'theano'
-    import keras.backend as K
-    K.set_image_dim_ordering('th') # theano's image format
-    K.set_floatx('float32')
-    K.set_epsilon('1e-07')
-
-# Configuring Theano to be used in a python script in a conda environment
-
-Theano can be configured with file `.theanorc`, but as above, this gives the same
-configuration to all conda environments and scripts.
-
-It's also possible to use assignments to `theano.config.<property>`. However, 
-some options need to be set in `THEANO_FLAGS` **before** the `import theano` or
-`import keras` statement.
-
-In particular, to avoid CUDA/cuDNN compilation errors when we want to use the 
-GPU, it's necessary to add something like this
-
-    import os
-    os.environ['MKL_THREADING_LAYER'] = 'GNU'
-    os.environ['THEANO_FLAGS'] = 'floatX=float32,device=cuda0,lib.cnmem=0.75,' \
-                                 + 'dnn.include_path=' + os.environ['CONDA_PREFIX'] + '/include,' \
-                                 + 'dnn.library_path=' + os.environ['CONDA_PREFIX'] + '/lib,' \
-                                 + 'gcc.cxxflags=-I/usr/local/cuda-9.1/targets/x86_64-linux/include,' \
-                                 + 'nvcc.fastmath=True'
-    import theano
-
-# Configuring Tensorflow to be used in a python script in a conda environment
-
-
-If you want to use Tensorflow as the backend, it will use the GPU automatically 
-if one is available, you don't need a configuration file.
-
-# Testing conda environment from the command line
-
-1. To test `pygpu`
-
-        DEVICE=cuda python -c "import pygpu;pygpu.test()"
-        pygpu is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/pygpu
-        NumPy version 1.12.1
-        NumPy relaxed strides checking option: True
-        NumPy is installed in /home/rcasero/.conda/envs/cytometer/lib/python3.6/site-packages/numpy
-        Python version 3.6.1 |Continuum Analytics, Inc.| (default, May 11 2017, 13:09:58) [GCC 4.4.7 20120313 (Red Hat 4.4.7-1)]
-        nose version 1.3.7
-        *** Testing for Quadro K4000
-1. To run `theano` tests
-
-        PYTHONPATH=~/Software/cytometer python -c 'import theano; theano.test()'
-1. To check whether you can import keras with theano backend
-
-        PYTHONPATH=~/Software/cytometer python -c 'import os; os.environ["KERAS_BACKEND"] = "theano"; os.environ["LIBRARY_PATH"] = "/home/rcasero/.conda/envs/cytometer/lib"; import keras'
-
-# Packaging the cytometer python code
-
-The `setup.py` and associated files to create a package are in place. For the moment, you can create a python source package (not exactly what we need to install with `pip`) with
-
-    cd ~/Software/cytometer
-    ./setup.py sdist
-
-TODO: [Packaging and Distributing Projects](https://packaging.python.org/tutorials/distributing-packages/).
+`nvidia-settings`.
 
 # Running cytometer python scripts
 
-You need to set 
+1. Activate the cytometer local environment
 
-* `LD_LIBRARY_PATH` from the shell so that e.g. Theano can find libcudnn.so
- * for some reason, setting `os.environ['LD_LIBRARY_PATH']` from the python script doesn't work).
- * Setting `LD_LIBRARY_PATH` in `~/.bashrc` won't work because when `.bashrc` is read (upon opening a shell), you have not activated a conda environment yet
-* `PYTHONPATH` so that python can find the cytometer modules
+        source activate cytometer_tensorflow
+1. Go to the scripts directory
 
+        cd ~/Software/cytometer/scripts
+1. Mount or create the data and annotations directories required by the script. This depends on the script that you are going to run and your own machine setup
+1. Run the script with `nohup` so you can close the terminal and leave it running, and use `CUDA_VISIBLE_DEVICES` to choose one of the GPUs, e.g. for GPU=0. When the script starts processing a histology slide, it puts a lock on it by creating a `HISTO_FILENAME.lock` file in the annotations directory. This way, you can run multiple instances of the script in parallel, one per GPU, each one processing a different histology slide. All the output from running the script will be redirected to `nohup_${CUDA_VISIBLE_DEVICES}.log`
+
+        export CUDA_VISIBLE_DEVICES=0 && nohup python tbx15_h156n_exp_0003_zeiss_full_slide_pipeline_v8_no_correction.py >> nohup_${CUDA_VISIBLE_DEVICES}.log &
 ## If the IDE is spyder
 
 You can launch the IDE from a terminal
@@ -210,7 +136,7 @@ and then call the IDE as
 You also have to select the python version in File -> Settings -> Project: scripts 
 -> Project Interpreter.
 
-For example, "Python 3.6 (cytometer) ~/.conda/envs/cytometer/bin/python"
+For example, "Python 3.7 (cytometer) ~/.conda/envs/cytometer/bin/python"
 
 ## To run a python script directly from the shell
 
@@ -266,3 +192,12 @@ and then run the script as
 1. Run from the command line something similar to this (this one copies file `install_dependencies.sh` to the remote instance)
 
         scp -i private_keys/cytometer-basic-cnn.pem install_dependencies.sh  ubuntu@XXX-XX-XX-XX-XX.us-east-2.compute.amazonaws.com:~/
+
+# TODO: Packaging the cytometer python code
+
+The `setup.py` and associated files to create a package are in place. For the moment, you can create a python source package (not exactly what we need to install with `pip`) with
+
+    cd ~/Software/cytometer
+    ./setup.py sdist
+
+TODO: [Packaging and Distributing Projects](https://packaging.python.org/tutorials/distributing-packages/).
