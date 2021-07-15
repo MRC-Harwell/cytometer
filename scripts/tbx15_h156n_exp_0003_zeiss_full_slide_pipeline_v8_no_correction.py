@@ -26,6 +26,9 @@ Difference with rreb1_tm1b_exp_0004_pilot_full_slide_pipeline_v8_no_correction.p
 
 Difference with rreb1_tm1b_exp_0007_zeiss_full_slide_pipeline_v8_no_correction.py:
   * Applied to Louisa's data instead of Grace Yu's data.
+  * Louisa's images are scanned with 10x instead of 5x magnification, so we use 32x downsampling for the coarse image
+    segmentation and 2x downsampling for segmentation. That corresponds to pixel sizes similar to what we've done with
+    Klf14 data.
 
  Requirements for this script to work:
 
@@ -108,6 +111,7 @@ import PIL
 from keras import backend as K
 import scipy.stats
 from shapely.geometry import Polygon
+import cv2
 
 import tensorflow as tf
 if tf.test.is_gpu_available():
@@ -139,6 +143,7 @@ klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_tra
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
 contour_model_basename = 'klf14_b6ntac_exp_0091_cnn_contour_after_dmap'
 classifier_model_basename = 'klf14_b6ntac_exp_0095_cnn_tissue_classifier_fcn'
+correction_model_basename = 'klf14_b6ntac_exp_0089_cnn_segmentation_correction_overlapping_scaled_contours'
 
 # full resolution image window and network expected receptive field parameters
 fullres_box_size = np.array([2751, 2751])
@@ -151,6 +156,7 @@ component_size_threshold = 50e3
 hole_size_treshold = 8000
 std_k = 1.00
 enhance_contrast = 4.0
+ignore_white_threshold = 253
 
 # contour parameters
 contour_downsample_factor = 0.1
@@ -162,14 +168,14 @@ block_overlap = np.ceil((receptive_field - 1) / 2 / downsample_factor).astype(np
 window_overlap_fraction_max = 0.9
 
 # segmentation parameters
-min_cell_area = 200 * 2 # pixel
-max_cell_area = 200e3 * 2 # pixel
+min_cell_area = 200  # pixel; we want all small objects
+max_cell_area = 200e3  # pixel
 min_mask_overlap = 0.8
 phagocytosis = True
 min_class_prop = 0.0  # we accept all segmented objects here, as that gives as a chance to filter with different thresholds later
-correction_window_len = 801
-correction_smoothing = 11 * 2
-batch_size = 16
+correction_window_len = 401
+correction_smoothing = 11
+batch_size = 8
 
 # list of histology files to process
 histo_files_list = [
@@ -184,9 +190,30 @@ histo_files_list = [
 
 # load colour modes of the KLF14 training dataset
 with np.load(klf14_training_colour_histogram_file) as data:
-    mode_r_klf14 = data['mode_r']
-    mode_g_klf14 = data['mode_g']
-    mode_b_klf14 = data['mode_b']
+    mean_l_klf14 = data['mean_l'].item()
+    mean_a_klf14 = data['mean_a'].item()
+    mean_b_klf14 = data['mean_b'].item()
+    std_l_klf14 = data['std_l'].item()
+    std_a_klf14 = data['std_a'].item()
+    std_b_klf14 = data['std_b'].item()
+    mode_r_klf14 = data['mode_r'].item()
+    mode_g_klf14 = data['mode_g'].item()
+    mode_b_klf14 = data['mode_b'].item()
+    xbins = data['xbins']
+    xbins_edge = data['xbins_edge']
+    ecdf_r_klf14 = data['hist_r_q2'] # median pdf
+    ecdf_g_klf14 = data['hist_g_q2'] # median pdf
+    ecdf_b_klf14 = data['hist_b_q2'] # median pdf
+
+# convert pdfs to ECDFs
+ecdf_r_klf14 = np.cumsum(ecdf_r_klf14) / np.sum(ecdf_r_klf14)
+ecdf_g_klf14 = np.cumsum(ecdf_g_klf14) / np.sum(ecdf_g_klf14)
+ecdf_b_klf14 = np.cumsum(ecdf_b_klf14) / np.sum(ecdf_b_klf14)
+
+# function to map ECDF to intensity values in the Klf14 dataset
+f_ecdf_to_val_r_klf14 = scipy.interpolate.interp1d(ecdf_r_klf14, xbins, fill_value=(0, 255))
+f_ecdf_to_val_g_klf14 = scipy.interpolate.interp1d(ecdf_g_klf14, xbins, fill_value=(0, 255))
+f_ecdf_to_val_b_klf14 = scipy.interpolate.interp1d(ecdf_b_klf14, xbins, fill_value=(0, 255))
 
 ########################################################################################################################
 ## Colourmap for AIDA, based on KLF14 automatically segmented data
@@ -232,6 +259,8 @@ for i_file, histo_file in enumerate(histo_files_list):
     dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     classifier_model_file = os.path.join(saved_models_dir,
                                          classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    correction_model_file = os.path.join(saved_models_dir,
+                                         correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # name of file to save annotations to
     annotations_file = os.path.basename(histo_file)
@@ -246,16 +275,17 @@ for i_file, histo_file in enumerate(histo_files_list):
     # open full resolution histology slide
     im = openslide.OpenSlide(histo_file)
 
-    # pixel size
+    # pixel size at level 1 (the level at which we segment the histology)
+    lvl = 1
     assert(im.properties['tiff.ResolutionUnit'] == 'centimeter')
-    xres = 1e-2 / float(im.properties['tiff.XResolution'])  # m, e.g. 4.4e-07
-    yres = 1e-2 / float(im.properties['tiff.YResolution'])  # m, e.g. 4.4e-07
-    # xres = 0.2198596485471026 um
-    if (xres < 0.2e-6) or (xres > 0.3e-6):
-        warnings.warn('xres is not in [0.2, 0.3] um')
-    # yres = 0.2198596485471026 um
-    if (yres < 0.2e-6) or (yres > 0.3e-6):
-        warnings.warn('yres is not in [0.2, 0.3] um')
+    xres = 1e-2 / float(im.properties['tiff.XResolution']) * im.level_downsamples[lvl] # m, e.g. 4.4e-07
+    yres = 1e-2 / float(im.properties['tiff.YResolution']) * im.level_downsamples[lvl]  # m, e.g. 4.4e-07
+    # xres = 0.43972097231744584 um
+    if (xres < 0.4e-6) or (xres > 0.5e-6):
+        warnings.warn('xres is not in [0.4, 0.5] um')
+    # yres = 0.43972097231744584 um
+    if (yres < 0.4e-6) or (yres > 0.5e-6):
+        warnings.warn('yres is not in [0.4, 0.5] um')
 
     # check whether we continue previous execution, or we start a new one
     continue_previous = os.path.isfile(rough_mask_file)
@@ -264,57 +294,59 @@ for i_file, histo_file in enumerate(histo_files_list):
     if continue_previous:
 
         with np.load(rough_mask_file) as aux:
-            lores_istissue = aux['lores_istissue']
-            lores_istissue0 = aux['lores_istissue0']
-            im_downsampled = aux['im_downsampled']
+            tissue_mask_l5 = aux['lores_istissue']
+            tissue_mask0_l5 = aux['lores_istissue0']
+            im_l5 = aux['im_downsampled']
             step = aux['step'].item()
             perc_completed_all = list(aux['perc_completed_all'])
             time_step_all = list(aux['time_step_all'])
-            prev_first_row = aux['prev_first_row'].item()
-            prev_last_row = aux['prev_last_row'].item()
-            prev_first_col = aux['prev_first_col'].item()
-            prev_last_col = aux['prev_last_col'].item()
+            prev_first_row_l5 = aux['prev_first_row'].item()
+            prev_last_row_l5 = aux['prev_last_row'].item()
+            prev_first_col_l5 = aux['prev_first_col'].item()
+            prev_last_col_l5 = aux['prev_last_col'].item()
 
     else:
 
         time_prev = time.time()
 
-        # compute the rough foreground mask of tissue vs. background
-        lores_istissue0, im_downsampled = rough_foreground_mask(histo_file, downsample_factor=downsample_factor,
-                                                                dilation_size=dilation_size,
-                                                                component_size_threshold=component_size_threshold,
-                                                                hole_size_treshold=hole_size_treshold, std_k=std_k,
-                                                                return_im=True, enhance_contrast=enhance_contrast,
-                                                                ignore_white_threshold=253, ignore_black_threshold=0,
-                                                                ignore_violet_border=None)
+        # compute the coarse foreground mask of tissue vs. background
+        tissue_mask0_l5, im_l5 = rough_foreground_mask(histo_file, downsample_factor=downsample_factor,
+                                                       dilation_size=dilation_size,
+                                                       component_size_threshold=component_size_threshold,
+                                                       hole_size_treshold=hole_size_treshold, std_k=std_k,
+                                                       return_im=True, enhance_contrast=enhance_contrast,
+                                                       clear_border=[1, 0, 1, 0],
+                                                       ignore_white_threshold=ignore_white_threshold,
+                                                       ignore_black_threshold=0,
+                                                       ignore_violet_border=None)
 
         if DEBUG:
             # enhancer = PIL.ImageEnhance.Contrast(PIL.Image.fromarray(im_downsampled))
             # im_downsampled_enhanced = np.array(enhancer.enhance(enhance_contrast))
             plt.clf()
             plt.subplot(211)
-            plt.imshow(im_downsampled)
+            plt.imshow(im_l5)
             plt.axis('off')
             plt.subplot(212)
-            plt.imshow(im_downsampled)
-            plt.contour(lores_istissue0)
+            plt.imshow(im_l5)
+            plt.contour(tissue_mask0_l5)
             plt.axis('off')
 
         # segmentation copy, to keep track of what's left to do
-        lores_istissue = lores_istissue0.copy()
+        tissue_mask_l5 = tissue_mask0_l5.copy()
 
         # initialize block algorithm variables
         step = 0
         perc_completed_all = [float(0.0),]
         time_step = time.time() - time_prev
         time_step_all = [time_step,]
-        (prev_first_row, prev_last_row, prev_first_col, prev_last_col) = (0, 0, 0, 0)
+        (prev_first_row_l5, prev_last_row_l5, prev_first_col_l5, prev_last_col_l5) = (0, 0, 0, 0)
 
         # save to the rough mask file
-        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
-                            im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
-                            prev_first_row=prev_first_row, prev_last_row=prev_last_row,
-                            prev_first_col=prev_first_col, prev_last_col=prev_last_col,
+        np.savez_compressed(rough_mask_file, lores_istissue=tissue_mask_l5, lores_istissue0=tissue_mask0_l5,
+                            im_downsampled=im_l5, step=step, perc_completed_all=perc_completed_all,
+                            prev_first_row=prev_first_row_l5, prev_last_row=prev_last_row_l5,
+                            prev_first_col=prev_first_col_l5, prev_last_col=prev_last_col_l5,
                             time_step_all=time_step_all)
 
         # end "computing the rough foreground mask"
@@ -324,8 +356,8 @@ for i_file, histo_file in enumerate(histo_files_list):
     time_total = np.sum(time_step_all)
     print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': step ' +
           str(step) + ': ' +
-          str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
-          "{0:.1f}".format(100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100) +
+          str(np.count_nonzero(tissue_mask_l5)) + '/' + str(np.count_nonzero(tissue_mask0_l5)) + ': ' +
+          "{0:.1f}".format(100.0 - np.count_nonzero(tissue_mask_l5) / np.count_nonzero(tissue_mask0_l5) * 100) +
           '% completed: ' +
           'time step ' + "{0:.2f}".format(time_step) + ' s' +
           ', total time ' + "{0:.2f}".format(time_total) + ' s')
@@ -333,43 +365,63 @@ for i_file, histo_file in enumerate(histo_files_list):
     if DEBUG:
             plt.clf()
             plt.subplot(211)
-            plt.imshow(im_downsampled)
-            plt.contour(lores_istissue0, colors='k')
+            plt.imshow(im_l5)
+            plt.contour(tissue_mask0_l5, colors='k')
             plt.subplot(212)
-            plt.imshow(lores_istissue0)
+            plt.imshow(tissue_mask0_l5)
 
-    # estimate the colour mode of the downsampled image, so that we can correct the image tint to match the Klf14
-    # training dataset. We apply the same correction to each tile, to avoid that a tile with e.g. only muscle gets
-    # overcorrected
-    #
-    # Note: we ignore black pixels that correspond to where the scanner didn't scan
-    non_black_mask = np.prod(im_downsampled <= 0, axis=2) == 0
-    mode_r_slide = scipy.stats.mode(im_downsampled[:, :, 0][non_black_mask]).mode[0]
-    mode_g_slide = scipy.stats.mode(im_downsampled[:, :, 1][non_black_mask]).mode[0]
-    mode_b_slide = scipy.stats.mode(im_downsampled[:, :, 2][non_black_mask]).mode[0]
+    # compute ECDF of whole slide intensity pixel colours (one ECDF per channel)
+    # ECDF = integral pdf * bin_width
+    non_black_mask = np.prod(im_l5 <= 0, axis=2) == 0
+    values_r_imd, histo_r_idx_imd, ecdf_r_imd = np.unique(im_l5[:, :, 0][non_black_mask],
+                                                          return_inverse=True, return_counts=True)
+    values_g_imd, histo_g_idx_imd, ecdf_g_imd = np.unique(im_l5[:, :, 1][non_black_mask],
+                                                          return_inverse=True, return_counts=True)
+    values_b_imd, histo_b_idx_imd, ecdf_b_imd = np.unique(im_l5[:, :, 2][non_black_mask],
+                                                          return_inverse=True, return_counts=True)
+    n = np.count_nonzero(non_black_mask)
+    ecdf_r_imd = np.cumsum(ecdf_r_imd) / n
+    ecdf_g_imd = np.cumsum(ecdf_g_imd) / n
+    ecdf_b_imd = np.cumsum(ecdf_b_imd) / n
+
+    # function to map intensity values to ECDF in the downsampled slide
+    f_val_to_ecdf_r_imd = scipy.interpolate.interp1d(values_r_imd, ecdf_r_imd, fill_value=(0.0, 1.0), bounds_error=False)
+    f_val_to_ecdf_g_imd = scipy.interpolate.interp1d(values_g_imd, ecdf_g_imd, fill_value=(0.0, 1.0), bounds_error=False)
+    f_val_to_ecdf_b_imd = scipy.interpolate.interp1d(values_b_imd, ecdf_b_imd, fill_value=(0.0, 1.0), bounds_error=False)
 
     # keep extracting histology windows until we have finished
-    while np.count_nonzero(lores_istissue) > 0:
+    while np.count_nonzero(tissue_mask_l5) > 0:
 
         time_prev = time.time()
 
         # next step (it starts from 1 here, because step 0 is the rough mask computation)
         step += 1
 
-        # get indices for the next histology window to process
-        (first_row, last_row, first_col, last_col), \
-        (lores_first_row, lores_last_row, lores_first_col, lores_last_col) = \
-            cytometer.utils.get_next_roi_to_process(lores_istissue, downsample_factor=downsample_factor,
-                                                    max_window_size=fullres_box_size,
-                                                    border=np.round((receptive_field-1)/2))
+        # get location and size of ROI for each level, so that we can pass it to read_region()
+        l1l5_downsample_factor = im.level_downsamples[5] / im.level_downsamples[1]
+        location_all, size_all = \
+            cytometer.utils.get_next_roi_to_process(tissue_mask_l5, im=im,
+                                                    max_window_size=np.round(fullres_box_size / l1l5_downsample_factor),
+                                                    border=np.ceil((receptive_field - 1) / 2 / l1l5_downsample_factor))
+
+        # make notation clearer
+        lvl = 0
+        (first_col_l0, last_col_l0) = [location_all[lvl][0], location_all[lvl][0] + size_all[lvl][0]]
+        (first_row_l0, last_row_l0) = [location_all[lvl][1], location_all[lvl][1] + size_all[lvl][1]]
+        lvl = 1
+        (first_col_l1, last_col_l1) = [location_all[lvl][0], location_all[lvl][0] + size_all[lvl][0]]
+        (first_row_l1, last_row_l1) = [location_all[lvl][1], location_all[lvl][1] + size_all[lvl][1]]
+        lvl = 5
+        (first_col_l5, last_col_l5) = [location_all[lvl][0], location_all[lvl][0] + size_all[lvl][0]]
+        (first_row_l5, last_row_l5) = [location_all[lvl][1], location_all[lvl][1] + size_all[lvl][1]]
 
         # overlap between current and previous window, as a fraction of current window area
-        current_window = Polygon([(first_col, first_row), (last_col, first_row),
-                                  (last_col, last_row), (first_col, last_row)])
-        prev_window = Polygon([(prev_first_col, prev_first_row), (prev_last_col, prev_first_row),
-                               (prev_last_col, prev_last_row), (prev_first_col, prev_last_row)])
+        current_window = Polygon([(first_col_l5, first_row_l5), (last_col_l5, first_row_l5),
+                                  (last_col_l5, last_row_l5), (first_col_l5, last_row_l5)])
+        prev_window = Polygon([(prev_first_col_l5, prev_first_row_l5), (prev_last_col_l5, prev_first_row_l5),
+                               (prev_last_col_l5, prev_last_row_l5), (prev_first_col_l5, prev_last_row_l5)])
         window_overlap_fraction = current_window.intersection(prev_window).area / current_window.area
-
+#
         # check that we are not trying to process almost the same window
         if window_overlap_fraction > window_overlap_fraction_max:
             # if we are trying to process almost the same window as in the previous step, what's probably happening is
@@ -377,34 +429,40 @@ for i_file, histo_file in enumerate(histo_files_list):
             # also finding one or more spurious labels within the window. That prevents the whole lores_istissue window
             # from being wiped out, and the big edge labels keep the window selection being almost the same. Thus, we
             # wipe it out and move to another tissue area
-            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+            tissue_mask_l5[first_row_l5:last_row_l5, first_col_l5:last_col_l5] = 0
             continue
 
         else:
             # remember processed window for next step
-            (prev_first_row, prev_last_row, prev_first_col, prev_last_col) = (first_row, last_row, first_col, last_col)
+            (prev_first_row_l5, prev_last_row_l5, prev_first_col_l5, prev_last_col_l5) = (first_row_l5, last_row_l5, first_col_l5, last_col_l5)
 
-        # load window from full resolution slide
-        tile = im.read_region(location=(first_col, first_row), level=0,
-                              size=(last_col - first_col, last_row - first_row))
+        # load histology window
+        tile = im.read_region(location=(first_col_l0, first_row_l0), level=1, size=size_all[1])
         tile = np.array(tile)
         tile = tile[:, :, 0:3]
 
-        # correct tint of the tile to match KLF14 training data
-        tile[:, :, 0] = tile[:, :, 0] + (mode_r_klf14 - mode_r_slide)
-        tile[:, :, 1] = tile[:, :, 1] + (mode_g_klf14 - mode_g_slide)
-        tile[:, :, 2] = tile[:, :, 2] + (mode_b_klf14 - mode_b_slide)
+        if DEBUG:
+            plt.clf()
+            plt.subplot(211)
+            plt.imshow(tissue_mask_l5[first_row_l5:last_row_l5, first_col_l5:last_col_l5])
+            plt.subplot(212)
+            plt.imshow(tile)
 
-        # interpolate coarse tissue segmentation to full resolution
-        istissue_tile = lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col]
-        istissue_tile = cytometer.utils.resize(istissue_tile, size=(last_col - first_col, last_row - first_row),
-                                               resample=PIL.Image.NEAREST)
+        # correct colours so that they match the training data
+        non_black_mask = np.prod(tile <= 0, axis=2) == 0
+        tile[:, :, 0][non_black_mask] = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_imd(tile[:, :, 0][non_black_mask]))
+        tile[:, :, 1][non_black_mask] = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_imd(tile[:, :, 1][non_black_mask]))
+        tile[:, :, 2][non_black_mask] = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_imd(tile[:, :, 2][non_black_mask]))
+
+        # upsample tissue mask window to tile resolution
+        tissue_mask_tile = tissue_mask_l5[first_row_l5:last_row_l5, first_col_l5:last_col_l5]
+        tissue_mask_tile = cytometer.utils.resize(tissue_mask_tile, size=size_all[1], resample=PIL.Image.NEAREST)
 
         if DEBUG:
             plt.clf()
             plt.imshow(tile)
-            plt.imshow(istissue_tile, alpha=0.5)
-            plt.contour(istissue_tile, colors='k')
+            plt.imshow(tissue_mask_tile, alpha=0.5)
+            plt.contour(tissue_mask_tile, colors='k')
             plt.title('Yellow: Tissue mask. Purple: Background')
             plt.axis('off')
 
@@ -418,10 +476,10 @@ for i_file, histo_file in enumerate(histo_files_list):
                                                      classifier_model=classifier_model_file,
                                                      min_cell_area=0,
                                                      max_cell_area=np.inf,
-                                                     mask=istissue_tile,
+                                                     mask=tissue_mask_tile,
                                                      min_mask_overlap=min_mask_overlap,
                                                      phagocytosis=phagocytosis,
-                                                     min_class_prop=0.0,
+                                                     min_class_prop=min_class_prop,
                                                      correction_window_len=correction_window_len,
                                                      correction_smoothing=correction_smoothing,
                                                      remove_edge_labels=True,
@@ -439,7 +497,7 @@ for i_file, histo_file in enumerate(histo_files_list):
         # enter an infinite loop
         if len(index_list) == 0:  # empty segmentation
 
-            lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+            tissue_mask_l5[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
 
         else:  # there's at least one object in the segmentation
 
@@ -474,11 +532,11 @@ for i_file, histo_file in enumerate(histo_files_list):
             if DEBUG:
                 plt.clf()
                 plt.subplot(221)
-                plt.imshow(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col])
+                plt.imshow(tissue_mask_l5[lores_first_row:lores_last_row, lores_first_col:lores_last_col])
                 plt.title('Low res tissue mask', fontsize=16)
                 plt.axis('off')
                 plt.subplot(222)
-                plt.imshow(istissue_tile)
+                plt.imshow(tissue_mask_tile)
                 plt.title('Full res tissue mask', fontsize=16)
                 plt.axis('off')
                 plt.subplot(223)
@@ -541,19 +599,19 @@ for i_file, histo_file in enumerate(histo_files_list):
                 cytometer.data.aida_write_new_items(annotations_file, contour_items, mode='append_new_layer')
 
             # update the tissue segmentation mask with the current window
-            if np.all(lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
+            if np.all(tissue_mask_l5[lores_first_row:lores_last_row, lores_first_col:lores_last_col] == lores_todo_edge):
                 # if the mask remains identical, wipe out the whole window, as otherwise we'd have an
                 # infinite loop
-                lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+                tissue_mask_l5[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
             else:
                 # if the mask has been updated, use it to update the total tissue segmentation
-                lores_istissue[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
+                tissue_mask_l5[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = lores_todo_edge
 
         # end of "if len(index_list) == 0:"
         # Thus, regardless of whether there were any objects in the segmentation or not, here we continue the execution
         # of the program
 
-        perc_completed = 100.0 - np.count_nonzero(lores_istissue) / np.count_nonzero(lores_istissue0) * 100
+        perc_completed = 100.0 - np.count_nonzero(tissue_mask_l5) / np.count_nonzero(tissue_mask0_l5) * 100
         perc_completed_all.append(perc_completed)
         time_step = time.time() - time_prev
         time_step_all.append(time_step)
@@ -561,18 +619,18 @@ for i_file, histo_file in enumerate(histo_files_list):
 
         print('File ' + str(i_file) + '/' + str(len(histo_files_list) - 1) + ': step ' +
               str(step) + ': ' +
-              str(np.count_nonzero(lores_istissue)) + '/' + str(np.count_nonzero(lores_istissue0)) + ': ' +
+              str(np.count_nonzero(tissue_mask_l5)) + '/' + str(np.count_nonzero(tissue_mask0_l5)) + ': ' +
               "{0:.1f}".format(perc_completed) +
               '% completed: ' +
               'time step ' + "{0:.2f}".format(time_step) + ' s' +
               ', total time ' + "{0:.2f}".format(time_total) + ' s')
 
         # save to the rough mask file
-        np.savez_compressed(rough_mask_file, lores_istissue=lores_istissue, lores_istissue0=lores_istissue0,
-                            im_downsampled=im_downsampled, step=step, perc_completed_all=perc_completed_all,
+        np.savez_compressed(rough_mask_file, lores_istissue=tissue_mask_l5, lores_istissue0=tissue_mask0_l5,
+                            im_downsampled=im_l5, step=step, perc_completed_all=perc_completed_all,
                             time_step_all=time_step_all,
-                            prev_first_row=prev_first_row, prev_last_row=prev_last_row,
-                            prev_first_col=prev_first_col, prev_last_col=prev_last_col)
+                            prev_first_row=prev_first_row_l5, prev_last_row=prev_last_row_l5,
+                            prev_first_col=prev_first_col_l5, prev_last_col=prev_last_col_l5)
 
         # clear keras session to prevent each segmentation iteration from getting slower. Note that this forces us to
         # reload the models every time, but that's not too slow
