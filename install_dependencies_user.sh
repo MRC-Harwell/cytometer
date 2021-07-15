@@ -19,6 +19,7 @@ set -e
 
 PYTHON_VERSION=3.7
 CONDA_LOCAL_ENV=cytometer_tensorflow
+MINICONDA_VERSION=3
 
 ########################################################################
 ## install Miniconda locally so that we can use the conda local environment tools,

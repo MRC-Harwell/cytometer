@@ -21,11 +21,6 @@
 set -e
 
 ########################################################################
-# configuration constants
-
-MINICONDA_VERSION=3
-
-########################################################################
 ## Ubuntu packages and other binaries that the python local environment is going to need
 
 # install OpenSlide library
