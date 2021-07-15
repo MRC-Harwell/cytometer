@@ -1,5 +1,5 @@
 """
-This is where we create the file with the median, Q1 and Q3 curves for the colour histograms of the KLF14 training data
+This is where we create the file with the median, Q1 and Q3 curves for the colour histograms of the Klf14 training data
 that we use to correct the histology colour before passing it to DeepCytometer.
 """
 
@@ -11,7 +11,7 @@ Author: Ramon Casero <rcasero@gmail.com>
 """
 
 # script name to identify this experiment
-experiment_id = 'klf14_b6ntac_exp_0107_colour_histogram'
+experiment_id = 'klf14_b6ntac_exp_0107_colour_correction_v8'
 print('Experiment ID: ' + experiment_id)
 
 # cross-platform home directory
