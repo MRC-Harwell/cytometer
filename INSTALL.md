@@ -29,51 +29,32 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 
 # Installing the `cytometer` python code
 
-Currently, we have not tested having `cytometer` installed as a python package, 
-as we are at a very early stage.
-
-For the time being, we are working by simply cloning the repository to the local
-drive.
-
 1. Clone the `cytometer` repository by running the command
 
         cd ~/Software
-        git clone http://r.casero@phobos.mrch.har.mrc.ac.uk/r.casero/cytometer.git
+        git clone https://GITUSERNAME@github.com/MRC-Harwell/cytometer.git
 1. Change directory to the project
 
         cd cytometer
 
 # Dependencies and local conda environments
 
-1. Make `install_dependencies.sh` executable
+1. Make `install_dependencies_machine.sh` and `install_dependencies_user.sh` executable
 
-        chmox +x install_dependencies.sh
-1. Run `install_dependencies.sh` to install dependencies and local conda environment
+        chmod +x install_dependencies_machine.sh install_dependencies_user.sh
+1. You only need to set up the machine once with `install_dependencies_machine.sh` (Ubuntu packages, nVidia drivers, etc). You will be asked for a sudo password, so you need to have sudo privileges
 
-        ./install_dependencies.sh
-1. Install latest cuDNN
- 1. Sign up as ["NVIDIA Developer"](https://developer.nvidia.com/nvidia-developer-zone).
- 2. Download [cuDNN v7.0.5 (Dec 11, 2017), for CUDA 9.1](https://developer.nvidia.com/rdp/cudnn-download#a-collapse705-91):
-  * `libcudnn7_7.0.5.15-1+cuda9.1_amd64.deb`: [cuDNN v7.0.5 Runtime Library for Ubuntu16.04 (Deb)](https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v7.0.5/prod/9.1_20171129/Ubuntu16_04-x64/libcudnn7_7.0.5.15-1+cuda9.1_amd64).
-  * `libcudnn7-dev_7.0.5.15-1+cuda9.1_amd64.deb`: [cuDNN v7.0.5 Developer Library for Ubuntu16.04 (Deb)](https://developer.nvidia.com/compute/machine-learning/cudnn/secure/v7.0.5/prod/9.1_20171129/Ubuntu16_04-x64/libcudnn7-dev_7.0.5.15-1+cuda9.1_amd64).
- 3. Install cuDNN (this is a system-wide installation)
+        ./install_dependencies_machine.sh
+1. You need to create a local conda environment with `install_dependencies_user.sh` for yourself (don't run it with sudo!).
 
-        cd ~/Downloads
-        sudo dpkg -i libcudnn7_7.0.5.15-1+cuda9.1_amd64.deb libcudnn7-dev_7.0.5.15-1+cuda9.1_amd64.deb
-        cd cytometer
-2. Double-check that you don't have a local install of cuDNN in the local environment
-
-This will create a local environment, `cytometer_tensorflow`.
-
+        ./install_dependencies_user.sh
 ## Notes on Ubuntu dependencies
 
-The `install_dependencies.sh` script:
-* Installs the NVIDIA drivers (`nvidia-387`) rather than the open source nouveau 
-  (`xserver-xorg-video-nouveau`), so that we have full access to the NVIDIA 
+The `install_dependencies_machine.sh` script:
+* Installs the NVIDIA drivers rather than the open source nouveau (`xserver-xorg-video-nouveau`), so that we have full access to the NVIDIA 
   graphic card features.
 * Uses Miniconda to install conda and create local python environments.
-* Installs the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), 
-rather than using Ubuntu packages.
+* Installs the CUDA Toolkit from the [Nvidia website](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&target_distro=Ubuntu), rather than using Ubuntu packages.
 
 ## Activating GPU in laptops
 
