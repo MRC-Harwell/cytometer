@@ -460,10 +460,10 @@ def get_next_roi_to_process_old(seg, downsample_factor=1.0, max_window_size=[100
            (lores_first_row, lores_last_row, lores_first_col, lores_last_col)
 
 
-def get_next_roi_to_process(seg, upsampled_size=None, max_window_size=[1001, 1001], border=[65, 65], version=None, downsample_factor=1.0):
+def get_next_roi_to_process(seg, im, max_window_size=[1001, 1001], border=[65, 65], version=None, downsample_factor=1.0):
     """
-    Find a rectangular region of interest (ROI) within an irregularly-shaped mask to pass to a neural
-    network or some other processing algorithm. This function can be called repeatedly to process a whole image.
+    Find a rectangular region of interest (ROI) or window within an irregularly-shaped mask to pass to a neural
+    network or some other processing algorithm.
 
     The choice of the ROI follows several rules:
 
@@ -473,16 +473,10 @@ def get_next_roi_to_process(seg, upsampled_size=None, max_window_size=[1001, 100
       * A border can be added, to account for the effective receptive field of the neural network, or the tails of a
         filter.
 
-    The ROI for the mask is given as a tuple of coordinates for the top-left and bottom-right corners
+    The ROI for the mask is given in the openslide.read_region() format, e.g. location and size. (One per image level).
 
-        (first_row, last_row, first_col, last_col)
-
-    Note that last_row and last_col are 1 pixel larger for easy Python indexing. For example,
-    (first_row=0, last_row=4, first_col=0, last_col=4) means a square with indices 0, 1, 2, 3 in each direction, and
-    thus size 4x4 when they are used for indexing mask[first_row:last_row, first_col:last_col].
-
-    The function also allows for the mask to be a downsampled version of a larger image. Coordinates for both
-    the low-resolution and high-resolution windows are then returned.
+        location = (x0, y0) = (first_col, first_row)
+        size = (width, height)
 
     Technical note: The way this method works is that we find candidates to be the top-left corner of the ROI, by
     convolving the mask (seg) with a horizontal-line kernel (k1) and a vertical-line kernel (k2). We then compute the
@@ -490,18 +484,18 @@ def get_next_roi_to_process(seg, upsampled_size=None, max_window_size=[1001, 100
     corners of the block (without the border).
 
     :param seg: np.ndarray with downsampled segmentation mask.
-    :param upsampled_size: (def None) Size of an upsampled image. Another window will be created for this image.
+    :param im: openslide.OpenSlide pointer to an image that has been opened with im = openslide.OpenSlide(histo_file).
     :param max_window_size: (def [1000, 1000]) Vector with (row, column) size of output window in the seg mask. This is
     a maximum size including the border. If the window were to overflow the image, it gets cropped to the image size.
     :param border: (def (65, 65)) Vector with how many (rows, columns) of the output window are a border around
     the region of interest.
     :param version: (def None). If version='old', the deprecated version of the function will be used. That version made
     slightly smaller windows than required, but was used in the Klf14 experiments, so we need to keep the old version.
+    :param downsample_factor: Deprecated. Ignored.
     :return:
-    * (hires_first_row, hires_last_row, hires_first_col, hires_last_col). If the histology image is im, the ROI found is
-    im[hires_first_row:hires_last_row, hires_first_col:hires_last_col].
+    * location: list of locations for openslide.read_region(), one per level in histology image im.
 
-    * (first_row, last_row, first_col, last_col). The ROI found is seg[first_row:last_row, first_col:last_col].
+    * size: list of window sizes for openslide.read_region(), one per level in histology image im.
     """
 
     # in case the user wants to run the deprecated version that was used for the Klf14 experiments
@@ -510,22 +504,14 @@ def get_next_roi_to_process(seg, upsampled_size=None, max_window_size=[1001, 100
 
     if np.count_nonzero(seg) == 0:
         warnings.warn('Empty segmentation')
-        return (0, 0, 0, 0), (0, 0, 0, 0)
+        return [[] for _ in range(im.level_count)], [[] for _ in range(im.level_count)]
 
     # convert to np.array so that we can use algebraic operators
     max_window_size = np.array(max_window_size)
     border = np.array(border)
 
-    # compute downsample factor
-    if upsampled_size is None:
-        upsampled_size = np.array(seg.shape)
-        upsample_factor = 1.0
-    else:
-        upsampled_size = np.array(upsampled_size)
-        upsample_factor = upsampled_size / np.array(seg.shape)
-
     # convert segmentation mask to [0, 1]
-    seg = (seg != 0).astype('int')
+    seg = (seg != 0).astype(int)
 
     # kernels that flipped correspond to top line and left line. They need to be pre-flipped
     # because the convolution operation internally flips them (two flips cancel each other)
@@ -575,24 +561,28 @@ def get_next_roi_to_process(seg, upsampled_size=None, max_window_size=[1001, 100
                  [last_row-1, last_row-1, first_row, first_row, last_row-1], 'red')
 
     # add a border around the window
-    first_row = np.max([0, first_row - border[0]])
-    first_col = np.max([0, first_col - border[1]])
+    # Note: due to a bug in openslide, if you try to read_region() with either location coordinate = 0, in a level>0,
+    # then a black region is produced instead of the actual image. That's why we need to limit here the first_row and
+    # first_col to 1 instead of 0
+    first_row = np.max([1, first_row - border[0]])
+    first_col = np.max([1, first_col - border[1]])
 
     last_row = np.min([seg.shape[0], last_row + border[0]])
     last_col = np.min([seg.shape[1], last_col + border[1]])
 
-    # convert low resolution indices to high resolution
-    hires_first_row = np.round(first_row * upsample_factor[0]).astype(int)
-    hires_last_row = np.round(last_row * upsample_factor[0]).astype(int)
-    hires_first_col = np.round(first_col * upsample_factor[1]).astype(int)
-    hires_last_col = np.round(last_col * upsample_factor[1]).astype(int)
+    seg_size = np.array(seg.shape[::-1])  # (x, y)
 
-    # make sure we don't overflow the image
-    hires_last_row =  np.min([upsampled_size[0], hires_last_row])
-    hires_last_col =  np.min([upsampled_size[1], hires_last_col])
+    size_all = []
+    location_all = []
+    for level in range(im.level_count):
+        slide_size = np.array(im.level_dimensions[level])  # (x, y)
+        downsample_factor = slide_size / seg_size
+        location = (np.array((first_col, first_row)) * downsample_factor).astype(int)
+        window_size = np.array((last_col - first_col, last_row - first_row) * downsample_factor).astype(int)
+        size_all.append(window_size)
+        location_all.append(location)
 
-    return (hires_first_row, hires_last_row, hires_first_col, hires_last_col), \
-           (first_row.astype(int), last_row.astype(int), first_col.astype(int), last_col.astype(int))
+    return location_all, size_all
 
 
 def principal_curvatures_range_image(img, sigma=10):
