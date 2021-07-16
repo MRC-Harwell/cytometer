@@ -36,7 +36,6 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
-import cv2
 import cytometer.data
 
 # # limit number of GPUs
@@ -130,9 +129,9 @@ val_g_klf14 = scipy.stats.mstats.hdquantiles(val_g_all[0::k], prob=p, axis=0)
 val_b_klf14 = scipy.stats.mstats.hdquantiles(val_b_all[0::k], prob=p, axis=0)
 
 # function to map ECDF to intensity values in the Klf14 dataset
-f_ecdf_to_val_r_klf14 = scipy.interpolate.interp1d(p, val_r_klf14, fill_value=(0, 255))
-f_ecdf_to_val_g_klf14 = scipy.interpolate.interp1d(p, val_g_klf14, fill_value=(0, 255))
-f_ecdf_to_val_b_klf14 = scipy.interpolate.interp1d(p, val_b_klf14, fill_value=(0, 255))
+f_ecdf_to_val_r_klf14 = scipy.interpolate.interp1d(p, val_r_klf14, fill_value=(0, 255), bounds_error=False)
+f_ecdf_to_val_g_klf14 = scipy.interpolate.interp1d(p, val_g_klf14, fill_value=(0, 255), bounds_error=False)
+f_ecdf_to_val_b_klf14 = scipy.interpolate.interp1d(p, val_b_klf14, fill_value=(0, 255), bounds_error=False)
 
 if DEBUG:
     plt.clf()
