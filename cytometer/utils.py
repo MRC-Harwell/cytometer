@@ -460,7 +460,7 @@ def get_next_roi_to_process_old(seg, downsample_factor=1.0, max_window_size=[100
            (lores_first_row, lores_last_row, lores_first_col, lores_last_col)
 
 
-def get_next_roi_to_process(seg, im, max_window_size=[1001, 1001], border=[65, 65], version=None, downsample_factor=1.0):
+def get_next_roi_to_process(seg, im=None, max_window_size=[1001, 1001], border=[65, 65], version=None, downsample_factor=1.0):
     """
     Find a rectangular region of interest (ROI) or window within an irregularly-shaped mask to pass to a neural
     network or some other processing algorithm.

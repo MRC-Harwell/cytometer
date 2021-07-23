@@ -133,11 +133,11 @@ area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeli
 saved_models_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Tbx15/annotations')
 
+# file with functions that map ECDF probabilities to intensity values
+klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_exp_0112_training_colour_histogram.npz')
+
 # file with area->quantile map precomputed from all automatically segmented slides in klf14_b6ntac_exp_0106_filename_area2quantile_v8.py
 filename_area2quantile = os.path.join(area2quantile_dir, 'klf14_b6ntac_exp_0106_filename_area2quantile_v8.npz')
-
-# file with RGB modes from all training data
-klf14_training_colour_histogram_file = os.path.join(saved_models_dir, 'klf14_training_colour_histogram.npz')
 
 # model names
 dmap_model_basename = 'klf14_b6ntac_exp_0086_cnn_dmap'
@@ -188,32 +188,13 @@ histo_files_list = [
     'TBX15-H156N-IC-0007-15012021.tif',
 ]
 
-# load colour modes of the KLF14 training dataset
-with np.load(klf14_training_colour_histogram_file) as data:
-    mean_l_klf14 = data['mean_l'].item()
-    mean_a_klf14 = data['mean_a'].item()
-    mean_b_klf14 = data['mean_b'].item()
-    std_l_klf14 = data['std_l'].item()
-    std_a_klf14 = data['std_a'].item()
-    std_b_klf14 = data['std_b'].item()
-    mode_r_klf14 = data['mode_r'].item()
-    mode_g_klf14 = data['mode_g'].item()
-    mode_b_klf14 = data['mode_b'].item()
-    xbins = data['xbins']
-    xbins_edge = data['xbins_edge']
-    ecdf_r_klf14 = data['hist_r_q2'] # median pdf
-    ecdf_g_klf14 = data['hist_g_q2'] # median pdf
-    ecdf_b_klf14 = data['hist_b_q2'] # median pdf
-
-# convert pdfs to ECDFs
-ecdf_r_klf14 = np.cumsum(ecdf_r_klf14) / np.sum(ecdf_r_klf14)
-ecdf_g_klf14 = np.cumsum(ecdf_g_klf14) / np.sum(ecdf_g_klf14)
-ecdf_b_klf14 = np.cumsum(ecdf_b_klf14) / np.sum(ecdf_b_klf14)
-
-# function to map ECDF to intensity values in the Klf14 dataset
-f_ecdf_to_val_r_klf14 = scipy.interpolate.interp1d(ecdf_r_klf14, xbins, fill_value=(0, 255))
-f_ecdf_to_val_g_klf14 = scipy.interpolate.interp1d(ecdf_g_klf14, xbins, fill_value=(0, 255))
-f_ecdf_to_val_b_klf14 = scipy.interpolate.interp1d(ecdf_b_klf14, xbins, fill_value=(0, 255))
+# load functions to map ECDF quantiles to intensity values for the Klf14 training dataset
+with np.load(klf14_training_colour_histogram_file, allow_pickle=True) as data:
+    f_ecdf_to_val_r_klf14 = data['f_ecdf_to_val_r_klf14'].item()
+    f_ecdf_to_val_g_klf14 = data['f_ecdf_to_val_g_klf14'].item()
+    f_ecdf_to_val_b_klf14 = data['f_ecdf_to_val_b_klf14'].item()
+    mean_klf14 = data['mean_klf14']
+    std_klf14 = data['std_klf14']
 
 ########################################################################################################################
 ## Colourmap for AIDA, based on KLF14 automatically segmented data
@@ -259,8 +240,8 @@ for i_file, histo_file in enumerate(histo_files_list):
     dmap_model_file = os.path.join(saved_models_dir, dmap_model_basename + '_model_fold_' + str(i_fold) + '.h5')
     classifier_model_file = os.path.join(saved_models_dir,
                                          classifier_model_basename + '_model_fold_' + str(i_fold) + '.h5')
-    correction_model_file = os.path.join(saved_models_dir,
-                                         correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
+    # correction_model_file = os.path.join(saved_models_dir,
+    #                                      correction_model_basename + '_model_fold_' + str(i_fold) + '.h5')
 
     # name of file to save annotations to
     annotations_file = os.path.basename(histo_file)
@@ -370,24 +351,59 @@ for i_file, histo_file in enumerate(histo_files_list):
             plt.subplot(212)
             plt.imshow(tissue_mask0_l5)
 
-    # compute ECDF of whole slide intensity pixel colours (one ECDF per channel)
-    # ECDF = integral pdf * bin_width
-    non_black_mask = np.prod(im_l5 <= 0, axis=2) == 0
-    values_r_imd, histo_r_idx_imd, ecdf_r_imd = np.unique(im_l5[:, :, 0][non_black_mask],
-                                                          return_inverse=True, return_counts=True)
-    values_g_imd, histo_g_idx_imd, ecdf_g_imd = np.unique(im_l5[:, :, 1][non_black_mask],
-                                                          return_inverse=True, return_counts=True)
-    values_b_imd, histo_b_idx_imd, ecdf_b_imd = np.unique(im_l5[:, :, 2][non_black_mask],
-                                                          return_inverse=True, return_counts=True)
-    n = np.count_nonzero(non_black_mask)
-    ecdf_r_imd = np.cumsum(ecdf_r_imd) / n
-    ecdf_g_imd = np.cumsum(ecdf_g_imd) / n
-    ecdf_b_imd = np.cumsum(ecdf_b_imd) / n
+    # correction parameters for colour channels
+    mask = tissue_mask0_l5 == 1
+    mean_im_l5 = [np.mean(im_l5[:, :, 0][mask]), np.mean(im_l5[:, :, 1][mask]), np.mean(im_l5[:, :, 2][mask])]
+    std_im_l5 = [np.std(im_l5[:, :, 0][mask]), np.std(im_l5[:, :, 1][mask]), np.std(im_l5[:, :, 2][mask])]
 
-    # function to map intensity values to ECDF in the downsampled slide
-    f_val_to_ecdf_r_imd = scipy.interpolate.interp1d(values_r_imd, ecdf_r_imd, fill_value=(0.0, 1.0), bounds_error=False)
-    f_val_to_ecdf_g_imd = scipy.interpolate.interp1d(values_g_imd, ecdf_g_imd, fill_value=(0.0, 1.0), bounds_error=False)
-    f_val_to_ecdf_b_imd = scipy.interpolate.interp1d(values_b_imd, ecdf_b_imd, fill_value=(0.0, 1.0), bounds_error=False)
+    # # compute ECDF of whole slide intensity pixel colours (one ECDF per channel)
+    # # compute the intensity values that correspond to each quantile of an ECDF per colour channel
+    # non_black_mask = np.prod(im_l5 <= 0, axis=2) == 0
+    # p = np.linspace(0.0, 1.0, 101)
+    # k = 10  # step for subsampling the image data
+    # val_r_im_l5 = scipy.stats.mstats.hdquantiles(im_l5[:, :, 0][tissue_mask0_l5==1][::10], prob=p, axis=0)
+    # val_g_im_l5 = scipy.stats.mstats.hdquantiles(im_l5[:, :, 1][tissue_mask0_l5==1][::10], prob=p, axis=0)
+    # val_b_im_l5 = scipy.stats.mstats.hdquantiles(im_l5[:, :, 2][tissue_mask0_l5==1][::10], prob=p, axis=0)
+    # f_val_to_ecdf_r_im_l5 = scipy.interpolate.interp1d(val_r_im_l5, p, fill_value=(0.0, 1.0), bounds_error=False)
+    # f_val_to_ecdf_g_im_l5 = scipy.interpolate.interp1d(val_g_im_l5, p, fill_value=(0.0, 1.0), bounds_error=False)
+    # f_val_to_ecdf_b_im_l5 = scipy.interpolate.interp1d(val_b_im_l5, p, fill_value=(0.0, 1.0), bounds_error=False)
+
+    # background colour of the slide
+    mode_im_l5 = [float(scipy.stats.mode(im_l5[:, :, 0][non_black_mask]).mode[0]),
+                  float(scipy.stats.mode(im_l5[:, :, 1][non_black_mask]).mode[0]),
+                  float(scipy.stats.mode(im_l5[:, :, 2][non_black_mask]).mode[0])]
+
+    # if DEBUG:
+    #     # colour correction of slide
+    #     im_l5_r_corrected = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_im_l5(im_l5[:, :, 0][non_black_mask]))
+    #     im_l5_g_corrected = f_ecdf_to_val_g_klf14(f_val_to_ecdf_g_im_l5(im_l5[:, :, 1][non_black_mask]))
+    #     im_l5_b_corrected = f_ecdf_to_val_b_klf14(f_val_to_ecdf_b_im_l5(im_l5[:, :, 2][non_black_mask]))
+    #     val_r_im_l5_corrected = scipy.stats.mstats.hdquantiles(im_l5_r_corrected[::10], prob=p, axis=0)
+    #     val_g_im_l5_corrected = scipy.stats.mstats.hdquantiles(im_l5_g_corrected[::10], prob=p, axis=0)
+    #     val_b_im_l5_corrected = scipy.stats.mstats.hdquantiles(im_l5_b_corrected[::10], prob=p, axis=0)
+    #
+    #     with np.load(klf14_training_colour_histogram_file, allow_pickle=True) as data:
+    #         p = data['p']
+    #         val_r_klf14 = data['val_r_klf14']
+    #         val_g_klf14 = data['val_g_klf14']
+    #         val_b_klf14 = data['val_b_klf14']
+    #
+    #     plt.clf()
+    #     plt.subplot(311)
+    #     plt.plot(val_r_klf14, p)
+    #     plt.plot(val_g_klf14, p)
+    #     plt.plot(val_b_klf14, p)
+    #     plt.title('Klf14 training dataset')
+    #     plt.subplot(312)
+    #     plt.plot(val_r_im_l5, p)
+    #     plt.plot(val_g_im_l5, p)
+    #     plt.plot(val_b_im_l5, p)
+    #     plt.title('Slide before colour correction')
+    #     plt.subplot(313)
+    #     plt.plot(val_r_im_l5_corrected, p)
+    #     plt.plot(val_g_im_l5_corrected, p)
+    #     plt.plot(val_b_im_l5_corrected, p)
+    #     plt.title('Slide after colour correction')
 
     # keep extracting histology windows until we have finished
     while np.count_nonzero(tissue_mask_l5) > 0:
@@ -421,7 +437,7 @@ for i_file, histo_file in enumerate(histo_files_list):
         prev_window = Polygon([(prev_first_col_l5, prev_first_row_l5), (prev_last_col_l5, prev_first_row_l5),
                                (prev_last_col_l5, prev_last_row_l5), (prev_first_col_l5, prev_last_row_l5)])
         window_overlap_fraction = current_window.intersection(prev_window).area / current_window.area
-#
+
         # check that we are not trying to process almost the same window
         if window_overlap_fraction > window_overlap_fraction_max:
             # if we are trying to process almost the same window as in the previous step, what's probably happening is
@@ -441,6 +457,12 @@ for i_file, histo_file in enumerate(histo_files_list):
         tile = np.array(tile)
         tile = tile[:, :, 0:3]
 
+        # fill in black pixels with background colour
+        non_black_mask = np.prod(tile <= 0, axis=2) == 0
+        tile[:, :, 0][~non_black_mask] = mode_im_l5[0]
+        tile[:, :, 1][~non_black_mask] = mode_im_l5[1]
+        tile[:, :, 2][~non_black_mask] = mode_im_l5[2]
+
         if DEBUG:
             plt.clf()
             plt.subplot(211)
@@ -448,11 +470,24 @@ for i_file, histo_file in enumerate(histo_files_list):
             plt.subplot(212)
             plt.imshow(tile)
 
-        # correct colours so that they match the training data
-        non_black_mask = np.prod(tile <= 0, axis=2) == 0
-        tile[:, :, 0][non_black_mask] = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_imd(tile[:, :, 0][non_black_mask]))
-        tile[:, :, 1][non_black_mask] = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_imd(tile[:, :, 1][non_black_mask]))
-        tile[:, :, 2][non_black_mask] = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_imd(tile[:, :, 2][non_black_mask]))
+        # # correct colours so that they match the training data
+        # tile[:, :, 0] = f_ecdf_to_val_r_klf14(f_val_to_ecdf_r_im_l5(tile[:, :, 0]))
+        # tile[:, :, 1] = f_ecdf_to_val_g_klf14(f_val_to_ecdf_g_im_l5(tile[:, :, 1]))
+        # tile[:, :, 2] = f_ecdf_to_val_b_klf14(f_val_to_ecdf_b_im_l5(tile[:, :, 2]))
+
+        for chan in range(3):
+            tile[:, :, chan] = (tile[:, :, chan] - mean_im_l5[chan]) / std_im_l5[chan] * std_klf14[chan] + mean_klf14[chan]
+
+        if DEBUG:
+            non_black_mask = np.prod(tile <= 0, axis=2) == 0
+            plt.subplot(312)
+            plt.cla()
+            val_r_tile_corrected = scipy.stats.mstats.hdquantiles(tile[:, :, 0][non_black_mask], prob=p, axis=0)
+            val_g_tile_corrected = scipy.stats.mstats.hdquantiles(tile[:, :, 1][non_black_mask], prob=p, axis=0)
+            val_b_tile_corrected = scipy.stats.mstats.hdquantiles(tile[:, :, 2][non_black_mask], prob=p, axis=0)
+            plt.plot(val_r_tile_corrected, p)
+            plt.plot(val_g_tile_corrected, p)
+            plt.plot(val_b_tile_corrected, p)
 
         # upsample tissue mask window to tile resolution
         tissue_mask_tile = tissue_mask_l5[first_row_l5:last_row_l5, first_col_l5:last_col_l5]
@@ -497,7 +532,7 @@ for i_file, histo_file in enumerate(histo_files_list):
         # enter an infinite loop
         if len(index_list) == 0:  # empty segmentation
 
-            tissue_mask_l5[lores_first_row:lores_last_row, lores_first_col:lores_last_col] = 0
+            tissue_mask_l5[first_row_l5:last_row_l5, first_col_l5:last_col_l5] = 0
 
         else:  # there's at least one object in the segmentation
 
