@@ -309,7 +309,7 @@ for i_file, histo_file in enumerate(histo_files_list):
     # name of file to save annotations to
     annotations_file = os.path.basename(histo_file)
     annotations_file = os.path.splitext(annotations_file)[0]
-    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0004_auto.json')
+    annotations_file = os.path.join(annotations_dir, annotations_file + '_exp_0001_auto.json')
 
     # name of file to save coarse mask, current mask, and time steps
     coarse_mask_file = os.path.basename(histo_file)
