@@ -142,7 +142,12 @@ if DEBUG:
     plt.ylabel('ECDF', fontsize=14)
     plt.tick_params(labelsize=14)
 
+# mean and std per colour channel
+mean_klf14 = np.array([np.mean(val_r_all), np.mean(val_g_all), np.mean(val_b_all)])
+std_klf14 = np.array([np.std(val_r_all), np.std(val_g_all), np.std(val_b_all)])
+
 # save colour histograms
 np.savez(klf14_training_colour_histogram_file, p=p,
          val_r_klf14=val_r_klf14, val_g_klf14=val_g_klf14, val_b_klf14=val_b_klf14,
-         f_ecdf_to_val_r_klf14=f_ecdf_to_val_r_klf14, f_ecdf_to_val_g_klf14=f_ecdf_to_val_g_klf14, f_ecdf_to_val_b_klf14=f_ecdf_to_val_b_klf14)
+         f_ecdf_to_val_r_klf14=f_ecdf_to_val_r_klf14, f_ecdf_to_val_g_klf14=f_ecdf_to_val_g_klf14, f_ecdf_to_val_b_klf14=f_ecdf_to_val_b_klf14,
+         mean_klf14=mean_klf14, std_klf14=std_klf14)
