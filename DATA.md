@@ -76,4 +76,6 @@ Klf14 mice metadata
   * **BW_alive_date:** age at time of BW_alive measure
   * **mother:** unique ID for mouse's mother
   * **mother_genotype:** mouse's mother genotype
-  
+* `klf14_b6ntac_results`:  
+Directory to store miscellanea output from some experiments.
+
