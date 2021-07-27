@@ -1,14 +1,36 @@
+# Publications related to the data
+
 The data associated to this paper is available from Zenodo (doi: 10.5281/zenodo.5137433).
 
-The histology and mouse measures were generated as part of the Small et al. 2018 study
+The histology and mouse measures were generated as part of the Small et al. 2018 study:
 
 > Small et al. "Regulatory variants at KLF14 influence type 2 diabetes risk via a female-specific effect on adipocyte size and body composition". Nature Genetics, 50:572–580, 2018.
 
-The hand traced data set, colour maps, and automatic segmentations were generated as part of project cytometer (https://github.com/MRC-Harwell/cytometer), and used for the paper:
+The hand traced data set, colour maps, and automatic segmentations were generated as part of project DeepCytometer (https://github.com/MRC-Harwell/cytometer), and used for the Casero et al. 2021 paper:
 
 > Casero et al. "Phenotyping of Klf14 mouse white adipose tissue enabled by whole slide segmentation with deep neural networks". bioRxiv, 2021. doi: [10.1101/2021.06.03.444997](https://www.biorxiv.org/content/10.1101/2021.06.03.444997v1.full).
 
-List of directories and files:
+# Data protocols
+
+## Histology and laboratory measures
+
+To develop and evaluate our methods we used Klf14tm1(KOMP)Vlcg C57BL/6NTac (B6NTac) mice tissue samples and additional data generated as part of the Small et al. 2018 study(Small et al. 2018). It should be noted that the single exon Klf14 gene is imprinted and only expressed from the maternally inherited allele(Parker-Katiraee et al. 2007). This was taken into account by (Small et al. 2018) by crossing a Het parent with a WT parent, so that each offspring inherited a WT allele from the WT parent, and the Klf14 gene knockout or a WT allele from the other parent (from the father, PAT, or the mother, MAT). We also take Klf14 imprinting into account by using as controls the PAT mice and comparing them to the MAT WT and MAT Het (or functional KO, FKO) mice. 
+
+We used a total of 76 Klf14-B6NTac mice (nfemale=nmale=38), of which 20 mice from the Control and FKO groups were used for training and testing the DeepCytometer pipeline, as well as the hand traced population experiment (summary in Table MICE). 
+
+The histopathology screen involved fixing, processing and embedding in wax, sectioning and staining with Hematoxylin and Eosin (H&E) both inguinal subcutaneous and gonadal adipose depots. For paraffin-embedded sections, all samples were fixed in 10% neutral buffered formalin (Surgipath) for at least 48 hours at RT and processed using an Excelsior™ AS Tissue Processor (Thermo Scientific). Samples were embedded in molten paraffin wax and 8 μm sections were cut through the respective depots using a Finesse™ ME+ microtome (Thermo Scientific). Sampling was conducted at 2sxns per slide, 3 slides per depot block onto simultaneous charged slides, stained with haematoxylin Gill 3 and eosin (Thermo scientific) and scanned using an NDP NanoZoomer Digital pathology scanner (RS C10730 Series; Hamamatsu). Body weight (BW) and depot weight (DW) were measured with Satorius BAL7000 scales. 
+
+## White adipose tissue segmentation
+
+For cell area quantification, we applied DeepCytometer v8 to 75 inguinal subcutaneous and 72 gonadal whole histology slides with DeepCytometer (with the Corrected method), including the 20 slides sampled for the hand-traced data set, corresponding to 73 females and 74 males, to produce 2,560,067 subcutaneous and 2,467,686 gonadal cells (on average, 34,134 and 34,273 cells per slide, respectively).
+
+Full segmentation of all whole slides was performed with script [klf14_b6ntac_exp_0106_full_slide_pipeline_v8.py](https://github.com/MRC-Harwell/cytometer/blob/39358ed1d79df07d1d522b98728c7efd745513f7/scripts/klf14_b6ntac_exp_0106_full_slide_pipeline_v8.py). In this case, the segmentation contours were grouped by tiles in the output AIDA annotation `.json` file (one contour per cell, one file per slide).
+
+Non-white adipocyte contours were filtered out, and white adipocyte contours were aggregated into an AIDA annotation `.json` file with a single tile with script [klf14_b6ntac_exp_0106_annotations_postprocessing_v8.py](https://github.com/MRC-Harwell/cytometer/blob/39358ed1d79df07d1d522b98728c7efd745513f7/scripts/klf14_b6ntac_exp_0106_annotations_postprocessing_v8.py) (one contour per cell, one file per slide).
+
+
+
+# List of directories and files
 
 ## `deepcytometer_pipeline_v8.zip` (60.6 MB)
 
