@@ -522,7 +522,6 @@ SAVE_FIGS = False
 root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
-seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')

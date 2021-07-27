@@ -53,7 +53,6 @@ saved_kfolds_filename = 'klf14_b6ntac_exp_0079_generate_kfolds.pickle'
 
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training')
-seg_dir = os.path.join(root_data_dir, 'klf14_b6ntac_seg')
 
 # explicit list of files, to avoid differences if the files in the directory change
 ndpi_files_list = [
