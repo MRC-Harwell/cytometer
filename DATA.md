@@ -87,6 +87,8 @@ Directory with hand-traced segmentations of training histology windows. 131 wind
     * **.svg:** SVG (Scalable Vector Graphics) that contains the hand-traced contours in the XCF file
 * `klf14_b6ntac_training_v2`:  
 Same as `klf14_b6ntac_training`, but the hand-traced data set was cleaned up to remove small contours of dubious cells, or cells that are fully overlapped by others
+* `klf14_b6ntac_seg`:
+Deprecated. Directory to store whole slide coarse segmentations in old experiments (e.g. `klf14_b6ntac_exp_0076_generate_training_images.py`). Of little interest for most users
 * `klf14_b6ntac_results`:  
-Directory to store miscellanea output from some experiments.
+Deprecated. Directory to store miscellanea output from some experiments. Of little interest for most users
 
