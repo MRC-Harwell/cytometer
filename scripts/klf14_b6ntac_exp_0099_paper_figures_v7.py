@@ -236,7 +236,6 @@ klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 klf14_training_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
 klf14_training_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
 klf14_training_non_overlap_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_non_overlap')
-klf14_training_augmented_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_augmented')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 ndpi_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
@@ -522,12 +521,10 @@ SAVE_FIGS = False
 root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 data_dir = os.path.join(home, 'scan_srv2_cox/Maz Yon')
 training_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_training')
-seg_dir = os.path.join(home, root_data_dir, 'klf14_b6ntac_seg')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(root_data_dir, 'saved_models')
 results_dir = os.path.join(root_data_dir, 'klf14_b6ntac_results')
 annotations_dir = os.path.join(home, 'Data/cytometer_data/aida_data_Klf14_v7/annotations')
-training_augmented_dir = os.path.join(root_data_dir, 'klf14_b6ntac_training_augmented')
 
 # k-folds file
 saved_extra_kfolds_filename = 'klf14_b6ntac_exp_0094_generate_extra_training_images.pickle'
@@ -922,7 +919,6 @@ DEBUG = False
 klf14_root_data_dir = os.path.join(home, 'Data/cytometer_data/klf14')
 klf14_training_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training')
 klf14_training_non_overlap_data_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_non_overlap')
-klf14_training_augmented_dir = os.path.join(klf14_root_data_dir, 'klf14_b6ntac_training_augmented')
 figures_dir = os.path.join(home, 'GoogleDrive/Research/20190727_cytometer_paper/figures')
 saved_models_dir = os.path.join(klf14_root_data_dir, 'saved_models')
 
