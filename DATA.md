@@ -95,6 +95,37 @@ Keras weights for the **Contour CNN** (EDT to Contour detection)
 * `klf14_b6ntac_exp_0103_cnn_tissue_classifier_fcn_model.h5`:  
 Keras weights for the **Tissue CNN** (Pixel-wise tissue classifier)
 
+## `histology.7z` (29.1 GB)
+
+165 H&E histology whole slides from Hamamatsu scanner (`.ndpi`).
+
+## `aida_data_Klf14_v8_images.7z` (16.9 GB)
+
+Histology images converted to DeepZoom so that they can be visualised with [AIDA](https://github.com/alanaberdeen/AIDA).
+
+To use this, decompress this file and put the resulting `images` directory in your `AIDA/dist/data/` directory.
+
+## `aida_data_Klf14_v8_annotations.7z` (18 GB)
+
+White adipocyte segmentations in AIDA annotation `.json` files (one contour per cell, one file per whole slide). Each slide has the following files:
+
+* `SLIDENAME.json`:  
+Soft link to the annotations file that we want to associate to slide `SLIDENAME.ndpi`, e.g. `SLIDENAME` = `KLF14-B6NTAC-PAT-39.2d  454-16 B1 - 2016-03-17 12.16.06`
+* `SLIDENAME.lock`:  
+Empty file used to tell the pipeline that `SLIDENAME.ndpi` has already been processed or is being currently processed
+* `SLIDENAME_coarse_mask.npz`:  
+File with the coarse tissue segmentation of `SLIDENAME.ndpi` and the internal state of the pipeline (execution times, steps, etc)
+* `SLIDENAME_exp_0106_auto.json`:  
+Annotations (all segmentations without filtering from the Auto algorithm, i.e. segmentation without object overlap). Contours are grouped by the tile they were processed in
+* `SLIDENAME_exp_0106_auto_aggregated.json`:  
+Filtered annotations (non-white adipocytes removed) of the Auto algorithm. All contours aggregated into a single tile
+* `SLIDENAME_exp_0106_corrected.json`:  
+Annotations (all segmentations without filtering from the Corrected algorithm, i.e. segmentation with object overlap). Contours are grouped by the tile they were processed in
+* `SLIDENAME_exp_0106_corrected_aggregated.json`:  
+Filtered annotations (non-white adipocytes removed) of the Corrected algorithm. All contours aggregated into a single tile
+
+To use this, decompress this file and put the resulting `annotations` directory in your `AIDA/dist/data/` directory.
+
 ## `klf14.7z` (2.3 GB)
 
 Mice metadata, training/testing data sets for the pipeline, intermediate files created during training, and neural network weights for multiple experiments.
@@ -133,13 +164,3 @@ Directory with intermediate images used to train the networks (using augmentatio
 Deprecated. Directory to store whole slide coarse segmentations in old experiments (e.g. `klf14_b6ntac_exp_0076_generate_training_images.py`). Of little interest for most users
 * `klf14_b6ntac_results`:  
 Deprecated. Directory to store miscellanea output from some experiments. Of little interest for most users
-
-## `histology.7z` (29.1 GB)
-
-165 H&E histology whole slides from Hamamatsu scanner (`.ndpi`).
-
-## `aida_data_Klf14_v8_images.7z` (16.9 GB)
-
-Histology images converted to DeepZoom so that they can be visualised with [AIDA](https://github.com/alanaberdeen/AIDA).
-
-To use this, decompress this file and put the resulting `images` directory in your `AIDA/dist/data/` directory.
