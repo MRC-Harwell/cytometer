@@ -36,6 +36,9 @@ sudo apt install -y r-base r-cran-lme4
 # this is so that pyvips can build a libvips binary extension for python (https://github.com/libvips/pyvips)
 sudo apt install -y libvips-dev
 
+# to put together histology files to upload to Zenodo
+sudo apt install -y p7zip-full
+
 ########################################################################
 ## nVidia drivers and CUDA
 
