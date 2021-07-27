@@ -76,6 +76,15 @@ Klf14 mice metadata
   * **BW_alive_date:** age at time of BW_alive measure
   * **mother:** unique ID for mouse's mother
   * **mother_genotype:** mouse's mother genotype
+* `klf14_b6ntac_training`:  
+Directory with hand-traced segmentations of training histology windows. 131 windows sampled from 20 whole slides, plus hand-traced contours that were used for training DeepCytometer and compute population distributions
+  * `ndpifile_row_YYYYYY_col_XXXXXX[.tif/.xcf/.svg]`: 
+    * **ndpifile:** name of the whole slide file (e.g. `KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00`)
+    * **row_YYYYYY:** Y-coordinate of the top-left corner of the sampling window, in pixels
+    * **col_XXXXXX:** X-coordinate of the top-left corner of the sampling window, in pixels
+    * **.tif:** TIFF file with the histology sampling window
+    * **.xcf:** Gimp file with the histology and hand-traced contours (the contours were drawn in Gimp)
+    * **.svg:** SVG (Scalable Vector Graphics) that contains the hand-traced contours in the XCF file
 * `klf14_b6ntac_results`:  
 Directory to store miscellanea output from some experiments.
 
