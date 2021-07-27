@@ -77,7 +77,7 @@ Klf14 mice metadata
   * **mother:** unique ID for mouse's mother
   * **mother_genotype:** mouse's mother genotype
 * `klf14_b6ntac_training`:  
-Directory with hand-traced segmentations of training histology windows. 131 windows sampled from 20 whole slides, plus hand-traced contours that were used for training DeepCytometer and compute population distributions
+Directory with hand-traced segmentations of training histology windows. 131 windows sampled from 20 whole slides, plus hand-traced contours that were used for training DeepCytometer and compute population distributions. These segmentations were used for CNN training, but note that there's a cleaned-up version of these data below, and it was the cleaned-up version that was used for the paper experiments
   * `ndpifile_row_YYYYYY_col_XXXXXX[.tif/.xcf/.svg]`: 
     * **ndpifile:** name of the whole slide file (e.g. `KLF14-B6NTAC 36.1c PAT 98-16 C1 - 2016-02-11 10.45.00`)
     * **row_YYYYYY:** Y-coordinate of the top-left corner of the sampling window, in pixels
@@ -85,6 +85,8 @@ Directory with hand-traced segmentations of training histology windows. 131 wind
     * **.tif:** TIFF file with the histology sampling window
     * **.xcf:** Gimp file with the histology and hand-traced contours (the contours were drawn in Gimp)
     * **.svg:** SVG (Scalable Vector Graphics) that contains the hand-traced contours in the XCF file
+* `klf14_b6ntac_training_v2`:  
+Same as `klf14_b6ntac_training`, but the hand-traced data set was cleaned up to remove small contours of dubious cells, or cells that are fully overlapped by others
 * `klf14_b6ntac_results`:  
 Directory to store miscellanea output from some experiments.
 
