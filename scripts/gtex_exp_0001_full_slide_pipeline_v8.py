@@ -191,7 +191,7 @@ correction_window_len = 401
 correction_smoothing = 11
 batch_size = 16
 
-# list of NDPI files to process
+# list of histology files to process
 histo_files_list = [
 "GTEX-1117F-0225.svs",
 "GTEX-111CU-1825.svs",
