@@ -1,4 +1,4 @@
-# Publications related to the data
+# Overview of data for DeepCytometer project
 
 The data associated to the DeepCytometer project (https://github.com/MRC-Harwell/cytometer) is available from Zenodo (doi: 10.5281/zenodo.5137433 and 10.5281/zenodo.5149005).
 
