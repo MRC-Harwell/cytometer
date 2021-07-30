@@ -22,6 +22,7 @@ import glob
 import cytometer.data
 import openslide
 import numpy as np
+import shapely
 
 histology_dir = os.path.join(home, 'jesse_mousedata/GTEx')
 area2quantile_dir = os.path.join(home, 'Data/cytometer_data/deepcytometer_pipeline_v8')
@@ -39,6 +40,12 @@ auto_annotation_files_list = os.path.join(annotations_dir, '*' + auto_filename_s
 auto_annotation_files_list = glob.glob(auto_annotation_files_list)
 corrected_annotation_files_list = os.path.join(annotations_dir, '*' + corrected_filename_suffix)
 corrected_annotation_files_list = glob.glob(corrected_annotation_files_list)
+
+# filtering parameters
+min_area = 200  # um^2
+max_area = 160000  # um^2
+cell_prob_thr = 0.5  # threshold for objects to be accepted as cells
+max_inv_compactness = 2.0  # objects less compact than this are rejected (= more compact^-1)
 
 ########################################################################################################################
 ## Colourmap for AIDA
@@ -79,18 +86,45 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
         histo_file = os.path.join(histology_dir, histo_file)
 
         im = openslide.OpenSlide(histo_file)
-        xres = float(im.properties['aperio.MPP']) * 1e-6  # m/pixel
-        yres = float(im.properties['aperio.MPP']) * 1e-6  # m/pixel
+        xres = float(im.properties['aperio.MPP'])  # um/pixel
+        yres = float(im.properties['aperio.MPP'])  # um/pixel
 
         # aggregate cells from all blocks and write/overwrite a file with them
         if not os.path.isfile(aggregated_annotation_file) or overwrite_aggregated_annotation_file:
 
             # load contours from annotation file
-            cells = cytometer.data.aida_get_contours(annotation_file, layer_name='White adipocyte.*')
+            cells, props = cytometer.data.aida_get_contours(annotation_file, layer_name='White adipocyte.*', return_props=True)
+
+            # compute cell measures
+            areas = []
+            inv_compactnesses = []
+            for cell in cells:
+                poly_cell = shapely.geometry.Polygon(cell)
+                area = poly_cell.area
+                if area > 0:
+                    inv_compactness = poly_cell.length ** 2 / (4 * np.pi * area)
+                else:
+                    inv_compactness = np.nan
+                areas.append(area)
+                inv_compactnesses.append(inv_compactness)
+
+            # prepare for removal objects that are too large or too small
+            idx = (np.array(areas) >= min_area) * (np.array(areas) <= max_area)
+
+            # prepare for removal objects that are not compact enough
+            idx *= np.array(inv_compactnesses) <= max_inv_compactness
+
+            # prepare for removal objects unlikely to be cells
+            idx *= np.array(props['cell_prob']) >= cell_prob_thr
+
+            # execute the removal of objects
+            cells = list(np.array(cells, dtype='object')[idx])
+            props['cell_prob'] = list(np.array(props['cell_prob'], dtype='object')[idx])
+            # areas = list(np.array(areas)[idx])
 
             # create AIDA items to contain contours
             items = cytometer.data.aida_contour_items(cells, f_area2quantile_m, cm='quantiles_aida',
-                                                      xres=xres*1e6, yres=yres*1e6)
+                                                      xres=xres, yres=yres)
 
             # write contours to single layer AIDA file (one to visualise, one to correct manually)
             cytometer.data.aida_write_new_items(aggregated_annotation_file, items, mode='w', indent=0)
