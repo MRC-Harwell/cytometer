@@ -118,8 +118,8 @@ def process_annotations(annotation_files_list, overwrite_aggregated_annotation_f
             idx *= np.array(props['cell_prob']) >= cell_prob_thr
 
             # execute the removal of objects
-            cells = list(np.array(cells)[idx])
-            props['cell_prob'] = list(np.array(props['cell_prob'])[idx])
+            cells = list(np.array(cells, dtype='object')[idx])
+            props['cell_prob'] = list(np.array(props['cell_prob'], dtype='object')[idx])
             # areas = list(np.array(areas)[idx])
 
             # create AIDA items to contain contours
