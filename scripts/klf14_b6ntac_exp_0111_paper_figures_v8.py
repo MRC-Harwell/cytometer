@@ -1081,24 +1081,7 @@ if SAVE_FIGS:
     plt.subplot(222)
     sex = 'm'
     cytometer.stats.plot_linear_regression(model_gwat_m_global, metainfo_m, 'BW__',
-                                           other_vars={'sex'print('mean DW')
-print('\tfemale gonadal Control: ' + str(dwmean_control_f_gwat))
-print('\tfemale gonadal MAT WT: ' + str(dwmean_matwt_f_gwat))
-print('\tfemale gonadal FKO: ' + str(dwmean_fko_f_gwat))
-
-print('\tfemale subcut. Control: ' + str(dwmean_control_f_sqwat))
-print('\tfemale subcut. MAT WT: ' + str(dwmean_matwt_f_sqwat))
-print('\tfemale subcut. FKO: ' + str(dwmean_fko_f_sqwat))
-
-print('\tmale gonadal Control: ' + str(dwmean_control_m_gwat))
-print('\tmale gonadal MAT WT: ' + str(dwmean_matwt_m_gwat))
-print('\tmale gonadal FKO: ' + str(dwmean_fko_m_gwat))
-
-print('\tmale subcut. Control: ' + str(dwmean_control_m_sqwat))
-print('\tmale subcut. MAT WT: ' + str(dwmean_matwt_m_sqwat))
-print('\tmale subcut. FKO: ' + str(dwmean_fko_m_sqwat))
-
-:sex, 'functional_ko':'Control'},
+                                           other_vars={'sex':sex, 'functional_ko':'Control'},
                                            dep_var='gWAT', sx=BW_mean, c='C2', marker='x',
                                            line_label='Control')
     cytometer.stats.plot_linear_regression(model_gwat_m_global, metainfo_m, 'BW__',
