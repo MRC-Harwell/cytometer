@@ -1,12 +1,12 @@
 # Publications related to the data
 
-The data associated to this paper is available from Zenodo (doi: 10.5281/zenodo.5137433 and 10.5281/zenodo.5149005).
+The data associated to the DeepCytometer project (https://github.com/MRC-Harwell/cytometer) is available from Zenodo (doi: 10.5281/zenodo.5137433 and 10.5281/zenodo.5149005).
 
 The histology and mouse measures were generated as part of the Small et al. 2018 study:
 
 > Small et al. "Regulatory variants at KLF14 influence type 2 diabetes risk via a female-specific effect on adipocyte size and body composition". Nature Genetics, 50:572–580, 2018.
 
-The hand traced data set, colour maps, and automatic segmentations were generated as part of project DeepCytometer (https://github.com/MRC-Harwell/cytometer), and used for the Casero et al. 2021 paper:
+The hand traced data set, colour maps, and automatic segmentations were generated for the Casero et al. 2021 paper:
 
 > Casero et al. "Phenotyping of Klf14 mouse white adipose tissue enabled by whole slide segmentation with deep neural networks". bioRxiv, 2021. doi: [10.1101/2021.06.03.444997](https://www.biorxiv.org/content/10.1101/2021.06.03.444997v1.full).
 
