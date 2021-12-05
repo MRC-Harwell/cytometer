@@ -17,7 +17,7 @@ set -e
 ########################################################################
 # configuration constants
 
-PYTHON_VERSION=3.8
+PYTHON_VERSION=3.9
 CONDA_LOCAL_ENV=cytometer_tensorflow_v2
 
 ########################################################################
@@ -27,7 +27,7 @@ CONDA_LOCAL_ENV=cytometer_tensorflow_v2
 # install Miniconda
 mkdir -p ~/Downloads
 
-if [[ -d "${HOME}/Software/miniconda${MINICONDA_VERSION}" ]]; then
+if [[ ! -z `which conda` ]]; then
     /usr/bin/tput setaf 1; echo "** Conda ${MINICONDA_VERSION} package manager already installed"; /usr/bin/tput sgr0
 else
     /usr/bin/tput setaf 1; echo "** Installing conda ${MINICONDA_VERSION} package manager"; /usr/bin/tput sgr0
