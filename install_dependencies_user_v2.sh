@@ -47,6 +47,12 @@ else
 fi
 
 ########################################################################
+## Ubuntu dependencies
+
+# dependency of matlplotlib's backends
+sudo apt-get install libgtk-3-dev
+
+########################################################################
 ## create python local environment if it doesn't exist already
 
 # check whether the environment already exists
@@ -68,5 +74,6 @@ pip install ujson==4.0.2 mahotas==1.4.11 pysto==1.4.1 svgpathtools==1.4.1
 pip install shapely==1.7.1
 pip install pyvips==2.1.15
 pip install "aicsimageio[czi] @ git+https://github.com/AllenCellModeling/aicsimageio.git"
+pip install wxpython==4.1.1
 #pip install slideio
 #pip install python-bioformats
