@@ -115,6 +115,9 @@ print(leanmass_model.summary())
 fatmass_model_null = sm.OLS.from_formula('Fat_mass ~ BW', data=metainfo).fit()
 leanmass_model_null = sm.OLS.from_formula('Lean_mass ~ BW', data=metainfo).fit()
 
+print(fatmass_model_null.summary())
+print(leanmass_model_null.summary())
+
 # compute LRTs and extract p-values and LRs
 lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
 
@@ -138,6 +141,8 @@ if SAVE_FIGS:
 if SAVE_FIGS:
     plt.clf()
 
+    plt.gcf().set_size_inches([6.4, 2.4])
+
     plt.subplot(121)
     cytometer.stats.plot_linear_regression(fatmass_model, metainfo, 'BW',
                                            other_vars={'Genotype': 'Arl15-Del2:WT'},
@@ -147,11 +152,14 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het'},
                                            dep_var='Fat_mass', c='C1', marker='o',
                                            line_label='Het')
+    cytometer.stats.plot_linear_regression(fatmass_model_null, metainfo, 'BW',
+                                           c='k--', line_label='All')
     plt.xlim(35, 62)
     plt.ylim(17, 37)
     plt.tick_params(labelsize=14)
+    plt.title('Fat mass', fontsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
-    plt.ylabel('Fat mass (g)', fontsize=14)
+    plt.ylabel('Weight (g)', fontsize=14)
     plt.legend(loc='upper left')
 
     plt.subplot(122)
@@ -163,14 +171,112 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het'},
                                            dep_var='Lean_mass', c='C1', marker='o',
                                            line_label='Het')
+    cytometer.stats.plot_linear_regression(leanmass_model_null, metainfo, 'BW',
+                                           c='k--', line_label='All')
     plt.xlim(35, 62)
     plt.ylim(12, 25)
     plt.tick_params(labelsize=14)
+    plt.title('Lean mass', fontsize=14)
     plt.xlabel('Body weight (g)', fontsize=14)
-    plt.ylabel('Lean mass (g)', fontsize=14)
 
     plt.tight_layout()
 
     plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_fatmass_leanmass_models.png'))
     plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_fatmass_leanmass_models.jpg'))
     plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_fatmass_leanmass_models.svg'))
+
+## effect of genotype and BW on depot weight
+########################################################################################################################
+
+gwat_model = sm.OLS.from_formula('gWAT ~ BW__ * C(Genotype)', data=metainfo).fit()
+print(gwat_model.summary())
+
+gwat_model = sm.OLS.from_formula('gWAT ~ BW * C(Genotype)', data=metainfo).fit()
+print(gwat_model.summary())
+
+iwat_model = sm.OLS.from_formula('iWAT ~ BW__ * C(Genotype)', data=metainfo).fit()
+print(iwat_model.summary())
+
+iwat_model = sm.OLS.from_formula('iWAT ~ BW * C(Genotype)', data=metainfo).fit()
+print(iwat_model.summary())
+
+# null models (Genotypes pooled together)
+gwat_model_null = sm.OLS.from_formula('gWAT ~ BW', data=metainfo).fit()
+iwat_model_null = sm.OLS.from_formula('iWAT ~ BW', data=metainfo).fit()
+
+print(gwat_model_null.summary())
+print(iwat_model_null.summary())
+
+# compute LRTs and extract p-values and LRs
+lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
+
+lr, pval = cytometer.stats.lrtest(gwat_model_null.llf, gwat_model.llf)
+lrt.loc['gwat_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+lr, pval = cytometer.stats.lrtest(iwat_model_null.llf, iwat_model.llf)
+lrt.loc['iwat_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+# multitest correction using Benjamini-Krieger-Yekutieli
+_, lrt['pval_adj'], _, _ = multipletests(lrt['pval'], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+lrt['pval_adj_ast'] = cytometer.stats.pval_to_asterisk(lrt['pval_adj'])
+
+# check that just fat mass vs. Genotype doesn't show any effect, so the BW variable is needed
+print(sm.OLS.from_formula('gWAT ~ Genotype', data=metainfo).fit().summary())
+print(sm.OLS.from_formula('iWAT ~ Genotype', data=metainfo).fit().summary())
+
+# get a p-value for the slope of the inguinal DW model for Hets
+model_names = ['iwat_model']
+extra_hypotheses = 'BW+BW:C(Genotype)[T.Arl15-Del2:Het]'
+
+df_coeff, df_ci_lo, df_ci_hi, df_pval = \
+    cytometer.stats.models_coeff_ci_pval(
+        [iwat_model],
+        extra_hypotheses=extra_hypotheses,
+        model_names=model_names)
+
+if SAVE_FIGS:
+    plt.clf()
+
+    plt.gcf().set_size_inches([6.4, 2.4])
+
+    plt.subplot(121)
+    cytometer.stats.plot_linear_regression(gwat_model, metainfo, 'BW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT'},
+                                           dep_var='gWAT', c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(gwat_model, metainfo, 'BW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het'},
+                                           dep_var='gWAT', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(gwat_model_null, metainfo, 'BW',
+                                           c='k--', line_label='All')
+    plt.xlim(35, 62)
+    plt.ylim(1.5, 3.0)
+    plt.tick_params(labelsize=14)
+    plt.title('Gonadal', fontsize=14)
+    plt.xlabel('Body weight (g)', fontsize=14)
+    plt.ylabel('Depot weight (g)', fontsize=14)
+    plt.legend(loc='upper left')
+
+    plt.subplot(122)
+    cytometer.stats.plot_linear_regression(iwat_model, metainfo, 'BW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT'},
+                                           dep_var='iWAT', c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(iwat_model, metainfo, 'BW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het'},
+                                           dep_var='iWAT', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(iwat_model_null, metainfo, 'BW',
+                                           c='k--', line_label='All')
+    plt.title('Inguinal', fontsize=14)
+    plt.xlim(35, 62)
+    plt.ylim(1.1, 2.2)
+    plt.tick_params(labelsize=14)
+    plt.xlabel('Body weight (g)', fontsize=14)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_dw_models.png'))
+    plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_dw_models.jpg'))
+    plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_dw_models.svg'))
