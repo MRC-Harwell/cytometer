@@ -12,8 +12,10 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.stats.multitest import multipletests
+import scipy.stats as stats
 import seaborn as sns
 import cytometer.stats
+import cytometer.data
 
 # whether to plot and save figures
 SAVE_FIGS = False
@@ -70,7 +72,7 @@ if SAVE_FIGS:
     plt.clf()
 
     # swarm plot of body weight
-    ax = sns.swarmplot(x='Genotype', y='BW', data=metainfo, dodge=True, palette=['C0', 'C1'])
+    ax = sns.swarmplot(x='Genotype', y='BW', data=metainfo, dodge=True, palette=['C0', 'C1'], s=10)
     plt.xlabel('')
     plt.ylabel('Body weight (g)', fontsize=14)
     plt.tick_params(labelsize=14)
@@ -280,3 +282,64 @@ if SAVE_FIGS:
     plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_dw_models.png'))
     plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_dw_models.jpg'))
     plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_dw_models.svg'))
+
+## effect of genotype and DW on cell area quartiles
+########################################################################################################################
+
+# compute cell quartiles for each mouse
+
+# (only mode, 25%-, 50%- and 75%-quantiles for illustration purposes and debugging)
+# 0.05, 0.1 , 0.15, 0.2, ..., 0.9 , 0.95
+quantiles = np.linspace(0, 1, 21)  #
+
+# indices of the quantiles we are going to model
+i_q1, i_q2, i_q3 = [5, 10, 15]  # Q1, Q2, Q3
+
+# extract ID (38.1e) from Animal (ARL15-DEL2-EM1-B6N/38.1e), so that we can search for the ID in the histology file name
+metainfo['id'] = [x.split('/')[-1] for x in metainfo['Animal']]
+
+# create dataframe with one row per histology slide, and the area quantiles
+df_slides = pd.DataFrame()
+for i in range(df_all.shape[1]):
+
+    print(df_all.columns[i])
+
+    areas_at_quantiles = stats.mstats.hdquantiles(df_all.iloc[:, i].dropna(), prob=quantiles, axis=0)
+
+    # name of the histology file, converted to lowercase so that 38.1E is identified as mouse 38.1e
+    histo_string = df_all.columns[i].lower()
+
+    df_row = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=histo_string,
+                                                       values=[areas_at_quantiles[i_q1]], values_tag='area_Q1',
+                                                       tags_to_keep=['id', 'Genotype', 'gWAT', 'iWAT'])
+    df_row['area_Q2'] = areas_at_quantiles[i_q2]
+    df_row['area_Q3'] = areas_at_quantiles[i_q3]
+
+    # check whether the slide is gWAT or iWAT
+    if 'gwat' in histo_string:
+        df_row['depot'] = 'gWAT'
+        df_row['DW'] = df_row['gWAT']
+    elif 'iwat' in histo_string:
+        df_row['depot'] = 'iWAT'
+        df_row['DW'] = df_row['iWAT']
+    else:
+        raise ValueError('Histology slide cannot be identified as either gWAT or iWAT')
+
+    df_slides = df_slides.append(df_row, ignore_index=True)
+
+
+
+gwat_q1_model = sm.OLS.from_formula('area_Q1 ~ DW * C(Genotype)', data=df_slides, subset=df_slides['depot']=='gWAT').fit()
+
+print(gwat_q1_model.summary())
+
+if SAVE_FIGS:
+    plt.clf()
+
+    plt.gcf().set_size_inches([6.4, 2.4])
+
+    plt.subplot(121)
+    cytometer.stats.plot_linear_regression(gwat_q1_model, df_slides, ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT'},
+                                           dep_var='area_Q1', c='C0', marker='x',
+                                           line_label='WT')
