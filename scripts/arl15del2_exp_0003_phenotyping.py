@@ -298,48 +298,227 @@ i_q1, i_q2, i_q3 = [5, 10, 15]  # Q1, Q2, Q3
 # extract ID (38.1e) from Animal (ARL15-DEL2-EM1-B6N/38.1e), so that we can search for the ID in the histology file name
 metainfo['id'] = [x.split('/')[-1] for x in metainfo['Animal']]
 
-# create dataframe with one row per histology slide, and the area quantiles
+# create dataframe with one row per mouse/depot, and the area quantiles
 df_slides = pd.DataFrame()
-for i in range(df_all.shape[1]):
+slide_names = [x.lower() for x in df_all.columns]
+for i in range(metainfo.shape[0]):
 
-    print(df_all.columns[i])
+    print('Mouse: ' + metainfo.loc[i, 'Animal'])
 
-    areas_at_quantiles = stats.mstats.hdquantiles(df_all.iloc[:, i].dropna(), prob=quantiles, axis=0)
+    for depot in ['gwat', 'iwat']:
 
-    # name of the histology file, converted to lowercase so that 38.1E is identified as mouse 38.1e
-    histo_string = df_all.columns[i].lower()
+        print('\tDepot: ' + depot)
 
-    df_row = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=histo_string,
-                                                       values=[areas_at_quantiles[i_q1]], values_tag='area_Q1',
-                                                       tags_to_keep=['id', 'Genotype', 'gWAT', 'iWAT'])
-    df_row['area_Q2'] = areas_at_quantiles[i_q2]
-    df_row['area_Q3'] = areas_at_quantiles[i_q3]
+        # get list of all the columns of cell areas that correspond to this mouse/depot
+        i_histo = [(metainfo.loc[i, 'id'] in x) and (depot in x) for x in slide_names]
 
-    # check whether the slide is gWAT or iWAT
-    if 'gwat' in histo_string:
-        df_row['depot'] = 'gWAT'
-        df_row['DW'] = df_row['gWAT']
-    elif 'iwat' in histo_string:
-        df_row['depot'] = 'iWAT'
-        df_row['DW'] = df_row['iWAT']
-    else:
-        raise ValueError('Histology slide cannot be identified as either gWAT or iWAT')
+        [print('\t\tslide: ' + x) for x in df_all.columns[i_histo]]
 
-    df_slides = df_slides.append(df_row, ignore_index=True)
+        # concatenate all the cells for this animal
+        areas_all = df_all[df_all.columns[i_histo]].to_numpy().flatten()
+        areas_all = areas_all[~np.isnan(areas_all)]
 
+        # compute quantiles of the pooled cell population
+        areas_at_quantiles = stats.mstats.hdquantiles(areas_all, prob=quantiles, axis=0)
 
+        # name of the histology file, converted to lowercase so that e.g. 38.1E is identified as mouse 38.1e
+        # we can use the same slide name for all slides, because they all have the same mouse ID and depot tag
+        histo_string = df_all.columns[i_histo][0].lower()
 
-gwat_q1_model = sm.OLS.from_formula('area_Q1 ~ DW * C(Genotype)', data=df_slides, subset=df_slides['depot']=='gWAT').fit()
+        df_row = cytometer.data.tag_values_with_mouse_info(metainfo=metainfo, s=histo_string,
+                                                           values=[areas_at_quantiles[i_q1]], values_tag='area_Q1',
+                                                           tags_to_keep=['id', 'Genotype', 'gWAT', 'iWAT'])
+        df_row['area_Q2'] = areas_at_quantiles[i_q2]
+        df_row['area_Q3'] = areas_at_quantiles[i_q3]
+
+        # check whether the slide is gWAT or iWAT
+        if 'gwat' in histo_string:
+            df_row['depot'] = 'gWAT'
+            df_row['DW'] = df_row['gWAT']
+        elif 'iwat' in histo_string:
+            df_row['depot'] = 'iWAT'
+            df_row['DW'] = df_row['iWAT']
+        else:
+            raise ValueError('Histology slide cannot be identified as either gWAT or iWAT')
+
+        df_slides = df_slides.append(df_row, ignore_index=True)
+
+# fit models of area quartiles vs. depot weight * genotype
+gwat_q1_model = sm.OLS.from_formula('area_Q1 ~ DW * C(Genotype)', data=df_slides,
+                                    subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q2_model = sm.OLS.from_formula('area_Q2 ~ DW * C(Genotype)', data=df_slides,
+                                    subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q3_model = sm.OLS.from_formula('area_Q3 ~ DW * C(Genotype)', data=df_slides,
+                                    subset=df_slides['depot'] == 'gWAT').fit()
+
+iwat_q1_model = sm.OLS.from_formula('area_Q1 ~ DW * C(Genotype)', data=df_slides,
+                                    subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q2_model = sm.OLS.from_formula('area_Q2 ~ DW * C(Genotype)', data=df_slides,
+                                    subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q3_model = sm.OLS.from_formula('area_Q3 ~ DW * C(Genotype)', data=df_slides,
+                                    subset=df_slides['depot'] == 'iWAT').fit()
+
+# null models
+gwat_q1_model_null = sm.OLS.from_formula('area_Q1 ~ DW', data=df_slides,
+                                    subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q2_model_null = sm.OLS.from_formula('area_Q2 ~ DW', data=df_slides,
+                                    subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q3_model_null = sm.OLS.from_formula('area_Q3 ~ DW', data=df_slides,
+                                    subset=df_slides['depot'] == 'gWAT').fit()
+
+iwat_q1_model_null = sm.OLS.from_formula('area_Q1 ~ DW', data=df_slides,
+                                    subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q2_model_null = sm.OLS.from_formula('area_Q2 ~ DW', data=df_slides,
+                                    subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q3_model_null = sm.OLS.from_formula('area_Q3 ~ DW', data=df_slides,
+                                    subset=df_slides['depot'] == 'iWAT').fit()
 
 print(gwat_q1_model.summary())
+print(gwat_q2_model.summary())
+print(gwat_q3_model.summary())
+
+print(iwat_q1_model.summary())
+print(iwat_q2_model.summary())
+print(iwat_q3_model.summary())
+
+print(gwat_q1_model_null.summary())
+print(gwat_q2_model_null.summary())
+print(gwat_q3_model_null.summary())
+
+print(iwat_q1_model_null.summary())
+print(iwat_q2_model_null.summary())
+print(iwat_q3_model_null.summary())
+
+# compute LRTs and extract p-values and LRs
+lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
+
+lr, pval = cytometer.stats.lrtest(gwat_q1_model_null.llf, gwat_q1_model.llf)
+lrt.loc['gwat_q1_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+lr, pval = cytometer.stats.lrtest(gwat_q2_model_null.llf, gwat_q2_model.llf)
+lrt.loc['gwat_q2_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+lr, pval = cytometer.stats.lrtest(gwat_q3_model_null.llf, gwat_q3_model.llf)
+lrt.loc['gwat_q3_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+lr, pval = cytometer.stats.lrtest(iwat_q1_model_null.llf, iwat_q1_model.llf)
+lrt.loc['iwat_q1_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+lr, pval = cytometer.stats.lrtest(iwat_q2_model_null.llf, iwat_q2_model.llf)
+lrt.loc['iwat_q2_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+lr, pval = cytometer.stats.lrtest(iwat_q3_model_null.llf, iwat_q3_model.llf)
+lrt.loc['iwat_q3_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
+
+# multitest correction using Benjamini-Krieger-Yekutieli
+_, lrt['pval_adj'], _, _ = multipletests(lrt['pval'], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+lrt['pval_adj_ast'] = cytometer.stats.pval_to_asterisk(lrt['pval_adj'])
 
 if SAVE_FIGS:
     plt.clf()
 
-    plt.gcf().set_size_inches([6.4, 2.4])
+    plt.gcf().set_size_inches([6.4, 7.2])
 
-    plt.subplot(121)
-    cytometer.stats.plot_linear_regression(gwat_q1_model, df_slides, ind_var='DW',
-                                           other_vars={'Genotype': 'Arl15-Del2:WT'},
+    plt.subplot(321)
+    cytometer.stats.plot_linear_regression(gwat_q1_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT', 'depot': 'gWAT'}, sy=1e-3,
                                            dep_var='area_Q1', c='C0', marker='x',
                                            line_label='WT')
+    cytometer.stats.plot_linear_regression(gwat_q1_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'gWAT'}, sy=1e-3,
+                                           dep_var='area_Q1', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(gwat_q1_model_null, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           sy=1e-3, c='k--', line_label='All')
+    plt.tick_params(labelsize=14)
+    plt.xlim(1.5, 3.0)
+    plt.ylim(6.0, 10.5)
+    plt.title('Gonadal', fontsize=14)
+    plt.ylabel('Area$_{Q1}$ ($\cdot 10^3 \mu m^2$)', fontsize=14)
+    plt.legend(loc='upper left')
+
+    plt.subplot(322)
+    cytometer.stats.plot_linear_regression(iwat_q1_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT', 'depot': 'iWAT'}, sy=1e-3,
+                                           dep_var='area_Q1', c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(iwat_q1_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'iWAT'}, sy=1e-3,
+                                           dep_var='area_Q1', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(iwat_q1_model_null, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           sy=1e-3, c='k--', line_label='All')
+    plt.tick_params(labelsize=14)
+    plt.xlim(1.2, 2.1)
+    plt.ylim(6.0, 10.5)
+    plt.title('Inguinal', fontsize=14)
+
+    plt.subplot(323)
+    cytometer.stats.plot_linear_regression(gwat_q2_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT', 'depot': 'gWAT'}, sy=1e-3,
+                                           dep_var='area_Q2', c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(gwat_q2_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'gWAT'}, sy=1e-3,
+                                           dep_var='area_Q2', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(gwat_q2_model_null, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           sy=1e-3, c='k--', line_label='All')
+    plt.tick_params(labelsize=14)
+    plt.xlim(1.5, 3.0)
+    plt.ylim(15, 26)
+    plt.ylabel('Area$_{Q2}$ ($\cdot 10^3 \mu m^2$)', fontsize=14)
+
+    plt.subplot(324)
+    cytometer.stats.plot_linear_regression(iwat_q2_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT', 'depot': 'iWAT'}, sy=1e-3,
+                                           dep_var='area_Q2', c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(iwat_q2_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'iWAT'}, sy=1e-3,
+                                           dep_var='area_Q2', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(iwat_q2_model_null, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           sy=1e-3, c='k--', line_label='All')
+    plt.tick_params(labelsize=14)
+    plt.xlim(1.2, 2.1)
+    plt.ylim(15, 26)
+
+    plt.subplot(325)
+    cytometer.stats.plot_linear_regression(gwat_q3_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT', 'depot': 'gWAT'}, sy=1e-3,
+                                           dep_var='area_Q3', c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(gwat_q3_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'gWAT'}, sy=1e-3,
+                                           dep_var='area_Q3', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(gwat_q3_model_null, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+                                           sy=1e-3, c='k--', line_label='All')
+    plt.tick_params(labelsize=14)
+    plt.xlim(1.5, 3.0)
+    plt.ylim(30, 45)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+    plt.ylabel('Area$_{Q3}$ ($\cdot 10^3 \mu m^2$)', fontsize=14)
+
+    plt.subplot(326)
+    cytometer.stats.plot_linear_regression(iwat_q3_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:WT', 'depot': 'iWAT'}, sy=1e-3,
+                                           dep_var='area_Q3', c='C0', marker='x',
+                                           line_label='WT')
+    cytometer.stats.plot_linear_regression(iwat_q3_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'iWAT'}, sy=1e-3,
+                                           dep_var='area_Q3', c='C1', marker='o',
+                                           line_label='Het')
+    cytometer.stats.plot_linear_regression(iwat_q3_model_null, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+                                           sy=1e-3, c='k--', line_label='All')
+    plt.tick_params(labelsize=14)
+    plt.xlim(1.2, 2.1)
+    plt.ylim(30, 45)
+    plt.xlabel('Depot weight (g)', fontsize=14)
+
+    plt.tight_layout()
+
+    plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_area_quartile_models.png'))
+    plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_area_quartile_models.jpg'))
+    plt.savefig(os.path.join(figures_dir, 'arl15del2_exp_0003_paper_figures_area_quartile_models.svg'))
