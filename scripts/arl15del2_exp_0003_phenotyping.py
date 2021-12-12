@@ -343,6 +343,38 @@ for i in range(metainfo.shape[0]):
 
         df_slides = df_slides.append(df_row, ignore_index=True)
 
+# pearson correlation coefficients
+rho_df = pd.DataFrame()
+rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q1', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q1_wt', 'rho': rho}, ignore_index=True)
+rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:Het')][['area_Q1', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q1_het', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q2', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q2_wt', 'rho': rho}, ignore_index=True)
+rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:Het')][['area_Q2', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q2_het', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q3', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q3_wt', 'rho': rho}, ignore_index=True)
+rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:Het')][['area_Q3', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q3_het', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'iWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q1', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q1_wt', 'rho': rho}, ignore_index=True)
+rho = df_slides[(df_slides['depot'] == 'iWAT') & (df_slides['Genotype'] == 'Arl15-Del2:Het')][['area_Q1', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q1_het', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'iWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q2', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q2_wt', 'rho': rho}, ignore_index=True)
+rho = df_slides[(df_slides['depot'] == 'iWAT') & (df_slides['Genotype'] == 'Arl15-Del2:Het')][['area_Q2', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q2_het', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'iWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q3', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q3_wt', 'rho': rho}, ignore_index=True)
+rho = df_slides[(df_slides['depot'] == 'iWAT') & (df_slides['Genotype'] == 'Arl15-Del2:Het')][['area_Q3', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q3_het', 'rho': rho}, ignore_index=True)
+
 # fit models of area quartiles vs. depot weight * genotype
 gwat_q1_model = sm.OLS.from_formula('area_Q1 ~ DW * C(Genotype)', data=df_slides,
                                     subset=df_slides['depot'] == 'gWAT').fit()
@@ -435,7 +467,6 @@ if SAVE_FIGS:
     plt.ylim(6.0, 10.5)
     plt.title('Gonadal', fontsize=14)
     plt.ylabel('Area$_{Q1}$ ($\cdot 10^3 \mu m^2$)', fontsize=14)
-    plt.legend(loc='upper left')
 
     plt.subplot(322)
     cytometer.stats.plot_linear_regression(iwat_q1_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
@@ -452,6 +483,7 @@ if SAVE_FIGS:
     plt.xlim(1.2, 2.1)
     plt.ylim(6.0, 10.5)
     plt.title('Inguinal', fontsize=14)
+    plt.legend(loc='lower right')
 
     plt.subplot(323)
     cytometer.stats.plot_linear_regression(gwat_q2_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
