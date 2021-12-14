@@ -190,6 +190,7 @@ if SAVE_FIGS:
 ## effect of genotype and BW on depot weight
 ########################################################################################################################
 
+# DW ~ BW * genotype
 gwat_model = sm.OLS.from_formula('gWAT ~ BW__ * C(Genotype)', data=metainfo).fit()
 print(gwat_model.summary())
 
@@ -206,8 +207,15 @@ print(iwat_model.summary())
 gwat_model_null = sm.OLS.from_formula('gWAT ~ BW', data=metainfo).fit()
 iwat_model_null = sm.OLS.from_formula('iWAT ~ BW', data=metainfo).fit()
 
+# mean difference of BW vs. Genotype
+gwat_model_meandiff = sm.OLS.from_formula('gWAT ~ C(Genotype)', data=metainfo).fit()
+iwat_model_meandiff = sm.OLS.from_formula('iWAT ~ C(Genotype)', data=metainfo).fit()
+
 print(gwat_model_null.summary())
 print(iwat_model_null.summary())
+
+print(gwat_model_meandiff.summary())
+print(iwat_model_meandiff.summary())
 
 # compute LRTs and extract p-values and LRs
 lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
@@ -343,7 +351,18 @@ for i in range(metainfo.shape[0]):
 
         df_slides = df_slides.append(df_row, ignore_index=True)
 
-# pearson correlation coefficients
+# pearson correlation coefficients for data stratified by depot
+rho_df = pd.DataFrame()
+rho = df_slides[(df_slides['depot'] == 'gWAT')][['area_Q1', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q1', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'gWAT')][['area_Q2', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q2', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'gWAT')][['area_Q3', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'gwat_q3', 'rho': rho}, ignore_index=True)
+
+# pearson correlation coefficients for data stratified by depot and genotype
 rho_df = pd.DataFrame()
 rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q1', 'DW']].corr().iloc[0, 1]
 rho_df = rho_df.append({'model': 'gwat_q1_wt', 'rho': rho}, ignore_index=True)
@@ -375,6 +394,74 @@ rho_df = rho_df.append({'model': 'iwat_q3_wt', 'rho': rho}, ignore_index=True)
 rho = df_slides[(df_slides['depot'] == 'iWAT') & (df_slides['Genotype'] == 'Arl15-Del2:Het')][['area_Q3', 'DW']].corr().iloc[0, 1]
 rho_df = rho_df.append({'model': 'iwat_q3_het', 'rho': rho}, ignore_index=True)
 
+# area quartiles mean differences (WT vs. Het)
+gwat_q1_meandiff_model = sm.OLS.from_formula('area_Q1 ~ C(Genotype)', data=df_slides,
+                                             subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q2_meandiff_model = sm.OLS.from_formula('area_Q2 ~ C(Genotype)', data=df_slides,
+                                             subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q3_meandiff_model = sm.OLS.from_formula('area_Q3 ~ C(Genotype)', data=df_slides,
+                                             subset=df_slides['depot'] == 'gWAT').fit()
+
+iwat_q1_meandiff_model = sm.OLS.from_formula('area_Q1 ~ C(Genotype)', data=df_slides,
+                                             subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q2_meandiff_model = sm.OLS.from_formula('area_Q2 ~ C(Genotype)', data=df_slides,
+                                             subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q3_meandiff_model = sm.OLS.from_formula('area_Q3 ~ C(Genotype)', data=df_slides,
+                                             subset=df_slides['depot'] == 'iWAT').fit()
+
+print(gwat_q1_meandiff_model.summary())
+print(gwat_q2_meandiff_model.summary())
+print(gwat_q3_meandiff_model.summary())
+
+print(iwat_q1_meandiff_model.summary())
+print(iwat_q2_meandiff_model.summary())
+print(iwat_q3_meandiff_model.summary())
+
+df_meandiff = pd.DataFrame()
+df_meandiff = \
+    df_meandiff.append(ignore_index=True,
+                       other={'model': 'gwat_q1_meandiff',
+                              'meandiff': np.round(gwat_q1_meandiff_model.params['C(Genotype)[T.Arl15-Del2:Het]']),
+                              't': gwat_q1_meandiff_model.tvalues['C(Genotype)[T.Arl15-Del2:Het]'].round(2),
+                              'pval': gwat_q1_meandiff_model.pvalues['C(Genotype)[T.Arl15-Del2:Het]']})
+df_meandiff = \
+    df_meandiff.append(ignore_index=True,
+                       other={'model': 'gwat_q2_meandiff',
+                              'meandiff': np.round(gwat_q2_meandiff_model.params['C(Genotype)[T.Arl15-Del2:Het]']),
+                              't': gwat_q2_meandiff_model.tvalues['C(Genotype)[T.Arl15-Del2:Het]'].round(2),
+                              'pval': gwat_q2_meandiff_model.pvalues['C(Genotype)[T.Arl15-Del2:Het]']})
+df_meandiff = \
+    df_meandiff.append(ignore_index=True,
+                       other={'model': 'gwat_q3_meandiff',
+                              'meandiff': np.round(gwat_q3_meandiff_model.params['C(Genotype)[T.Arl15-Del2:Het]']),
+                              't': gwat_q3_meandiff_model.tvalues['C(Genotype)[T.Arl15-Del2:Het]'].round(2),
+                              'pval': gwat_q3_meandiff_model.pvalues['C(Genotype)[T.Arl15-Del2:Het]']})
+df_meandiff = \
+    df_meandiff.append(ignore_index=True,
+                       other={'model': 'iwat_q1_meandiff',
+                              'meandiff': np.round(iwat_q1_meandiff_model.params['C(Genotype)[T.Arl15-Del2:Het]']),
+                              't': iwat_q1_meandiff_model.tvalues['C(Genotype)[T.Arl15-Del2:Het]'].round(2),
+                              'pval': iwat_q1_meandiff_model.pvalues['C(Genotype)[T.Arl15-Del2:Het]']})
+df_meandiff = \
+    df_meandiff.append(ignore_index=True,
+                       other={'model': 'iwat_q2_meandiff',
+                              'meandiff': np.round(iwat_q2_meandiff_model.params['C(Genotype)[T.Arl15-Del2:Het]']),
+                              't': iwat_q2_meandiff_model.tvalues['C(Genotype)[T.Arl15-Del2:Het]'].round(2),
+                              'pval': iwat_q2_meandiff_model.pvalues['C(Genotype)[T.Arl15-Del2:Het]']})
+df_meandiff = \
+    df_meandiff.append(ignore_index=True,
+                       other={'model': 'iwat_q3_meandiff',
+                              'meandiff': np.round(iwat_q3_meandiff_model.params['C(Genotype)[T.Arl15-Del2:Het]']),
+                              't': iwat_q3_meandiff_model.tvalues['C(Genotype)[T.Arl15-Del2:Het]'].round(2),
+                              'pval': iwat_q3_meandiff_model.pvalues['C(Genotype)[T.Arl15-Del2:Het]']})
+
+df_meandiff['pval_ast'] = cytometer.stats.pval_to_asterisk(df_meandiff['pval'])
+
+# multitest correction using Benjamini-Krieger-Yekutieli
+_, df_meandiff['pval_adj'], _, _ = multipletests(df_meandiff['pval'], method='fdr_tsbky', alpha=0.05, returnsorted=False)
+df_meandiff['pval_adj_ast'] = cytometer.stats.pval_to_asterisk(df_meandiff['pval_adj'])
+
+
 # fit models of area quartiles vs. depot weight * genotype
 gwat_q1_model = sm.OLS.from_formula('area_Q1 ~ DW * C(Genotype)', data=df_slides,
                                     subset=df_slides['depot'] == 'gWAT').fit()
@@ -391,19 +478,19 @@ iwat_q3_model = sm.OLS.from_formula('area_Q3 ~ DW * C(Genotype)', data=df_slides
                                     subset=df_slides['depot'] == 'iWAT').fit()
 
 # null models
-gwat_q1_model_null = sm.OLS.from_formula('area_Q1 ~ DW', data=df_slides,
-                                    subset=df_slides['depot'] == 'gWAT').fit()
-gwat_q2_model_null = sm.OLS.from_formula('area_Q2 ~ DW', data=df_slides,
-                                    subset=df_slides['depot'] == 'gWAT').fit()
-gwat_q3_model_null = sm.OLS.from_formula('area_Q3 ~ DW', data=df_slides,
-                                    subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q1_null_model = sm.OLS.from_formula('area_Q1 ~ DW', data=df_slides,
+                                         subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q2_null_model = sm.OLS.from_formula('area_Q2 ~ DW', data=df_slides,
+                                         subset=df_slides['depot'] == 'gWAT').fit()
+gwat_q3_null_model = sm.OLS.from_formula('area_Q3 ~ DW', data=df_slides,
+                                         subset=df_slides['depot'] == 'gWAT').fit()
 
-iwat_q1_model_null = sm.OLS.from_formula('area_Q1 ~ DW', data=df_slides,
-                                    subset=df_slides['depot'] == 'iWAT').fit()
-iwat_q2_model_null = sm.OLS.from_formula('area_Q2 ~ DW', data=df_slides,
-                                    subset=df_slides['depot'] == 'iWAT').fit()
-iwat_q3_model_null = sm.OLS.from_formula('area_Q3 ~ DW', data=df_slides,
-                                    subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q1_null_model = sm.OLS.from_formula('area_Q1 ~ DW', data=df_slides,
+                                         subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q2_null_model = sm.OLS.from_formula('area_Q2 ~ DW', data=df_slides,
+                                         subset=df_slides['depot'] == 'iWAT').fit()
+iwat_q3_null_model = sm.OLS.from_formula('area_Q3 ~ DW', data=df_slides,
+                                         subset=df_slides['depot'] == 'iWAT').fit()
 
 print(gwat_q1_model.summary())
 print(gwat_q2_model.summary())
@@ -413,33 +500,33 @@ print(iwat_q1_model.summary())
 print(iwat_q2_model.summary())
 print(iwat_q3_model.summary())
 
-print(gwat_q1_model_null.summary())
-print(gwat_q2_model_null.summary())
-print(gwat_q3_model_null.summary())
+print(gwat_q1_null_model.summary())
+print(gwat_q2_null_model.summary())
+print(gwat_q3_null_model.summary())
 
-print(iwat_q1_model_null.summary())
-print(iwat_q2_model_null.summary())
-print(iwat_q3_model_null.summary())
+print(iwat_q1_null_model.summary())
+print(iwat_q2_null_model.summary())
+print(iwat_q3_null_model.summary())
 
 # compute LRTs and extract p-values and LRs
 lrt = pd.DataFrame(columns=['lr', 'pval', 'pval_ast'])
 
-lr, pval = cytometer.stats.lrtest(gwat_q1_model_null.llf, gwat_q1_model.llf)
+lr, pval = cytometer.stats.lrtest(gwat_q1_null_model.llf, gwat_q1_model.llf)
 lrt.loc['gwat_q1_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
-lr, pval = cytometer.stats.lrtest(gwat_q2_model_null.llf, gwat_q2_model.llf)
+lr, pval = cytometer.stats.lrtest(gwat_q2_null_model.llf, gwat_q2_model.llf)
 lrt.loc['gwat_q2_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
-lr, pval = cytometer.stats.lrtest(gwat_q3_model_null.llf, gwat_q3_model.llf)
+lr, pval = cytometer.stats.lrtest(gwat_q3_null_model.llf, gwat_q3_model.llf)
 lrt.loc['gwat_q3_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
-lr, pval = cytometer.stats.lrtest(iwat_q1_model_null.llf, iwat_q1_model.llf)
+lr, pval = cytometer.stats.lrtest(iwat_q1_null_model.llf, iwat_q1_model.llf)
 lrt.loc['iwat_q1_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
-lr, pval = cytometer.stats.lrtest(iwat_q2_model_null.llf, iwat_q2_model.llf)
+lr, pval = cytometer.stats.lrtest(iwat_q2_null_model.llf, iwat_q2_model.llf)
 lrt.loc['iwat_q2_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
-lr, pval = cytometer.stats.lrtest(iwat_q3_model_null.llf, iwat_q3_model.llf)
+lr, pval = cytometer.stats.lrtest(iwat_q3_null_model.llf, iwat_q3_model.llf)
 lrt.loc['iwat_q3_model', :] = (lr, pval, cytometer.stats.pval_to_asterisk(pval))
 
 # multitest correction using Benjamini-Krieger-Yekutieli
@@ -460,7 +547,7 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'gWAT'}, sy=1e-3,
                                            dep_var='area_Q1', c='C1', marker='o',
                                            line_label='Het')
-    cytometer.stats.plot_linear_regression(gwat_q1_model_null, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+    cytometer.stats.plot_linear_regression(gwat_q1_null_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
                                            sy=1e-3, c='k--', line_label='All')
     plt.tick_params(labelsize=14)
     plt.xlim(1.5, 3.0)
@@ -477,7 +564,7 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'iWAT'}, sy=1e-3,
                                            dep_var='area_Q1', c='C1', marker='o',
                                            line_label='Het')
-    cytometer.stats.plot_linear_regression(iwat_q1_model_null, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+    cytometer.stats.plot_linear_regression(iwat_q1_null_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
                                            sy=1e-3, c='k--', line_label='All')
     plt.tick_params(labelsize=14)
     plt.xlim(1.2, 2.1)
@@ -494,7 +581,7 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'gWAT'}, sy=1e-3,
                                            dep_var='area_Q2', c='C1', marker='o',
                                            line_label='Het')
-    cytometer.stats.plot_linear_regression(gwat_q2_model_null, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+    cytometer.stats.plot_linear_regression(gwat_q2_null_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
                                            sy=1e-3, c='k--', line_label='All')
     plt.tick_params(labelsize=14)
     plt.xlim(1.5, 3.0)
@@ -510,7 +597,7 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'iWAT'}, sy=1e-3,
                                            dep_var='area_Q2', c='C1', marker='o',
                                            line_label='Het')
-    cytometer.stats.plot_linear_regression(iwat_q2_model_null, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+    cytometer.stats.plot_linear_regression(iwat_q2_null_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
                                            sy=1e-3, c='k--', line_label='All')
     plt.tick_params(labelsize=14)
     plt.xlim(1.2, 2.1)
@@ -525,7 +612,7 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'gWAT'}, sy=1e-3,
                                            dep_var='area_Q3', c='C1', marker='o',
                                            line_label='Het')
-    cytometer.stats.plot_linear_regression(gwat_q3_model_null, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
+    cytometer.stats.plot_linear_regression(gwat_q3_null_model, df_slides[df_slides['depot'] == 'gWAT'], ind_var='DW',
                                            sy=1e-3, c='k--', line_label='All')
     plt.tick_params(labelsize=14)
     plt.xlim(1.5, 3.0)
@@ -542,7 +629,7 @@ if SAVE_FIGS:
                                            other_vars={'Genotype': 'Arl15-Del2:Het', 'depot': 'iWAT'}, sy=1e-3,
                                            dep_var='area_Q3', c='C1', marker='o',
                                            line_label='Het')
-    cytometer.stats.plot_linear_regression(iwat_q3_model_null, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
+    cytometer.stats.plot_linear_regression(iwat_q3_null_model, df_slides[df_slides['depot'] == 'iWAT'], ind_var='DW',
                                            sy=1e-3, c='k--', line_label='All')
     plt.tick_params(labelsize=14)
     plt.xlim(1.2, 2.1)
