@@ -17,7 +17,7 @@ set -e
 ########################################################################
 # configuration constants
 
-PYTHON_VERSION=3.8
+PYTHON_VERSION=3.9
 CONDA_LOCAL_ENV=cytometer_tensorflow_v2
 
 ########################################################################
@@ -27,7 +27,7 @@ CONDA_LOCAL_ENV=cytometer_tensorflow_v2
 # install Miniconda
 mkdir -p ~/Downloads
 
-if [[ -d "${HOME}/Software/miniconda${MINICONDA_VERSION}" ]]; then
+if [[ ! -z `which conda` ]]; then
     /usr/bin/tput setaf 1; echo "** Conda ${MINICONDA_VERSION} package manager already installed"; /usr/bin/tput sgr0
 else
     /usr/bin/tput setaf 1; echo "** Installing conda ${MINICONDA_VERSION} package manager"; /usr/bin/tput sgr0
@@ -47,6 +47,12 @@ else
 fi
 
 ########################################################################
+## Ubuntu dependencies
+
+# dependency of matlplotlib's backends
+sudo apt-get install libgtk-3-dev
+
+########################################################################
 ## create python local environment if it doesn't exist already
 
 # check whether the environment already exists
@@ -62,10 +68,12 @@ fi
 
 source activate ${CONDA_LOCAL_ENV}
 
-pip install matplotlib==3.4.2 scipy==1.7.0 scikit-learn==0.24.2 scikit-image==0.18.1 statsmodels==0.12.2 seaborn==0.11.1
+pip install matplotlib==3.4.2 scipy==1.7.0 scikit-learn==0.24.2 scikit-image==0.18.1 statsmodels==0.12.2
+pip install seaborn==0.11.1 openpyxl==3.0.9
 pip install ujson==4.0.2 mahotas==1.4.11 pysto==1.4.1 svgpathtools==1.4.1
 pip install shapely==1.7.1
 pip install pyvips==2.1.15
 pip install "aicsimageio[czi] @ git+https://github.com/AllenCellModeling/aicsimageio.git"
+pip install wxpython==4.1.1
 #pip install slideio
 #pip install python-bioformats
