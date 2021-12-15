@@ -362,6 +362,17 @@ rho_df = rho_df.append({'model': 'gwat_q2', 'rho': rho}, ignore_index=True)
 rho = df_slides[(df_slides['depot'] == 'gWAT')][['area_Q3', 'DW']].corr().iloc[0, 1]
 rho_df = rho_df.append({'model': 'gwat_q3', 'rho': rho}, ignore_index=True)
 
+rho = df_slides[(df_slides['depot'] == 'iWAT')][['area_Q1', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q1', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'iWAT')][['area_Q2', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q2', 'rho': rho}, ignore_index=True)
+
+rho = df_slides[(df_slides['depot'] == 'iWAT')][['area_Q3', 'DW']].corr().iloc[0, 1]
+rho_df = rho_df.append({'model': 'iwat_q3', 'rho': rho}, ignore_index=True)
+
+print(rho_df)
+
 # pearson correlation coefficients for data stratified by depot and genotype
 rho_df = pd.DataFrame()
 rho = df_slides[(df_slides['depot'] == 'gWAT') & (df_slides['Genotype'] == 'Arl15-Del2:WT')][['area_Q1', 'DW']].corr().iloc[0, 1]
